@@ -3,7 +3,7 @@ import { type Client, type ClientTask, type Phase } from "@/data/projectData";
 import { Button } from "@/components/ui/button";
 import {
   ChevronLeft, ChevronRight, Maximize2, Minimize2, X,
-  FileText, Sparkles, ArrowRight
+  FileText, Sparkles, ArrowRight, Pencil
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -59,6 +59,87 @@ function ScaledSlide({ children, containerRef }: { children: React.ReactNode; co
   );
 }
 
+// ── Editable Text Component ─────────────────────────────
+
+function EditableText({
+  value, defaultValue, onChange, className, multiline = false, tag: Tag = "span",
+}: {
+  value: string;
+  defaultValue?: string;
+  onChange: (v: string) => void;
+  className?: string;
+  multiline?: boolean;
+  tag?: "span" | "p" | "h1" | "h2" | "h3" | "li";
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+
+  useEffect(() => { setDraft(value); }, [value]);
+  useEffect(() => { if (editing) inputRef.current?.focus(); }, [editing]);
+
+  const save = () => {
+    setEditing(false);
+    if (draft.trim() !== value) onChange(draft.trim());
+  };
+
+  if (editing) {
+    if (multiline) {
+      return (
+        <textarea
+          ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onBlur={save}
+          onKeyDown={e => { if (e.key === "Escape") { setDraft(value); setEditing(false); } }}
+          className={cn("bg-white/90 border-2 border-[#c0392b] rounded px-[8px] py-[4px] outline-none resize-none w-full", className)}
+          rows={3}
+        />
+      );
+    }
+    return (
+      <input
+        ref={inputRef as React.RefObject<HTMLInputElement>}
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={save}
+        onKeyDown={e => { if (e.key === "Enter") save(); if (e.key === "Escape") { setDraft(value); setEditing(false); } }}
+        className={cn("bg-white/90 border-2 border-[#c0392b] rounded px-[8px] py-[2px] outline-none w-full", className)}
+      />
+    );
+  }
+
+  return (
+    <Tag
+      className={cn(className, "cursor-pointer hover:outline hover:outline-2 hover:outline-[#c0392b]/30 hover:outline-offset-2 rounded transition-all group/et relative")}
+      onClick={() => setEditing(true)}
+      title="Clic para editar"
+    >
+      {value}
+      <Pencil className="inline-block ml-[8px] opacity-0 group-hover/et:opacity-50 transition-opacity" style={{ width: '0.6em', height: '0.6em' }} />
+    </Tag>
+  );
+}
+
+// ── Slide Text Storage (localStorage) ───────────────────
+
+type SlideTexts = Record<string, string>;
+
+function getStorageKey(clientId: string) {
+  return `ppt-texts-${clientId}`;
+}
+
+function loadSlideTexts(clientId: string): SlideTexts {
+  try {
+    const raw = localStorage.getItem(getStorageKey(clientId));
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+function saveSlideTexts(clientId: string, texts: SlideTexts) {
+  localStorage.setItem(getStorageKey(clientId), JSON.stringify(texts));
+}
+
 // ── Activity Groups Builder ──────────────────────────────
 
 interface ActivityItem {
@@ -75,9 +156,6 @@ interface ActivityGroup {
 
 function buildActivityGroups(client: Client): ActivityGroup[] {
   const groups: ActivityGroup[] = [];
-
-  // For AURUM: PLANIFICACIÓN, EJECUCIÓN — INFRAESTRUCTURA, EJECUCIÓN — PARAMETRIZACIÓN
-  // For others: derive from phases and tasks
   if (client.id === "aurum") {
     groups.push({
       title: "PLANIFICACIÓN",
@@ -111,7 +189,6 @@ function buildActivityGroups(client: Client): ActivityGroup[] {
       ],
     });
   } else {
-    // Generic: group completed phases + in-progress tasks
     const completedPhases = client.phases.filter(p => p.status === "completado");
     if (completedPhases.length > 0) {
       groups.push({
@@ -139,16 +216,12 @@ function buildActivityGroups(client: Client): ActivityGroup[] {
 
 function getMonthRange(client: Client): { label: string; date: Date }[] {
   const allDates: Date[] = [];
-  const parseD = (s: string) => {
-    const d = new Date(s);
-    return isNaN(d.getTime()) ? null : d;
-  };
+  const parseD = (s: string) => { const d = new Date(s); return isNaN(d.getTime()) ? null : d; };
   client.phases.forEach(p => {
     const s = parseD(p.startDate); if (s) allDates.push(s);
     const e = parseD(p.endDate); if (e) allDates.push(e);
   });
   if (allDates.length === 0) {
-    // Fallback: use contract dates
     const s = parseD(client.contractStart); if (s) allDates.push(s);
     const e = parseD(client.contractEnd); if (e) allDates.push(e);
   }
@@ -174,22 +247,18 @@ function getPhaseBarStyle(phase: Phase, months: { label: string; date: Date }[])
   lastMonth.setMonth(lastMonth.getMonth() + 1);
   const totalEnd = lastMonth.getTime();
   const totalSpan = totalEnd - totalStart;
-
   const ps = parseD(phase.startDate);
   const pe = parseD(phase.endDate);
   if (!ps || !pe) return { left: "0%", width: "0%", color: "#ccc" };
-
   const left = Math.max(0, ((ps.getTime() - totalStart) / totalSpan) * 100);
   const width = Math.max(2, ((pe.getTime() - ps.getTime()) / totalSpan) * 100);
-
-  let color = "#bbb"; // default gray
+  let color = "#bbb";
   if (phase.status === "completado") color = "#c0392b";
   else if (phase.status === "en-progreso") color = "#c0392b";
   else if (phase.name.toLowerCase().includes("capacitación") || phase.name.toLowerCase().includes("talleres")) color = "#e67e22";
   else if (phase.name.toLowerCase().includes("pruebas")) color = "#e67e22";
   else if (phase.name.toLowerCase().includes("go") || phase.name.toLowerCase().includes("producción")) color = "#27ae60";
   else color = "#e67e22";
-
   return { left: `${left}%`, width: `${width}%`, color };
 }
 
@@ -281,16 +350,27 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
   const wrapperRef = useRef<HTMLDivElement>(null);
   const qc = useQueryClient();
 
+  // ── Editable text state ──
+  const [texts, setTexts] = useState<SlideTexts>(() => loadSlideTexts(client.id));
+
+  // Reload texts when client changes
+  useEffect(() => { setTexts(loadSlideTexts(client.id)); }, [client.id]);
+
+  const t = (key: string, fallback: string): string => texts[key] ?? fallback;
+  const updateText = (key: string, value: string) => {
+    const next = { ...texts, [key]: value };
+    setTexts(next);
+    saveSlideTexts(client.id, next);
+    toast.success("Texto guardado");
+  };
+
   // Build data
   const activityGroups = buildActivityGroups(client);
   const months = getMonthRange(client);
   const currentDatePos = getCurrentDatePosition(months);
 
-  const completedTasks = client.tasks.filter(t => t.status === "completada");
-  const inProgressTasks = client.tasks.filter(t => t.status === "en-progreso");
   const pendingTasks = client.tasks.filter(t => t.status === "pendiente" || t.status === "bloqueada");
 
-  // Build coordination items from action items
   const coordinationItems = client.actionItems.map((item, i) => ({
     num: i + 1,
     subject: item.title,
@@ -302,14 +382,12 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
     fup: item.source?.replace("FUP Semanal ", "") || "",
   }));
 
-  // Build próximos pasos
-  const proximosPasos = pendingTasks.map((t, i) => ({
+  const proximosPasos = pendingTasks.map((task, i) => ({
     id: `F${i + 1}`,
-    activity: t.title,
-    responsible: t.owner,
-    date: t.dueDate,
+    activity: task.title,
+    responsible: task.owner,
+    date: task.dueDate,
     dependency: i === 0 ? "N/A" : `F${i}`,
-    description: t.description,
   }));
 
   // Handle progress update from editable bars
@@ -327,12 +405,10 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
     toast.success(`${task.title}: ${newProgress}%`);
   };
 
-  // Gantt row labels (use phase names but shortened)
   const ganttRows = client.phases.map(p => ({
     label: p.name.length > 40 ? p.name.substring(0, 37) + "..." : p.name,
     phase: p,
   }));
-  // Add "Gestión de proyecto" as first row spanning entire timeline
   const managementPhase: Phase = {
     name: "Gestión de proyecto",
     status: "en-progreso",
@@ -386,27 +462,58 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
         <div className="w-[520px] h-full bg-[#c0392b] flex flex-col justify-between py-[80px] px-[60px]">
           <div>
             <div className="text-white/80"><SysdeLogo size={64} /></div>
-            <p className="text-[18px] text-white/60 uppercase tracking-[3px] mt-[20px]">Sysde</p>
+            <EditableText
+              value={t("cover-company", "Sysde")}
+              onChange={v => updateText("cover-company", v)}
+              className="text-[18px] text-white/60 uppercase tracking-[3px] mt-[20px] block"
+              tag="p"
+            />
           </div>
           <div>
-            <p className="text-[22px] text-white font-bold">Fernando Pinto Villarreal</p>
-            <p className="text-[18px] text-white/60 mt-[4px]">Project Manager</p>
+            <EditableText
+              value={t("cover-pm-name", "Fernando Pinto Villarreal")}
+              onChange={v => updateText("cover-pm-name", v)}
+              className="text-[22px] text-white font-bold"
+              tag="p"
+            />
+            <EditableText
+              value={t("cover-pm-role", "Project Manager")}
+              onChange={v => updateText("cover-pm-role", v)}
+              className="text-[18px] text-white/60 mt-[4px]"
+              tag="p"
+            />
           </div>
         </div>
         <div className="flex-1 flex flex-col justify-center px-[120px] bg-white">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-            <p className="text-[20px] text-[#999] uppercase tracking-[4px] mb-[16px]">
-              SERVICIOS Y TECNOLOGÍA QUE GENERAN VALOR A LA INDUSTRIA FINANCIERA
-            </p>
-            <h1 className="text-[64px] font-bold text-[#333] leading-[1.1] mb-[32px]">
-              Proyecto Implementación SAF
-            </h1>
-            <h2 className="text-[56px] font-extrabold text-[#c0392b] mb-[40px]">{client.name}</h2>
+            <EditableText
+              value={t("cover-tagline", "SERVICIOS Y TECNOLOGÍA QUE GENERAN VALOR A LA INDUSTRIA FINANCIERA")}
+              onChange={v => updateText("cover-tagline", v)}
+              className="text-[20px] text-[#999] uppercase tracking-[4px] mb-[16px]"
+              tag="p"
+            />
+            <EditableText
+              value={t("cover-title", "Proyecto Implementación SAF")}
+              onChange={v => updateText("cover-title", v)}
+              className="text-[64px] font-bold text-[#333] leading-[1.1] mb-[32px]"
+              tag="h1"
+            />
+            <EditableText
+              value={t("cover-client", client.name)}
+              onChange={v => updateText("cover-client", v)}
+              className="text-[56px] font-extrabold text-[#c0392b] mb-[40px]"
+              tag="h2"
+            />
             <div className="w-[80px] h-[4px] bg-[#c0392b] mb-[40px]" />
             <p className="text-[24px] text-[#666] mb-[8px]">
               {new Date().toLocaleDateString("es", { day: "2-digit", month: "long", year: "numeric" })}
             </p>
-            <p className="text-[22px] text-[#999]">Sesión de Seguimiento</p>
+            <EditableText
+              value={t("cover-session", "Sesión de Seguimiento")}
+              onChange={v => updateText("cover-session", v)}
+              className="text-[22px] text-[#999]"
+              tag="p"
+            />
           </motion.div>
         </div>
       </div>
@@ -420,28 +527,46 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
         </div>
         <div className="grid grid-cols-2 gap-[80px]">
           <motion.div initial={{ opacity: 0, x: -40 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
-            <h2 className="text-[48px] font-bold text-[#c0392b] mb-[40px]">Sincronización</h2>
+            <EditableText
+              value={t("agenda-sync-title", "Sincronización")}
+              onChange={v => updateText("agenda-sync-title", v)}
+              className="text-[48px] font-bold text-[#c0392b] mb-[40px]"
+              tag="h2"
+            />
             <ul className="space-y-[20px]">
               <li className="flex items-start gap-[16px]">
                 <span className="text-[28px] text-[#c0392b]">•</span>
-                <span className="text-[28px] text-[#333]">Avance de actividades</span>
+                <EditableText
+                  value={t("agenda-sync-1", "Actividades ejecutadas")}
+                  onChange={v => updateText("agenda-sync-1", v)}
+                  className="text-[28px] text-[#333]"
+                />
               </li>
               <li className="flex items-start gap-[16px]">
                 <span className="text-[28px] text-[#c0392b]">•</span>
-                <span className="text-[28px] text-[#333]">Línea de tiempo</span>
+                <EditableText
+                  value={t("agenda-sync-2", "Actividades en curso")}
+                  onChange={v => updateText("agenda-sync-2", v)}
+                  className="text-[28px] text-[#333]"
+                />
               </li>
             </ul>
           </motion.div>
           <motion.div initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}>
-            <h2 className="text-[48px] font-bold text-[#c0392b] mb-[40px]">Coordinación</h2>
+            <EditableText
+              value={t("agenda-coord-title", "Coordinación")}
+              onChange={v => updateText("agenda-coord-title", v)}
+              className="text-[48px] font-bold text-[#c0392b] mb-[40px]"
+              tag="h2"
+            />
             <ul className="space-y-[20px]">
               <li className="flex items-start gap-[16px]">
                 <span className="text-[28px] text-[#c0392b]">•</span>
-                <span className="text-[28px] text-[#333]">Próximos pasos</span>
-              </li>
-              <li className="flex items-start gap-[16px]">
-                <span className="text-[28px] text-[#c0392b]">•</span>
-                <span className="text-[28px] text-[#333]">Action Items</span>
+                <EditableText
+                  value={t("agenda-coord-1", "Compromisos y entregables del proyecto")}
+                  onChange={v => updateText("agenda-coord-1", v)}
+                  className="text-[28px] text-[#333]"
+                />
               </li>
             </ul>
           </motion.div>
@@ -449,16 +574,19 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
       </div>
     </SlideLayout>,
 
-    // ═══ SLIDE 2: SINCRONIZACIÓN — Avance de actividades (matches image 1) ═══
+    // ═══ SLIDE 2: SINCRONIZACIÓN — Avance de actividades ═══
     <SlideLayout key="avance" className="bg-white">
       <div className="absolute inset-0 px-[80px] py-[50px]">
-        {/* Header */}
         <div className="flex items-start justify-between mb-[24px]">
           <div>
             <p className="text-[20px] font-bold text-[#c0392b] uppercase tracking-[2px]">SINCRONIZACIÓN</p>
-            <h2 className="text-[44px] font-bold text-[#333] mt-[8px]">Avance de actividades</h2>
+            <EditableText
+              value={t("avance-title", "Avance de actividades")}
+              onChange={v => updateText("avance-title", v)}
+              className="text-[44px] font-bold text-[#333] mt-[8px]"
+              tag="h2"
+            />
           </div>
-          {/* SPI Box */}
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }}
             className="bg-[#c0392b] text-white px-[32px] py-[16px] rounded-[4px] text-right"
           >
@@ -466,10 +594,7 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
             <p className="text-[16px] mt-[4px]">Planif. {client.progress}% · Real {client.progress}%</p>
           </motion.div>
         </div>
-
-        {/* Two-column activity groups */}
         <div className="grid grid-cols-2 gap-[48px] mt-[16px]">
-          {/* Left column */}
           <div className="space-y-[24px]">
             {activityGroups.filter((_, i) => i % 2 === 0).map((group, gi) => (
               <div key={gi}>
@@ -482,7 +607,6 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
               </div>
             ))}
           </div>
-          {/* Right column */}
           <div className="space-y-[24px]">
             {activityGroups.filter((_, i) => i % 2 === 1).map((group, gi) => (
               <div key={gi}>
@@ -499,17 +623,17 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
       </div>
     </SlideLayout>,
 
-    // ═══ SLIDE 3: SINCRONIZACIÓN — Línea de tiempo (matches image 2) ═══
+    // ═══ SLIDE 3: SINCRONIZACIÓN — Línea de tiempo ═══
     <SlideLayout key="timeline" className="bg-white">
       <div className="absolute inset-0 px-[80px] py-[50px]">
         <p className="text-[20px] font-bold text-[#c0392b] uppercase tracking-[2px]">SINCRONIZACIÓN</p>
-        <h2 className="text-[44px] font-bold text-[#333] mt-[8px] mb-[32px]">
-          Línea de tiempo — {client.industry}
-        </h2>
-
-        {/* Gantt chart */}
+        <EditableText
+          value={t("timeline-title", `Línea de tiempo — ${client.industry}`)}
+          onChange={v => updateText("timeline-title", v)}
+          className="text-[44px] font-bold text-[#333] mt-[8px] mb-[32px]"
+          tag="h2"
+        />
         <div className="relative">
-          {/* Month header */}
           <div className="flex">
             <div className="w-[360px] shrink-0" />
             <div className="flex-1 flex">
@@ -526,8 +650,6 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
               })}
             </div>
           </div>
-
-          {/* Management row */}
           <div className="flex items-center border-b border-[#e0e0e0]">
             <div className="w-[360px] shrink-0 py-[20px] pr-[16px]">
               <span className="text-[20px] font-semibold text-[#333]">Gestión de proyecto</span>
@@ -539,8 +661,6 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
               })()}
             </div>
           </div>
-
-          {/* Phase rows */}
           {ganttRows.map((row, i) => {
             const style = getPhaseBarStyle(row.phase, months);
             return (
@@ -556,8 +676,6 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
               </motion.div>
             );
           })}
-
-          {/* Current date vertical line */}
           {currentDatePos && (
             <div className="absolute top-0 bottom-0 z-10" style={{ left: `calc(360px + (100% - 360px) * ${parseFloat(currentDatePos)} / 100)` }}>
               <div className="w-[3px] h-full bg-[#c0392b]" />
@@ -574,7 +692,12 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
           <div className="text-[#999]"><SysdeLogo size={40} /></div>
           <h2 className="text-[44px] font-bold text-[#c0392b]">Coordinación</h2>
         </div>
-        <h3 className="text-[36px] font-bold text-[#333] mb-[32px]">Próximos pasos</h3>
+        <EditableText
+          value={t("proximos-title", "Próximos pasos")}
+          onChange={v => updateText("proximos-title", v)}
+          className="text-[36px] font-bold text-[#333] mb-[32px]"
+          tag="h3"
+        />
         <div className="border-[2px] border-[#ccc] rounded-[8px] overflow-hidden">
           <div className="flex bg-white border-b-[2px] border-[#ccc]">
             <div className="flex-1 px-[24px] py-[16px] text-[24px] font-bold text-[#333]">Actividad</div>
@@ -603,7 +726,12 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
       <div className="absolute inset-0 px-[80px] py-[60px]">
         <div className="flex items-center gap-[16px] mb-[40px]">
           <div className="text-[#999]"><SysdeLogo size={40} /></div>
-          <h2 className="text-[44px] font-bold text-[#c0392b]">Coordinación</h2>
+          <EditableText
+            value={t("coord-title", "Coordinación")}
+            onChange={v => updateText("coord-title", v)}
+            className="text-[44px] font-bold text-[#c0392b]"
+            tag="h2"
+          />
         </div>
         <div className="border-[2px] border-[#ccc] rounded-[8px] overflow-hidden">
           <div className="flex bg-[#4a6fa5] text-white">
@@ -637,7 +765,12 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
       <div className="absolute inset-0 px-[80px] py-[60px]">
         <div className="flex items-center gap-[16px] mb-[40px]">
           <div className="text-[#999]"><SysdeLogo size={40} /></div>
-          <h2 className="text-[44px] font-bold text-[#c0392b]">Entregables</h2>
+          <EditableText
+            value={t("entregables-title", "Entregables")}
+            onChange={v => updateText("entregables-title", v)}
+            className="text-[44px] font-bold text-[#c0392b]"
+            tag="h2"
+          />
         </div>
         <div className="border-[2px] border-[#ccc] rounded-[8px] overflow-hidden">
           <div className="flex bg-[#c0392b] text-white">
@@ -671,7 +804,12 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
       <div className="absolute inset-0 px-[80px] py-[60px]">
         <div className="flex items-center gap-[16px] mb-[40px]">
           <div className="text-[#999]"><SysdeLogo size={40} /></div>
-          <h2 className="text-[44px] font-bold text-[#c0392b]">Riesgos del Proyecto</h2>
+          <EditableText
+            value={t("riesgos-title", "Riesgos del Proyecto")}
+            onChange={v => updateText("riesgos-title", v)}
+            className="text-[44px] font-bold text-[#c0392b]"
+            tag="h2"
+          />
         </div>
         <div className="space-y-[24px]">
           {client.risks.map((risk, i) => {
@@ -690,9 +828,20 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
                     <span className="text-[16px] font-mono text-[#999]">{risk.id}</span>
                     <span className="px-[12px] py-[4px] rounded-full text-[14px] font-bold" style={{ background: risk.status === "abierto" ? "#fef2f2" : "#f0fdf4", color: risk.status === "abierto" ? "#c0392b" : "#27ae60" }}>{statusLabel}</span>
                   </div>
-                  <p className="text-[22px] text-[#333] leading-[1.4]">{risk.description}</p>
-                  {risk.mitigation && (
-                    <p className="text-[18px] text-[#666] mt-[8px] italic">Mitigación: {risk.mitigation}</p>
+                  <EditableText
+                    value={t(`risk-desc-${i}`, risk.description)}
+                    onChange={v => updateText(`risk-desc-${i}`, v)}
+                    className="text-[22px] text-[#333] leading-[1.4]"
+                    tag="p"
+                    multiline
+                  />
+                  {(risk.mitigation || texts[`risk-mit-${i}`]) && (
+                    <EditableText
+                      value={t(`risk-mit-${i}`, risk.mitigation || "Agregar mitigación...")}
+                      onChange={v => updateText(`risk-mit-${i}`, v)}
+                      className="text-[18px] text-[#666] mt-[8px] italic"
+                      tag="p"
+                    />
                   )}
                 </div>
               </motion.div>
@@ -706,11 +855,26 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
     <SlideLayout key="close" className="bg-[#c0392b]">
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-center">
-          <h2 className="text-[48px] text-white/80 mb-[16px]">Somos tus aliados para la</h2>
-          <h2 className="text-[64px] font-extrabold text-white mb-[48px]">Transformación Digital de tu negocio</h2>
+          <EditableText
+            value={t("cierre-line1", "Somos tus aliados para la")}
+            onChange={v => updateText("cierre-line1", v)}
+            className="text-[48px] text-white/80 mb-[16px]"
+            tag="h2"
+          />
+          <EditableText
+            value={t("cierre-line2", "Transformación Digital de tu negocio")}
+            onChange={v => updateText("cierre-line2", v)}
+            className="text-[64px] font-extrabold text-white mb-[48px]"
+            tag="h2"
+          />
           <div className="w-[200px] h-[3px] bg-white/30 rounded-full mx-auto mb-[48px]" />
           <div className="text-white mb-[48px]"><SysdeLogo size={80} /></div>
-          <p className="text-[28px] text-white/60 mb-[64px]">Sysde</p>
+          <EditableText
+            value={t("cierre-brand", "Sysde")}
+            onChange={v => updateText("cierre-brand", v)}
+            className="text-[28px] text-white/60 mb-[64px]"
+            tag="p"
+          />
           <button onClick={onContinue}
             className="px-[56px] py-[20px] rounded-[16px] bg-white text-[#c0392b] text-[28px] font-bold hover:bg-white/90 transition-colors shadow-2xl flex items-center gap-[16px] mx-auto"
           >
@@ -736,6 +900,7 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
               <span className="text-white/50 text-sm">{slideNames[currentSlide]} · {currentSlide + 1}/{totalSlides}</span>
             </div>
             <div className="flex items-center gap-2">
+              <span className="text-white/30 text-xs flex items-center gap-1"><Pencil className="h-3 w-3" /> Clic en cualquier texto para editar</span>
               <Button variant="ghost" size="sm" onClick={onContinue} className="text-white/70 hover:text-white hover:bg-white/10 text-xs gap-1.5">
                 <Sparkles className="h-3.5 w-3.5" /> Crear Minuta
               </Button>
@@ -752,7 +917,6 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
                 <ScaledSlide containerRef={containerRef}>{slides[currentSlide]}</ScaledSlide>
               </motion.div>
             </AnimatePresence>
-
             {currentSlide > 0 && (
               <button onClick={prev} className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"><ChevronLeft className="h-6 w-6" /></button>
             )}
