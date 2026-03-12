@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { exportClientPdf } from "@/lib/exportPdf";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { ResponsiveContainer } from "recharts";
 import { motion } from "framer-motion";
 import { PieChart, Pie, Cell } from "recharts";
 import { ActionItemsTab } from "./tabs/ActionItemsTab";
