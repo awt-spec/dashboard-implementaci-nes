@@ -62,7 +62,7 @@ const Index = () => {
           </header>
 
           <main className="flex-1 overflow-auto p-4 md:p-6">
-            <div className="max-w-7xl">
+            <div className="w-full">
               {activeSection === "overview" && <ExecutiveOverview />}
 
               {activeSection === "tasks" && <TasksDashboard />}
