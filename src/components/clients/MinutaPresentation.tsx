@@ -21,7 +21,8 @@ import {
 import { aurumCronogramaRows, aurumCompromisosRows, type CronogramaRow, type CompromisoRow } from "./presentation/aurumCronogramaData";
 import {
   TableEditorPanel, CronogramaEditor, CompromisosEditor, CoordinationEditor,
-  type CoordinationRow,
+  TimelineEditor, ActivityEditor, EntregablesEditor, RiesgosEditor,
+  type CoordinationRow, type TimelineRow, type ActivityEditorItem, type EntregableRow, type RiesgoRow,
 } from "./presentation/TableEditorPanel";
 
 interface MinutaPresentationProps {
