@@ -1,0 +1,1 @@
+ALTER TABLE public.meeting_minutes ADD COLUMN presentation_snapshot jsonb DEFAULT NULL;
