@@ -25,7 +25,7 @@ const Index = () => {
   };
 
   // Use data from Supabase or fallback to static
-  const clientData = clients ?? staticClients;
+  const clientData = clients && clients.length > 0 ? clients : staticClients;
 
   const selectedClient = activeSection.startsWith("client-")
     ? clientData.find(c => c.id === activeSection.replace("client-", ""))

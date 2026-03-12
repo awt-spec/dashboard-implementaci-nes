@@ -31,7 +31,7 @@ interface AppSidebarProps {
 
 export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) {
   const { data: clientsData } = useClients();
-  const clients = clientsData ?? staticClients;
+  const clients = clientsData && clientsData.length > 0 ? clientsData : staticClients;
 
   return (
     <Sidebar collapsible="icon">
