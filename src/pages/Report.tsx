@@ -61,7 +61,7 @@ function ResumenSections({ sections }: { sections: ReportSection[] }) {
   ].filter(d => d.value > 0);
 
   const taskStatusData = [
-    { name: "En Progreso", value: allTasks.filter(t => t.status === "en-progreso").length, color: "hsl(var(--info))" },
+    { name: "Progreso", value: allTasks.filter(t => t.status === "en-progreso").length, color: "hsl(var(--info))" },
     { name: "Pendientes", value: allTasks.filter(t => t.status === "pendiente").length, color: "hsl(var(--warning))" },
     { name: "Bloqueadas", value: allTasks.filter(t => t.status === "bloqueada").length, color: "hsl(var(--destructive))" },
   ];

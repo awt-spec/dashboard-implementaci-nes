@@ -105,7 +105,7 @@ export function ExecutiveOverview() {
     { title: "Progreso Promedio", value: `${avgProgress}%`, icon: TrendingUp, color: "text-info" },
     { title: "Total Tareas", value: allTasks.length, icon: Layers, color: "text-primary" },
     { title: "Completadas", value: tasksByStatus.completada, icon: CheckCircle, color: "text-success" },
-    { title: "En Progreso", value: tasksByStatus["en-progreso"], icon: Clock, color: "text-warning" },
+    { title: "Progreso", value: tasksByStatus["en-progreso"], icon: Clock, color: "text-warning" },
     { title: "Riesgos Abiertos", value: totalRisks, icon: AlertTriangle, color: "text-destructive" },
     { title: "Entregables", value: allDeliverables.length, icon: FileCheck, color: "text-info" },
     { title: "Equipo Total", value: [...new Set(clients.flatMap(c => c.teamAssigned))].length, icon: Target, color: "text-success" },

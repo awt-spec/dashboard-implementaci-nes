@@ -17,7 +17,7 @@ const PHASE_STATUS: Record<string, string> = {
 
 const TASK_STATUS: Record<string, string> = {
   completada: "Completada",
-  "en-progreso": "En Progreso",
+  "en-progreso": "Progreso",
   bloqueada: "Bloqueada",
   pendiente: "Pendiente",
 };
