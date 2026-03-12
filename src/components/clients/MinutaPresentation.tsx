@@ -11,6 +11,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ensureTaskInDb } from "@/lib/ensureTaskInDb";
+import {
+  SlideLayout, ScaledSlide, SysdeLogo, EditableText, EditableCell,
+  loadSlideTexts, saveSlideTexts, extractProgress,
+  getMonthRange, getPhaseBarStyle, getCurrentDatePosition,
+  type SlideTexts,
+} from "./presentation/slideHelpers";
+import { aurumCronogramaRows, aurumCompromisosRows, type CronogramaRow, type CompromisoRow } from "./presentation/aurumCronogramaData";
 
 interface MinutaPresentationProps {
   client: Client;
@@ -19,128 +26,7 @@ interface MinutaPresentationProps {
   onContinue: () => void;
 }
 
-// ── Helpers ──────────────────────────────────────────────
-
-function extractProgress(desc?: string): number | null {
-  if (!desc) return null;
-  const m = desc.match(/(?:avance|progreso)\s*[:=]?\s*(\d+)\s*%/i);
-  return m ? parseInt(m[1], 10) : null;
-}
-
-function SysdeLogo({ size = 48 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 100 100" fill="none">
-      <path d="M50 10C30 10 15 25 15 45C15 55 20 63 28 68L35 55C30 52 27 47 27 42C27 32 37 24 50 24C63 24 73 32 73 42C73 52 63 60 50 60L45 75C48 76 50 76 50 76C70 76 85 63 85 45C85 25 70 10 50 10Z" fill="currentColor" opacity="0.7"/>
-    </svg>
-  );
-}
-
-function SlideLayout({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={cn("w-[1920px] h-[1080px] relative overflow-hidden", className)}>{children}</div>;
-}
-
-function ScaledSlide({ children, containerRef }: { children: React.ReactNode; containerRef: React.RefObject<HTMLDivElement | null> }) {
-  const [scale, setScale] = useState(0.5);
-  useEffect(() => {
-    const update = () => {
-      if (!containerRef.current) return;
-      const { width, height } = containerRef.current.getBoundingClientRect();
-      setScale(Math.min(width / 1920, height / 1080));
-    };
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, [containerRef]);
-  return (
-    <div className="absolute w-[1920px] h-[1080px]" style={{
-      left: "50%", top: "50%", marginLeft: "-960px", marginTop: "-540px",
-      transform: `scale(${scale})`, transformOrigin: "center center",
-    }}>{children}</div>
-  );
-}
-
-// ── Editable Text Component ─────────────────────────────
-
-function EditableText({
-  value, defaultValue, onChange, className, multiline = false, tag: Tag = "span",
-}: {
-  value: string;
-  defaultValue?: string;
-  onChange: (v: string) => void;
-  className?: string;
-  multiline?: boolean;
-  tag?: "span" | "p" | "h1" | "h2" | "h3" | "li";
-}) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value);
-  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
-
-  useEffect(() => { setDraft(value); }, [value]);
-  useEffect(() => { if (editing) inputRef.current?.focus(); }, [editing]);
-
-  const save = () => {
-    setEditing(false);
-    if (draft.trim() !== value) onChange(draft.trim());
-  };
-
-  if (editing) {
-    if (multiline) {
-      return (
-        <textarea
-          ref={inputRef as React.RefObject<HTMLTextAreaElement>}
-          value={draft}
-          onChange={e => setDraft(e.target.value)}
-          onBlur={save}
-          onKeyDown={e => { if (e.key === "Escape") { setDraft(value); setEditing(false); } }}
-          className={cn("bg-white/90 border-2 border-[#c0392b] rounded px-[8px] py-[4px] outline-none resize-none w-full", className)}
-          rows={3}
-        />
-      );
-    }
-    return (
-      <input
-        ref={inputRef as React.RefObject<HTMLInputElement>}
-        value={draft}
-        onChange={e => setDraft(e.target.value)}
-        onBlur={save}
-        onKeyDown={e => { if (e.key === "Enter") save(); if (e.key === "Escape") { setDraft(value); setEditing(false); } }}
-        className={cn("bg-white/90 border-2 border-[#c0392b] rounded px-[8px] py-[2px] outline-none w-full", className)}
-      />
-    );
-  }
-
-  return (
-    <Tag
-      className={cn(className, "cursor-pointer hover:outline hover:outline-2 hover:outline-[#c0392b]/30 hover:outline-offset-2 rounded transition-all group/et relative")}
-      onClick={() => setEditing(true)}
-      title="Clic para editar"
-    >
-      {value}
-      <Pencil className="inline-block ml-[8px] opacity-0 group-hover/et:opacity-50 transition-opacity" style={{ width: '0.6em', height: '0.6em' }} />
-    </Tag>
-  );
-}
-
-// ── Slide Text Storage (localStorage) ───────────────────
-
-type SlideTexts = Record<string, string>;
-
-function getStorageKey(clientId: string) {
-  return `ppt-texts-${clientId}`;
-}
-
-function loadSlideTexts(clientId: string): SlideTexts {
-  try {
-    const raw = localStorage.getItem(getStorageKey(clientId));
-    return raw ? JSON.parse(raw) : {};
-  } catch { return {}; }
-}
-
-function saveSlideTexts(clientId: string, texts: SlideTexts) {
-  localStorage.setItem(getStorageKey(clientId), JSON.stringify(texts));
-}
-
-// ── Activity Groups Builder ──────────────────────────────
+// ── Activity Groups ─────────────────────────────────────
 
 interface ActivityItem {
   label: string;
@@ -191,10 +77,7 @@ function buildActivityGroups(client: Client): ActivityGroup[] {
   } else {
     const completedPhases = client.phases.filter(p => p.status === "completado");
     if (completedPhases.length > 0) {
-      groups.push({
-        title: "FASES COMPLETADAS",
-        items: completedPhases.map(p => ({ label: p.name, progress: 100, status: "completed" as const })),
-      });
+      groups.push({ title: "FASES COMPLETADAS", items: completedPhases.map(p => ({ label: p.name, progress: 100, status: "completed" as const })) });
     }
     const activeTasks = client.tasks.filter(t => t.status === "en-progreso" || t.status === "pendiente");
     if (activeTasks.length > 0) {
@@ -212,136 +95,73 @@ function buildActivityGroups(client: Client): ActivityGroup[] {
   return groups;
 }
 
-// ── Gantt helpers ────────────────────────────────────────
-
-function getMonthRange(client: Client): { label: string; date: Date }[] {
-  const allDates: Date[] = [];
-  const parseD = (s: string) => { const d = new Date(s); return isNaN(d.getTime()) ? null : d; };
-  client.phases.forEach(p => {
-    const s = parseD(p.startDate); if (s) allDates.push(s);
-    const e = parseD(p.endDate); if (e) allDates.push(e);
-  });
-  if (allDates.length === 0) {
-    const s = parseD(client.contractStart); if (s) allDates.push(s);
-    const e = parseD(client.contractEnd); if (e) allDates.push(e);
-  }
-  if (allDates.length === 0) return [];
-  const min = new Date(Math.min(...allDates.map(d => d.getTime())));
-  const max = new Date(Math.max(...allDates.map(d => d.getTime())));
-  const months: { label: string; date: Date }[] = [];
-  const cur = new Date(min.getFullYear(), min.getMonth(), 1);
-  while (cur <= max || months.length < 3) {
-    const names = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-    months.push({ label: `${names[cur.getMonth()]} ${cur.getFullYear()}`, date: new Date(cur) });
-    cur.setMonth(cur.getMonth() + 1);
-    if (months.length > 12) break;
-  }
-  return months;
-}
-
-function getPhaseBarStyle(phase: Phase, months: { label: string; date: Date }[]): { left: string; width: string; color: string } {
-  if (months.length === 0) return { left: "0%", width: "0%", color: "#ccc" };
-  const parseD = (s: string) => { const d = new Date(s); return isNaN(d.getTime()) ? null : d; };
-  const totalStart = months[0].date.getTime();
-  const lastMonth = new Date(months[months.length - 1].date);
-  lastMonth.setMonth(lastMonth.getMonth() + 1);
-  const totalEnd = lastMonth.getTime();
-  const totalSpan = totalEnd - totalStart;
-  const ps = parseD(phase.startDate);
-  const pe = parseD(phase.endDate);
-  if (!ps || !pe) return { left: "0%", width: "0%", color: "#ccc" };
-  const left = Math.max(0, ((ps.getTime() - totalStart) / totalSpan) * 100);
-  const width = Math.max(2, ((pe.getTime() - ps.getTime()) / totalSpan) * 100);
-  let color = "#bbb";
-  if (phase.status === "completado") color = "#c0392b";
-  else if (phase.status === "en-progreso") color = "#c0392b";
-  else if (phase.name.toLowerCase().includes("capacitación") || phase.name.toLowerCase().includes("talleres")) color = "#e67e22";
-  else if (phase.name.toLowerCase().includes("pruebas")) color = "#e67e22";
-  else if (phase.name.toLowerCase().includes("go") || phase.name.toLowerCase().includes("producción")) color = "#27ae60";
-  else color = "#e67e22";
-  return { left: `${left}%`, width: `${width}%`, color };
-}
-
-function getCurrentDatePosition(months: { label: string; date: Date }[]): string | null {
-  if (months.length === 0) return null;
-  const now = new Date();
-  const totalStart = months[0].date.getTime();
-  const lastMonth = new Date(months[months.length - 1].date);
-  lastMonth.setMonth(lastMonth.getMonth() + 1);
-  const totalEnd = lastMonth.getTime();
-  const pos = ((now.getTime() - totalStart) / (totalEnd - totalStart)) * 100;
-  if (pos < 0 || pos > 100) return null;
-  return `${pos}%`;
-}
-
 // ── Editable Progress Bar ───────────────────────────────
 
-function EditableProgressBar({
-  item, clientId, onUpdate
-}: {
-  item: ActivityItem;
-  clientId: string;
-  onUpdate: (taskId: number, newProgress: number) => void;
-}) {
+function EditableProgressBar({ item, clientId, onUpdate }: { item: ActivityItem; clientId: string; onUpdate: (taskId: number, newProgress: number) => void }) {
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(item.progress.toString());
-  const barColor = item.progress === 100
-    ? "#27ae60"
-    : item.status === "in-progress" ? "#c0392b" : "#e67e22";
-
+  const barColor = item.progress === 100 ? "#27ae60" : item.status === "in-progress" ? "#c0392b" : "#e67e22";
   const handleSave = () => {
     const num = Math.min(100, Math.max(0, parseInt(val, 10) || 0));
     setEditing(false);
     if (item.taskId) onUpdate(item.taskId, num);
   };
-
   return (
     <div className="flex items-center gap-[16px] py-[8px]">
       <span className="text-[20px] text-[#333] w-[400px] truncate">{item.label}</span>
       <div className="flex-1 relative h-[24px] bg-[#e8e8e8] rounded-[4px] overflow-hidden">
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: `${item.progress}%` }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-          className="absolute inset-y-0 left-0 rounded-[4px]"
-          style={{ background: barColor }}
-        />
-        {item.progress === 100 && (
-          <span className="absolute inset-0 flex items-center justify-end pr-[8px] text-[14px] font-bold text-white">100%</span>
-        )}
+        <motion.div initial={{ width: 0 }} animate={{ width: `${item.progress}%` }} transition={{ duration: 0.6, delay: 0.1 }}
+          className="absolute inset-y-0 left-0 rounded-[4px]" style={{ background: barColor }} />
+        {item.progress === 100 && <span className="absolute inset-0 flex items-center justify-end pr-[8px] text-[14px] font-bold text-white">100%</span>}
       </div>
       {item.progress < 100 && (
         editing ? (
           <div className="flex items-center gap-[4px] w-[80px]">
-            <input
-              autoFocus
-              value={val}
-              onChange={e => setVal(e.target.value)}
-              onBlur={handleSave}
+            <input autoFocus value={val} onChange={e => setVal(e.target.value)} onBlur={handleSave}
               onKeyDown={e => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") setEditing(false); }}
-              className="w-[50px] text-[18px] text-center border border-[#ccc] rounded px-[4px] py-[2px]"
-            />
+              className="w-[50px] text-[18px] text-center border border-[#ccc] rounded px-[4px] py-[2px]" />
             <span className="text-[16px] text-[#666]">%</span>
           </div>
         ) : (
-          <button
-            onClick={() => { if (item.taskId) { setVal(item.progress.toString()); setEditing(true); } }}
-            className={cn(
-              "text-[18px] font-bold w-[60px] text-right",
-              item.taskId ? "cursor-pointer hover:text-[#c0392b] transition-colors" : "cursor-default",
-              item.status === "in-progress" ? "text-[#c0392b]" : "text-[#e67e22]"
-            )}
-            title={item.taskId ? "Clic para editar" : ""}
-          >
-            {item.progress}%
-          </button>
+          <button onClick={() => { if (item.taskId) { setVal(item.progress.toString()); setEditing(true); } }}
+            className={cn("text-[18px] font-bold w-[60px] text-right", item.taskId ? "cursor-pointer hover:text-[#c0392b] transition-colors" : "cursor-default",
+              item.status === "in-progress" ? "text-[#c0392b]" : "text-[#e67e22]")}
+            title={item.taskId ? "Clic para editar" : ""}>{item.progress}%</button>
         )
       )}
     </div>
   );
 }
 
-// ── Main Component ──────────────────────────────────────
+// ── Status Badge ────────────────────────────────────────
+
+function StatusBadge({ status, onChange }: { status: string; onChange: (s: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const colors: Record<string, { bg: string; text: string }> = {
+    "Hecho": { bg: "#dcfce7", text: "#16a34a" },
+    "En progreso": { bg: "#fef3c7", text: "#d97706" },
+    "Pendiente": { bg: "#fee2e2", text: "#dc2626" },
+    "Vencido": { bg: "#fee2e2", text: "#dc2626" },
+  };
+  const c = colors[status] || colors["Pendiente"];
+  if (editing) {
+    return (
+      <select autoFocus value={status} onChange={e => { onChange(e.target.value); setEditing(false); }}
+        onBlur={() => setEditing(false)}
+        className="text-[16px] border-2 border-[#c0392b] rounded px-[8px] py-[4px] outline-none">
+        <option>Hecho</option><option>En progreso</option><option>Pendiente</option>
+      </select>
+    );
+  }
+  return (
+    <span onClick={() => setEditing(true)} className="cursor-pointer inline-block px-[16px] py-[6px] rounded-full text-[16px] font-semibold"
+      style={{ background: c.bg, color: c.text }} title="Clic para cambiar">{status}</span>
+  );
+}
+
+// ══════════════════════════════════════════════════════════
+// ── MAIN COMPONENT ──────────────────────────────────────
+// ══════════════════════════════════════════════════════════
 
 export function MinutaPresentation({ client, open, onClose, onContinue }: MinutaPresentationProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -350,47 +170,59 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
   const wrapperRef = useRef<HTMLDivElement>(null);
   const qc = useQueryClient();
 
-  // ── Editable text state ──
+  // Editable text state
   const [texts, setTexts] = useState<SlideTexts>(() => loadSlideTexts(client.id));
-
-  // Reload texts when client changes
   useEffect(() => { setTexts(loadSlideTexts(client.id)); }, [client.id]);
-
-  const t = (key: string, fallback: string): string => texts[key] ?? fallback;
-  const updateText = (key: string, value: string) => {
+  const txt = (key: string, fallback: string): string => texts[key] ?? fallback;
+  const setTxt = (key: string, value: string) => {
     const next = { ...texts, [key]: value };
     setTexts(next);
     saveSlideTexts(client.id, next);
-    toast.success("Texto guardado");
+    toast.success("Guardado");
+  };
+
+  // Editable table data (cronograma + compromisos) in localStorage
+  const [cronograma, setCronograma] = useState<CronogramaRow[]>(() => {
+    try { const r = localStorage.getItem(`ppt-crono-${client.id}`); return r ? JSON.parse(r) : aurumCronogramaRows; } catch { return aurumCronogramaRows; }
+  });
+  const [compromisos, setCompromisos] = useState<CompromisoRow[]>(() => {
+    try { const r = localStorage.getItem(`ppt-comp-${client.id}`); return r ? JSON.parse(r) : aurumCompromisosRows; } catch { return aurumCompromisosRows; }
+  });
+
+  const updateCrono = (idx: number, field: keyof CronogramaRow, val: string) => {
+    const next = [...cronograma];
+    (next[idx] as any)[field] = val;
+    setCronograma(next);
+    localStorage.setItem(`ppt-crono-${client.id}`, JSON.stringify(next));
+    toast.success("Guardado");
+  };
+
+  const updateComp = (idx: number, field: keyof CompromisoRow, val: string) => {
+    const next = [...compromisos];
+    (next[idx] as any)[field] = field === "num" ? parseInt(val) || idx + 1 : val;
+    setCompromisos(next);
+    localStorage.setItem(`ppt-comp-${client.id}`, JSON.stringify(next));
+    toast.success("Guardado");
   };
 
   // Build data
   const activityGroups = buildActivityGroups(client);
-  const months = getMonthRange(client);
+  const months = getMonthRange(client.phases, client.contractStart, client.contractEnd);
   const currentDatePos = getCurrentDatePosition(months);
-
   const pendingTasks = client.tasks.filter(t => t.status === "pendiente" || t.status === "bloqueada");
 
   const coordinationItems = client.actionItems.map((item, i) => ({
-    num: i + 1,
-    subject: item.title,
-    owner: item.assignee,
-    start: item.dueDate,
-    end: item.dueDate,
+    num: i + 1, subject: item.title, owner: item.assignee, start: item.dueDate, end: item.dueDate,
     status: item.status === "completado" ? "Hecho" : item.status === "vencido" ? "Vencido" : "Pendiente",
     statusColor: item.status === "completado" ? "#22c55e" : item.status === "vencido" ? "#ef4444" : "#f59e0b",
     fup: item.source?.replace("FUP Semanal ", "") || "",
   }));
 
   const proximosPasos = pendingTasks.map((task, i) => ({
-    id: `F${i + 1}`,
-    activity: task.title,
-    responsible: task.owner,
-    date: task.dueDate,
+    id: `F${i + 1}`, activity: task.title, responsible: task.owner, date: task.dueDate,
     dependency: i === 0 ? "N/A" : `F${i}`,
   }));
 
-  // Handle progress update from editable bars
   const handleProgressUpdate = async (taskId: number, newProgress: number) => {
     const task = client.tasks.find(t => t.id === taskId);
     if (!task) return;
@@ -405,27 +237,15 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
     toast.success(`${task.title}: ${newProgress}%`);
   };
 
-  const ganttRows = client.phases.map(p => ({
-    label: p.name.length > 40 ? p.name.substring(0, 37) + "..." : p.name,
-    phase: p,
-  }));
-  const managementPhase: Phase = {
-    name: "Gestión de proyecto",
-    status: "en-progreso",
-    progress: client.progress,
-    startDate: client.contractStart,
-    endDate: client.contractEnd,
-  };
+  const ganttRows = client.phases.map(p => ({ label: p.name.length > 40 ? p.name.substring(0, 37) + "..." : p.name, phase: p }));
+  const managementPhase: Phase = { name: "Gestión de proyecto", status: "en-progreso", progress: client.progress, startDate: client.contractStart, endDate: client.contractEnd };
 
-  // ── Slide definitions ─────────────────────────────────
+  // ── Determine slides based on client ──
+  const isAurum = client.id === "aurum";
 
-  const slideNames = [
-    "Portada", "Agenda",
-    "Avance de Actividades", "Línea de Tiempo",
-    "Próximos Pasos", "Coordinación",
-    "Entregables", "Riesgos",
-    "Cierre"
-  ];
+  const slideNames = isAurum
+    ? ["Portada", "Agenda", "Avance", "Cronograma", "Línea de Tiempo", "Próximos Pasos", "Compromisos", "Coordinación", "Entregables", "Riesgos", "Cierre"]
+    : ["Portada", "Agenda", "Avance", "Línea de Tiempo", "Próximos Pasos", "Coordinación", "Entregables", "Riesgos", "Cierre"];
   const totalSlides = slideNames.length;
 
   const next = useCallback(() => setCurrentSlide(s => Math.min(s + 1, totalSlides - 1)), [totalSlides]);
@@ -455,71 +275,38 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
 
   if (!open) return null;
 
-  const slides = [
-    // ═══ SLIDE 0: PORTADA ═══
+  // ════════════════════════════════════════════════════════
+  // ── SLIDES ─────────────────────────────────────────────
+  // ════════════════════════════════════════════════════════
+
+  const slidePortada = (
     <SlideLayout key="cover" className="bg-white">
       <div className="absolute inset-0 flex">
         <div className="w-[520px] h-full bg-[#c0392b] flex flex-col justify-between py-[80px] px-[60px]">
           <div>
             <div className="text-white/80"><SysdeLogo size={64} /></div>
-            <EditableText
-              value={t("cover-company", "Sysde")}
-              onChange={v => updateText("cover-company", v)}
-              className="text-[18px] text-white/60 uppercase tracking-[3px] mt-[20px] block"
-              tag="p"
-            />
+            <EditableText value={txt("cover-company", "Sysde")} onChange={v => setTxt("cover-company", v)} className="text-[18px] text-white/60 uppercase tracking-[3px] mt-[20px] block" tag="p" />
           </div>
           <div>
-            <EditableText
-              value={t("cover-pm-name", "Fernando Pinto Villarreal")}
-              onChange={v => updateText("cover-pm-name", v)}
-              className="text-[22px] text-white font-bold"
-              tag="p"
-            />
-            <EditableText
-              value={t("cover-pm-role", "Project Manager")}
-              onChange={v => updateText("cover-pm-role", v)}
-              className="text-[18px] text-white/60 mt-[4px]"
-              tag="p"
-            />
+            <EditableText value={txt("cover-pm", "Fernando Pinto Villarreal")} onChange={v => setTxt("cover-pm", v)} className="text-[22px] text-white font-bold" tag="p" />
+            <EditableText value={txt("cover-role", "Project Manager")} onChange={v => setTxt("cover-role", v)} className="text-[18px] text-white/60 mt-[4px]" tag="p" />
           </div>
         </div>
         <div className="flex-1 flex flex-col justify-center px-[120px] bg-white">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-            <EditableText
-              value={t("cover-tagline", "SERVICIOS Y TECNOLOGÍA QUE GENERAN VALOR A LA INDUSTRIA FINANCIERA")}
-              onChange={v => updateText("cover-tagline", v)}
-              className="text-[20px] text-[#999] uppercase tracking-[4px] mb-[16px]"
-              tag="p"
-            />
-            <EditableText
-              value={t("cover-title", "Proyecto Implementación SAF")}
-              onChange={v => updateText("cover-title", v)}
-              className="text-[64px] font-bold text-[#333] leading-[1.1] mb-[32px]"
-              tag="h1"
-            />
-            <EditableText
-              value={t("cover-client", client.name)}
-              onChange={v => updateText("cover-client", v)}
-              className="text-[56px] font-extrabold text-[#c0392b] mb-[40px]"
-              tag="h2"
-            />
+            <EditableText value={txt("cover-tagline", "SERVICIOS Y TECNOLOGÍA QUE GENERAN VALOR A LA INDUSTRIA FINANCIERA")} onChange={v => setTxt("cover-tagline", v)} className="text-[20px] text-[#999] uppercase tracking-[4px] mb-[16px]" tag="p" />
+            <EditableText value={txt("cover-title", "Proyecto Implementación SAF")} onChange={v => setTxt("cover-title", v)} className="text-[64px] font-bold text-[#333] leading-[1.1] mb-[32px]" tag="h1" />
+            <EditableText value={txt("cover-client", client.name)} onChange={v => setTxt("cover-client", v)} className="text-[56px] font-extrabold text-[#c0392b] mb-[40px]" tag="h2" />
             <div className="w-[80px] h-[4px] bg-[#c0392b] mb-[40px]" />
-            <p className="text-[24px] text-[#666] mb-[8px]">
-              {new Date().toLocaleDateString("es", { day: "2-digit", month: "long", year: "numeric" })}
-            </p>
-            <EditableText
-              value={t("cover-session", "Sesión de Seguimiento")}
-              onChange={v => updateText("cover-session", v)}
-              className="text-[22px] text-[#999]"
-              tag="p"
-            />
+            <p className="text-[24px] text-[#666] mb-[8px]">{new Date().toLocaleDateString("es", { day: "2-digit", month: "long", year: "numeric" })}</p>
+            <EditableText value={txt("cover-session", "Sesión de Seguimiento")} onChange={v => setTxt("cover-session", v)} className="text-[22px] text-[#999]" tag="p" />
           </motion.div>
         </div>
       </div>
-    </SlideLayout>,
+    </SlideLayout>
+  );
 
-    // ═══ SLIDE 1: AGENDA ═══
+  const slideAgenda = (
     <SlideLayout key="agenda" className="bg-white">
       <div className="absolute inset-0 px-[120px] py-[80px]">
         <div className="flex items-center gap-[16px] mb-[80px]">
@@ -527,69 +314,36 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
         </div>
         <div className="grid grid-cols-2 gap-[80px]">
           <motion.div initial={{ opacity: 0, x: -40 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
-            <EditableText
-              value={t("agenda-sync-title", "Sincronización")}
-              onChange={v => updateText("agenda-sync-title", v)}
-              className="text-[48px] font-bold text-[#c0392b] mb-[40px]"
-              tag="h2"
-            />
+            <EditableText value={txt("agenda-sync", "Sincronización")} onChange={v => setTxt("agenda-sync", v)} className="text-[48px] font-bold text-[#c0392b] mb-[40px]" tag="h2" />
             <ul className="space-y-[20px]">
-              <li className="flex items-start gap-[16px]">
-                <span className="text-[28px] text-[#c0392b]">•</span>
-                <EditableText
-                  value={t("agenda-sync-1", "Actividades ejecutadas")}
-                  onChange={v => updateText("agenda-sync-1", v)}
-                  className="text-[28px] text-[#333]"
-                />
-              </li>
-              <li className="flex items-start gap-[16px]">
-                <span className="text-[28px] text-[#c0392b]">•</span>
-                <EditableText
-                  value={t("agenda-sync-2", "Actividades en curso")}
-                  onChange={v => updateText("agenda-sync-2", v)}
-                  className="text-[28px] text-[#333]"
-                />
-              </li>
+              <li className="flex items-start gap-[16px]"><span className="text-[28px] text-[#c0392b]">•</span>
+                <EditableText value={txt("agenda-s1", "Actividades ejecutadas")} onChange={v => setTxt("agenda-s1", v)} className="text-[28px] text-[#333]" /></li>
+              <li className="flex items-start gap-[16px]"><span className="text-[28px] text-[#c0392b]">•</span>
+                <EditableText value={txt("agenda-s2", "Actividades en curso")} onChange={v => setTxt("agenda-s2", v)} className="text-[28px] text-[#333]" /></li>
             </ul>
           </motion.div>
           <motion.div initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}>
-            <EditableText
-              value={t("agenda-coord-title", "Coordinación")}
-              onChange={v => updateText("agenda-coord-title", v)}
-              className="text-[48px] font-bold text-[#c0392b] mb-[40px]"
-              tag="h2"
-            />
+            <EditableText value={txt("agenda-coord", "Coordinación")} onChange={v => setTxt("agenda-coord", v)} className="text-[48px] font-bold text-[#c0392b] mb-[40px]" tag="h2" />
             <ul className="space-y-[20px]">
-              <li className="flex items-start gap-[16px]">
-                <span className="text-[28px] text-[#c0392b]">•</span>
-                <EditableText
-                  value={t("agenda-coord-1", "Compromisos y entregables del proyecto")}
-                  onChange={v => updateText("agenda-coord-1", v)}
-                  className="text-[28px] text-[#333]"
-                />
-              </li>
+              <li className="flex items-start gap-[16px]"><span className="text-[28px] text-[#c0392b]">•</span>
+                <EditableText value={txt("agenda-c1", "Compromisos y entregables del proyecto")} onChange={v => setTxt("agenda-c1", v)} className="text-[28px] text-[#333]" /></li>
             </ul>
           </motion.div>
         </div>
       </div>
-    </SlideLayout>,
+    </SlideLayout>
+  );
 
-    // ═══ SLIDE 2: SINCRONIZACIÓN — Avance de actividades ═══
+  const slideAvance = (
     <SlideLayout key="avance" className="bg-white">
       <div className="absolute inset-0 px-[80px] py-[50px]">
         <div className="flex items-start justify-between mb-[24px]">
           <div>
             <p className="text-[20px] font-bold text-[#c0392b] uppercase tracking-[2px]">SINCRONIZACIÓN</p>
-            <EditableText
-              value={t("avance-title", "Avance de actividades")}
-              onChange={v => updateText("avance-title", v)}
-              className="text-[44px] font-bold text-[#333] mt-[8px]"
-              tag="h2"
-            />
+            <EditableText value={txt("avance-title", "Avance de actividades")} onChange={v => setTxt("avance-title", v)} className="text-[44px] font-bold text-[#333] mt-[8px]" tag="h2" />
           </div>
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }}
-            className="bg-[#c0392b] text-white px-[32px] py-[16px] rounded-[4px] text-right"
-          >
+            className="bg-[#c0392b] text-white px-[32px] py-[16px] rounded-[4px] text-right">
             <p className="text-[28px] font-extrabold">SPI 1.0</p>
             <p className="text-[16px] mt-[4px]">Planif. {client.progress}% · Real {client.progress}%</p>
           </motion.div>
@@ -598,106 +352,128 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
           <div className="space-y-[24px]">
             {activityGroups.filter((_, i) => i % 2 === 0).map((group, gi) => (
               <div key={gi}>
-                <p className="text-[18px] font-bold text-[#c0392b] uppercase tracking-[1px] mb-[8px] border-b border-[#eee] pb-[4px]">
-                  {group.title}
-                </p>
-                {group.items.map((item, ii) => (
-                  <EditableProgressBar key={ii} item={item} clientId={client.id} onUpdate={handleProgressUpdate} />
-                ))}
+                <p className="text-[18px] font-bold text-[#c0392b] uppercase tracking-[1px] mb-[8px] border-b border-[#eee] pb-[4px]">{group.title}</p>
+                {group.items.map((item, ii) => <EditableProgressBar key={ii} item={item} clientId={client.id} onUpdate={handleProgressUpdate} />)}
               </div>
             ))}
           </div>
           <div className="space-y-[24px]">
             {activityGroups.filter((_, i) => i % 2 === 1).map((group, gi) => (
               <div key={gi}>
-                <p className="text-[18px] font-bold text-[#c0392b] uppercase tracking-[1px] mb-[8px] border-b border-[#eee] pb-[4px]">
-                  {group.title}
-                </p>
-                {group.items.map((item, ii) => (
-                  <EditableProgressBar key={ii} item={item} clientId={client.id} onUpdate={handleProgressUpdate} />
-                ))}
+                <p className="text-[18px] font-bold text-[#c0392b] uppercase tracking-[1px] mb-[8px] border-b border-[#eee] pb-[4px]">{group.title}</p>
+                {group.items.map((item, ii) => <EditableProgressBar key={ii} item={item} clientId={client.id} onUpdate={handleProgressUpdate} />)}
               </div>
             ))}
           </div>
         </div>
       </div>
-    </SlideLayout>,
+    </SlideLayout>
+  );
 
-    // ═══ SLIDE 3: SINCRONIZACIÓN — Línea de tiempo ═══
+  // ═══ CRONOGRAMA DETALLADO (AURUM only) ═══
+  const slideCronograma = (
+    <SlideLayout key="cronograma" className="bg-white">
+      <div className="absolute inset-0 px-[60px] py-[40px] flex flex-col">
+        <div className="flex items-start justify-between mb-[16px]">
+          <div>
+            <p className="text-[20px] font-bold text-[#c0392b] uppercase tracking-[2px]">SINCRONIZACIÓN</p>
+            <EditableText value={txt("crono-title", 'Cronograma detallado "Arrendamiento y préstamos"')} onChange={v => setTxt("crono-title", v)} className="text-[38px] font-bold text-[#333] mt-[8px]" tag="h2" />
+          </div>
+          <div className="text-right text-[16px] text-[#333] space-y-[4px]">
+            <p>Planificado: <strong>{client.progress}%</strong></p>
+            <p>Real: <strong>{client.progress}%</strong></p>
+            <p><strong>SPI: 1</strong></p>
+          </div>
+        </div>
+        <div className="flex-1 overflow-hidden border border-[#ccc] rounded-[4px]">
+          <div className="flex bg-[#f5f5f5] border-b border-[#ccc] text-[14px] font-bold text-[#333]">
+            <div className="flex-1 px-[12px] py-[8px]">Nombre de tarea</div>
+            <div className="w-[100px] px-[8px] py-[8px] text-center border-l border-[#ccc]">Duración</div>
+            <div className="w-[80px] px-[8px] py-[8px] text-center border-l border-[#ccc]">%</div>
+            <div className="w-[100px] px-[8px] py-[8px] text-center border-l border-[#ccc]">Comienzo</div>
+            <div className="w-[100px] px-[8px] py-[8px] text-center border-l border-[#ccc]">Fin</div>
+          </div>
+          <div className="overflow-y-auto" style={{ maxHeight: "850px" }}>
+            {cronograma.map((row, i) => {
+              const pct = parseInt(row.percent) || 0;
+              const pctColor = pct === 100 ? "#16a34a" : pct > 0 ? "#c0392b" : "#999";
+              return (
+                <div key={i} className={cn("flex border-b border-[#eee] text-[14px]",
+                  row.isRed ? "bg-[#fef2f2]" : row.isBold ? "bg-[#f8f8f8]" : i % 2 === 0 ? "bg-white" : "bg-[#fafafa]"
+                )}>
+                  <div className="flex-1 px-[12px] py-[6px] truncate" style={{ paddingLeft: `${12 + row.indent * 24}px` }}>
+                    <EditableCell value={row.name} onChange={v => updateCrono(i, "name", v)}
+                      className={cn("text-[14px]", row.isBold && "font-bold", row.isItalic && "italic", row.isRed && "text-[#c0392b]")} />
+                  </div>
+                  <div className="w-[100px] px-[8px] py-[6px] text-center border-l border-[#eee]">
+                    <EditableCell value={row.duration} onChange={v => updateCrono(i, "duration", v)} className="text-[14px]" />
+                  </div>
+                  <div className="w-[80px] px-[8px] py-[6px] text-center border-l border-[#eee]">
+                    <EditableCell value={row.percent} onChange={v => updateCrono(i, "percent", v)}
+                      className={cn("text-[14px] font-bold")} />
+                  </div>
+                  <div className="w-[100px] px-[8px] py-[6px] text-center border-l border-[#eee]">
+                    <EditableCell value={row.start} onChange={v => updateCrono(i, "start", v)} className="text-[14px]" />
+                  </div>
+                  <div className="w-[100px] px-[8px] py-[6px] text-center border-l border-[#eee]">
+                    <EditableCell value={row.end} onChange={v => updateCrono(i, "end", v)} className="text-[14px]" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </SlideLayout>
+  );
+
+  const slideTimeline = (
     <SlideLayout key="timeline" className="bg-white">
       <div className="absolute inset-0 px-[80px] py-[50px]">
         <p className="text-[20px] font-bold text-[#c0392b] uppercase tracking-[2px]">SINCRONIZACIÓN</p>
-        <EditableText
-          value={t("timeline-title", `Línea de tiempo — ${client.industry}`)}
-          onChange={v => updateText("timeline-title", v)}
-          className="text-[44px] font-bold text-[#333] mt-[8px] mb-[32px]"
-          tag="h2"
-        />
+        <EditableText value={txt("timeline-title", `Línea de tiempo — ${client.industry}`)} onChange={v => setTxt("timeline-title", v)} className="text-[44px] font-bold text-[#333] mt-[8px] mb-[32px]" tag="h2" />
         <div className="relative">
           <div className="flex">
             <div className="w-[360px] shrink-0" />
             <div className="flex-1 flex">
               {months.map((m, i) => {
-                const isCurrentMonth = new Date().getFullYear() === m.date.getFullYear() && new Date().getMonth() === m.date.getMonth();
-                return (
-                  <div key={i} className={cn(
-                    "flex-1 text-center py-[12px] text-[16px] font-semibold",
-                    isCurrentMonth ? "bg-[#c0392b] text-white" : "bg-[#666] text-white"
-                  )}>
-                    {m.label}
-                  </div>
-                );
+                const isCur = new Date().getFullYear() === m.date.getFullYear() && new Date().getMonth() === m.date.getMonth();
+                return <div key={i} className={cn("flex-1 text-center py-[12px] text-[16px] font-semibold", isCur ? "bg-[#c0392b] text-white" : "bg-[#666] text-white")}>{m.label}</div>;
               })}
             </div>
           </div>
           <div className="flex items-center border-b border-[#e0e0e0]">
-            <div className="w-[360px] shrink-0 py-[20px] pr-[16px]">
-              <span className="text-[20px] font-semibold text-[#333]">Gestión de proyecto</span>
-            </div>
+            <div className="w-[360px] shrink-0 py-[20px] pr-[16px]"><span className="text-[20px] font-semibold text-[#333]">Gestión de proyecto</span></div>
             <div className="flex-1 relative h-[48px]">
-              {(() => {
-                const style = getPhaseBarStyle(managementPhase, months);
-                return <div className="absolute top-[10px] bottom-[10px] rounded-[4px]" style={{ left: style.left, width: style.width, background: "#999" }} />;
-              })()}
+              {(() => { const s = getPhaseBarStyle(managementPhase, months); return <div className="absolute top-[10px] bottom-[10px] rounded-[4px]" style={{ left: s.left, width: s.width, background: "#999" }} />; })()}
             </div>
           </div>
           {ganttRows.map((row, i) => {
-            const style = getPhaseBarStyle(row.phase, months);
+            const s = getPhaseBarStyle(row.phase, months);
             return (
               <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
-                className={cn("flex items-center border-b border-[#e0e0e0]", i % 2 === 0 ? "bg-white" : "bg-[#f8f8f8]")}
-              >
-                <div className="w-[360px] shrink-0 py-[20px] pr-[16px]">
-                  <span className="text-[18px] text-[#333] font-medium">{row.label}</span>
-                </div>
-                <div className="flex-1 relative h-[48px]">
-                  <div className="absolute top-[12px] bottom-[12px] rounded-[4px]" style={{ left: style.left, width: style.width, background: style.color }} />
-                </div>
+                className={cn("flex items-center border-b border-[#e0e0e0]", i % 2 === 0 ? "bg-white" : "bg-[#f8f8f8]")}>
+                <div className="w-[360px] shrink-0 py-[20px] pr-[16px]"><span className="text-[18px] text-[#333] font-medium">{row.label}</span></div>
+                <div className="flex-1 relative h-[48px]"><div className="absolute top-[12px] bottom-[12px] rounded-[4px]" style={{ left: s.left, width: s.width, background: s.color }} /></div>
               </motion.div>
             );
           })}
           {currentDatePos && (
-            <div className="absolute top-0 bottom-0 z-10" style={{ left: `calc(360px + (100% - 360px) * ${parseFloat(currentDatePos)} / 100)` }}>
-              <div className="w-[3px] h-full bg-[#c0392b]" />
-            </div>
+            <div className="absolute top-0 bottom-0 z-10" style={{ left: `calc(360px + (100% - 360px) * ${parseFloat(currentDatePos)} / 100)` }}><div className="w-[3px] h-full bg-[#c0392b]" /></div>
           )}
         </div>
       </div>
-    </SlideLayout>,
+    </SlideLayout>
+  );
 
-    // ═══ SLIDE 4: COORDINACIÓN — Próximos pasos ═══
+  const slideProximos = (
     <SlideLayout key="proximos" className="bg-white">
       <div className="absolute inset-0 px-[80px] py-[60px]">
         <div className="flex items-center gap-[16px] mb-[20px]">
           <div className="text-[#999]"><SysdeLogo size={40} /></div>
           <h2 className="text-[44px] font-bold text-[#c0392b]">Coordinación</h2>
         </div>
-        <EditableText
-          value={t("proximos-title", "Próximos pasos")}
-          onChange={v => updateText("proximos-title", v)}
-          className="text-[36px] font-bold text-[#333] mb-[32px]"
-          tag="h3"
-        />
+        <EditableText value={txt("proximos-title", "Próximos pasos")} onChange={v => setTxt("proximos-title", v)} className="text-[36px] font-bold text-[#333] mb-[32px]" tag="h3" />
         <div className="border-[2px] border-[#ccc] rounded-[8px] overflow-hidden">
           <div className="flex bg-white border-b-[2px] border-[#ccc]">
             <div className="flex-1 px-[24px] py-[16px] text-[24px] font-bold text-[#333]">Actividad</div>
@@ -705,33 +481,67 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
           </div>
           {proximosPasos.slice(0, 7).map((paso, i) => (
             <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
-              className="flex border-b border-[#ddd] last:border-b-0"
-            >
+              className="flex border-b border-[#ddd] last:border-b-0">
               <div className="flex-1 px-[24px] py-[16px] border-r-[2px] border-[#ccc]">
                 <p className="text-[20px] text-[#333]"><span className="font-bold">{paso.id})</span> {paso.activity}</p>
                 <p className="text-[18px] mt-[4px]">Responsable: <span className="font-bold text-[#c0392b]">{paso.responsible}</span></p>
                 <p className="text-[18px] text-[#666] italic">Fecha: {paso.date}</p>
               </div>
-              <div className="w-[200px] px-[24px] py-[16px] flex items-center justify-center">
-                <span className="text-[20px] text-[#333]">{paso.dependency}</span>
+              <div className="w-[200px] px-[24px] py-[16px] flex items-center justify-center"><span className="text-[20px] text-[#333]">{paso.dependency}</span></div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </SlideLayout>
+  );
+
+  // ═══ COMPROMISOS Y ENTREGABLES (AURUM only) ═══
+  const slideCompromisos = (
+    <SlideLayout key="compromisos" className="bg-white">
+      <div className="absolute inset-0 px-[60px] py-[40px]">
+        <p className="text-[20px] font-bold text-[#c0392b] uppercase tracking-[2px]">COORDINACIÓN</p>
+        <EditableText value={txt("comp-title", "Compromisos y entregables")} onChange={v => setTxt("comp-title", v)} className="text-[44px] font-bold text-[#333] mt-[8px] mb-[24px]" tag="h2" />
+        <div className="border border-[#ccc] rounded-[4px] overflow-hidden">
+          <div className="flex bg-[#c0392b] text-white text-[16px] font-bold">
+            <div className="w-[50px] px-[12px] py-[12px] border-r border-white/20">#</div>
+            <div className="flex-1 px-[12px] py-[12px] border-r border-white/20">Descripción</div>
+            <div className="w-[160px] px-[12px] py-[12px] border-r border-white/20">Responsable</div>
+            <div className="w-[120px] px-[12px] py-[12px] border-r border-white/20">Fecha</div>
+            <div className="w-[120px] px-[12px] py-[12px] border-r border-white/20">Estado</div>
+            <div className="flex-1 px-[12px] py-[12px]">Comentarios</div>
+          </div>
+          {compromisos.map((row, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+              className={cn("flex border-b border-[#eee] text-[16px]", i % 2 === 0 ? "bg-white" : "bg-[#fafafa]")}>
+              <div className="w-[50px] px-[12px] py-[10px] text-[#333] border-r border-[#eee]">{row.num}</div>
+              <div className="flex-1 px-[12px] py-[10px] border-r border-[#eee]">
+                <EditableCell value={row.description} onChange={v => updateComp(i, "description", v)} className="text-[16px] text-[#333]" />
+              </div>
+              <div className="w-[160px] px-[12px] py-[10px] border-r border-[#eee]">
+                <EditableCell value={row.responsible} onChange={v => updateComp(i, "responsible", v)} className="text-[16px] font-semibold text-[#c0392b]" />
+              </div>
+              <div className="w-[120px] px-[12px] py-[10px] border-r border-[#eee]">
+                <EditableCell value={row.date} onChange={v => updateComp(i, "date", v)} className="text-[16px] text-[#333]" />
+              </div>
+              <div className="w-[120px] px-[12px] py-[10px] border-r border-[#eee] flex items-center justify-center">
+                <StatusBadge status={row.status} onChange={v => updateComp(i, "status", v)} />
+              </div>
+              <div className="flex-1 px-[12px] py-[10px]">
+                <EditableCell value={row.comments} onChange={v => updateComp(i, "comments", v)} className="text-[16px] text-[#666]" />
               </div>
             </motion.div>
           ))}
         </div>
       </div>
-    </SlideLayout>,
+    </SlideLayout>
+  );
 
-    // ═══ SLIDE 5: COORDINACIÓN — Action Items Table ═══
+  const slideCoordination = (
     <SlideLayout key="coordination" className="bg-white">
       <div className="absolute inset-0 px-[80px] py-[60px]">
         <div className="flex items-center gap-[16px] mb-[40px]">
           <div className="text-[#999]"><SysdeLogo size={40} /></div>
-          <EditableText
-            value={t("coord-title", "Coordinación")}
-            onChange={v => updateText("coord-title", v)}
-            className="text-[44px] font-bold text-[#c0392b]"
-            tag="h2"
-          />
+          <EditableText value={txt("coord-title", "Coordinación")} onChange={v => setTxt("coord-title", v)} className="text-[44px] font-bold text-[#c0392b]" tag="h2" />
         </div>
         <div className="border-[2px] border-[#ccc] rounded-[8px] overflow-hidden">
           <div className="flex bg-[#4a6fa5] text-white">
@@ -744,8 +554,7 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
           </div>
           {coordinationItems.slice(0, 8).map((item, i) => (
             <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-              className={cn("flex border-b border-[#ddd]", i % 2 === 0 ? "bg-[#d6e4f0]" : "bg-white")}
-            >
+              className={cn("flex border-b border-[#ddd]", i % 2 === 0 ? "bg-[#d6e4f0]" : "bg-white")}>
               <div className="w-[60px] px-[12px] py-[14px] text-[18px] text-[#333] border-r border-[#ccc]">{item.num}</div>
               <div className="flex-1 px-[16px] py-[14px] text-[18px] text-[#333] border-r border-[#ccc]">{item.subject}</div>
               <div className="w-[180px] px-[16px] py-[14px] text-[18px] text-[#333] border-r border-[#ccc]">{item.owner}</div>
@@ -758,19 +567,15 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
           ))}
         </div>
       </div>
-    </SlideLayout>,
+    </SlideLayout>
+  );
 
-    // ═══ SLIDE 6: ENTREGABLES ═══
+  const slideEntregables = (
     <SlideLayout key="entregables" className="bg-white">
       <div className="absolute inset-0 px-[80px] py-[60px]">
         <div className="flex items-center gap-[16px] mb-[40px]">
           <div className="text-[#999]"><SysdeLogo size={40} /></div>
-          <EditableText
-            value={t("entregables-title", "Entregables")}
-            onChange={v => updateText("entregables-title", v)}
-            className="text-[44px] font-bold text-[#c0392b]"
-            tag="h2"
-          />
+          <EditableText value={txt("entregables-title", "Entregables")} onChange={v => setTxt("entregables-title", v)} className="text-[44px] font-bold text-[#c0392b]" tag="h2" />
         </div>
         <div className="border-[2px] border-[#ccc] rounded-[8px] overflow-hidden">
           <div className="flex bg-[#c0392b] text-white">
@@ -784,32 +589,25 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
             const label = d.status === "aprobado" ? "Aprobado" : d.status === "entregado" ? "Entregado" : d.status === "en-revision" ? "En Revisión" : "Pendiente";
             return (
               <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-                className={cn("flex border-b border-[#ddd]", i % 2 === 0 ? "bg-[#fdf2f2]" : "bg-white")}
-              >
+                className={cn("flex border-b border-[#ddd]", i % 2 === 0 ? "bg-[#fdf2f2]" : "bg-white")}>
                 <div className="w-[120px] px-[16px] py-[14px] text-[18px] text-[#666] font-mono border-r border-[#ddd]">{d.id}</div>
                 <div className="flex-1 px-[16px] py-[14px] text-[18px] text-[#333] border-r border-[#ddd]">{d.name}</div>
                 <div className="w-[160px] px-[16px] py-[14px] text-[18px] text-[#666] border-r border-[#ddd]">{d.deliveredDate || d.dueDate}</div>
-                <div className="w-[160px] px-[16px] py-[14px]">
-                  <span className="text-[18px] font-semibold" style={{ color }}>{label}</span>
-                </div>
+                <div className="w-[160px] px-[16px] py-[14px]"><span className="text-[18px] font-semibold" style={{ color }}>{label}</span></div>
               </motion.div>
             );
           })}
         </div>
       </div>
-    </SlideLayout>,
+    </SlideLayout>
+  );
 
-    // ═══ SLIDE 7: RIESGOS ═══
+  const slideRiesgos = (
     <SlideLayout key="riesgos" className="bg-white">
       <div className="absolute inset-0 px-[80px] py-[60px]">
         <div className="flex items-center gap-[16px] mb-[40px]">
           <div className="text-[#999]"><SysdeLogo size={40} /></div>
-          <EditableText
-            value={t("riesgos-title", "Riesgos del Proyecto")}
-            onChange={v => updateText("riesgos-title", v)}
-            className="text-[44px] font-bold text-[#c0392b]"
-            tag="h2"
-          />
+          <EditableText value={txt("riesgos-title", "Riesgos del Proyecto")} onChange={v => setTxt("riesgos-title", v)} className="text-[44px] font-bold text-[#c0392b]" tag="h2" />
         </div>
         <div className="space-y-[24px]">
           {client.risks.map((risk, i) => {
@@ -817,8 +615,7 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
             const statusLabel = risk.status === "abierto" ? "Abierto" : risk.status === "mitigado" ? "Mitigado" : "Cerrado";
             return (
               <motion.div key={i} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }}
-                className="border-[2px] border-[#ddd] rounded-[8px] px-[32px] py-[24px] flex items-start gap-[24px]"
-              >
+                className="border-[2px] border-[#ddd] rounded-[8px] px-[32px] py-[24px] flex items-start gap-[24px]">
                 <div className="w-[80px] h-[80px] rounded-[8px] flex flex-col items-center justify-center shrink-0" style={{ background: impactColor + "20" }}>
                   <span className="text-[14px] font-bold uppercase" style={{ color: impactColor }}>Impacto</span>
                   <span className="text-[24px] font-extrabold capitalize" style={{ color: impactColor }}>{risk.impact}</span>
@@ -828,72 +625,45 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
                     <span className="text-[16px] font-mono text-[#999]">{risk.id}</span>
                     <span className="px-[12px] py-[4px] rounded-full text-[14px] font-bold" style={{ background: risk.status === "abierto" ? "#fef2f2" : "#f0fdf4", color: risk.status === "abierto" ? "#c0392b" : "#27ae60" }}>{statusLabel}</span>
                   </div>
-                  <EditableText
-                    value={t(`risk-desc-${i}`, risk.description)}
-                    onChange={v => updateText(`risk-desc-${i}`, v)}
-                    className="text-[22px] text-[#333] leading-[1.4]"
-                    tag="p"
-                    multiline
-                  />
-                  {(risk.mitigation || texts[`risk-mit-${i}`]) && (
-                    <EditableText
-                      value={t(`risk-mit-${i}`, risk.mitigation || "Agregar mitigación...")}
-                      onChange={v => updateText(`risk-mit-${i}`, v)}
-                      className="text-[18px] text-[#666] mt-[8px] italic"
-                      tag="p"
-                    />
-                  )}
+                  <EditableText value={txt(`risk-${i}`, risk.description)} onChange={v => setTxt(`risk-${i}`, v)} className="text-[22px] text-[#333] leading-[1.4]" tag="p" multiline />
+                  {risk.mitigation && <EditableText value={txt(`risk-m-${i}`, risk.mitigation)} onChange={v => setTxt(`risk-m-${i}`, v)} className="text-[18px] text-[#666] mt-[8px] italic" tag="p" />}
                 </div>
               </motion.div>
             );
           })}
         </div>
       </div>
-    </SlideLayout>,
+    </SlideLayout>
+  );
 
-    // ═══ SLIDE 8: CIERRE ═══
+  const slideCierre = (
     <SlideLayout key="close" className="bg-[#c0392b]">
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-center">
-          <EditableText
-            value={t("cierre-line1", "Somos tus aliados para la")}
-            onChange={v => updateText("cierre-line1", v)}
-            className="text-[48px] text-white/80 mb-[16px]"
-            tag="h2"
-          />
-          <EditableText
-            value={t("cierre-line2", "Transformación Digital de tu negocio")}
-            onChange={v => updateText("cierre-line2", v)}
-            className="text-[64px] font-extrabold text-white mb-[48px]"
-            tag="h2"
-          />
+          <EditableText value={txt("cierre-1", "Somos tus aliados para la")} onChange={v => setTxt("cierre-1", v)} className="text-[48px] text-white/80 mb-[16px]" tag="h2" />
+          <EditableText value={txt("cierre-2", "Transformación Digital de tu negocio")} onChange={v => setTxt("cierre-2", v)} className="text-[64px] font-extrabold text-white mb-[48px]" tag="h2" />
           <div className="w-[200px] h-[3px] bg-white/30 rounded-full mx-auto mb-[48px]" />
           <div className="text-white mb-[48px]"><SysdeLogo size={80} /></div>
-          <EditableText
-            value={t("cierre-brand", "Sysde")}
-            onChange={v => updateText("cierre-brand", v)}
-            className="text-[28px] text-white/60 mb-[64px]"
-            tag="p"
-          />
+          <EditableText value={txt("cierre-brand", "Sysde")} onChange={v => setTxt("cierre-brand", v)} className="text-[28px] text-white/60 mb-[64px]" tag="p" />
           <button onClick={onContinue}
-            className="px-[56px] py-[20px] rounded-[16px] bg-white text-[#c0392b] text-[28px] font-bold hover:bg-white/90 transition-colors shadow-2xl flex items-center gap-[16px] mx-auto"
-          >
-            <FileText style={{ width: 28, height: 28 }} />
-            Crear Nueva Minuta
-            <ArrowRight style={{ width: 28, height: 28 }} />
+            className="px-[56px] py-[20px] rounded-[16px] bg-white text-[#c0392b] text-[28px] font-bold hover:bg-white/90 transition-colors shadow-2xl flex items-center gap-[16px] mx-auto">
+            <FileText style={{ width: 28, height: 28 }} />Crear Nueva Minuta<ArrowRight style={{ width: 28, height: 28 }} />
           </button>
         </motion.div>
       </div>
-    </SlideLayout>,
-  ];
+    </SlideLayout>
+  );
+
+  // ── Assemble slides ──
+  const slides = isAurum
+    ? [slidePortada, slideAgenda, slideAvance, slideCronograma, slideTimeline, slideProximos, slideCompromisos, slideCoordination, slideEntregables, slideRiesgos, slideCierre]
+    : [slidePortada, slideAgenda, slideAvance, slideTimeline, slideProximos, slideCoordination, slideEntregables, slideRiesgos, slideCierre];
 
   return (
     <AnimatePresence>
       {open && (
         <motion.div ref={wrapperRef} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 bg-black/95 flex flex-col"
-        >
-          {/* Top bar */}
+          className="fixed inset-0 z-50 bg-black/95 flex flex-col">
           <div className="flex items-center justify-between px-4 py-2 bg-black/50 shrink-0">
             <div className="flex items-center gap-3">
               <Button variant="ghost" size="icon" onClick={onClose} className="text-white/70 hover:text-white hover:bg-white/10"><X className="h-5 w-5" /></Button>
@@ -909,28 +679,19 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
               </Button>
             </div>
           </div>
-
-          {/* Slide area */}
           <div className="flex-1 relative overflow-hidden" ref={containerRef}>
             <AnimatePresence mode="wait">
               <motion.div key={currentSlide} initial={{ opacity: 0, x: 60 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -60 }} transition={{ duration: 0.3 }} className="absolute inset-0">
                 <ScaledSlide containerRef={containerRef}>{slides[currentSlide]}</ScaledSlide>
               </motion.div>
             </AnimatePresence>
-            {currentSlide > 0 && (
-              <button onClick={prev} className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"><ChevronLeft className="h-6 w-6" /></button>
-            )}
-            {currentSlide < totalSlides - 1 && (
-              <button onClick={next} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"><ChevronRight className="h-6 w-6" /></button>
-            )}
+            {currentSlide > 0 && <button onClick={prev} className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"><ChevronLeft className="h-6 w-6" /></button>}
+            {currentSlide < totalSlides - 1 && <button onClick={next} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"><ChevronRight className="h-6 w-6" /></button>}
           </div>
-
-          {/* Bottom nav */}
-          <div className="flex items-center justify-center gap-2 px-4 py-3 bg-black/50 shrink-0">
+          <div className="flex items-center justify-center gap-1.5 px-4 py-3 bg-black/50 shrink-0 flex-wrap">
             {slideNames.map((name, i) => (
               <button key={i} onClick={() => setCurrentSlide(i)}
-                className={cn("px-3 py-1.5 rounded-lg text-xs transition-all", i === currentSlide ? "bg-white/20 text-white font-medium" : "text-white/40 hover:text-white/70 hover:bg-white/5")}
-              >{name}</button>
+                className={cn("px-2.5 py-1 rounded-lg text-[11px] transition-all", i === currentSlide ? "bg-white/20 text-white font-medium" : "text-white/40 hover:text-white/70 hover:bg-white/5")}>{name}</button>
             ))}
           </div>
         </motion.div>
