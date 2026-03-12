@@ -102,9 +102,9 @@ export function ShareReportDialog({ trigger }: ShareReportDialogProps) {
   const handleModeChange = (newMode: "resumen" | "cliente") => {
     setMode(newMode);
     if (newMode === "resumen") {
-      setSelectedSections(["kpis", "status-chart", "revenue-chart", "alerts", "progress-cards"]);
+      setSelectedSections(["kpis", "status-chart", "alerts", "progress-cards"]);
     } else {
-      setSelectedSections(["client-info", "client-phases", "client-deliverables", "client-tasks", "client-risks", "client-financials"]);
+      setSelectedSections(["client-info", "client-phases", "client-deliverables", "client-tasks", "client-risks"]);
     }
   };
 
