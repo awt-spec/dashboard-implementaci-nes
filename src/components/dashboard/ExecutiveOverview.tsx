@@ -2,16 +2,14 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useClients } from "@/hooks/useClients";
 import { clients as staticClients } from "@/data/projectData";
-import { TrendingUp, CheckCircle, AlertTriangle, DollarSign, Users, Clock, ShieldAlert, Filter, BarChart3, Target, FileCheck, Layers, Loader2 } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area, RadialBarChart, RadialBar, Legend } from "recharts";
+import { TrendingUp, CheckCircle, AlertTriangle, Users, Clock, ShieldAlert, Filter, BarChart3, Target, FileCheck, Layers, Loader2 } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Progress } from "@/components/ui/progress";
 
 export function ExecutiveOverview() {
   const { data: clientsData, isLoading } = useClients();
-  // Use data from Supabase or fallback to static data
   const clients = clientsData ?? staticClients;
 
   const [filterClient, setFilterClient] = useState<string>("all");
@@ -30,17 +28,9 @@ export function ExecutiveOverview() {
   const atRisk = clients.filter(c => c.status === "en-riesgo").length;
   const completed = clients.filter(c => c.status === "completado").length;
   const paused = clients.filter(c => c.status === "pausado").length;
-  const totalRevenue = clients.reduce((s, c) => s + c.financials.contractValue, 0);
-  const totalBilled = clients.reduce((s, c) => s + c.financials.billed, 0);
-  const totalPaid = clients.reduce((s, c) => s + c.financials.paid, 0);
   const avgProgress = Math.round(clients.reduce((s, c) => s + c.progress, 0) / clients.length);
   const totalRisks = clients.reduce((s, c) => s + c.risks.filter(r => r.status === "abierto").length, 0);
-  const totalHoursEstimated = clients.reduce((s, c) => s + c.financials.hoursEstimated, 0);
-  const totalHoursUsed = clients.reduce((s, c) => s + c.financials.hoursUsed, 0);
-  const hoursUtilization = totalHoursEstimated > 0 ? Math.round((totalHoursUsed / totalHoursEstimated) * 100) : 0;
-  const collectionRate = totalBilled > 0 ? Math.round((totalPaid / totalBilled) * 100) : 0;
 
-  // All tasks consolidated
   const allTasks = clients.flatMap(c => c.tasks);
   const tasksByStatus = {
     completada: allTasks.filter(t => t.status === "completada").length,
@@ -54,7 +44,6 @@ export function ExecutiveOverview() {
     baja: allTasks.filter(t => t.priority === "baja").length,
   };
 
-  // All deliverables consolidated
   const allDeliverables = clients.flatMap(c => c.deliverables);
   const deliverablesByStatus = {
     aprobado: allDeliverables.filter(d => d.status === "aprobado").length,
@@ -63,7 +52,6 @@ export function ExecutiveOverview() {
     pendiente: allDeliverables.filter(d => d.status === "pendiente").length,
   };
 
-  // Alerts
   const riskAlerts = clients.flatMap(c =>
     c.risks.filter(r => r.status === "abierto").map(r => ({ clientName: c.name, clientId: c.id, type: "risk" as const, impact: r.impact, description: r.description, mitigation: r.mitigation }))
   );
@@ -79,27 +67,12 @@ export function ExecutiveOverview() {
   });
   const uniqueClients = [...new Map(allAlerts.map(a => [a.clientId, a.clientName])).entries()];
 
-  // Chart data
   const statusData = [
     { name: "Activos", value: activeClients, color: "hsl(var(--success))" },
     { name: "En Riesgo", value: atRisk, color: "hsl(var(--destructive))" },
     { name: "Completados", value: completed, color: "hsl(var(--info))" },
     { name: "Pausados", value: paused, color: "hsl(var(--muted-foreground))" },
   ].filter(d => d.value > 0);
-
-  const revenueByClient = clients.map(c => ({
-    name: c.name.split(" ").slice(0, 2).join(" "),
-    contrato: c.financials.contractValue / 1000,
-    facturado: c.financials.billed / 1000,
-    cobrado: c.financials.paid / 1000,
-  }));
-
-  const hoursData = clients.map(c => ({
-    name: c.name.split(" ").slice(0, 2).join(" "),
-    estimadas: c.financials.hoursEstimated,
-    usadas: c.financials.hoursUsed,
-    pct: Math.round((c.financials.hoursUsed / c.financials.hoursEstimated) * 100),
-  }));
 
   const taskStatusData = [
     { name: "Completadas", value: tasksByStatus.completada, color: "hsl(var(--success))" },
@@ -115,23 +88,6 @@ export function ExecutiveOverview() {
     { name: "Pendientes", value: deliverablesByStatus.pendiente, color: "hsl(var(--destructive))" },
   ];
 
-  // Monthly revenue trend (aggregate all clients by month)
-  const allMonths: string[] = [...new Set(clients.flatMap(c => c.financials.monthlyBreakdown.map(m => m.month)))];
-  const monthOrder = ["Jul", "Ago", "Sep", "Oct", "Nov", "Dic", "Ene", "Feb", "Mar"];
-  const sortedMonths = allMonths.sort((a, b) => monthOrder.indexOf(a) - monthOrder.indexOf(b));
-  const monthlyTrend = sortedMonths.map(month => {
-    const estimated = clients.reduce((s, c) => {
-      const m = c.financials.monthlyBreakdown.find(mb => mb.month === month);
-      return s + (m?.estimated || 0);
-    }, 0);
-    const actual = clients.reduce((s, c) => {
-      const m = c.financials.monthlyBreakdown.find(mb => mb.month === month);
-      return s + (m?.actual || 0);
-    }, 0);
-    return { month, estimado: estimated / 1000, real: actual / 1000 };
-  });
-
-  // Country distribution
   const countryMap = clients.reduce((acc, c) => {
     acc[c.country] = (acc[c.country] || 0) + 1;
     return acc;
@@ -139,7 +95,6 @@ export function ExecutiveOverview() {
   const countryData = Object.entries(countryMap).map(([name, value]) => ({ name, value }));
   const countryColors = ["hsl(var(--primary))", "hsl(var(--info))", "hsl(var(--success))", "hsl(var(--warning))", "hsl(var(--destructive))"];
 
-  // Team size by client
   const teamByClient = clients.map(c => ({
     name: c.name.split(" ").slice(0, 2).join(" "),
     personas: c.teamAssigned.length,
@@ -148,12 +103,12 @@ export function ExecutiveOverview() {
   const kpis = [
     { title: "Clientes Activos", value: activeClients, icon: Users, color: "text-success" },
     { title: "Progreso Promedio", value: `${avgProgress}%`, icon: TrendingUp, color: "text-info" },
-    { title: "Ingresos Totales", value: `$${(totalRevenue / 1000).toFixed(0)}K`, icon: DollarSign, color: "text-primary" },
-    { title: "Cobrado", value: `$${(totalPaid / 1000).toFixed(0)}K`, icon: CheckCircle, color: "text-success" },
-    { title: "Pendiente Cobro", value: `$${((totalBilled - totalPaid) / 1000).toFixed(0)}K`, icon: Clock, color: "text-warning" },
+    { title: "Total Tareas", value: allTasks.length, icon: Layers, color: "text-primary" },
+    { title: "Completadas", value: tasksByStatus.completada, icon: CheckCircle, color: "text-success" },
+    { title: "En Progreso", value: tasksByStatus["en-progreso"], icon: Clock, color: "text-warning" },
     { title: "Riesgos Abiertos", value: totalRisks, icon: AlertTriangle, color: "text-destructive" },
-    { title: "Horas Utilizadas", value: `${totalHoursUsed}/${totalHoursEstimated}`, icon: BarChart3, color: "text-info" },
-    { title: "Tasa Cobro", value: `${collectionRate}%`, icon: Target, color: "text-success" },
+    { title: "Entregables", value: allDeliverables.length, icon: FileCheck, color: "text-info" },
+    { title: "Equipo Total", value: [...new Set(clients.flatMap(c => c.teamAssigned))].length, icon: Target, color: "text-success" },
   ];
 
   const impactColor: Record<string, string> = {
@@ -186,7 +141,7 @@ export function ExecutiveOverview() {
         ))}
       </div>
 
-      {/* Row 1: Status Pie + Revenue Bar */}
+      {/* Row 1: Status Pie + Progress by Client */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card>
           <CardContent className="p-5">
@@ -214,75 +169,28 @@ export function ExecutiveOverview() {
 
         <Card className="lg:col-span-2">
           <CardContent className="p-5">
-            <h3 className="text-sm font-semibold text-foreground mb-3">Ingresos por Cliente (Miles $)</h3>
-            <div className="h-48">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={revenueByClient} barGap={2}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                  <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [`$${value}K`]} />
-                  <Bar dataKey="contrato" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} name="Contrato" />
-                  <Bar dataKey="facturado" fill="hsl(var(--info))" radius={[4, 4, 0, 0]} name="Facturado" />
-                  <Bar dataKey="cobrado" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} name="Cobrado" />
-                </BarChart>
-              </ResponsiveContainer>
+            <h3 className="text-sm font-semibold text-foreground mb-3">Progreso por Cliente</h3>
+            <div className="space-y-3">
+              {clients.map((c, i) => (
+                <div key={c.id}>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-foreground font-medium truncate mr-2">{c.name}</span>
+                    <span className="text-muted-foreground shrink-0">{c.progress}%</span>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${c.progress > 80 ? 'bg-success' : c.progress > 40 ? 'bg-primary' : 'bg-warning'}`}
+                      style={{ width: `${c.progress}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Row 2: Monthly Trend + Hours Utilization */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-          <Card>
-            <CardContent className="p-5">
-              <h3 className="text-sm font-semibold text-foreground mb-3">Tendencia Mensual de Ingresos (Miles $)</h3>
-              <div className="h-52">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={monthlyTrend}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="month" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                    <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                    <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [`$${value.toFixed(0)}K`]} />
-                    <Area type="monotone" dataKey="estimado" stroke="hsl(var(--muted-foreground))" fill="hsl(var(--muted-foreground))" fillOpacity={0.15} strokeWidth={2} name="Estimado" />
-                    <Area type="monotone" dataKey="real" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} strokeWidth={2} name="Real" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-          <Card>
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-foreground">Utilización de Horas por Cliente</h3>
-                <Badge variant="outline" className="text-xs">{hoursUtilization}% global</Badge>
-              </div>
-              <div className="space-y-3">
-                {hoursData.map((c, i) => (
-                  <div key={i}>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-foreground font-medium truncate mr-2">{c.name}</span>
-                      <span className="text-muted-foreground shrink-0">{c.usadas}/{c.estimadas}h ({c.pct}%)</span>
-                    </div>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${c.pct > 90 ? 'bg-destructive' : c.pct > 70 ? 'bg-warning' : 'bg-primary'}`}
-                        style={{ width: `${Math.min(c.pct, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-
-      {/* Row 3: Tasks + Deliverables + Priority */}
+      {/* Row 2: Tasks + Deliverables + Priority */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <Card>
@@ -352,9 +260,9 @@ export function ExecutiveOverview() {
               <h3 className="text-sm font-semibold text-foreground mb-3">Prioridad de Tareas</h3>
               <div className="space-y-4 mt-4">
                 {[
-                  { label: "Alta", count: tasksByPriority.alta, pct: Math.round((tasksByPriority.alta / allTasks.length) * 100), color: "bg-destructive" },
-                  { label: "Media", count: tasksByPriority.media, pct: Math.round((tasksByPriority.media / allTasks.length) * 100), color: "bg-warning" },
-                  { label: "Baja", count: tasksByPriority.baja, pct: Math.round((tasksByPriority.baja / allTasks.length) * 100), color: "bg-success" },
+                  { label: "Alta", count: tasksByPriority.alta, pct: allTasks.length > 0 ? Math.round((tasksByPriority.alta / allTasks.length) * 100) : 0, color: "bg-destructive" },
+                  { label: "Media", count: tasksByPriority.media, pct: allTasks.length > 0 ? Math.round((tasksByPriority.media / allTasks.length) * 100) : 0, color: "bg-warning" },
+                  { label: "Baja", count: tasksByPriority.baja, pct: allTasks.length > 0 ? Math.round((tasksByPriority.baja / allTasks.length) * 100) : 0, color: "bg-success" },
                 ].map(p => (
                   <div key={p.label}>
                     <div className="flex justify-between text-xs mb-1.5">
@@ -385,7 +293,7 @@ export function ExecutiveOverview() {
         </motion.div>
       </div>
 
-      {/* Row 4: Team workload + Financial summary */}
+      {/* Row 3: Team workload */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
           <Card>
@@ -412,13 +320,13 @@ export function ExecutiveOverview() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
           <Card>
             <CardContent className="p-5">
-              <h3 className="text-sm font-semibold text-foreground mb-4">Resumen Financiero Global</h3>
+              <h3 className="text-sm font-semibold text-foreground mb-4">Resumen de Implementaciones</h3>
               <div className="grid grid-cols-2 gap-4">
                 {[
-                  { label: "Valor Contratos", value: `$${(totalRevenue / 1000).toFixed(0)}K`, sub: `${clients.length} contratos` },
-                  { label: "Facturado", value: `$${(totalBilled / 1000).toFixed(0)}K`, sub: `${totalRevenue > 0 ? Math.round((totalBilled / totalRevenue) * 100) : 0}% del total` },
-                  { label: "Cobrado", value: `$${(totalPaid / 1000).toFixed(0)}K`, sub: `${collectionRate}% de facturado` },
-                  { label: "Por Cobrar", value: `$${((totalBilled - totalPaid) / 1000).toFixed(0)}K`, sub: `${clients.reduce((s, c) => s + c.financials.pending, 0) > 50000 ? "Atención requerida" : "Normal"}` },
+                  { label: "Proyectos Activos", value: activeClients.toString(), sub: `${clients.length} total` },
+                  { label: "Tareas Activas", value: tasksByStatus["en-progreso"].toString(), sub: `${tasksByStatus.pendiente} pendientes` },
+                  { label: "Entregables Aprobados", value: deliverablesByStatus.aprobado.toString(), sub: `${deliverablesByStatus.pendiente} pendientes` },
+                  { label: "Riesgos Abiertos", value: totalRisks.toString(), sub: totalRisks > 3 ? "Atención requerida" : "Normal" },
                 ].map(item => (
                   <div key={item.label} className="p-3 rounded-lg bg-muted/50 border border-border">
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{item.label}</p>
@@ -426,15 +334,6 @@ export function ExecutiveOverview() {
                     <p className="text-[10px] text-muted-foreground mt-0.5">{item.sub}</p>
                   </div>
                 ))}
-              </div>
-              <div className="mt-4">
-                <div className="flex justify-between text-xs mb-1.5">
-                  <span className="text-muted-foreground">Facturación vs. Contrato</span>
-                  <span className="font-bold text-foreground">{totalRevenue > 0 ? Math.round((totalBilled / totalRevenue) * 100) : 0}%</span>
-                </div>
-                <div className="h-2.5 bg-muted rounded-full overflow-hidden">
-                  <div className="h-full bg-info rounded-full transition-all" style={{ width: `${totalRevenue > 0 ? Math.round((totalBilled / totalRevenue) * 100) : 0}%` }} />
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -510,7 +409,7 @@ export function ExecutiveOverview() {
 
       {/* Client progress cards */}
       <div>
-        <h3 className="text-sm font-semibold text-foreground mb-3">Progreso por Cliente</h3>
+        <h3 className="text-sm font-semibold text-foreground mb-3">Detalle por Cliente</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {clients.map((client) => {
             const statusColors: Record<string, string> = {
@@ -541,7 +440,7 @@ export function ExecutiveOverview() {
                   <div className="flex justify-between mt-3 text-xs text-muted-foreground">
                     <span>{client.tasks.length} tareas</span>
                     <span>{client.risks.filter(r => r.status === "abierto").length} riesgos</span>
-                    <span>${(client.financials.billed / 1000).toFixed(0)}K fact.</span>
+                    <span>{client.deliverables.length} entregables</span>
                   </div>
                 </CardContent>
               </Card>
