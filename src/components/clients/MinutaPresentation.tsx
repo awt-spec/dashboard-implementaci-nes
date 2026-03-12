@@ -619,15 +619,45 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
             <div className="w-[160px] px-[16px] py-[14px] text-[18px] font-bold border-r border-white/20">Fecha</div>
             <div className="w-[160px] px-[16px] py-[14px] text-[18px] font-bold">Estado</div>
           </div>
-          {client.deliverables.slice(0, 10).map((d, i) => {
+          {entregableRows.slice(0, 10).map((d, i) => {
             const color = d.status === "aprobado" ? "#27ae60" : d.status === "entregado" ? "#3b82f6" : d.status === "en-revision" ? "#e67e22" : "#999";
             const label = d.status === "aprobado" ? "Aprobado" : d.status === "entregado" ? "Entregado" : d.status === "en-revision" ? "En Revisión" : "Pendiente";
             return (<motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
               className={cn("flex border-b border-[#ddd]", i % 2 === 0 ? "bg-[#fdf2f2]" : "bg-white")}>
               <div className="w-[120px] px-[16px] py-[14px] text-[18px] text-[#666] font-mono border-r border-[#ddd]">{d.id}</div>
               <div className="flex-1 px-[16px] py-[14px] text-[18px] text-[#333] border-r border-[#ddd]">{d.name}</div>
-              <div className="w-[160px] px-[16px] py-[14px] text-[18px] text-[#666] border-r border-[#ddd]">{d.deliveredDate || d.dueDate}</div>
+              <div className="w-[160px] px-[16px] py-[14px] text-[18px] text-[#666] border-r border-[#ddd]">{d.date}</div>
               <div className="w-[160px] px-[16px] py-[14px]"><span className="text-[18px] font-semibold" style={{ color }}>{label}</span></div>
+            </motion.div>);
+          })}
+        </div>
+      </div>
+    </SlideLayout>
+  );
+
+  const slideRiesgos = (
+    <SlideLayout key="riesgos" className="bg-white">
+      <div className="absolute inset-0 px-[80px] py-[60px]">
+        <div className="flex items-center gap-[16px] mb-[40px]"><div className="text-[#999]"><SysdeLogo size={40} /></div>
+          <EditableText value={txt("riesgos-title", "Riesgos del Proyecto")} onChange={v => setTxt("riesgos-title", v)} className="text-[44px] font-bold text-[#c0392b]" tag="h2" /></div>
+        <div className="space-y-[24px]">
+          {riesgoRows.map((risk, i) => {
+            const ic = risk.impact === "alto" ? "#c0392b" : risk.impact === "medio" ? "#e67e22" : "#27ae60";
+            const sl = risk.status === "abierto" ? "Abierto" : risk.status === "mitigado" ? "Mitigado" : "Cerrado";
+            return (<motion.div key={i} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }}
+              className="border-[2px] border-[#ddd] rounded-[8px] px-[32px] py-[24px] flex items-start gap-[24px]">
+              <div className="w-[80px] h-[80px] rounded-[8px] flex flex-col items-center justify-center shrink-0" style={{ background: ic + "20" }}>
+                <span className="text-[14px] font-bold uppercase" style={{ color: ic }}>Impacto</span>
+                <span className="text-[24px] font-extrabold capitalize" style={{ color: ic }}>{risk.impact}</span>
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-[16px] mb-[8px]">
+                  <span className="text-[16px] font-mono text-[#999]">{risk.id}</span>
+                  <span className="px-[12px] py-[4px] rounded-full text-[14px] font-bold" style={{ background: risk.status === "abierto" ? "#fef2f2" : "#f0fdf4", color: risk.status === "abierto" ? "#c0392b" : "#27ae60" }}>{sl}</span>
+                </div>
+                <p className="text-[22px] text-[#333] leading-[1.4]">{risk.description}</p>
+                {risk.mitigation && <p className="text-[18px] text-[#666] mt-[8px] italic">{risk.mitigation}</p>}
+              </div>
             </motion.div>);
           })}
         </div>
