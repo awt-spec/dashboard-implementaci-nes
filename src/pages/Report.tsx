@@ -75,7 +75,7 @@ function ResumenSections({ sections }: { sections: ReportSection[] }) {
             { label: "Progreso Promedio", value: `${avgProgress}%` },
             { label: "Total Tareas", value: allTasks.length },
             { label: "Completadas", value: allTasks.filter(t => t.status === "completada").length },
-            { label: "En Progreso", value: allTasks.filter(t => t.status === "en-progreso").length },
+            { label: "Progreso", value: allTasks.filter(t => t.status === "en-progreso").length },
             { label: "Riesgos", value: totalRisks },
           ].map(k => (
             <Card key={k.label}>

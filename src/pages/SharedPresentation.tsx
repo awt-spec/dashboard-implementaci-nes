@@ -428,7 +428,7 @@ export default function SharedPresentation() {
           <div className="grid grid-cols-4 gap-[24px] mb-[32px]">
             {[
               { label: "Completadas", count: completedTasks.length, color: "hsl(var(--success))", icon: CheckCircle2 },
-              { label: "En Progreso", count: inProgressTasks.length, color: "hsl(var(--info))", icon: Clock },
+              { label: "Progreso", count: inProgressTasks.length, color: "hsl(var(--info))", icon: Clock },
               { label: "Pendientes", count: client.tasks.filter(t => t.status === "pendiente").length, color: "hsl(var(--warning))", icon: Circle },
               { label: "Bloqueadas", count: blockedTasks.length, color: "hsl(var(--destructive))", icon: AlertTriangle },
             ].map((s, i) => (
