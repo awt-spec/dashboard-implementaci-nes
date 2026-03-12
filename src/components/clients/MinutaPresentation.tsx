@@ -693,6 +693,10 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
     if (currentSlideName === "Compromisos") return <CompromisosEditor rows={compromisos} onChange={saveComp} />;
     if (currentSlideName === "Coordinación") return <CoordinationEditor rows={coordItems} onChange={saveCoord} />;
     if (currentSlideName === "Próximos Pasos") return <CoordinationEditor rows={proxPasos} onChange={saveProx} />;
+    if (currentSlideName === "Línea de Tiempo") return <TimelineEditor rows={timelineRows} onChange={saveTimeline} />;
+    if (currentSlideName === "Avance") return <ActivityEditor items={activityItems} onChange={saveActivity} />;
+    if (currentSlideName === "Entregables") return <EntregablesEditor rows={entregableRows} onChange={saveEntregables} />;
+    if (currentSlideName === "Riesgos") return <RiesgosEditor rows={riesgoRows} onChange={saveRiesgos} />;
     return null;
   })();
 
