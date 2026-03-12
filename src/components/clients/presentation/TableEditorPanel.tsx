@@ -416,3 +416,425 @@ export function CoordinationEditor({ rows, onChange }: CoordinationEditorProps) 
     </div>
   );
 }
+
+// ── Timeline / Gantt Editor ─────────────────────────────
+
+export interface TimelineRow {
+  name: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+  progress: number;
+}
+
+interface TimelineEditorProps {
+  rows: TimelineRow[];
+  onChange: (rows: TimelineRow[]) => void;
+}
+
+export function TimelineEditor({ rows, onChange }: TimelineEditorProps) {
+  const [selectedRow, setSelectedRow] = useState<number | null>(null);
+
+  const updateRow = (idx: number, field: keyof TimelineRow, val: string | number) => {
+    const next = [...rows];
+    (next[idx] as any)[field] = val;
+    onChange(next);
+  };
+
+  const addRow = () => {
+    onChange([...rows, { name: "Nueva fase", startDate: "", endDate: "", status: "en-progreso", progress: 0 }]);
+  };
+
+  const removeRow = (idx: number) => {
+    onChange(rows.filter((_, i) => i !== idx));
+  };
+
+  const statusColors: Record<string, string> = {
+    "completado": "bg-emerald-500/20 text-emerald-400",
+    "en-progreso": "bg-amber-500/20 text-amber-400",
+    "pendiente": "bg-white/10 text-white/40",
+  };
+
+  return (
+    <div className="space-y-1">
+      {rows.map((row, i) => (
+        <div key={i} onClick={() => setSelectedRow(i === selectedRow ? null : i)}
+          className={cn("rounded-lg border transition-all cursor-pointer",
+            selectedRow === i ? "border-[#c0392b] bg-[#c0392b]/10" : "border-white/5 hover:border-white/20 bg-white/5")}>
+          <div className="flex items-center gap-2 px-3 py-2">
+            <GripVertical className="h-3.5 w-3.5 text-white/20 shrink-0" />
+            <p className="flex-1 text-[13px] text-white/90 truncate">{row.name}</p>
+            <span className={cn("text-[11px] font-medium px-2 py-0.5 rounded-full", statusColors[row.status] || statusColors["pendiente"])}>
+              {row.progress}%
+            </span>
+          </div>
+          <AnimatePresence>
+            {selectedRow === i && (
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                <div className="px-3 pb-3 space-y-2 border-t border-white/5 pt-2">
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider text-white/40 mb-1 block">Nombre</label>
+                    <input value={row.name} onChange={e => updateRow(i, "name", e.target.value)}
+                      className="w-full bg-white/10 border border-white/10 rounded-md px-3 py-1.5 text-[13px] text-white outline-none focus:border-[#c0392b]" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider text-white/40 mb-1 block">Inicio</label>
+                      <input type="date" value={row.startDate} onChange={e => updateRow(i, "startDate", e.target.value)}
+                        className="w-full bg-white/10 border border-white/10 rounded-md px-3 py-1.5 text-[13px] text-white outline-none focus:border-[#c0392b]" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider text-white/40 mb-1 block">Fin</label>
+                      <input type="date" value={row.endDate} onChange={e => updateRow(i, "endDate", e.target.value)}
+                        className="w-full bg-white/10 border border-white/10 rounded-md px-3 py-1.5 text-[13px] text-white outline-none focus:border-[#c0392b]" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider text-white/40 mb-1 block">Estado</label>
+                      <select value={row.status} onChange={e => updateRow(i, "status", e.target.value)}
+                        className="w-full bg-white/10 border border-white/10 rounded-md px-3 py-1.5 text-[13px] text-white outline-none focus:border-[#c0392b]">
+                        <option value="completado" className="bg-[#1a1a2e]">Completado</option>
+                        <option value="en-progreso" className="bg-[#1a1a2e]">En progreso</option>
+                        <option value="pendiente" className="bg-[#1a1a2e]">Pendiente</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider text-white/40 mb-1 block">Progreso %</label>
+                      <input type="number" min={0} max={100} value={row.progress} onChange={e => updateRow(i, "progress", parseInt(e.target.value) || 0)}
+                        className="w-full bg-white/10 border border-white/10 rounded-md px-3 py-1.5 text-[13px] text-white outline-none focus:border-[#c0392b]" />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={(e) => { e.stopPropagation(); addRow(); }}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md bg-[#c0392b]/20 text-[#ff6b6b] text-[11px] font-medium hover:bg-[#c0392b]/30 transition-colors">
+                      <Plus className="h-3 w-3" /> Agregar fase
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); removeRow(i); }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-500/10 text-red-400 text-[11px] hover:bg-red-500/20 transition-colors">
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      ))}
+      <button onClick={addRow}
+        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-dashed border-white/20 text-white/40 text-[12px] hover:border-[#c0392b] hover:text-[#ff6b6b] transition-colors mt-3">
+        <Plus className="h-3.5 w-3.5" /> Nueva fase
+      </button>
+    </div>
+  );
+}
+
+// ── Activity / Avance Editor ────────────────────────────
+
+export interface ActivityEditorItem {
+  label: string;
+  progress: number;
+  status: "completed" | "in-progress" | "pending";
+  group: string;
+}
+
+interface ActivityEditorProps {
+  items: ActivityEditorItem[];
+  onChange: (items: ActivityEditorItem[]) => void;
+}
+
+export function ActivityEditor({ items, onChange }: ActivityEditorProps) {
+  const [selectedRow, setSelectedRow] = useState<number | null>(null);
+
+  const updateItem = (idx: number, field: keyof ActivityEditorItem, val: string | number) => {
+    const next = [...items];
+    (next[idx] as any)[field] = val;
+    onChange(next);
+  };
+
+  const addItem = () => {
+    const lastGroup = items.length > 0 ? items[items.length - 1].group : "EJECUCIÓN";
+    onChange([...items, { label: "Nueva actividad", progress: 0, status: "pending", group: lastGroup }]);
+  };
+
+  const removeItem = (idx: number) => {
+    onChange(items.filter((_, i) => i !== idx));
+  };
+
+  const statusColors: Record<string, string> = {
+    "completed": "bg-emerald-500/20 text-emerald-400",
+    "in-progress": "bg-amber-500/20 text-amber-400",
+    "pending": "bg-white/10 text-white/40",
+  };
+
+  return (
+    <div className="space-y-1">
+      {items.map((item, i) => (
+        <div key={i} onClick={() => setSelectedRow(i === selectedRow ? null : i)}
+          className={cn("rounded-lg border transition-all cursor-pointer",
+            selectedRow === i ? "border-[#c0392b] bg-[#c0392b]/10" : "border-white/5 hover:border-white/20 bg-white/5")}>
+          <div className="flex items-center gap-2 px-3 py-2">
+            <GripVertical className="h-3.5 w-3.5 text-white/20 shrink-0" />
+            <p className="flex-1 text-[13px] text-white/90 truncate">{item.label}</p>
+            <span className={cn("text-[11px] font-medium px-2 py-0.5 rounded-full", statusColors[item.status])}>
+              {item.progress}%
+            </span>
+          </div>
+          <AnimatePresence>
+            {selectedRow === i && (
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                <div className="px-3 pb-3 space-y-2 border-t border-white/5 pt-2">
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider text-white/40 mb-1 block">Actividad</label>
+                    <input value={item.label} onChange={e => updateItem(i, "label", e.target.value)}
+                      className="w-full bg-white/10 border border-white/10 rounded-md px-3 py-1.5 text-[13px] text-white outline-none focus:border-[#c0392b]" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider text-white/40 mb-1 block">Grupo</label>
+                    <input value={item.group} onChange={e => updateItem(i, "group", e.target.value)}
+                      className="w-full bg-white/10 border border-white/10 rounded-md px-3 py-1.5 text-[13px] text-white outline-none focus:border-[#c0392b]" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider text-white/40 mb-1 block">Progreso %</label>
+                      <input type="number" min={0} max={100} value={item.progress} onChange={e => updateItem(i, "progress", parseInt(e.target.value) || 0)}
+                        className="w-full bg-white/10 border border-white/10 rounded-md px-3 py-1.5 text-[13px] text-white outline-none focus:border-[#c0392b]" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider text-white/40 mb-1 block">Estado</label>
+                      <select value={item.status} onChange={e => updateItem(i, "status", e.target.value as any)}
+                        className="w-full bg-white/10 border border-white/10 rounded-md px-3 py-1.5 text-[13px] text-white outline-none focus:border-[#c0392b]">
+                        <option value="completed" className="bg-[#1a1a2e]">Completado</option>
+                        <option value="in-progress" className="bg-[#1a1a2e]">En progreso</option>
+                        <option value="pending" className="bg-[#1a1a2e]">Pendiente</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={(e) => { e.stopPropagation(); addItem(); }}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md bg-[#c0392b]/20 text-[#ff6b6b] text-[11px] font-medium hover:bg-[#c0392b]/30 transition-colors">
+                      <Plus className="h-3 w-3" /> Agregar
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); removeItem(i); }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-500/10 text-red-400 text-[11px] hover:bg-red-500/20 transition-colors">
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      ))}
+      <button onClick={addItem}
+        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-dashed border-white/20 text-white/40 text-[12px] hover:border-[#c0392b] hover:text-[#ff6b6b] transition-colors mt-3">
+        <Plus className="h-3.5 w-3.5" /> Nueva actividad
+      </button>
+    </div>
+  );
+}
+
+// ── Entregables Editor ──────────────────────────────────
+
+export interface EntregableRow {
+  id: string;
+  name: string;
+  date: string;
+  status: string;
+}
+
+interface EntregablesEditorProps {
+  rows: EntregableRow[];
+  onChange: (rows: EntregableRow[]) => void;
+}
+
+export function EntregablesEditor({ rows, onChange }: EntregablesEditorProps) {
+  const [selectedRow, setSelectedRow] = useState<number | null>(null);
+
+  const updateRow = (idx: number, field: keyof EntregableRow, val: string) => {
+    const next = [...rows];
+    (next[idx] as any)[field] = val;
+    onChange(next);
+  };
+
+  const addRow = () => {
+    onChange([...rows, { id: `E-${rows.length + 1}`, name: "Nuevo entregable", date: "", status: "pendiente" }]);
+  };
+
+  const removeRow = (idx: number) => {
+    onChange(rows.filter((_, i) => i !== idx));
+  };
+
+  const statusColors: Record<string, string> = {
+    "aprobado": "bg-emerald-500/20 text-emerald-400",
+    "entregado": "bg-blue-500/20 text-blue-400",
+    "en-revision": "bg-amber-500/20 text-amber-400",
+    "pendiente": "bg-white/10 text-white/40",
+  };
+
+  return (
+    <div className="space-y-1">
+      {rows.map((row, i) => (
+        <div key={i} onClick={() => setSelectedRow(i === selectedRow ? null : i)}
+          className={cn("rounded-lg border transition-all cursor-pointer",
+            selectedRow === i ? "border-[#c0392b] bg-[#c0392b]/10" : "border-white/5 hover:border-white/20 bg-white/5")}>
+          <div className="flex items-center gap-2 px-3 py-2">
+            <span className="text-[11px] text-white/30 font-mono w-12">{row.id}</span>
+            <p className="flex-1 text-[13px] text-white/90 truncate">{row.name}</p>
+            <span className={cn("text-[11px] font-medium px-2 py-0.5 rounded-full capitalize", statusColors[row.status] || statusColors["pendiente"])}>
+              {row.status}
+            </span>
+          </div>
+          <AnimatePresence>
+            {selectedRow === i && (
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                <div className="px-3 pb-3 space-y-2 border-t border-white/5 pt-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider text-white/40 mb-1 block">ID</label>
+                      <input value={row.id} onChange={e => updateRow(i, "id", e.target.value)}
+                        className="w-full bg-white/10 border border-white/10 rounded-md px-3 py-1.5 text-[13px] text-white outline-none focus:border-[#c0392b]" />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="text-[10px] uppercase tracking-wider text-white/40 mb-1 block">Nombre</label>
+                      <input value={row.name} onChange={e => updateRow(i, "name", e.target.value)}
+                        className="w-full bg-white/10 border border-white/10 rounded-md px-3 py-1.5 text-[13px] text-white outline-none focus:border-[#c0392b]" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider text-white/40 mb-1 block">Fecha</label>
+                      <input value={row.date} onChange={e => updateRow(i, "date", e.target.value)}
+                        className="w-full bg-white/10 border border-white/10 rounded-md px-3 py-1.5 text-[13px] text-white outline-none focus:border-[#c0392b]" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider text-white/40 mb-1 block">Estado</label>
+                      <select value={row.status} onChange={e => updateRow(i, "status", e.target.value)}
+                        className="w-full bg-white/10 border border-white/10 rounded-md px-3 py-1.5 text-[13px] text-white outline-none focus:border-[#c0392b]">
+                        <option value="aprobado" className="bg-[#1a1a2e]">Aprobado</option>
+                        <option value="entregado" className="bg-[#1a1a2e]">Entregado</option>
+                        <option value="en-revision" className="bg-[#1a1a2e]">En Revisión</option>
+                        <option value="pendiente" className="bg-[#1a1a2e]">Pendiente</option>
+                      </select>
+                    </div>
+                  </div>
+                  <button onClick={(e) => { e.stopPropagation(); removeRow(i); }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-500/10 text-red-400 text-[11px] hover:bg-red-500/20 transition-colors">
+                    <Trash2 className="h-3 w-3" /> Eliminar
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      ))}
+      <button onClick={addRow}
+        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-dashed border-white/20 text-white/40 text-[12px] hover:border-[#c0392b] hover:text-[#ff6b6b] transition-colors mt-3">
+        <Plus className="h-3.5 w-3.5" /> Nuevo entregable
+      </button>
+    </div>
+  );
+}
+
+// ── Riesgos Editor ──────────────────────────────────────
+
+export interface RiesgoRow {
+  id: string;
+  description: string;
+  impact: string;
+  status: string;
+  mitigation: string;
+}
+
+interface RiesgosEditorProps {
+  rows: RiesgoRow[];
+  onChange: (rows: RiesgoRow[]) => void;
+}
+
+export function RiesgosEditor({ rows, onChange }: RiesgosEditorProps) {
+  const [selectedRow, setSelectedRow] = useState<number | null>(null);
+
+  const updateRow = (idx: number, field: keyof RiesgoRow, val: string) => {
+    const next = [...rows];
+    (next[idx] as any)[field] = val;
+    onChange(next);
+  };
+
+  const addRow = () => {
+    onChange([...rows, { id: `R-${rows.length + 1}`, description: "Nuevo riesgo", impact: "medio", status: "abierto", mitigation: "" }]);
+  };
+
+  const removeRow = (idx: number) => {
+    onChange(rows.filter((_, i) => i !== idx));
+  };
+
+  const impactColors: Record<string, string> = {
+    "alto": "bg-red-500/20 text-red-400",
+    "medio": "bg-amber-500/20 text-amber-400",
+    "bajo": "bg-emerald-500/20 text-emerald-400",
+  };
+
+  return (
+    <div className="space-y-1">
+      {rows.map((row, i) => (
+        <div key={i} onClick={() => setSelectedRow(i === selectedRow ? null : i)}
+          className={cn("rounded-lg border transition-all cursor-pointer",
+            selectedRow === i ? "border-[#c0392b] bg-[#c0392b]/10" : "border-white/5 hover:border-white/20 bg-white/5")}>
+          <div className="flex items-center gap-2 px-3 py-2">
+            <span className="text-[11px] text-white/30 font-mono w-10">{row.id}</span>
+            <p className="flex-1 text-[13px] text-white/90 truncate">{row.description}</p>
+            <span className={cn("text-[11px] font-medium px-2 py-0.5 rounded-full capitalize", impactColors[row.impact] || impactColors["medio"])}>
+              {row.impact}
+            </span>
+          </div>
+          <AnimatePresence>
+            {selectedRow === i && (
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                <div className="px-3 pb-3 space-y-2 border-t border-white/5 pt-2">
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider text-white/40 mb-1 block">Descripción</label>
+                    <textarea value={row.description} onChange={e => updateRow(i, "description", e.target.value)}
+                      className="w-full bg-white/10 border border-white/10 rounded-md px-3 py-1.5 text-[13px] text-white outline-none focus:border-[#c0392b] resize-none" rows={2} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider text-white/40 mb-1 block">Impacto</label>
+                      <select value={row.impact} onChange={e => updateRow(i, "impact", e.target.value)}
+                        className="w-full bg-white/10 border border-white/10 rounded-md px-3 py-1.5 text-[13px] text-white outline-none focus:border-[#c0392b]">
+                        <option value="alto" className="bg-[#1a1a2e]">Alto</option>
+                        <option value="medio" className="bg-[#1a1a2e]">Medio</option>
+                        <option value="bajo" className="bg-[#1a1a2e]">Bajo</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider text-white/40 mb-1 block">Estado</label>
+                      <select value={row.status} onChange={e => updateRow(i, "status", e.target.value)}
+                        className="w-full bg-white/10 border border-white/10 rounded-md px-3 py-1.5 text-[13px] text-white outline-none focus:border-[#c0392b]">
+                        <option value="abierto" className="bg-[#1a1a2e]">Abierto</option>
+                        <option value="mitigado" className="bg-[#1a1a2e]">Mitigado</option>
+                        <option value="cerrado" className="bg-[#1a1a2e]">Cerrado</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider text-white/40 mb-1 block">Mitigación</label>
+                    <textarea value={row.mitigation} onChange={e => updateRow(i, "mitigation", e.target.value)}
+                      className="w-full bg-white/10 border border-white/10 rounded-md px-3 py-1.5 text-[13px] text-white outline-none focus:border-[#c0392b] resize-none" rows={2} />
+                  </div>
+                  <button onClick={(e) => { e.stopPropagation(); removeRow(i); }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-500/10 text-red-400 text-[11px] hover:bg-red-500/20 transition-colors">
+                    <Trash2 className="h-3 w-3" /> Eliminar
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      ))}
+      <button onClick={addRow}
+        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-dashed border-white/20 text-white/40 text-[12px] hover:border-[#c0392b] hover:text-[#ff6b6b] transition-colors mt-3">
+        <Plus className="h-3.5 w-3.5" /> Nuevo riesgo
+      </button>
+    </div>
+  );
+}

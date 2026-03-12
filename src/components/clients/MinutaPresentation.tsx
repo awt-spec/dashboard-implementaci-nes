@@ -21,7 +21,8 @@ import {
 import { aurumCronogramaRows, aurumCompromisosRows, type CronogramaRow, type CompromisoRow } from "./presentation/aurumCronogramaData";
 import {
   TableEditorPanel, CronogramaEditor, CompromisosEditor, CoordinationEditor,
-  type CoordinationRow,
+  TimelineEditor, ActivityEditor, EntregablesEditor, RiesgosEditor,
+  type CoordinationRow, type TimelineRow, type ActivityEditorItem, type EntregableRow, type RiesgoRow,
 } from "./presentation/TableEditorPanel";
 
 interface MinutaPresentationProps {
@@ -161,8 +162,47 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
   });
   const saveProx = (rows: CoordinationRow[]) => { setProxPasos(rows); localStorage.setItem(`ppt-prox-${client.id}`, JSON.stringify(rows)); };
 
-  // Build data
-  const activityGroups = buildActivityGroups(client);
+  // Timeline / Gantt data (editable)
+  const [timelineRows, setTimelineRows] = useState<TimelineRow[]>(() => {
+    try { const r = localStorage.getItem(`ppt-timeline-${client.id}`); if (r) return JSON.parse(r); } catch {}
+    return client.phases.map(p => ({ name: p.name, startDate: p.startDate, endDate: p.endDate, status: p.status, progress: p.progress }));
+  });
+  const saveTimeline = (rows: TimelineRow[]) => { setTimelineRows(rows); localStorage.setItem(`ppt-timeline-${client.id}`, JSON.stringify(rows)); };
+
+  // Activity / Avance data (editable)
+  const [activityItems, setActivityItems] = useState<ActivityEditorItem[]>(() => {
+    try { const r = localStorage.getItem(`ppt-activity-${client.id}`); if (r) return JSON.parse(r); } catch {}
+    const groups = buildActivityGroups(client);
+    return groups.flatMap(g => g.items.map(it => ({ label: it.label, progress: it.progress, status: it.status, group: g.title })));
+  });
+  const saveActivity = (items: ActivityEditorItem[]) => { setActivityItems(items); localStorage.setItem(`ppt-activity-${client.id}`, JSON.stringify(items)); };
+
+  // Entregables data (editable)
+  const [entregableRows, setEntregableRows] = useState<EntregableRow[]>(() => {
+    try { const r = localStorage.getItem(`ppt-entreg-${client.id}`); if (r) return JSON.parse(r); } catch {}
+    return client.deliverables.map(d => ({ id: d.id, name: d.name, date: d.deliveredDate || d.dueDate, status: d.status }));
+  });
+  const saveEntregables = (rows: EntregableRow[]) => { setEntregableRows(rows); localStorage.setItem(`ppt-entreg-${client.id}`, JSON.stringify(rows)); };
+
+  // Riesgos data (editable)
+  const [riesgoRows, setRiesgoRows] = useState<RiesgoRow[]>(() => {
+    try { const r = localStorage.getItem(`ppt-riesgos-${client.id}`); if (r) return JSON.parse(r); } catch {}
+    return client.risks.map(r => ({ id: r.id, description: r.description, impact: r.impact, status: r.status, mitigation: r.mitigation || "" }));
+  });
+  const saveRiesgos = (rows: RiesgoRow[]) => { setRiesgoRows(rows); localStorage.setItem(`ppt-riesgos-${client.id}`, JSON.stringify(rows)); };
+
+  // Build data from editable activity items
+  const activityGroups = (() => {
+    const groups: ActivityGroup[] = [];
+    const groupMap = new Map<string, ActivityItem[]>();
+    for (const item of activityItems) {
+      if (!groupMap.has(item.group)) groupMap.set(item.group, []);
+      groupMap.get(item.group)!.push({ label: item.label, progress: item.progress, status: item.status });
+    }
+    for (const [title, items] of groupMap) groups.push({ title, items });
+    return groups;
+  })();
+
   const months = getMonthRange(client.phases, client.contractStart, client.contractEnd);
   const currentDatePos = getCurrentDatePosition(months);
 
@@ -178,7 +218,11 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
     toast.success(`${task.title}: ${newProgress}%`);
   };
 
-  const ganttRows = client.phases.map(p => ({ label: p.name.length > 40 ? p.name.substring(0, 37) + "..." : p.name, phase: p }));
+  // Build gantt rows from editable timeline data
+  const ganttRows = timelineRows.map(r => ({
+    label: r.name.length > 40 ? r.name.substring(0, 37) + "..." : r.name,
+    phase: { name: r.name, status: r.status, progress: r.progress, startDate: r.startDate, endDate: r.endDate } as Phase,
+  }));
   const managementPhase: Phase = { name: "Gestión de proyecto", status: "en-progreso", progress: client.progress, startDate: client.contractStart, endDate: client.contractEnd };
 
   const isAurum = client.id === "aurum";
@@ -189,7 +233,7 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
 
   // Determine which slides have an editor panel
   const currentSlideName = slideNames[currentSlide];
-  const hasEditor = ["Cronograma", "Compromisos", "Coordinación", "Próximos Pasos"].includes(currentSlideName);
+  const hasEditor = ["Cronograma", "Compromisos", "Coordinación", "Próximos Pasos", "Línea de Tiempo", "Avance", "Entregables", "Riesgos"].includes(currentSlideName);
 
   const next = useCallback(() => setCurrentSlide(s => Math.min(s + 1, totalSlides - 1)), [totalSlides]);
   const prev = useCallback(() => setCurrentSlide(s => Math.max(s - 1, 0)), []);
@@ -575,14 +619,14 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
             <div className="w-[160px] px-[16px] py-[14px] text-[18px] font-bold border-r border-white/20">Fecha</div>
             <div className="w-[160px] px-[16px] py-[14px] text-[18px] font-bold">Estado</div>
           </div>
-          {client.deliverables.slice(0, 10).map((d, i) => {
+          {entregableRows.slice(0, 10).map((d, i) => {
             const color = d.status === "aprobado" ? "#27ae60" : d.status === "entregado" ? "#3b82f6" : d.status === "en-revision" ? "#e67e22" : "#999";
             const label = d.status === "aprobado" ? "Aprobado" : d.status === "entregado" ? "Entregado" : d.status === "en-revision" ? "En Revisión" : "Pendiente";
             return (<motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
               className={cn("flex border-b border-[#ddd]", i % 2 === 0 ? "bg-[#fdf2f2]" : "bg-white")}>
               <div className="w-[120px] px-[16px] py-[14px] text-[18px] text-[#666] font-mono border-r border-[#ddd]">{d.id}</div>
               <div className="flex-1 px-[16px] py-[14px] text-[18px] text-[#333] border-r border-[#ddd]">{d.name}</div>
-              <div className="w-[160px] px-[16px] py-[14px] text-[18px] text-[#666] border-r border-[#ddd]">{d.deliveredDate || d.dueDate}</div>
+              <div className="w-[160px] px-[16px] py-[14px] text-[18px] text-[#666] border-r border-[#ddd]">{d.date}</div>
               <div className="w-[160px] px-[16px] py-[14px]"><span className="text-[18px] font-semibold" style={{ color }}>{label}</span></div>
             </motion.div>);
           })}
@@ -597,7 +641,7 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
         <div className="flex items-center gap-[16px] mb-[40px]"><div className="text-[#999]"><SysdeLogo size={40} /></div>
           <EditableText value={txt("riesgos-title", "Riesgos del Proyecto")} onChange={v => setTxt("riesgos-title", v)} className="text-[44px] font-bold text-[#c0392b]" tag="h2" /></div>
         <div className="space-y-[24px]">
-          {client.risks.map((risk, i) => {
+          {riesgoRows.map((risk, i) => {
             const ic = risk.impact === "alto" ? "#c0392b" : risk.impact === "medio" ? "#e67e22" : "#27ae60";
             const sl = risk.status === "abierto" ? "Abierto" : risk.status === "mitigado" ? "Mitigado" : "Cerrado";
             return (<motion.div key={i} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }}
@@ -611,8 +655,8 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
                   <span className="text-[16px] font-mono text-[#999]">{risk.id}</span>
                   <span className="px-[12px] py-[4px] rounded-full text-[14px] font-bold" style={{ background: risk.status === "abierto" ? "#fef2f2" : "#f0fdf4", color: risk.status === "abierto" ? "#c0392b" : "#27ae60" }}>{sl}</span>
                 </div>
-                <EditableText value={txt(`risk-${i}`, risk.description)} onChange={v => setTxt(`risk-${i}`, v)} className="text-[22px] text-[#333] leading-[1.4]" tag="p" multiline />
-                {risk.mitigation && <EditableText value={txt(`risk-m-${i}`, risk.mitigation)} onChange={v => setTxt(`risk-m-${i}`, v)} className="text-[18px] text-[#666] mt-[8px] italic" tag="p" />}
+                <p className="text-[22px] text-[#333] leading-[1.4]">{risk.description}</p>
+                {risk.mitigation && <p className="text-[18px] text-[#666] mt-[8px] italic">{risk.mitigation}</p>}
               </div>
             </motion.div>);
           })}
@@ -620,6 +664,7 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
       </div>
     </SlideLayout>
   );
+
 
   const slideCierre = (
     <SlideLayout key="close" className="bg-[#c0392b]">
@@ -648,6 +693,10 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
     if (currentSlideName === "Compromisos") return <CompromisosEditor rows={compromisos} onChange={saveComp} />;
     if (currentSlideName === "Coordinación") return <CoordinationEditor rows={coordItems} onChange={saveCoord} />;
     if (currentSlideName === "Próximos Pasos") return <CoordinationEditor rows={proxPasos} onChange={saveProx} />;
+    if (currentSlideName === "Línea de Tiempo") return <TimelineEditor rows={timelineRows} onChange={saveTimeline} />;
+    if (currentSlideName === "Avance") return <ActivityEditor items={activityItems} onChange={saveActivity} />;
+    if (currentSlideName === "Entregables") return <EntregablesEditor rows={entregableRows} onChange={saveEntregables} />;
+    if (currentSlideName === "Riesgos") return <RiesgosEditor rows={riesgoRows} onChange={saveRiesgos} />;
     return null;
   })();
 
