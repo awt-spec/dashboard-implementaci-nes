@@ -37,7 +37,7 @@ interface EditTaskDialogProps {
 
 const statusOptions = [
   { value: "pendiente", label: "Pendiente", emoji: "⏳", color: "bg-muted text-muted-foreground" },
-  { value: "en-progreso", label: "En Progreso", emoji: "🔄", color: "bg-info text-info-foreground" },
+  { value: "en-progreso", label: "Progreso", emoji: "🔄", color: "bg-info text-info-foreground" },
   { value: "bloqueada", label: "Bloqueada", emoji: "🚫", color: "bg-destructive text-destructive-foreground" },
   { value: "completada", label: "Completada", emoji: "✅", color: "bg-success text-success-foreground" },
 ];

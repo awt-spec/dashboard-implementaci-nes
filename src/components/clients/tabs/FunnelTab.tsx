@@ -43,7 +43,7 @@ interface FunnelItem {
 const STAGES = [
   { id: "identificado", label: "Identificado", icon: Eye, color: "var(--muted-foreground)", accent: "bg-muted/60", ring: "ring-muted-foreground/20", emoji: "🔍" },
   { id: "analisis", label: "Análisis", icon: Target, color: "var(--info)", accent: "bg-info/10", ring: "ring-info/20", emoji: "🔬" },
-  { id: "en-progreso", label: "En Progreso", icon: Clock, color: "var(--warning)", accent: "bg-warning/10", ring: "ring-warning/20", emoji: "⚡" },
+  { id: "en-progreso", label: "Progreso", icon: Clock, color: "var(--warning)", accent: "bg-warning/10", ring: "ring-warning/20", emoji: "⚡" },
   { id: "bloqueado", label: "Bloqueado", icon: Ban, color: "var(--destructive)", accent: "bg-destructive/10", ring: "ring-destructive/20", emoji: "🚫" },
   { id: "resuelto", label: "Resuelto", icon: CheckCircle2, color: "var(--success)", accent: "bg-success/10", ring: "ring-success/20", emoji: "✅" },
 ];

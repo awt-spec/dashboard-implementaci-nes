@@ -29,7 +29,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 const phaseStatusConfig = {
   completado: { label: "Completado", icon: CheckCircle2, className: "bg-success text-success-foreground" },
-  "en-progreso": { label: "En Progreso", icon: Loader2, className: "bg-warning text-warning-foreground" },
+  "en-progreso": { label: "Progreso", icon: Loader2, className: "bg-warning text-warning-foreground" },
   "por-iniciar": { label: "Por Iniciar", icon: Clock, className: "bg-info text-info-foreground" },
   pendiente: { label: "Pendiente", icon: Circle, className: "bg-muted text-muted-foreground" },
 };

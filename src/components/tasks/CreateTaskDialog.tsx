@@ -134,7 +134,7 @@ export function CreateTaskDialog({ clientId, clientName, trigger }: CreateTaskDi
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="pendiente">Pendiente</SelectItem>
-                  <SelectItem value="en-progreso">En Progreso</SelectItem>
+                  <SelectItem value="en-progreso">Progreso</SelectItem>
                   <SelectItem value="bloqueada">Bloqueada</SelectItem>
                   <SelectItem value="completada">Completada</SelectItem>
                 </SelectContent>
