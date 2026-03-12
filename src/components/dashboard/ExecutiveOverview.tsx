@@ -76,7 +76,7 @@ export function ExecutiveOverview() {
 
   const taskStatusData = [
     { name: "Completadas", value: tasksByStatus.completada, color: "hsl(var(--success))" },
-    { name: "En Progreso", value: tasksByStatus["en-progreso"], color: "hsl(var(--info))" },
+    { name: "Progreso", value: tasksByStatus["en-progreso"], color: "hsl(var(--info))" },
     { name: "Pendientes", value: tasksByStatus.pendiente, color: "hsl(var(--warning))" },
     { name: "Bloqueadas", value: tasksByStatus.bloqueada, color: "hsl(var(--destructive))" },
   ];
