@@ -417,35 +417,20 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
           </DrilldownPanel>
         );
       case "financial":
+      case "team":
         return (
-          <DrilldownPanel title="Detalle Financiero" icon={DollarSign} accent="hsl(var(--success))" onClose={() => setDrilldown(null)}>
-            <div className="space-y-[32px]">
-              <div className="grid grid-cols-4 gap-[24px]">
-                {[
-                  { label: "Valor Contrato", value: `$${(f.contractValue / 1000).toFixed(0)}K` },
-                  { label: "Facturado", value: `$${(f.billed / 1000).toFixed(0)}K` },
-                  { label: "Cobrado", value: `$${(f.paid / 1000).toFixed(0)}K` },
-                  { label: "Pendiente", value: `$${(f.pending / 1000).toFixed(0)}K` },
-                ].map((item, i) => (
-                  <motion.div key={item.label} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
-                    className="rounded-[20px] border-[2px] border-[hsl(var(--border))] p-[32px] text-center"
-                  >
-                    <p className="text-[48px] font-extrabold text-[hsl(var(--foreground))]">{item.value}</p>
-                    <p className="text-[22px] text-[hsl(var(--muted-foreground))] uppercase">{item.label}</p>
-                  </motion.div>
-                ))}
-              </div>
-              <div className="rounded-[20px] border-[2px] border-[hsl(var(--border))] p-[40px]">
-                <p className="text-[28px] font-semibold text-[hsl(var(--foreground))] mb-[24px]">Horas</p>
-                <div className="flex items-center gap-[24px]">
-                  <div className="flex-1 h-[24px] rounded-full bg-[hsl(var(--muted))] overflow-hidden">
-                    <motion.div className="h-full rounded-full bg-[hsl(var(--primary))]"
-                      initial={{ width: 0 }} animate={{ width: `${f.hoursEstimated > 0 ? Math.round((f.hoursUsed / f.hoursEstimated) * 100) : 0}%` }}
-                      transition={{ delay: 0.3, duration: 0.8 }} />
+          <DrilldownPanel title={`Equipo (${client.teamAssigned.length})`} icon={Users} accent="hsl(var(--primary))" onClose={() => setDrilldown(null)}>
+            <div className="grid grid-cols-2 gap-[24px]">
+              {client.teamAssigned.map((member, i) => (
+                <motion.div key={member} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+                  className="flex items-center gap-[24px] rounded-[20px] border-[2px] border-[hsl(var(--border))] p-[32px]"
+                >
+                  <div className="w-[64px] h-[64px] rounded-full bg-[hsl(var(--primary)/0.15)] flex items-center justify-center text-[28px] font-bold text-[hsl(var(--primary))]">
+                    {member.split(" ").map(w => w[0]).join("").slice(0, 2)}
                   </div>
-                  <span className="text-[28px] font-bold text-[hsl(var(--foreground))]">{f.hoursUsed}h / {f.hoursEstimated}h</span>
-                </div>
-              </div>
+                  <p className="text-[26px] font-medium text-[hsl(var(--foreground))]">{member}</p>
+                </motion.div>
+              ))}
             </div>
           </DrilldownPanel>
         );
