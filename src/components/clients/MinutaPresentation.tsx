@@ -162,8 +162,47 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
   });
   const saveProx = (rows: CoordinationRow[]) => { setProxPasos(rows); localStorage.setItem(`ppt-prox-${client.id}`, JSON.stringify(rows)); };
 
-  // Build data
-  const activityGroups = buildActivityGroups(client);
+  // Timeline / Gantt data (editable)
+  const [timelineRows, setTimelineRows] = useState<TimelineRow[]>(() => {
+    try { const r = localStorage.getItem(`ppt-timeline-${client.id}`); if (r) return JSON.parse(r); } catch {}
+    return client.phases.map(p => ({ name: p.name, startDate: p.startDate, endDate: p.endDate, status: p.status, progress: p.progress }));
+  });
+  const saveTimeline = (rows: TimelineRow[]) => { setTimelineRows(rows); localStorage.setItem(`ppt-timeline-${client.id}`, JSON.stringify(rows)); };
+
+  // Activity / Avance data (editable)
+  const [activityItems, setActivityItems] = useState<ActivityEditorItem[]>(() => {
+    try { const r = localStorage.getItem(`ppt-activity-${client.id}`); if (r) return JSON.parse(r); } catch {}
+    const groups = buildActivityGroups(client);
+    return groups.flatMap(g => g.items.map(it => ({ label: it.label, progress: it.progress, status: it.status, group: g.title })));
+  });
+  const saveActivity = (items: ActivityEditorItem[]) => { setActivityItems(items); localStorage.setItem(`ppt-activity-${client.id}`, JSON.stringify(items)); };
+
+  // Entregables data (editable)
+  const [entregableRows, setEntregableRows] = useState<EntregableRow[]>(() => {
+    try { const r = localStorage.getItem(`ppt-entreg-${client.id}`); if (r) return JSON.parse(r); } catch {}
+    return client.deliverables.map(d => ({ id: d.id, name: d.name, date: d.deliveredDate || d.dueDate, status: d.status }));
+  });
+  const saveEntregables = (rows: EntregableRow[]) => { setEntregableRows(rows); localStorage.setItem(`ppt-entreg-${client.id}`, JSON.stringify(rows)); };
+
+  // Riesgos data (editable)
+  const [riesgoRows, setRiesgoRows] = useState<RiesgoRow[]>(() => {
+    try { const r = localStorage.getItem(`ppt-riesgos-${client.id}`); if (r) return JSON.parse(r); } catch {}
+    return client.risks.map(r => ({ id: r.id, description: r.description, impact: r.impact, status: r.status, mitigation: r.mitigation || "" }));
+  });
+  const saveRiesgos = (rows: RiesgoRow[]) => { setRiesgoRows(rows); localStorage.setItem(`ppt-riesgos-${client.id}`, JSON.stringify(rows)); };
+
+  // Build data from editable activity items
+  const activityGroups = (() => {
+    const groups: ActivityGroup[] = [];
+    const groupMap = new Map<string, ActivityItem[]>();
+    for (const item of activityItems) {
+      if (!groupMap.has(item.group)) groupMap.set(item.group, []);
+      groupMap.get(item.group)!.push({ label: item.label, progress: item.progress, status: item.status });
+    }
+    for (const [title, items] of groupMap) groups.push({ title, items });
+    return groups;
+  })();
+
   const months = getMonthRange(client.phases, client.contractStart, client.contractEnd);
   const currentDatePos = getCurrentDatePosition(months);
 
@@ -179,7 +218,11 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
     toast.success(`${task.title}: ${newProgress}%`);
   };
 
-  const ganttRows = client.phases.map(p => ({ label: p.name.length > 40 ? p.name.substring(0, 37) + "..." : p.name, phase: p }));
+  // Build gantt rows from editable timeline data
+  const ganttRows = timelineRows.map(r => ({
+    label: r.name.length > 40 ? r.name.substring(0, 37) + "..." : r.name,
+    phase: { name: r.name, status: r.status, progress: r.progress, startDate: r.startDate, endDate: r.endDate } as Phase,
+  }));
   const managementPhase: Phase = { name: "Gestión de proyecto", status: "en-progreso", progress: client.progress, startDate: client.contractStart, endDate: client.contractEnd };
 
   const isAurum = client.id === "aurum";
@@ -190,7 +233,7 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
 
   // Determine which slides have an editor panel
   const currentSlideName = slideNames[currentSlide];
-  const hasEditor = ["Cronograma", "Compromisos", "Coordinación", "Próximos Pasos"].includes(currentSlideName);
+  const hasEditor = ["Cronograma", "Compromisos", "Coordinación", "Próximos Pasos", "Línea de Tiempo", "Avance", "Entregables", "Riesgos"].includes(currentSlideName);
 
   const next = useCallback(() => setCurrentSlide(s => Math.min(s + 1, totalSlides - 1)), [totalSlides]);
   const prev = useCallback(() => setCurrentSlide(s => Math.max(s - 1, 0)), []);
