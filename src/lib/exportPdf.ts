@@ -10,14 +10,14 @@ const STATUS_LABELS: Record<string, string> = {
 
 const PHASE_STATUS: Record<string, string> = {
   completado: "Completado",
-  "en-progreso": "En Progreso",
+  "en-progreso": "Progreso",
   "por-iniciar": "Por Iniciar",
   pendiente: "Pendiente",
 };
 
 const TASK_STATUS: Record<string, string> = {
   completada: "Completada",
-  "en-progreso": "En Progreso",
+  "en-progreso": "Progreso",
   bloqueada: "Bloqueada",
   pendiente: "Pendiente",
 };

@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 const columns = [
   { key: "pendiente", label: "Pendiente", color: "bg-muted", dragColor: "ring-muted-foreground/50 bg-muted/40" },
-  { key: "en-progreso", label: "En Progreso", color: "bg-info", dragColor: "ring-info bg-info/10" },
+  { key: "en-progreso", label: "Progreso", color: "bg-info", dragColor: "ring-info bg-info/10" },
   { key: "bloqueada", label: "Bloqueada", color: "bg-destructive", dragColor: "ring-destructive bg-destructive/10" },
   { key: "completada", label: "Completada", color: "bg-success", dragColor: "ring-success bg-success/10" },
 ];

@@ -10,7 +10,7 @@ import { motion } from "framer-motion";
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   completada: { label: "Completada", className: "bg-success text-success-foreground" },
-  "en-progreso": { label: "En Progreso", className: "bg-info text-info-foreground" },
+  "en-progreso": { label: "Progreso", className: "bg-info text-info-foreground" },
   bloqueada: { label: "Bloqueada", className: "bg-destructive text-destructive-foreground" },
   pendiente: { label: "Pendiente", className: "bg-warning text-warning-foreground" },
 };

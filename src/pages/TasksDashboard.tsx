@@ -82,7 +82,7 @@ export default function TasksDashboard() {
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
           { label: "Total", value: stats.total, icon: LayoutList, color: "text-foreground" },
-          { label: "En Progreso", value: stats.enProgreso, icon: Loader, color: "text-info" },
+          { label: "Progreso", value: stats.enProgreso, icon: Loader, color: "text-info" },
           { label: "Pendientes", value: stats.pendiente, icon: Clock, color: "text-warning" },
           { label: "Bloqueadas", value: stats.bloqueada, icon: AlertOctagon, color: "text-destructive" },
           { label: "Completadas", value: stats.completada, icon: CheckCircle2, color: "text-success" },
@@ -134,7 +134,7 @@ export default function TasksDashboard() {
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="pendiente">Pendiente</SelectItem>
-              <SelectItem value="en-progreso">En Progreso</SelectItem>
+              <SelectItem value="en-progreso">Progreso</SelectItem>
               <SelectItem value="bloqueada">Bloqueada</SelectItem>
               <SelectItem value="completada">Completada</SelectItem>
             </SelectContent>

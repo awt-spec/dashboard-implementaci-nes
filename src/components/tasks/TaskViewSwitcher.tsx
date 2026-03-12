@@ -79,7 +79,7 @@ export function TaskViewSwitcher({ tasks, clientId, clientName }: TaskViewSwitch
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="pendiente">Pendiente</SelectItem>
-              <SelectItem value="en-progreso">En Progreso</SelectItem>
+              <SelectItem value="en-progreso">Progreso</SelectItem>
               <SelectItem value="bloqueada">Bloqueada</SelectItem>
               <SelectItem value="completada">Completada</SelectItem>
             </SelectContent>

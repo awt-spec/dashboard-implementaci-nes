@@ -61,7 +61,7 @@ function ResumenSections({ sections }: { sections: ReportSection[] }) {
   ].filter(d => d.value > 0);
 
   const taskStatusData = [
-    { name: "En Progreso", value: allTasks.filter(t => t.status === "en-progreso").length, color: "hsl(var(--info))" },
+    { name: "Progreso", value: allTasks.filter(t => t.status === "en-progreso").length, color: "hsl(var(--info))" },
     { name: "Pendientes", value: allTasks.filter(t => t.status === "pendiente").length, color: "hsl(var(--warning))" },
     { name: "Bloqueadas", value: allTasks.filter(t => t.status === "bloqueada").length, color: "hsl(var(--destructive))" },
   ];
@@ -75,7 +75,7 @@ function ResumenSections({ sections }: { sections: ReportSection[] }) {
             { label: "Progreso Promedio", value: `${avgProgress}%` },
             { label: "Total Tareas", value: allTasks.length },
             { label: "Completadas", value: allTasks.filter(t => t.status === "completada").length },
-            { label: "En Progreso", value: allTasks.filter(t => t.status === "en-progreso").length },
+            { label: "Progreso", value: allTasks.filter(t => t.status === "en-progreso").length },
             { label: "Riesgos", value: totalRisks },
           ].map(k => (
             <Card key={k.label}>

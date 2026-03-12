@@ -24,7 +24,7 @@ import { toast } from "sonner";
 
 const taskStatusConfig = {
   completada: { label: "Completada", icon: CheckCircle2, className: "bg-success text-success-foreground" },
-  "en-progreso": { label: "En Progreso", icon: Loader2, className: "bg-warning text-warning-foreground" },
+  "en-progreso": { label: "Progreso", icon: Loader2, className: "bg-warning text-warning-foreground" },
   bloqueada: { label: "Bloqueada", icon: AlertOctagon, className: "bg-destructive text-destructive-foreground" },
   pendiente: { label: "Pendiente", icon: Circle, className: "bg-muted text-muted-foreground" },
 };

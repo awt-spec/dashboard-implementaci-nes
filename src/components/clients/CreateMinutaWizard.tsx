@@ -49,7 +49,7 @@ const STEPS = [
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
   "completada": { label: "Completada", color: "bg-success/15 text-success border-success/30", icon: CheckCircle2 },
-  "en-progreso": { label: "En Progreso", color: "bg-info/15 text-info border-info/30", icon: Clock },
+  "en-progreso": { label: "Progreso", color: "bg-info/15 text-info border-info/30", icon: Clock },
   "pendiente": { label: "Pendiente", color: "bg-warning/15 text-warning border-warning/30", icon: CircleDot },
   "bloqueada": { label: "Bloqueada", color: "bg-destructive/15 text-destructive border-destructive/30", icon: AlertTriangle },
 };
