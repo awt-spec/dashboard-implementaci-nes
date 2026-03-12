@@ -443,7 +443,7 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
     <SlideLayout key="cover" className="bg-gradient-to-br from-[hsl(var(--primary))] via-[hsl(var(--primary)/0.85)] to-[hsl(var(--primary)/0.7)]">
       <div className="absolute inset-0 flex flex-col justify-center px-[160px]">
         <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-          <p className="text-[28px] font-medium text-white/70 tracking-[6px] uppercase mb-[20px]">SYSDE · Gestión de Soporte</p>
+          <p className="text-[28px] font-medium text-white/70 tracking-[6px] uppercase mb-[20px]">SYSDE · Gestión de Implementaciones</p>
           <h1 className="text-[96px] font-extrabold text-white leading-[1.05] mb-[40px]">{client.name}</h1>
           <div className="w-[200px] h-[6px] bg-white/40 rounded-full mb-[40px]" />
           <p className="text-[36px] text-white/80 mb-[16px]">Informe de Estado</p>
