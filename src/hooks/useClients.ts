@@ -139,7 +139,10 @@ async function fetchClients(): Promise<Client[]> {
 
   if (clientsError) throw clientsError;
 
-  const clientsData = (clients || []) as unknown as DbClient[];
+  // If DB has no clients, return empty to trigger static fallback via ?? operator
+  if (!clients || clients.length === 0) return [] as Client[];
+
+  const clientsData = clients as unknown as DbClient[];
   const phasesData = (phases || []) as unknown as DbPhase[];
   const deliverablesData = (deliverables || []) as unknown as DbDeliverable[];
   const tasksData = (tasks || []) as unknown as DbTask[];
