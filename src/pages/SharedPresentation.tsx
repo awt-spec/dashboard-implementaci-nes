@@ -366,7 +366,7 @@ export default function SharedPresentation() {
   const blockedTasks = client.tasks.filter(t => t.status === "bloqueada");
   const pendingDeliverables = client.deliverables.filter(d => d.status === "pendiente" || d.status === "en-revision");
   const openRisks = client.risks.filter(r => r.status === "abierto");
-  const f = client.financials;
+  
   const getItemRating = (id: string) => itemRatings.find(r => r.id === id);
 
   const slideMap: Record<number, React.ReactNode> = {
