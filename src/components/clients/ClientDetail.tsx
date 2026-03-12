@@ -51,9 +51,6 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
     pausado: "bg-muted text-muted-foreground",
   };
 
-  const f = client.financials;
-  const hoursPercent = Math.round((f.hoursUsed / f.hoursEstimated) * 100);
-  const billedPercent = Math.round((f.billed / f.contractValue) * 100);
   const gaugeData = [{ value: client.progress }, { value: 100 - client.progress }];
 
   const handlePhaseUpdate = async (phaseName: string, field: string, value: string | number) => {
