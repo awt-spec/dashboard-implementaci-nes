@@ -283,8 +283,7 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
   const onlyPending = client.tasks.filter(t => t.status === "pendiente");
   const pendingDeliverables = client.deliverables.filter(d => d.status === "pendiente" || d.status === "en-revision");
   const openRisks = client.risks.filter(r => r.status === "abierto");
-  const f = client.financials;
-  const totalSlides = 7;
+  const totalSlides = 6;
 
   const next = useCallback(() => setCurrentSlide(s => Math.min(s + 1, totalSlides - 1)), []);
   const prev = useCallback(() => setCurrentSlide(s => Math.max(s - 1, 0)), []);
