@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 export function ExecutiveOverview() {
   const { data: clientsData, isLoading } = useClients();
-  const clients = clientsData ?? staticClients;
+  const clients = clientsData && clientsData.length > 0 ? clientsData : staticClients;
 
   const [filterClient, setFilterClient] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
