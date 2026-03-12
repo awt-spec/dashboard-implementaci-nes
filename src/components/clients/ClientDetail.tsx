@@ -107,8 +107,8 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: "Progreso", value: `${client.progress}%`, icon: TrendingUp },
-          { label: "Contrato", value: `$${(f.contractValue / 1000).toFixed(0)}K`, icon: DollarSign },
-          { label: "Horas Usadas", value: `${f.hoursUsed}/${f.hoursEstimated}`, icon: Clock },
+          { label: "Tareas", value: client.tasks.length.toString(), icon: CheckCircle2 },
+          { label: "Entregables", value: client.deliverables.length.toString(), icon: Clock },
           { label: "Riesgos", value: client.risks.filter(r => r.status === "abierto").length.toString(), icon: AlertTriangle },
         ].map((s, i) => (
           <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
