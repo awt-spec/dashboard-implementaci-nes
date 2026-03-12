@@ -665,35 +665,6 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
     </SlideLayout>
   );
 
-  const slideRiesgos = (
-    <SlideLayout key="riesgos" className="bg-white">
-      <div className="absolute inset-0 px-[80px] py-[60px]">
-        <div className="flex items-center gap-[16px] mb-[40px]"><div className="text-[#999]"><SysdeLogo size={40} /></div>
-          <EditableText value={txt("riesgos-title", "Riesgos del Proyecto")} onChange={v => setTxt("riesgos-title", v)} className="text-[44px] font-bold text-[#c0392b]" tag="h2" /></div>
-        <div className="space-y-[24px]">
-          {client.risks.map((risk, i) => {
-            const ic = risk.impact === "alto" ? "#c0392b" : risk.impact === "medio" ? "#e67e22" : "#27ae60";
-            const sl = risk.status === "abierto" ? "Abierto" : risk.status === "mitigado" ? "Mitigado" : "Cerrado";
-            return (<motion.div key={i} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }}
-              className="border-[2px] border-[#ddd] rounded-[8px] px-[32px] py-[24px] flex items-start gap-[24px]">
-              <div className="w-[80px] h-[80px] rounded-[8px] flex flex-col items-center justify-center shrink-0" style={{ background: ic + "20" }}>
-                <span className="text-[14px] font-bold uppercase" style={{ color: ic }}>Impacto</span>
-                <span className="text-[24px] font-extrabold capitalize" style={{ color: ic }}>{risk.impact}</span>
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-[16px] mb-[8px]">
-                  <span className="text-[16px] font-mono text-[#999]">{risk.id}</span>
-                  <span className="px-[12px] py-[4px] rounded-full text-[14px] font-bold" style={{ background: risk.status === "abierto" ? "#fef2f2" : "#f0fdf4", color: risk.status === "abierto" ? "#c0392b" : "#27ae60" }}>{sl}</span>
-                </div>
-                <EditableText value={txt(`risk-${i}`, risk.description)} onChange={v => setTxt(`risk-${i}`, v)} className="text-[22px] text-[#333] leading-[1.4]" tag="p" multiline />
-                {risk.mitigation && <EditableText value={txt(`risk-m-${i}`, risk.mitigation)} onChange={v => setTxt(`risk-m-${i}`, v)} className="text-[18px] text-[#666] mt-[8px] italic" tag="p" />}
-              </div>
-            </motion.div>);
-          })}
-        </div>
-      </div>
-    </SlideLayout>
-  );
 
   const slideCierre = (
     <SlideLayout key="close" className="bg-[#c0392b]">
