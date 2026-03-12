@@ -55,7 +55,7 @@ export function ShareReportDialog({ trigger }: ShareReportDialogProps) {
   const [mode, setMode] = useState<"resumen" | "cliente">("resumen");
   const [selectedClient, setSelectedClient] = useState<string>(clients[0]?.id || "");
   const [selectedSections, setSelectedSections] = useState<ReportSection[]>([
-    "kpis", "status-chart", "revenue-chart", "alerts", "progress-cards",
+    "kpis", "status-chart", "alerts", "progress-cards",
   ]);
   const [copied, setCopied] = useState(false);
 
