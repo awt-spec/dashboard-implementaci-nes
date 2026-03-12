@@ -689,6 +689,18 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
             </AnimatePresence>
             {currentSlide > 0 && <button onClick={prev} className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"><ChevronLeft className="h-6 w-6" /></button>}
             {currentSlide < totalSlides - 1 && <button onClick={next} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"><ChevronRight className="h-6 w-6" /></button>}
+            {/* Floating Edit Button */}
+            {hasEditor && !editorOpen && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                onClick={() => setEditorOpen(true)}
+                className="absolute bottom-6 right-6 z-20 flex items-center gap-2 px-5 py-3 rounded-2xl bg-[#c0392b] text-white font-bold text-sm shadow-[0_8px_32px_rgba(192,57,43,0.5)] hover:bg-[#a0302b] hover:shadow-[0_8px_40px_rgba(192,57,43,0.7)] transition-all hover:scale-105"
+              >
+                <Table2 className="h-5 w-5" />
+                Editar Tabla
+              </motion.button>
+            )}
           </div>
 
           {/* Bottom nav */}
