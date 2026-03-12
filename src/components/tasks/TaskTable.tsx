@@ -35,34 +35,34 @@ export function TaskTable({ tasks, clientId, onEdit }: TaskTableProps) {
     return (task as any).clientId || clientId;
   };
 
-  const handleStatusChange = async (task: ClientTask & { clientId?: string }, newStatus: string) => {
+  const getDbId = async (task: ClientTask & { clientId?: string }) => {
     const cid = getClientId(task);
-    const { data } = await supabase
-      .from("tasks").select("id").eq("client_id", cid).eq("original_id", task.id).single();
-    if (!data) return;
+    const { ensureTaskInDb } = await import("@/lib/ensureTaskInDb");
+    return ensureTaskInDb(task, cid);
+  };
+
+  const handleStatusChange = async (task: ClientTask & { clientId?: string }, newStatus: string) => {
+    const dbId = await getDbId(task);
+    if (!dbId) return;
     updateTask.mutate(
-      { id: data.id, updates: { status: newStatus } },
+      { id: dbId, updates: { status: newStatus } },
       { onSuccess: () => toast.success("Estado actualizado") }
     );
   };
 
   const handlePriorityChange = async (task: ClientTask & { clientId?: string }, newPriority: string) => {
-    const cid = getClientId(task);
-    const { data } = await supabase
-      .from("tasks").select("id").eq("client_id", cid).eq("original_id", task.id).single();
-    if (!data) return;
+    const dbId = await getDbId(task);
+    if (!dbId) return;
     updateTask.mutate(
-      { id: data.id, updates: { priority: newPriority } },
+      { id: dbId, updates: { priority: newPriority } },
       { onSuccess: () => toast.success("Prioridad actualizada") }
     );
   };
 
   const handleDelete = async (task: ClientTask & { clientId?: string }) => {
-    const cid = getClientId(task);
-    const { data } = await supabase
-      .from("tasks").select("id").eq("client_id", cid).eq("original_id", task.id).single();
-    if (!data) return;
-    deleteTask.mutate(data.id, {
+    const dbId = await getDbId(task);
+    if (!dbId) return;
+    deleteTask.mutate(dbId, {
       onSuccess: () => toast.success("Tarea eliminada"),
       onError: () => toast.error("Error al eliminar"),
     });

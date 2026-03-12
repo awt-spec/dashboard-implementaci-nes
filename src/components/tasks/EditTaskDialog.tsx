@@ -71,9 +71,9 @@ export function EditTaskDialog({ task, clientId, open, onOpenChange }: EditTaskD
   useEffect(() => {
     if (task && open) {
       (async () => {
-        const { data } = await supabase
-          .from("tasks").select("id").eq("client_id", clientId).eq("original_id", task.id).single();
-        setDbTaskId(data?.id || null);
+        const { ensureTaskInDb } = await import("@/lib/ensureTaskInDb");
+        const id = await ensureTaskInDb(task, clientId);
+        setDbTaskId(id);
       })();
     }
   }, [task, clientId, open]);
