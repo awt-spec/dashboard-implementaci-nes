@@ -283,8 +283,7 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
   const onlyPending = client.tasks.filter(t => t.status === "pendiente");
   const pendingDeliverables = client.deliverables.filter(d => d.status === "pendiente" || d.status === "en-revision");
   const openRisks = client.risks.filter(r => r.status === "abierto");
-  const f = client.financials;
-  const totalSlides = 7;
+  const totalSlides = 6;
 
   const next = useCallback(() => setCurrentSlide(s => Math.min(s + 1, totalSlides - 1)), []);
   const prev = useCallback(() => setCurrentSlide(s => Math.max(s - 1, 0)), []);
@@ -418,35 +417,20 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
           </DrilldownPanel>
         );
       case "financial":
+      case "team":
         return (
-          <DrilldownPanel title="Detalle Financiero" icon={DollarSign} accent="hsl(var(--success))" onClose={() => setDrilldown(null)}>
-            <div className="space-y-[32px]">
-              <div className="grid grid-cols-4 gap-[24px]">
-                {[
-                  { label: "Valor Contrato", value: `$${(f.contractValue / 1000).toFixed(0)}K` },
-                  { label: "Facturado", value: `$${(f.billed / 1000).toFixed(0)}K` },
-                  { label: "Cobrado", value: `$${(f.paid / 1000).toFixed(0)}K` },
-                  { label: "Pendiente", value: `$${(f.pending / 1000).toFixed(0)}K` },
-                ].map((item, i) => (
-                  <motion.div key={item.label} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
-                    className="rounded-[20px] border-[2px] border-[hsl(var(--border))] p-[32px] text-center"
-                  >
-                    <p className="text-[48px] font-extrabold text-[hsl(var(--foreground))]">{item.value}</p>
-                    <p className="text-[22px] text-[hsl(var(--muted-foreground))] uppercase">{item.label}</p>
-                  </motion.div>
-                ))}
-              </div>
-              <div className="rounded-[20px] border-[2px] border-[hsl(var(--border))] p-[40px]">
-                <p className="text-[28px] font-semibold text-[hsl(var(--foreground))] mb-[24px]">Horas</p>
-                <div className="flex items-center gap-[24px]">
-                  <div className="flex-1 h-[24px] rounded-full bg-[hsl(var(--muted))] overflow-hidden">
-                    <motion.div className="h-full rounded-full bg-[hsl(var(--primary))]"
-                      initial={{ width: 0 }} animate={{ width: `${f.hoursEstimated > 0 ? Math.round((f.hoursUsed / f.hoursEstimated) * 100) : 0}%` }}
-                      transition={{ delay: 0.3, duration: 0.8 }} />
+          <DrilldownPanel title={`Equipo (${client.teamAssigned.length})`} icon={Users} accent="hsl(var(--primary))" onClose={() => setDrilldown(null)}>
+            <div className="grid grid-cols-2 gap-[24px]">
+              {client.teamAssigned.map((member, i) => (
+                <motion.div key={member} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+                  className="flex items-center gap-[24px] rounded-[20px] border-[2px] border-[hsl(var(--border))] p-[32px]"
+                >
+                  <div className="w-[64px] h-[64px] rounded-full bg-[hsl(var(--primary)/0.15)] flex items-center justify-center text-[28px] font-bold text-[hsl(var(--primary))]">
+                    {member.split(" ").map(w => w[0]).join("").slice(0, 2)}
                   </div>
-                  <span className="text-[28px] font-bold text-[hsl(var(--foreground))]">{f.hoursUsed}h / {f.hoursEstimated}h</span>
-                </div>
-              </div>
+                  <p className="text-[26px] font-medium text-[hsl(var(--foreground))]">{member}</p>
+                </motion.div>
+              ))}
             </div>
           </DrilldownPanel>
         );
@@ -459,7 +443,7 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
     <SlideLayout key="cover" className="bg-gradient-to-br from-[hsl(var(--primary))] via-[hsl(var(--primary)/0.85)] to-[hsl(var(--primary)/0.7)]">
       <div className="absolute inset-0 flex flex-col justify-center px-[160px]">
         <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-          <p className="text-[28px] font-medium text-white/70 tracking-[6px] uppercase mb-[20px]">SYSDE · Gestión de Soporte</p>
+          <p className="text-[28px] font-medium text-white/70 tracking-[6px] uppercase mb-[20px]">SYSDE · Gestión de Implementaciones</p>
           <h1 className="text-[96px] font-extrabold text-white leading-[1.05] mb-[40px]">{client.name}</h1>
           <div className="w-[200px] h-[6px] bg-white/40 rounded-full mb-[40px]" />
           <p className="text-[36px] text-white/80 mb-[16px]">Informe de Estado</p>
@@ -591,38 +575,13 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
       </div>
     </SlideLayout>,
 
-    // Slide 5: Financial
-    <SlideLayout key="financial" className="bg-[hsl(var(--background))]">
+    // Slide 5: Team
+    <SlideLayout key="team" className="bg-[hsl(var(--background))]">
       <div className="absolute inset-0 px-[120px] py-[80px]">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <div className="flex items-center gap-[16px] mb-[48px]">
             <div className="w-[8px] h-[48px] rounded-full bg-[hsl(var(--success))]" />
-            <h2 className="text-[56px] font-bold text-[hsl(var(--foreground))]">Financiero & Recursos</h2>
-          </div>
-          <div className="grid grid-cols-2 gap-[32px] mb-[48px]">
-            {[
-              { label: "Valor Contrato", value: `$${(f.contractValue / 1000).toFixed(0)}K`, icon: DollarSign },
-              { label: "Facturado", value: `$${(f.billed / 1000).toFixed(0)}K`, icon: DollarSign, pct: f.contractValue > 0 ? Math.round((f.billed / f.contractValue) * 100) : 0 },
-              { label: "Cobrado", value: `$${(f.paid / 1000).toFixed(0)}K`, icon: DollarSign, pct: f.contractValue > 0 ? Math.round((f.paid / f.contractValue) * 100) : 0 },
-              { label: "Horas", value: `${f.hoursUsed}h / ${f.hoursEstimated}h`, icon: Clock, pct: f.hoursEstimated > 0 ? Math.round((f.hoursUsed / f.hoursEstimated) * 100) : 0 },
-            ].map((item, i) => (
-              <motion.div key={item.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + i * 0.1 }}
-                className="rounded-[24px] border-[2px] border-[hsl(var(--border))] p-[48px] cursor-pointer hover:border-[3px] hover:shadow-lg transition-all"
-                onClick={() => setDrilldown("financial")}
-              >
-                <item.icon style={{ width: 32, height: 32, color: "hsl(var(--primary))", marginBottom: 12 }} />
-                <p className="text-[56px] font-extrabold text-[hsl(var(--foreground))] leading-none">{item.value}</p>
-                <p className="text-[24px] text-[hsl(var(--muted-foreground))] mt-[8px] uppercase">{item.label}</p>
-                {item.pct !== undefined && (
-                  <div className="mt-[16px]">
-                    <div className="w-full h-[12px] rounded-full bg-[hsl(var(--muted))] overflow-hidden">
-                      <motion.div className="h-full rounded-full bg-[hsl(var(--primary))]" initial={{ width: 0 }} animate={{ width: `${item.pct}%` }} transition={{ delay: 0.4, duration: 0.6 }} />
-                    </div>
-                    <p className="text-[18px] text-[hsl(var(--muted-foreground))] mt-[6px]">{item.pct}%</p>
-                  </div>
-                )}
-              </motion.div>
-            ))}
+            <h2 className="text-[56px] font-bold text-[hsl(var(--foreground))]">Equipo & Recursos</h2>
           </div>
           <div className="rounded-[20px] border-[2px] border-[hsl(var(--border))] p-[40px] cursor-pointer hover:border-[3px] transition-all" onClick={() => setDrilldown("team")}>
             <div className="flex items-center gap-[12px] mb-[24px]">

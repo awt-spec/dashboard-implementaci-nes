@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import type { Client, Phase, Deliverable, ClientFinancials, ClientTask, Comment, Risk, ActionItem, MeetingMinute, EmailNotification, DeliverableDetail, TaskAssignee } from "@/data/projectData";
+import type { Client, Phase, Deliverable, ClientTask, Comment, Risk, ActionItem, MeetingMinute, EmailNotification, DeliverableDetail, TaskAssignee } from "@/data/projectData";
 
 // Types for database rows
 interface DbClient {
@@ -15,17 +15,6 @@ interface DbClient {
   status: string;
   progress: number;
   team_assigned: string[];
-}
-
-interface DbFinancials {
-  client_id: string;
-  contract_value: number;
-  billed: number;
-  paid: number;
-  pending: number;
-  hours_estimated: number;
-  hours_used: number;
-  monthly_breakdown: { month: string; estimated: number; actual: number }[];
 }
 
 interface DbPhase {
@@ -128,7 +117,6 @@ interface DbRisk {
 async function fetchClients(): Promise<Client[]> {
   const [
     { data: clients, error: clientsError },
-    { data: financials },
     { data: phases },
     { data: deliverables },
     { data: tasks },
@@ -139,7 +127,6 @@ async function fetchClients(): Promise<Client[]> {
     { data: risks },
   ] = await Promise.all([
     supabase.from("clients").select("*"),
-    supabase.from("client_financials").select("*"),
     supabase.from("phases").select("*"),
     supabase.from("deliverables").select("*"),
     supabase.from("tasks").select("*"),
@@ -153,7 +140,6 @@ async function fetchClients(): Promise<Client[]> {
   if (clientsError) throw clientsError;
 
   const clientsData = (clients || []) as unknown as DbClient[];
-  const financialsData = (financials || []) as unknown as DbFinancials[];
   const phasesData = (phases || []) as unknown as DbPhase[];
   const deliverablesData = (deliverables || []) as unknown as DbDeliverable[];
   const tasksData = (tasks || []) as unknown as DbTask[];
@@ -164,7 +150,6 @@ async function fetchClients(): Promise<Client[]> {
   const risksData = (risks || []) as unknown as DbRisk[];
 
   return clientsData.map((c): Client => {
-    const fin = financialsData.find(f => f.client_id === c.id);
     return {
       id: c.id,
       name: c.name,
@@ -177,15 +162,6 @@ async function fetchClients(): Promise<Client[]> {
       status: c.status as Client["status"],
       progress: c.progress,
       teamAssigned: c.team_assigned,
-      financials: {
-        contractValue: fin?.contract_value || 0,
-        billed: fin?.billed || 0,
-        paid: fin?.paid || 0,
-        pending: fin?.pending || 0,
-        hoursEstimated: fin?.hours_estimated || 0,
-        hoursUsed: fin?.hours_used || 0,
-        monthlyBreakdown: (fin?.monthly_breakdown || []) as { month: string; estimated: number; actual: number }[],
-      },
       phases: phasesData
         .filter(p => p.client_id === c.id)
         .map((p): Phase => ({
@@ -316,11 +292,6 @@ export function useCreateClient() {
     mutationFn: async (data: Omit<DbClient, "id"> & { id: string }) => {
       const { error } = await supabase.from("clients").insert(data);
       if (error) throw error;
-      const { error: finError } = await supabase.from("client_financials").insert({
-        client_id: data.id, contract_value: 0, billed: 0, paid: 0, pending: 0,
-        hours_estimated: 0, hours_used: 0, monthly_breakdown: [],
-      });
-      if (finError) throw finError;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["clients"] }); },
   });

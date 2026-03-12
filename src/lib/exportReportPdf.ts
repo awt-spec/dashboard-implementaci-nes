@@ -64,7 +64,6 @@ export function exportReportPdf({ mode, sections, client }: ExportOptions) {
 
 function exportResumenSections(doc: jsPDF, sections: ReportSection[], margin: number, contentW: number, startY: number, checkPage: (n: number) => void) {
   let y = startY;
-  const setY = (val: number) => { y = val; };
 
   if (sections.includes("kpis")) {
     checkPage(30);
@@ -74,38 +73,19 @@ function exportResumenSections(doc: jsPDF, sections: ReportSection[], margin: nu
     y += 7;
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
-    const totalRevenue = clients.reduce((s, c) => s + c.financials.contractValue, 0);
-    const totalBilled = clients.reduce((s, c) => s + c.financials.billed, 0);
-    const totalPaid = clients.reduce((s, c) => s + c.financials.paid, 0);
     const avgProgress = Math.round(clients.reduce((s, c) => s + c.progress, 0) / clients.length);
     const totalRisks = clients.reduce((s, c) => s + c.risks.filter(r => r.status === "abierto").length, 0);
+    const allTasks = clients.flatMap(c => c.tasks);
 
     const kpis = [
       `Clientes Activos: ${clients.filter(c => c.status === "activo").length}`,
       `En Riesgo: ${clients.filter(c => c.status === "en-riesgo").length}`,
       `Progreso Promedio: ${avgProgress}%`,
-      `Ingresos Totales: $${(totalRevenue / 1000).toFixed(0)}K`,
-      `Cobrado: $${(totalPaid / 1000).toFixed(0)}K`,
-      `Pendiente: $${((totalBilled - totalPaid) / 1000).toFixed(0)}K`,
+      `Total Tareas: ${allTasks.length}`,
+      `Tareas Completadas: ${allTasks.filter(t => t.status === "completada").length}`,
       `Riesgos Abiertos: ${totalRisks}`,
     ];
     kpis.forEach(k => { doc.text(`• ${k}`, margin + 2, y); y += 5; });
-    y += 5;
-  }
-
-  if (sections.includes("financials")) {
-    checkPage(30);
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.text("Resumen Financiero Global", margin, y);
-    y += 7;
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    clients.forEach(c => {
-      checkPage(6);
-      doc.text(`${c.name.substring(0, 30)}: Contrato $${(c.financials.contractValue / 1000).toFixed(0)}K | Facturado $${(c.financials.billed / 1000).toFixed(0)}K | Cobrado $${(c.financials.paid / 1000).toFixed(0)}K`, margin + 2, y);
-      y += 5;
-    });
     y += 5;
   }
 
@@ -147,23 +127,6 @@ function exportResumenSections(doc: jsPDF, sections: ReportSection[], margin: nu
     });
     y += 5;
   }
-
-  if (sections.includes("hours")) {
-    checkPage(20);
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.text("Utilización de Horas", margin, y);
-    y += 7;
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    clients.forEach(c => {
-      checkPage(6);
-      const pct = Math.round((c.financials.hoursUsed / c.financials.hoursEstimated) * 100);
-      doc.text(`${c.name.substring(0, 30)}: ${c.financials.hoursUsed}/${c.financials.hoursEstimated}h (${pct}%)`, margin + 2, y);
-      y += 5;
-    });
-    y += 5;
-  }
 }
 
 function exportClientSections(doc: jsPDF, sections: ReportSection[], client: Client, margin: number, contentW: number, startY: number, checkPage: (n: number) => void) {
@@ -187,30 +150,6 @@ function exportClientSections(doc: jsPDF, sections: ReportSection[], client: Cli
       doc.text(`${k}:`, margin, y);
       doc.setFont("helvetica", "normal");
       doc.text(v, margin + 30, y);
-      y += 5;
-    });
-    y += 5;
-  }
-
-  if (sections.includes("client-financials")) {
-    checkPage(30);
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.text("Resumen Financiero", margin, y);
-    y += 7;
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    const f = client.financials;
-    [
-      ["Valor Contrato", `$${f.contractValue.toLocaleString()}`],
-      ["Facturado", `$${f.billed.toLocaleString()}`],
-      ["Cobrado", `$${f.paid.toLocaleString()}`],
-      ["Horas", `${f.hoursUsed}/${f.hoursEstimated}`],
-    ].forEach(([k, v]) => {
-      doc.setFont("helvetica", "bold");
-      doc.text(`${k}:`, margin, y);
-      doc.setFont("helvetica", "normal");
-      doc.text(v, margin + 35, y);
       y += 5;
     });
     y += 5;

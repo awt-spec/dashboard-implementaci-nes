@@ -101,8 +101,8 @@ export function ClientList({ onSelectClient, selectedClientId }: ClientListProps
                       <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${client.progress}%` }} />
                     </div>
                     <div className="flex justify-between text-[10px] text-muted-foreground pt-1">
-                      <span>Contrato: ${(client.financials.contractValue / 1000).toFixed(0)}K</span>
-                      <span>Cobrado: ${(client.financials.paid / 1000).toFixed(0)}K</span>
+                      <span>{client.tasks.length} tareas</span>
+                      <span>{client.risks.filter(r => r.status === "abierto").length} riesgos</span>
                     </div>
                   </div>
                 </CardContent>

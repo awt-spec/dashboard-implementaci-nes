@@ -48,12 +48,12 @@ export function exportClientPdf(client: Client) {
   };
 
   // ── Header ──
-  doc.setFillColor(220, 38, 38); // red-600
+  doc.setFillColor(220, 38, 38);
   doc.rect(0, 0, pageW, 35, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(18);
   doc.setFont("helvetica", "bold");
-  doc.text("SYSDE — Factoring on Cloud", margin, 15);
+  doc.text("SYSDE — Gestión de Implementaciones", margin, 15);
   doc.setFontSize(11);
   doc.setFont("helvetica", "normal");
   doc.text(`Reporte de Cliente: ${client.name}`, margin, 23);
@@ -87,64 +87,6 @@ export function exportClientPdf(client: Client) {
   });
   y += 5;
 
-  // ── Resumen Financiero ──
-  checkPage(40);
-  doc.setFontSize(13);
-  doc.setFont("helvetica", "bold");
-  doc.text("Resumen Financiero", margin, y);
-  y += 8;
-
-  const f = client.financials;
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  const fin = [
-    ["Valor del Contrato", `$${f.contractValue.toLocaleString()}`],
-    ["Facturado", `$${f.billed.toLocaleString()} (${Math.round((f.billed / f.contractValue) * 100)}%)`],
-    ["Cobrado", `$${f.paid.toLocaleString()} (${Math.round((f.paid / f.contractValue) * 100)}%)`],
-    ["Pendiente de Cobro", `$${f.pending.toLocaleString()}`],
-    ["Horas", `${f.hoursUsed} / ${f.hoursEstimated} (${Math.round((f.hoursUsed / f.hoursEstimated) * 100)}%)`],
-  ];
-  fin.forEach(([k, v]) => {
-    doc.setFont("helvetica", "bold");
-    doc.text(`${k}:`, margin, y);
-    doc.setFont("helvetica", "normal");
-    doc.text(v, margin + 45, y);
-    y += 5;
-  });
-  y += 5;
-
-  // ── Monthly breakdown table ──
-  checkPage(50);
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.text("Desglose Mensual", margin, y);
-  y += 6;
-
-  // Table header
-  doc.setFillColor(240, 240, 240);
-  doc.rect(margin, y - 4, contentW, 6, "F");
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
-  doc.text("Mes", margin + 2, y);
-  doc.text("Estimado", margin + 50, y);
-  doc.text("Real", margin + 85, y);
-  doc.text("Diferencia", margin + 115, y);
-  y += 6;
-
-  doc.setFont("helvetica", "normal");
-  f.monthlyBreakdown.forEach((m) => {
-    checkPage(6);
-    const diff = m.actual - m.estimated;
-    doc.text(m.month, margin + 2, y);
-    doc.text(`$${m.estimated.toLocaleString()}`, margin + 50, y);
-    doc.text(`$${m.actual.toLocaleString()}`, margin + 85, y);
-    doc.setTextColor(diff > 0 ? 220 : 34, diff > 0 ? 38 : 139, diff > 0 ? 38 : 34);
-    doc.text(`${diff >= 0 ? "+" : ""}$${diff.toLocaleString()}`, margin + 115, y);
-    doc.setTextColor(30, 30, 30);
-    y += 5;
-  });
-  y += 5;
-
   // ── Fases ──
   checkPage(30);
   doc.setFontSize(13);
@@ -162,7 +104,6 @@ export function exportClientPdf(client: Client) {
     doc.text(`${statusLabel} — ${phase.progress}%`, margin + 70, y);
     doc.text(`${phase.startDate} → ${phase.endDate}`, margin + 115, y);
 
-    // Progress bar
     y += 3;
     doc.setFillColor(230, 230, 230);
     doc.rect(margin, y, contentW * 0.5, 2, "F");
@@ -276,7 +217,7 @@ export function exportClientPdf(client: Client) {
     const ph = doc.internal.pageSize.getHeight();
     doc.setFontSize(7);
     doc.setTextColor(150, 150, 150);
-    doc.text(`SYSDE Factoring on Cloud — Reporte Confidencial`, margin, ph - 8);
+    doc.text(`SYSDE Gestión de Implementaciones — Reporte Confidencial`, margin, ph - 8);
     doc.text(`Página ${i} de ${totalPages}`, pageW - margin - 25, ph - 8);
   }
 

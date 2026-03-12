@@ -366,7 +366,7 @@ export default function SharedPresentation() {
   const blockedTasks = client.tasks.filter(t => t.status === "bloqueada");
   const pendingDeliverables = client.deliverables.filter(d => d.status === "pendiente" || d.status === "en-revision");
   const openRisks = client.risks.filter(r => r.status === "abierto");
-  const f = client.financials;
+  
   const getItemRating = (id: string) => itemRatings.find(r => r.id === id);
 
   const slideMap: Record<number, React.ReactNode> = {
@@ -551,28 +551,16 @@ export default function SharedPresentation() {
         <div className="absolute inset-0 px-[120px] py-[80px]">
           <div className="flex items-center gap-[16px] mb-[48px]">
             <div className="w-[8px] h-[48px] rounded-full bg-[hsl(var(--success))]" />
-            <h2 className="text-[56px] font-bold text-[hsl(var(--foreground))]">Financiero & Recursos</h2>
+            <h2 className="text-[56px] font-bold text-[hsl(var(--foreground))]">Equipo Asignado</h2>
           </div>
-          <div className="grid grid-cols-2 gap-[32px] mb-[48px]">
-            {[
-              { label: "Valor Contrato", value: `$${(f.contractValue / 1000).toFixed(0)}K`, pct: undefined },
-              { label: "Facturado", value: `$${(f.billed / 1000).toFixed(0)}K`, pct: f.contractValue > 0 ? Math.round((f.billed / f.contractValue) * 100) : 0 },
-              { label: "Cobrado", value: `$${(f.paid / 1000).toFixed(0)}K`, pct: f.contractValue > 0 ? Math.round((f.paid / f.contractValue) * 100) : 0 },
-              { label: "Horas", value: `${f.hoursUsed}h / ${f.hoursEstimated}h`, pct: f.hoursEstimated > 0 ? Math.round((f.hoursUsed / f.hoursEstimated) * 100) : 0 },
-            ].map((item, i) => (
-              <motion.div key={item.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-                className="rounded-[24px] border-[2px] border-[hsl(var(--border))] p-[48px]">
-                <p className="text-[56px] font-extrabold text-[hsl(var(--foreground))] leading-none">{item.value}</p>
-                <p className="text-[24px] text-[hsl(var(--muted-foreground))] mt-[8px] uppercase">{item.label}</p>
-                {item.pct !== undefined && (
-                  <div className="mt-[16px]">
-                    <div className="w-full h-[12px] rounded-full bg-[hsl(var(--muted))] overflow-hidden">
-                      <motion.div className="h-full rounded-full bg-[hsl(var(--primary))]" initial={{ width: 0 }} animate={{ width: `${item.pct}%` }} transition={{ delay: 0.4, duration: 0.6 }} />
-                    </div>
-                    <p className="text-[18px] text-[hsl(var(--muted-foreground))] mt-[6px]">{item.pct}%</p>
-                  </div>
-                )}
-              </motion.div>
+          <div className="flex flex-wrap gap-[16px]">
+            {client.teamAssigned.map(member => (
+              <div key={member} className="flex items-center gap-[12px] bg-[hsl(var(--secondary))] rounded-full px-[24px] py-[12px]">
+                <div className="w-[36px] h-[36px] rounded-full bg-[hsl(var(--primary)/0.15)] flex items-center justify-center text-[16px] font-bold text-[hsl(var(--primary))]">
+                  {member.split(" ").map(w => w[0]).join("").slice(0, 2)}
+                </div>
+                <span className="text-[22px] text-[hsl(var(--foreground))]">{member}</span>
+              </div>
             ))}
           </div>
         </div>

@@ -12,22 +12,17 @@ import { exportReportPdf } from "@/lib/exportReportPdf";
 export type ReportSection =
   | "kpis"
   | "status-chart"
-  | "revenue-chart"
-  | "monthly-trend"
-  | "hours"
   | "tasks"
   | "deliverables"
   | "priority"
   | "team"
-  | "financials"
   | "alerts"
   | "progress-cards"
   | "client-info"
   | "client-phases"
   | "client-deliverables"
   | "client-tasks"
-  | "client-risks"
-  | "client-financials";
+  | "client-risks";
 
 interface SectionOption {
   id: ReportSection;
@@ -38,14 +33,10 @@ interface SectionOption {
 const SECTIONS: SectionOption[] = [
   { id: "kpis", label: "KPIs Principales", group: "resumen" },
   { id: "status-chart", label: "Estado de Clientes (Gráfico)", group: "resumen" },
-  { id: "revenue-chart", label: "Ingresos por Cliente", group: "resumen" },
-  { id: "monthly-trend", label: "Tendencia Mensual", group: "resumen" },
-  { id: "hours", label: "Utilización de Horas", group: "resumen" },
   { id: "tasks", label: "Tareas por Estado", group: "resumen" },
   { id: "deliverables", label: "Entregables", group: "resumen" },
   { id: "priority", label: "Prioridad de Tareas", group: "resumen" },
   { id: "team", label: "Equipo por Cliente", group: "resumen" },
-  { id: "financials", label: "Resumen Financiero Global", group: "resumen" },
   { id: "alerts", label: "Alertas Críticas", group: "resumen" },
   { id: "progress-cards", label: "Progreso por Cliente", group: "resumen" },
   { id: "client-info", label: "Información General", group: "cliente" },
@@ -53,7 +44,6 @@ const SECTIONS: SectionOption[] = [
   { id: "client-deliverables", label: "Entregables del Cliente", group: "cliente" },
   { id: "client-tasks", label: "Tareas del Cliente", group: "cliente" },
   { id: "client-risks", label: "Riesgos del Cliente", group: "cliente" },
-  { id: "client-financials", label: "Financiero del Cliente", group: "cliente" },
 ];
 
 interface ShareReportDialogProps {
@@ -65,7 +55,7 @@ export function ShareReportDialog({ trigger }: ShareReportDialogProps) {
   const [mode, setMode] = useState<"resumen" | "cliente">("resumen");
   const [selectedClient, setSelectedClient] = useState<string>(clients[0]?.id || "");
   const [selectedSections, setSelectedSections] = useState<ReportSection[]>([
-    "kpis", "status-chart", "revenue-chart", "alerts", "progress-cards",
+    "kpis", "status-chart", "alerts", "progress-cards",
   ]);
   const [copied, setCopied] = useState(false);
 
@@ -112,9 +102,9 @@ export function ShareReportDialog({ trigger }: ShareReportDialogProps) {
   const handleModeChange = (newMode: "resumen" | "cliente") => {
     setMode(newMode);
     if (newMode === "resumen") {
-      setSelectedSections(["kpis", "status-chart", "revenue-chart", "alerts", "progress-cards"]);
+      setSelectedSections(["kpis", "status-chart", "alerts", "progress-cards"]);
     } else {
-      setSelectedSections(["client-info", "client-phases", "client-deliverables", "client-tasks", "client-risks", "client-financials"]);
+      setSelectedSections(["client-info", "client-phases", "client-deliverables", "client-tasks", "client-risks"]);
     }
   };
 

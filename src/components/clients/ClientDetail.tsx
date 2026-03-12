@@ -7,13 +7,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import {
-  Building2, MapPin, Mail, User, Calendar, DollarSign, TrendingUp,
+  Building2, MapPin, Mail, User, Calendar, TrendingUp,
   CheckCircle2, Loader2, Circle, Clock, AlertTriangle,
   ArrowLeft, Download
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { exportClientPdf } from "@/lib/exportPdf";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { ResponsiveContainer } from "recharts";
 import { motion } from "framer-motion";
 import { PieChart, Pie, Cell } from "recharts";
 import { ActionItemsTab } from "./tabs/ActionItemsTab";
@@ -51,9 +51,6 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
     pausado: "bg-muted text-muted-foreground",
   };
 
-  const f = client.financials;
-  const hoursPercent = Math.round((f.hoursUsed / f.hoursEstimated) * 100);
-  const billedPercent = Math.round((f.billed / f.contractValue) * 100);
   const gaugeData = [{ value: client.progress }, { value: 100 - client.progress }];
 
   const handlePhaseUpdate = async (phaseName: string, field: string, value: string | number) => {
@@ -110,8 +107,8 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: "Progreso", value: `${client.progress}%`, icon: TrendingUp },
-          { label: "Contrato", value: `$${(f.contractValue / 1000).toFixed(0)}K`, icon: DollarSign },
-          { label: "Horas Usadas", value: `${f.hoursUsed}/${f.hoursEstimated}`, icon: Clock },
+          { label: "Tareas", value: client.tasks.length.toString(), icon: CheckCircle2 },
+          { label: "Entregables", value: client.deliverables.length.toString(), icon: Clock },
           { label: "Riesgos", value: client.risks.filter(r => r.status === "abierto").length.toString(), icon: AlertTriangle },
         ].map((s, i) => (
           <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
@@ -197,7 +194,7 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
           <TabsTrigger value="tareas">Tareas</TabsTrigger>
           <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
           <TabsTrigger value="entregables">Entregables</TabsTrigger>
-          <TabsTrigger value="financiero">Financiero</TabsTrigger>
+          
           <TabsTrigger value="pendientes">Pendientes</TabsTrigger>
           <TabsTrigger value="minutas">Minutas</TabsTrigger>
           <TabsTrigger value="riesgos">Riesgos</TabsTrigger>
@@ -214,49 +211,6 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
 
         <TabsContent value="pipeline">
           <FunnelTab client={client} />
-        </TabsContent>
-
-        <TabsContent value="financiero">
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                { label: "Valor Contrato", value: `$${(f.contractValue / 1000).toFixed(0)}K`, pct: null },
-                { label: "Facturado", value: `$${(f.billed / 1000).toFixed(0)}K`, pct: billedPercent },
-                { label: "Cobrado", value: `$${(f.paid / 1000).toFixed(0)}K`, pct: Math.round((f.paid / f.contractValue) * 100) },
-                { label: "Horas", value: `${f.hoursUsed}h / ${f.hoursEstimated}h`, pct: hoursPercent },
-              ].map(item => (
-                <Card key={item.label}>
-                  <CardContent className="p-4">
-                    <p className="text-[10px] text-muted-foreground uppercase">{item.label}</p>
-                    <p className="text-lg font-bold text-foreground mt-1">{item.value}</p>
-                    {item.pct !== null && (
-                      <div className="mt-2">
-                        <Progress value={item.pct} className="h-1.5" />
-                        <p className="text-[10px] text-muted-foreground mt-1">{item.pct}% del total</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-            <Card>
-              <CardContent className="p-5">
-                <h3 className="text-sm font-semibold text-foreground mb-3">Estimado vs Real por Mes</h3>
-                <div className="h-56">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={f.monthlyBreakdown}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="month" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                      <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={v => `$${v / 1000}K`} />
-                      <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} formatter={(v: number) => [`$${(v / 1000).toFixed(1)}K`]} />
-                      <Bar dataKey="estimated" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} name="Estimado" />
-                      <Bar dataKey="actual" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Real" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         </TabsContent>
 
         <TabsContent value="pendientes">
