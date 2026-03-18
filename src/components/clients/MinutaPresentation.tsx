@@ -706,29 +706,34 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
       {open && (
         <motion.div ref={wrapperRef} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           className="fixed inset-0 z-50 bg-black/95 flex flex-col">
-          {/* Top bar */}
-          <div className="flex items-center justify-between px-4 py-2 bg-black/50 shrink-0">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={onClose} className="text-white/70 hover:text-white hover:bg-white/10"><X className="h-5 w-5" /></Button>
-              <span className="text-white/50 text-sm">{slideNames[currentSlide]} · {currentSlide + 1}/{totalSlides}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              {hasEditor && (
-                <Button variant="ghost" size="sm" onClick={() => setEditorOpen(!editorOpen)}
-                  className={cn("text-xs gap-1.5 transition-colors",
-                    editorOpen ? "text-[#ff6b6b] bg-[#c0392b]/20 hover:bg-[#c0392b]/30 hover:text-[#ff6b6b]" : "text-white/70 hover:text-white hover:bg-white/10")}>
-                  <Table2 className="h-3.5 w-3.5" /> {editorOpen ? "Cerrar Editor" : "Editar Tabla"}
+          {/* Top bar - hidden in fullscreen */}
+          {!isFullscreen && (
+            <div className="flex items-center justify-between px-4 py-2 bg-black/50 shrink-0">
+              <div className="flex items-center gap-3">
+                <Button variant="ghost" size="icon" onClick={onClose} className="text-white/70 hover:text-white hover:bg-white/10"><X className="h-5 w-5" /></Button>
+                <span className="text-white/50 text-sm">{slideNames[currentSlide]} · {currentSlide + 1}/{totalSlides}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {hasEditor && (
+                  <Button variant="ghost" size="sm" onClick={() => setEditorOpen(!editorOpen)}
+                    className={cn("text-xs gap-1.5 transition-colors",
+                      editorOpen ? "text-[#ff6b6b] bg-[#c0392b]/20 hover:bg-[#c0392b]/30 hover:text-[#ff6b6b]" : "text-white/70 hover:text-white hover:bg-white/10")}>
+                    <Table2 className="h-3.5 w-3.5" /> {editorOpen ? "Cerrar Editor" : "Editar Tabla"}
+                  </Button>
+                )}
+                <span className="text-white/30 text-xs flex items-center gap-1"><Pencil className="h-3 w-3" /> Clic para editar</span>
+                <Button variant="ghost" size="sm" onClick={handleExportPdf} className="text-white/70 hover:text-white hover:bg-white/10 text-xs gap-1.5">
+                  <Download className="h-3.5 w-3.5" /> Exportar PDF
                 </Button>
-              )}
-              <span className="text-white/30 text-xs flex items-center gap-1"><Pencil className="h-3 w-3" /> Clic para editar</span>
-              <Button variant="ghost" size="sm" onClick={onContinue} className="text-white/70 hover:text-white hover:bg-white/10 text-xs gap-1.5">
-                <Sparkles className="h-3.5 w-3.5" /> Crear Minuta
-              </Button>
-              <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="text-white/70 hover:text-white hover:bg-white/10">
-                {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-              </Button>
+                <Button variant="ghost" size="sm" onClick={onContinue} className="text-white/70 hover:text-white hover:bg-white/10 text-xs gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5" /> Crear Minuta
+                </Button>
+                <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="text-white/70 hover:text-white hover:bg-white/10">
+                  {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Slide area */}
           <div className="flex-1 relative overflow-hidden" ref={containerRef}>
@@ -739,8 +744,8 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
             </AnimatePresence>
             {currentSlide > 0 && <button onClick={prev} className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"><ChevronLeft className="h-6 w-6" /></button>}
             {currentSlide < totalSlides - 1 && <button onClick={next} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"><ChevronRight className="h-6 w-6" /></button>}
-            {/* Floating Edit Button */}
-            {hasEditor && !editorOpen && (
+            {/* Floating Edit Button - hidden in fullscreen */}
+            {!isFullscreen && hasEditor && !editorOpen && (
               <motion.button
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -750,6 +755,12 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
                 <Table2 className="h-5 w-5" />
                 Editar Tabla
               </motion.button>
+            )}
+            {/* Fullscreen exit hint */}
+            {isFullscreen && (
+              <button onClick={toggleFullscreen} className="absolute top-4 right-4 z-20 p-2 rounded-full bg-black/30 hover:bg-black/50 text-white/50 hover:text-white transition-colors">
+                <Minimize2 className="h-5 w-5" />
+              </button>
             )}
           </div>
 
