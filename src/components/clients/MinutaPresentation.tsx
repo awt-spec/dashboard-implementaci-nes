@@ -764,13 +764,15 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
             )}
           </div>
 
-          {/* Bottom nav */}
-          <div className="flex items-center justify-center gap-1.5 px-4 py-3 bg-black/50 shrink-0 flex-wrap">
-            {slideNames.map((name, i) => (
-              <button key={i} onClick={() => setCurrentSlide(i)}
-                className={cn("px-2.5 py-1 rounded-lg text-[11px] transition-all", i === currentSlide ? "bg-white/20 text-white font-medium" : "text-white/40 hover:text-white/70 hover:bg-white/5")}>{name}</button>
-            ))}
-          </div>
+          {/* Bottom nav - hidden in fullscreen */}
+          {!isFullscreen && (
+            <div className="flex items-center justify-center gap-1.5 px-4 py-3 bg-black/50 shrink-0 flex-wrap">
+              {slideNames.map((name, i) => (
+                <button key={i} onClick={() => setCurrentSlide(i)}
+                  className={cn("px-2.5 py-1 rounded-lg text-[11px] transition-all", i === currentSlide ? "bg-white/20 text-white font-medium" : "text-white/40 hover:text-white/70 hover:bg-white/5")}>{name}</button>
+              ))}
+            </div>
+          )}
 
           {/* Side Panel Editor */}
           <TableEditorPanel
