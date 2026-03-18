@@ -3,9 +3,10 @@ import { type Client, type ClientTask, type Phase } from "@/data/projectData";
 import { Button } from "@/components/ui/button";
 import {
   ChevronLeft, ChevronRight, Maximize2, Minimize2, X,
-  FileText, Sparkles, ArrowRight, Pencil, Table2,
+  FileText, Sparkles, ArrowRight, Pencil, Table2, Download,
   BarChart3, Target, Zap, Clock, CheckCircle2, AlertTriangle, ListChecks
 } from "lucide-react";
+import sysdeLogo from "@/assets/sysde_logo.png";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
