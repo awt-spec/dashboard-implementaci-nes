@@ -673,7 +673,7 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
           <EditableText value={txt("cierre-1", "Somos tus aliados para la")} onChange={v => setTxt("cierre-1", v)} className="text-[48px] text-white/80 mb-[16px]" tag="h2" />
           <EditableText value={txt("cierre-2", "Transformación Digital de tu negocio")} onChange={v => setTxt("cierre-2", v)} className="text-[64px] font-extrabold text-white mb-[48px]" tag="h2" />
           <div className="w-[200px] h-[3px] bg-white/30 rounded-full mx-auto mb-[48px]" />
-          <div className="text-white mb-[48px]"><SysdeLogo size={80} /></div>
+          <img src={sysdeLogo} alt="Sysde" className="h-[100px] object-contain mx-auto mb-[48px]" />
           <EditableText value={txt("cierre-brand", "Sysde")} onChange={v => setTxt("cierre-brand", v)} className="text-[28px] text-white/60 mb-[64px]" tag="p" />
           <button onClick={onContinue} className="px-[56px] py-[20px] rounded-[16px] bg-white text-[#c0392b] text-[28px] font-bold hover:bg-white/90 transition-colors shadow-2xl flex items-center gap-[16px] mx-auto">
             <FileText style={{ width: 28, height: 28 }} />Crear Nueva Minuta<ArrowRight style={{ width: 28, height: 28 }} />
