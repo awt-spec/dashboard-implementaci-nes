@@ -136,7 +136,7 @@ export function CronogramaEditor({ rows, onChange }: CronogramaEditorProps) {
                 exit={{ height: 0, opacity: 0 }}
                 className="overflow-hidden"
               >
-                <div className="px-3 pb-3 space-y-2 border-t border-white/5 pt-2">
+                <div className="px-3 pb-3 space-y-2 border-t border-white/5 pt-2" onClick={e => e.stopPropagation()}>
                   <div>
                     <label className="text-[10px] uppercase tracking-wider text-white/40 mb-1 block">Nombre</label>
                     <input value={row.name} onChange={e => updateRow(i, "name", e.target.value)}
