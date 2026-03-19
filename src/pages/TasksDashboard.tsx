@@ -32,6 +32,7 @@ export default function TasksDashboard() {
   const [view, setView] = useState<ViewType>("kanban");
   const [filterClient, setFilterClient] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [filterVisibility, setFilterVisibility] = useState("all");
   const [search, setSearch] = useState("");
   const [editingTask, setEditingTask] = useState<TaskWithClient | null>(null);
   const [editOpen, setEditOpen] = useState(false);
