@@ -129,6 +129,14 @@ export function ExecutiveOverview() {
 
   return (
     <div className="space-y-6">
+      {/* Presentation button */}
+      <div className="flex justify-end">
+        <Button onClick={() => setShowPresentation(true)} className="gap-2">
+          <Presentation className="h-4 w-4" /> Presentación Ejecutiva
+        </Button>
+      </div>
+      <ExecutivePresentation clients={clients} open={showPresentation} onClose={() => setShowPresentation(false)} />
+
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
         {kpis.map((kpi, i) => (
