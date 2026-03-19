@@ -106,7 +106,7 @@ function EditableProgressBar({ item, clientId, onUpdate }: { item: ActivityItem;
         ) : (
           <span
             className={cn("text-[18px] font-bold w-[60px] text-right cursor-default",
-              item.status === "in-progress" ? "text-[#c0392b]" : "text-[#e67e22]")}>{item.progress}%</button>
+              item.status === "in-progress" ? "text-[#c0392b]" : "text-[#e67e22]")}>{item.progress}%</span>
         )
       )}
     </div>
