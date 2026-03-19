@@ -33,6 +33,9 @@ interface MinutaPresentationProps {
   onContinue: () => void;
 }
 
+// Context for fullscreen state (disables editing)
+const PresentationModeContext = createContext(false);
+
 // ── Activity Groups ─────────────────────────────────────
 
 interface ActivityItem { label: string; progress: number; taskId?: number; status: "completed" | "in-progress" | "pending"; }
