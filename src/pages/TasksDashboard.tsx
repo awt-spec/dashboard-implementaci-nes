@@ -52,6 +52,7 @@ export default function TasksDashboard() {
   const filtered = allTasks.filter(t => {
     if (filterClient !== "all" && t.clientId !== filterClient) return false;
     if (filterStatus !== "all" && t.status !== filterStatus) return false;
+    if (filterVisibility !== "all" && ((t as any).visibility || "externa") !== filterVisibility) return false;
     if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
