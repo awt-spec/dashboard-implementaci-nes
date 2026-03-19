@@ -251,8 +251,38 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
   }, [open, next, prev, isFullscreen, editorOpen]);
 
   const toggleFullscreen = async () => {
-    if (!isFullscreen && wrapperRef.current) { await wrapperRef.current.requestFullscreen?.(); setIsFullscreen(true); }
-    else { await document.exitFullscreen?.(); setIsFullscreen(false); }
+    if (!isFullscreen && wrapperRef.current) {
+      setEditorOpen(false); // Close editor when going fullscreen
+      await wrapperRef.current.requestFullscreen?.();
+      setIsFullscreen(true);
+    } else {
+      await document.exitFullscreen?.();
+      setIsFullscreen(false);
+    }
+  };
+
+  // PDF export using html2canvas
+  const handleExportPdf = async () => {
+    const html2canvas = (await import("html2canvas")).default;
+    const jsPDF = (await import("jspdf")).default;
+    const doc = new jsPDF({ orientation: "landscape", unit: "px", format: [1920, 1080] });
+    const savedSlide = currentSlide;
+    toast.info("Exportando PDF...");
+
+    for (let i = 0; i < slides.length; i++) {
+      setCurrentSlide(i);
+      await new Promise(r => setTimeout(r, 400)); // wait for animation
+      const slideEl = containerRef.current?.querySelector(".absolute.w-\\[1920px\\]") as HTMLElement | null;
+      if (!slideEl) continue;
+      const canvas = await html2canvas(slideEl, { scale: 1, useCORS: true, width: 1920, height: 1080 });
+      const imgData = canvas.toDataURL("image/jpeg", 0.92);
+      if (i > 0) doc.addPage([1920, 1080], "landscape");
+      doc.addImage(imgData, "JPEG", 0, 0, 1920, 1080);
+    }
+
+    setCurrentSlide(savedSlide);
+    doc.save(`Presentacion_${client.name.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.pdf`);
+    toast.success("PDF exportado");
   };
 
   useEffect(() => {

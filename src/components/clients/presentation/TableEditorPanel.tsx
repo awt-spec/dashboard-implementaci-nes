@@ -17,31 +17,42 @@ export function TableEditorPanel({ open, onClose, title, children }: TableEditor
   return (
     <AnimatePresence>
       {open && (
-        <motion.div
-          initial={{ x: "100%" }}
-          animate={{ x: 0 }}
-          exit={{ x: "100%" }}
-          transition={{ type: "spring", damping: 30, stiffness: 300 }}
-          className="fixed right-0 top-0 bottom-0 w-[480px] bg-[#1a1a2e] border-l border-white/10 z-[60] flex flex-col shadow-2xl"
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-[#c0392b] flex items-center justify-center">
-                <Table2 className="h-4 w-4 text-white" />
+        <>
+          {/* Backdrop to prevent clicks from reaching the slide */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[55]"
+            onClick={onClose}
+          />
+          <motion.div
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ type: "spring", damping: 30, stiffness: 300 }}
+            className="fixed right-0 top-0 bottom-0 w-[480px] bg-[#1a1a2e] border-l border-white/10 z-[60] flex flex-col shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-lg bg-[#c0392b] flex items-center justify-center">
+                  <Table2 className="h-4 w-4 text-white" />
+                </div>
+                <span className="text-white font-semibold text-sm">{title}</span>
               </div>
-              <span className="text-white font-semibold text-sm">{title}</span>
+              <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-colors">
+                <X className="h-4 w-4" />
+              </button>
             </div>
-            <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-colors">
-              <X className="h-4 w-4" />
-            </button>
-          </div>
 
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-2">
-            {children}
-          </div>
-        </motion.div>
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {children}
+            </div>
+          </motion.div>
+        </>
       )}
     </AnimatePresence>
   );
