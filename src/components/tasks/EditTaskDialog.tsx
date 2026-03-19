@@ -60,6 +60,7 @@ export function EditTaskDialog({ task, clientId, open, onOpenChange }: EditTaskD
   const [priority, setPriority] = useState("media");
   const [owner, setOwner] = useState("");
   const [dueDate, setDueDate] = useState<Date>();
+  const [visibility, setVisibility] = useState("externa");
   const [saving, setSaving] = useState(false);
   const [dbTaskId, setDbTaskId] = useState<string | null>(null);
   const [newComment, setNewComment] = useState("");
