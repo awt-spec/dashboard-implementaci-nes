@@ -123,6 +123,7 @@ export function EditTaskDialog({ task, clientId, open, onOpenChange }: EditTaskD
           description: description.trim() || null,
           status,
           priority,
+          visibility,
           owner: owner.trim(),
           due_date: dueDate ? format(dueDate, "yyyy-MM-dd") : task!.dueDate,
           assignees: [{ name: owner.trim(), avatar: owner.trim().split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 3) }],
