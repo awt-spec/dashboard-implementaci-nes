@@ -775,7 +775,11 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
           <div className="flex-1 relative overflow-hidden" ref={containerRef}>
             <AnimatePresence mode="wait">
               <motion.div key={currentSlide} initial={{ opacity: 0, x: 60 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -60 }} transition={{ duration: 0.3 }} className="absolute inset-0">
-                <ScaledSlide containerRef={containerRef}>{slides[currentSlide]}</ScaledSlide>
+                <ScaledSlide containerRef={containerRef} slideRef={slideRef}>
+                  <EditDisabledContext.Provider value={isFullscreen}>
+                    {slides[currentSlide]}
+                  </EditDisabledContext.Provider>
+                </ScaledSlide>
               </motion.div>
             </AnimatePresence>
             {currentSlide > 0 && <button onClick={prev} className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"><ChevronLeft className="h-6 w-6" /></button>}
