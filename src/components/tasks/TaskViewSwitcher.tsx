@@ -31,6 +31,7 @@ export function TaskViewSwitcher({ tasks, clientId, clientName }: TaskViewSwitch
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterPriority, setFilterPriority] = useState("all");
+  const [filterVisibility, setFilterVisibility] = useState("all");
   const [editingTask, setEditingTask] = useState<ClientTask | null>(null);
   const [editOpen, setEditOpen] = useState(false);
 
@@ -43,6 +44,7 @@ export function TaskViewSwitcher({ tasks, clientId, clientName }: TaskViewSwitch
     if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
     if (filterStatus !== "all" && t.status !== filterStatus) return false;
     if (filterPriority !== "all" && t.priority !== filterPriority) return false;
+    if (filterVisibility !== "all" && ((t as any).visibility || "externa") !== filterVisibility) return false;
     return true;
   });
 
