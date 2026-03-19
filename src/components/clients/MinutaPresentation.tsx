@@ -776,7 +776,7 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
             <AnimatePresence mode="wait">
               <motion.div key={currentSlide} initial={{ opacity: 0, x: 60 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -60 }} transition={{ duration: 0.3 }} className="absolute inset-0">
                 <ScaledSlide containerRef={containerRef} slideRef={slideRef}>
-                  <EditDisabledContext.Provider value={isFullscreen}>
+                  <EditDisabledContext.Provider value={true}>
                     {slides[currentSlide]}
                   </EditDisabledContext.Provider>
                 </ScaledSlide>
