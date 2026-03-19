@@ -1,6 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, createContext, useContext } from "react";
 import { cn } from "@/lib/utils";
 import { Pencil } from "lucide-react";
+
+// Context to disable editing (e.g., in fullscreen mode)
+export const EditDisabledContext = createContext(false);
 
 // ── Slide Layout ────────────────────────────────────────
 
