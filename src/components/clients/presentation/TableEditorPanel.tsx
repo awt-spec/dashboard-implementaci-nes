@@ -374,9 +374,7 @@ export function CoordinationEditor({ rows, onChange }: CoordinationEditorProps) 
           <AnimatePresence>
             {selectedRow === i && (
               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                <div className="px-3 pb-3 space-y-2 border-t border-white/5 pt-2">
-                  <div>
-                    <label className="text-[10px] uppercase tracking-wider text-white/40 mb-1 block">Asunto</label>
+                <div className="px-3 pb-3 space-y-2 border-t border-white/5 pt-2" onClick={e => e.stopPropagation()}>
                     <textarea value={row.subject} onChange={e => updateRow(i, "subject", e.target.value)}
                       className="w-full bg-white/10 border border-white/10 rounded-md px-3 py-1.5 text-[13px] text-white outline-none focus:border-[#c0392b] resize-none" rows={2} />
                   </div>
