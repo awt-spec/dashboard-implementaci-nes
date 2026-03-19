@@ -122,6 +122,7 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const slideRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const qc = useQueryClient();
 
