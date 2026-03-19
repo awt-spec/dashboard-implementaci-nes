@@ -25,6 +25,7 @@ export function CreateTaskDialog({ clientId, clientName, trigger }: CreateTaskDi
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("media");
   const [status, setStatus] = useState("pendiente");
+  const [visibility, setVisibility] = useState("externa");
   const [owner, setOwner] = useState("");
   const [dueDate, setDueDate] = useState<Date>();
   const createTask = useCreateTask();
@@ -35,6 +36,7 @@ export function CreateTaskDialog({ clientId, clientName, trigger }: CreateTaskDi
     setDescription("");
     setPriority("media");
     setStatus("pendiente");
+    setVisibility("externa");
     setOwner("");
     setDueDate(undefined);
   };
@@ -52,6 +54,7 @@ export function CreateTaskDialog({ clientId, clientName, trigger }: CreateTaskDi
         description: description.trim() || null,
         priority,
         status,
+        visibility,
         owner: owner.trim(),
         due_date: format(dueDate, "yyyy-MM-dd"),
         original_id: taskNumber.trim() ? parseInt(taskNumber.trim(), 10) || Date.now() : Date.now(),
@@ -116,7 +119,7 @@ export function CreateTaskDialog({ clientId, clientName, trigger }: CreateTaskDi
               </Popover>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="text-xs font-medium text-foreground">Prioridad</label>
               <Select value={priority} onValueChange={setPriority}>
@@ -137,6 +140,16 @@ export function CreateTaskDialog({ clientId, clientName, trigger }: CreateTaskDi
                   <SelectItem value="en-progreso">Progreso</SelectItem>
                   <SelectItem value="bloqueada">Bloqueada</SelectItem>
                   <SelectItem value="completada">Completada</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-foreground">Tipo</label>
+              <Select value={visibility} onValueChange={setVisibility}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="externa">🌐 Externa</SelectItem>
+                  <SelectItem value="interna">🔒 Interna</SelectItem>
                 </SelectContent>
               </Select>
             </div>

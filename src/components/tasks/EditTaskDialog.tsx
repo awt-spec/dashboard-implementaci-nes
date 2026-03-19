@@ -60,6 +60,7 @@ export function EditTaskDialog({ task, clientId, open, onOpenChange }: EditTaskD
   const [priority, setPriority] = useState("media");
   const [owner, setOwner] = useState("");
   const [dueDate, setDueDate] = useState<Date>();
+  const [visibility, setVisibility] = useState("externa");
   const [saving, setSaving] = useState(false);
   const [dbTaskId, setDbTaskId] = useState<string | null>(null);
   const [newComment, setNewComment] = useState("");
@@ -99,6 +100,7 @@ export function EditTaskDialog({ task, clientId, open, onOpenChange }: EditTaskD
       setPriority(task.priority);
       setOwner(task.owner);
       setDueDate(parseDueDate(task.dueDate));
+      setVisibility((task as any).visibility || "externa");
       setNewComment("");
     }
   }, [task]);
@@ -121,6 +123,7 @@ export function EditTaskDialog({ task, clientId, open, onOpenChange }: EditTaskD
           description: description.trim() || null,
           status,
           priority,
+          visibility,
           owner: owner.trim(),
           due_date: dueDate ? format(dueDate, "yyyy-MM-dd") : task!.dueDate,
           assignees: [{ name: owner.trim(), avatar: owner.trim().split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 3) }],
@@ -245,6 +248,30 @@ export function EditTaskDialog({ task, clientId, open, onOpenChange }: EditTaskD
                     {priorityOptions.map(o => (
                       <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </motion.div>
+
+              {/* Visibility */}
+              <motion.div
+                className="rounded-xl border border-border p-3 space-y-2 hover:border-primary/30 transition-colors col-span-2"
+                whileHover={{ scale: 1.01 }}
+              >
+                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase font-semibold">
+                  {visibility === "interna" ? "🔒" : "🌐"} Tipo de Tarea
+                </div>
+                <Select value={visibility} onValueChange={setVisibility}>
+                  <SelectTrigger className="border-0 p-0 h-auto shadow-none">
+                    <Badge variant="outline" className={cn(
+                      "text-xs px-2.5 py-1 border",
+                      visibility === "interna" ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary border-primary/20"
+                    )}>
+                      {visibility === "interna" ? "🔒 Interna" : "🌐 Externa"}
+                    </Badge>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="externa">🌐 Externa (visible para cliente)</SelectItem>
+                    <SelectItem value="interna">🔒 Interna (solo equipo)</SelectItem>
                   </SelectContent>
                 </Select>
               </motion.div>

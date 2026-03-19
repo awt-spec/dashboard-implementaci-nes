@@ -32,6 +32,7 @@ export default function TasksDashboard() {
   const [view, setView] = useState<ViewType>("kanban");
   const [filterClient, setFilterClient] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [filterVisibility, setFilterVisibility] = useState("all");
   const [search, setSearch] = useState("");
   const [editingTask, setEditingTask] = useState<TaskWithClient | null>(null);
   const [editOpen, setEditOpen] = useState(false);
@@ -51,6 +52,7 @@ export default function TasksDashboard() {
   const filtered = allTasks.filter(t => {
     if (filterClient !== "all" && t.clientId !== filterClient) return false;
     if (filterStatus !== "all" && t.status !== filterStatus) return false;
+    if (filterVisibility !== "all" && ((t as any).visibility || "externa") !== filterVisibility) return false;
     if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
@@ -137,6 +139,14 @@ export default function TasksDashboard() {
               <SelectItem value="en-progreso">Progreso</SelectItem>
               <SelectItem value="bloqueada">Bloqueada</SelectItem>
               <SelectItem value="completada">Completada</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={filterVisibility} onValueChange={setFilterVisibility}>
+            <SelectTrigger className="h-8 w-[110px] text-xs"><SelectValue placeholder="Tipo" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="externa">🌐 Externa</SelectItem>
+              <SelectItem value="interna">🔒 Interna</SelectItem>
             </SelectContent>
           </Select>
           <CreateTaskDialog clientId={activeClientId} />

@@ -31,6 +31,7 @@ export function TaskViewSwitcher({ tasks, clientId, clientName }: TaskViewSwitch
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterPriority, setFilterPriority] = useState("all");
+  const [filterVisibility, setFilterVisibility] = useState("all");
   const [editingTask, setEditingTask] = useState<ClientTask | null>(null);
   const [editOpen, setEditOpen] = useState(false);
 
@@ -43,6 +44,7 @@ export function TaskViewSwitcher({ tasks, clientId, clientName }: TaskViewSwitch
     if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
     if (filterStatus !== "all" && t.status !== filterStatus) return false;
     if (filterPriority !== "all" && t.priority !== filterPriority) return false;
+    if (filterVisibility !== "all" && ((t as any).visibility || "externa") !== filterVisibility) return false;
     return true;
   });
 
@@ -91,6 +93,14 @@ export function TaskViewSwitcher({ tasks, clientId, clientName }: TaskViewSwitch
               <SelectItem value="alta">Alta</SelectItem>
               <SelectItem value="media">Media</SelectItem>
               <SelectItem value="baja">Baja</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={filterVisibility} onValueChange={setFilterVisibility}>
+            <SelectTrigger className="h-8 w-[110px] text-xs"><SelectValue placeholder="Tipo" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="externa">🌐 Externa</SelectItem>
+              <SelectItem value="interna">🔒 Interna</SelectItem>
             </SelectContent>
           </Select>
           <CreateTaskDialog clientId={clientId} clientName={clientName} />
