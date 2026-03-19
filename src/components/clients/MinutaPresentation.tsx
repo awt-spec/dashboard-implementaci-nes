@@ -277,10 +277,10 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
 
     for (let i = 0; i < slides.length; i++) {
       setCurrentSlide(i);
-      await new Promise(r => setTimeout(r, 400)); // wait for animation
-      const slideEl = containerRef.current?.querySelector(".absolute.w-\\[1920px\\]") as HTMLElement | null;
+      await new Promise(r => setTimeout(r, 600)); // wait for animation + render
+      const slideEl = slideRef.current;
       if (!slideEl) continue;
-      const canvas = await html2canvas(slideEl, { scale: 1, useCORS: true, width: 1920, height: 1080 });
+      const canvas = await html2canvas(slideEl, { scale: 1, useCORS: true, width: 1920, height: 1080, windowWidth: 1920, windowHeight: 1080 });
       const imgData = canvas.toDataURL("image/jpeg", 0.92);
       if (i > 0) doc.addPage([1920, 1080], "landscape");
       doc.addImage(imgData, "JPEG", 0, 0, 1920, 1080);
