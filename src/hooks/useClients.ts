@@ -424,8 +424,19 @@ export function useDeleteRisk() {
 export function useCreateMeetingMinute() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { client_id: string; original_id: string; title: string; date: string; attendees: string[]; summary: string; agreements: string[]; action_items: string[]; next_meeting?: string; presentation_snapshot?: any }) => {
-      const { error } = await supabase.from("meeting_minutes").insert([data] as any);
+    mutationFn: async (data: { client_id: string; original_id: string; title: string; date: string; attendees: string[]; summary: string; agreements: string[]; action_items: string[]; next_meeting?: string | null; presentation_snapshot?: any }) => {
+      const { error } = await supabase.from("meeting_minutes").insert([{
+        client_id: data.client_id,
+        original_id: data.original_id,
+        title: data.title,
+        date: data.date,
+        attendees: data.attendees,
+        summary: data.summary,
+        agreements: data.agreements,
+        action_items: data.action_items,
+        next_meeting: data.next_meeting ?? null,
+        presentation_snapshot: data.presentation_snapshot ?? null,
+      }]);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["clients"] }); },

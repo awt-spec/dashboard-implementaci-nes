@@ -131,14 +131,17 @@ export function CreateMinutaWizard({ client, clientId, open, onClose }: CreateMi
     createMinute.mutate({
       client_id: clientId, original_id: `MM-${Date.now()}`, title: title.trim(), date,
       attendees, summary: summary.trim(), agreements, action_items: actionItems,
-      next_meeting: nextMeeting || undefined,
+      next_meeting: nextMeeting || null,
       presentation_snapshot: snapshot,
     }, {
       onSuccess: () => {
         toast.success(`Minuta creada${enabledUpdates.length > 0 ? ` · ${enabledUpdates.length} tareas actualizadas` : ""}`);
         resetAndClose();
       },
-      onError: () => toast.error("Error al crear minuta"),
+      onError: (err) => {
+        console.error("Error creating minuta:", err);
+        toast.error(`Error al crear minuta: ${err.message || "desconocido"}`);
+      },
     });
   };
 
