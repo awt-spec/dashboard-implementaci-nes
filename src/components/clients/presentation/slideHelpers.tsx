@@ -94,7 +94,7 @@ export function EditableText({
     );
   }
 
-  if (disabled) {
+  if (isDisabled) {
     return <Tag className={className}>{value}</Tag>;
   }
 
