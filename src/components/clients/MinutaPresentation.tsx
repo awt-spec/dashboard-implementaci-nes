@@ -757,7 +757,7 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
                     <Table2 className="h-3.5 w-3.5" /> {editorOpen ? "Cerrar Editor" : "Editar Tabla"}
                   </Button>
                 )}
-                <span className="text-white/30 text-xs flex items-center gap-1"><Pencil className="h-3 w-3" /> Clic para editar</span>
+                <span className="text-white/30 text-xs flex items-center gap-1"><Pencil className="h-3 w-3" /> Edite vía panel lateral</span>
                 <Button variant="ghost" size="sm" onClick={handleExportPdf} className="text-white/70 hover:text-white hover:bg-white/10 text-xs gap-1.5">
                   <Download className="h-3.5 w-3.5" /> Exportar PDF
                 </Button>
