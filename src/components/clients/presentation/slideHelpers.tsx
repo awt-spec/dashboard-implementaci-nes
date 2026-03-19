@@ -89,6 +89,10 @@ export function EditableText({
     );
   }
 
+  if (disabled) {
+    return <Tag className={className}>{value}</Tag>;
+  }
+
   return (
     <Tag
       className={cn(className, "cursor-pointer hover:outline hover:outline-2 hover:outline-[#c0392b]/30 hover:outline-offset-2 rounded transition-all group/et relative")}
