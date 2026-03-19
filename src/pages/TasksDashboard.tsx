@@ -141,6 +141,14 @@ export default function TasksDashboard() {
               <SelectItem value="completada">Completada</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={filterVisibility} onValueChange={setFilterVisibility}>
+            <SelectTrigger className="h-8 w-[110px] text-xs"><SelectValue placeholder="Tipo" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="externa">🌐 Externa</SelectItem>
+              <SelectItem value="interna">🔒 Interna</SelectItem>
+            </SelectContent>
+          </Select>
           <CreateTaskDialog clientId={activeClientId} />
         </div>
       </div>
