@@ -6,7 +6,7 @@ import {
   FileText, Sparkles, ArrowRight, Pencil, Table2, Download,
   BarChart3, Target, Zap, Clock, CheckCircle2, AlertTriangle, ListChecks
 } from "lucide-react";
-import sysdeLogo from "@/assets/sysde_logo.png";
+import sysdeLogo from "@/assets/sysde_default_logo.png";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
