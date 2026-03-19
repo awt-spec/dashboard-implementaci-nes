@@ -612,6 +612,7 @@ export type Database = {
           status: string
           title: string
           updated_at: string
+          visibility: string
         }
         Insert: {
           assignees?: Json
@@ -626,6 +627,7 @@ export type Database = {
           status: string
           title: string
           updated_at?: string
+          visibility?: string
         }
         Update: {
           assignees?: Json
@@ -640,6 +642,7 @@ export type Database = {
           status?: string
           title?: string
           updated_at?: string
+          visibility?: string
         }
         Relationships: [
           {

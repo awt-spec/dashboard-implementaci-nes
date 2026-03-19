@@ -1,0 +1,1 @@
+ALTER TABLE public.tasks ADD COLUMN visibility text NOT NULL DEFAULT 'externa';
