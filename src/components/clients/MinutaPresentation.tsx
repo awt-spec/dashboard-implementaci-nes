@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { ensureTaskInDb } from "@/lib/ensureTaskInDb";
 import {
   SlideLayout, ScaledSlide, SysdeLogo, EditableText, EditableCell,
+  EditDisabledContext,
   loadSlideTexts, saveSlideTexts, extractProgress,
   getMonthRange, getPhaseBarStyle, getCurrentDatePosition,
   type SlideTexts,
