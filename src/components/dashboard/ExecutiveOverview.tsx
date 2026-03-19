@@ -17,6 +17,7 @@ export function ExecutiveOverview() {
   const [filterClient, setFilterClient] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
   const [filterImpact, setFilterImpact] = useState<string>("all");
+  const [showPresentation, setShowPresentation] = useState(false);
 
   if (isLoading) {
     return (
