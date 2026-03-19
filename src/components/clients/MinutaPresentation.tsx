@@ -104,9 +104,9 @@ function EditableProgressBar({ item, clientId, onUpdate }: { item: ActivityItem;
             <span className="text-[16px] text-[#666]">%</span>
           </div>
         ) : (
-          <button onClick={() => { if (item.taskId && !isFullscreenMode) { setVal(item.progress.toString()); setEditing(true); } }}
-            className={cn("text-[18px] font-bold w-[60px] text-right", item.taskId && !isFullscreenMode ? "cursor-pointer hover:text-[#c0392b]" : "cursor-default",
-              item.status === "in-progress" ? "text-[#c0392b]" : "text-[#e67e22]")}>{item.progress}%</button>
+          <span
+            className={cn("text-[18px] font-bold w-[60px] text-right cursor-default",
+              item.status === "in-progress" ? "text-[#c0392b]" : "text-[#e67e22]")}>{item.progress}%</span>
         )
       )}
     </div>
@@ -757,7 +757,7 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
                     <Table2 className="h-3.5 w-3.5" /> {editorOpen ? "Cerrar Editor" : "Editar Tabla"}
                   </Button>
                 )}
-                <span className="text-white/30 text-xs flex items-center gap-1"><Pencil className="h-3 w-3" /> Clic para editar</span>
+                <span className="text-white/30 text-xs flex items-center gap-1"><Pencil className="h-3 w-3" /> Edite vía panel lateral</span>
                 <Button variant="ghost" size="sm" onClick={handleExportPdf} className="text-white/70 hover:text-white hover:bg-white/10 text-xs gap-1.5">
                   <Download className="h-3.5 w-3.5" /> Exportar PDF
                 </Button>
@@ -776,7 +776,7 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
             <AnimatePresence mode="wait">
               <motion.div key={currentSlide} initial={{ opacity: 0, x: 60 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -60 }} transition={{ duration: 0.3 }} className="absolute inset-0">
                 <ScaledSlide containerRef={containerRef} slideRef={slideRef}>
-                  <EditDisabledContext.Provider value={isFullscreen}>
+                  <EditDisabledContext.Provider value={true}>
                     {slides[currentSlide]}
                   </EditDisabledContext.Provider>
                 </ScaledSlide>
