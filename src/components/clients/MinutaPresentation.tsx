@@ -139,7 +139,7 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
 
   // Compromisos data
   const [compromisos, setCompromisos] = useState<CompromisoRow[]>(() => {
-    try { const r = localStorage.getItem(`ppt-comp-${client.id}`); return r ? JSON.parse(r) : aurumCompromisosRows; } catch { return aurumCompromisosRows; }
+    try { const r = localStorage.getItem(`ppt-comp-${client.id}`); return r ? JSON.parse(r) : (client.id === "aurum" ? aurumCompromisosRows : []); } catch { return client.id === "aurum" ? aurumCompromisosRows : []; }
   });
   const saveComp = (rows: CompromisoRow[]) => { setCompromisos(rows); localStorage.setItem(`ppt-comp-${client.id}`, JSON.stringify(rows)); };
 
