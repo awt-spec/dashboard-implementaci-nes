@@ -251,6 +251,30 @@ export function EditTaskDialog({ task, clientId, open, onOpenChange }: EditTaskD
                   </SelectContent>
                 </Select>
               </motion.div>
+
+              {/* Visibility */}
+              <motion.div
+                className="rounded-xl border border-border p-3 space-y-2 hover:border-primary/30 transition-colors col-span-2"
+                whileHover={{ scale: 1.01 }}
+              >
+                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase font-semibold">
+                  {visibility === "interna" ? "🔒" : "🌐"} Tipo de Tarea
+                </div>
+                <Select value={visibility} onValueChange={setVisibility}>
+                  <SelectTrigger className="border-0 p-0 h-auto shadow-none">
+                    <Badge variant="outline" className={cn(
+                      "text-xs px-2.5 py-1 border",
+                      visibility === "interna" ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary border-primary/20"
+                    )}>
+                      {visibility === "interna" ? "🔒 Interna" : "🌐 Externa"}
+                    </Badge>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="externa">🌐 Externa (visible para cliente)</SelectItem>
+                    <SelectItem value="interna">🔒 Interna (solo equipo)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </motion.div>
             </div>
 
             {/* Properties */}
