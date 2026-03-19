@@ -100,6 +100,7 @@ export function EditTaskDialog({ task, clientId, open, onOpenChange }: EditTaskD
       setPriority(task.priority);
       setOwner(task.owner);
       setDueDate(parseDueDate(task.dueDate));
+      setVisibility((task as any).visibility || "externa");
       setNewComment("");
     }
   }, [task]);

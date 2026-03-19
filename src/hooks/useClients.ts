@@ -320,6 +320,7 @@ export function useCreateTask() {
       client_id: string; title: string; description: string | null;
       priority: string; status: string; owner: string; due_date: string;
       original_id: number; assignees: Record<string, string>[];
+      visibility?: string;
     }) => {
       const { error } = await supabase.from("tasks").insert([data]);
       if (error) throw error;
