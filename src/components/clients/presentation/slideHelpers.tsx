@@ -53,6 +53,8 @@ export function EditableText({
   tag?: "span" | "p" | "h1" | "h2" | "h3" | "li" | "div";
   disabled?: boolean;
 }) {
+  const contextDisabled = useContext(EditDisabledContext);
+  const isDisabled = disabled || contextDisabled;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
