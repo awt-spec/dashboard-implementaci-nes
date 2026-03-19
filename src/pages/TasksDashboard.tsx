@@ -9,10 +9,11 @@ import { EditTaskDialog } from "@/components/tasks/EditTaskDialog";
 import { CreateTaskDialog } from "@/components/tasks/CreateTaskDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { LayoutList, Columns3, Calendar, GanttChart, Search, Loader2, CheckCircle2, AlertOctagon, Clock, Loader } from "lucide-react";
+import { LayoutList, Columns3, Calendar, GanttChart, Search, Loader2, CheckCircle2, AlertOctagon, Clock, Loader, Globe, Lock } from "lucide-react";
 
 type ViewType = "table" | "kanban" | "calendar" | "timeline";
 
@@ -32,7 +33,6 @@ export default function TasksDashboard() {
   const [view, setView] = useState<ViewType>("kanban");
   const [filterClient, setFilterClient] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [filterVisibility, setFilterVisibility] = useState("all");
   const [search, setSearch] = useState("");
   const [editingTask, setEditingTask] = useState<TaskWithClient | null>(null);
   const [editOpen, setEditOpen] = useState(false);
@@ -49,13 +49,16 @@ export default function TasksDashboard() {
     c.tasks.map(t => ({ ...t, clientId: c.id, clientName: c.name }))
   );
 
-  const filtered = allTasks.filter(t => {
-    if (filterClient !== "all" && t.clientId !== filterClient) return false;
-    if (filterStatus !== "all" && t.status !== filterStatus) return false;
-    if (filterVisibility !== "all" && ((t as any).visibility || "externa") !== filterVisibility) return false;
-    if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
+  const applyFilters = (list: TaskWithClient[]) =>
+    list.filter(t => {
+      if (filterClient !== "all" && t.clientId !== filterClient) return false;
+      if (filterStatus !== "all" && t.status !== filterStatus) return false;
+      if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    });
+
+  const externTasks = applyFilters(allTasks.filter(t => ((t as any).visibility || "externa") === "externa"));
+  const internTasks = applyFilters(allTasks.filter(t => ((t as any).visibility || "externa") === "interna"));
 
   const stats = {
     total: allTasks.length,
@@ -66,7 +69,6 @@ export default function TasksDashboard() {
   };
 
   const handleEdit = (task: ClientTask) => {
-    // Find the clientId for this task
     const taskWithClient = allTasks.find(t => t.id === task.id);
     if (taskWithClient) {
       setEditingTask(taskWithClient);
@@ -74,9 +76,16 @@ export default function TasksDashboard() {
     }
   };
 
-  // Determine the clientId to use for the current view
-  // For global views, we need to find the right clientId per task
   const activeClientId = filterClient !== "all" ? filterClient : (clients[0]?.id || "");
+
+  const renderView = (tasks: TaskWithClient[]) => (
+    <>
+      {view === "table" && <TaskTable tasks={tasks} clientId={activeClientId} onEdit={handleEdit} />}
+      {view === "kanban" && <TaskBoard tasks={tasks} clientId={activeClientId} onEdit={handleEdit} />}
+      {view === "calendar" && <TaskCalendar tasks={tasks} onEdit={handleEdit} />}
+      {view === "timeline" && <TaskTimeline tasks={tasks} onEdit={handleEdit} />}
+    </>
+  );
 
   return (
     <div className="space-y-6">
@@ -141,23 +150,27 @@ export default function TasksDashboard() {
               <SelectItem value="completada">Completada</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={filterVisibility} onValueChange={setFilterVisibility}>
-            <SelectTrigger className="h-8 w-[110px] text-xs"><SelectValue placeholder="Tipo" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="externa">🌐 Externa</SelectItem>
-              <SelectItem value="interna">🔒 Interna</SelectItem>
-            </SelectContent>
-          </Select>
           <CreateTaskDialog clientId={activeClientId} />
         </div>
       </div>
 
-      {/* View content */}
-      {view === "table" && <TaskTable tasks={filtered} clientId={activeClientId} onEdit={handleEdit} />}
-      {view === "kanban" && <TaskBoard tasks={filtered} clientId={activeClientId} onEdit={handleEdit} />}
-      {view === "calendar" && <TaskCalendar tasks={filtered} onEdit={handleEdit} />}
-      {view === "timeline" && <TaskTimeline tasks={filtered} onEdit={handleEdit} />}
+      {/* Tabs: Externa / Interna */}
+      <Tabs defaultValue="externa" className="w-full">
+        <TabsList className="h-9">
+          <TabsTrigger value="externa" className="gap-1.5 text-xs">
+            <Globe className="h-3.5 w-3.5" />
+            Externas
+            <span className="ml-1 text-[10px] bg-primary/10 text-primary rounded-full px-1.5">{externTasks.length}</span>
+          </TabsTrigger>
+          <TabsTrigger value="interna" className="gap-1.5 text-xs">
+            <Lock className="h-3.5 w-3.5" />
+            Internas
+            <span className="ml-1 text-[10px] bg-muted-foreground/10 text-muted-foreground rounded-full px-1.5">{internTasks.length}</span>
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="externa">{renderView(externTasks)}</TabsContent>
+        <TabsContent value="interna">{renderView(internTasks)}</TabsContent>
+      </Tabs>
 
       {/* Edit Dialog */}
       <EditTaskDialog
