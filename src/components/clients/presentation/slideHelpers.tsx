@@ -1,6 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, createContext, useContext } from "react";
 import { cn } from "@/lib/utils";
 import { Pencil } from "lucide-react";
+
+// Context to disable editing (e.g., in fullscreen mode)
+export const EditDisabledContext = createContext(false);
 
 // ── Slide Layout ────────────────────────────────────────
 
@@ -8,7 +11,7 @@ export function SlideLayout({ children, className }: { children: React.ReactNode
   return <div className={cn("w-[1920px] h-[1080px] relative overflow-hidden", className)}>{children}</div>;
 }
 
-export function ScaledSlide({ children, containerRef }: { children: React.ReactNode; containerRef: React.RefObject<HTMLDivElement | null> }) {
+export function ScaledSlide({ children, containerRef, slideRef }: { children: React.ReactNode; containerRef: React.RefObject<HTMLDivElement | null>; slideRef?: React.RefObject<HTMLDivElement | null> }) {
   const [scale, setScale] = useState(0.5);
   useEffect(() => {
     const update = () => {
@@ -21,7 +24,7 @@ export function ScaledSlide({ children, containerRef }: { children: React.ReactN
     return () => window.removeEventListener("resize", update);
   }, [containerRef]);
   return (
-    <div className="absolute w-[1920px] h-[1080px]" style={{
+    <div ref={slideRef} className="absolute w-[1920px] h-[1080px]" style={{
       left: "50%", top: "50%", marginLeft: "-960px", marginTop: "-540px",
       transform: `scale(${scale})`, transformOrigin: "center center",
     }}>{children}</div>
@@ -41,14 +44,17 @@ export function SysdeLogo({ size = 48 }: { size?: number }) {
 // ── Editable Text Component ─────────────────────────────
 
 export function EditableText({
-  value, onChange, className, multiline = false, tag: Tag = "span",
+  value, onChange, className, multiline = false, tag: Tag = "span", disabled = false,
 }: {
   value: string;
   onChange: (v: string) => void;
   className?: string;
   multiline?: boolean;
   tag?: "span" | "p" | "h1" | "h2" | "h3" | "li" | "div";
+  disabled?: boolean;
 }) {
+  const contextDisabled = useContext(EditDisabledContext);
+  const isDisabled = disabled || contextDisabled;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
@@ -86,6 +92,10 @@ export function EditableText({
         className={cn(shared, className)}
       />
     );
+  }
+
+  if (isDisabled) {
+    return <Tag className={className}>{value}</Tag>;
   }
 
   return (

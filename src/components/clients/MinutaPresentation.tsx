@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, createContext, useContext } from "react";
 import { type Client, type ClientTask, type Phase } from "@/data/projectData";
 import { Button } from "@/components/ui/button";
 import {
@@ -6,7 +6,7 @@ import {
   FileText, Sparkles, ArrowRight, Pencil, Table2, Download,
   BarChart3, Target, Zap, Clock, CheckCircle2, AlertTriangle, ListChecks
 } from "lucide-react";
-import sysdeLogo from "@/assets/sysde_logo.png";
+import sysdeLogo from "@/assets/sysde_default_logo.png";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { ensureTaskInDb } from "@/lib/ensureTaskInDb";
 import {
   SlideLayout, ScaledSlide, SysdeLogo, EditableText, EditableCell,
+  EditDisabledContext,
   loadSlideTexts, saveSlideTexts, extractProgress,
   getMonthRange, getPhaseBarStyle, getCurrentDatePosition,
   type SlideTexts,
@@ -32,6 +33,9 @@ interface MinutaPresentationProps {
   onClose: () => void;
   onContinue: () => void;
 }
+
+// Context for fullscreen state (disables editing)
+const PresentationModeContext = createContext(false);
 
 // ── Activity Groups ─────────────────────────────────────
 
@@ -78,6 +82,7 @@ function buildActivityGroups(client: Client): ActivityGroup[] {
 // ── Editable Progress Bar ───────────────────────────────
 
 function EditableProgressBar({ item, clientId, onUpdate }: { item: ActivityItem; clientId: string; onUpdate: (taskId: number, newProgress: number) => void }) {
+  const isFullscreenMode = useContext(PresentationModeContext);
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(item.progress.toString());
   const barColor = item.progress === 100 ? "#27ae60" : item.status === "in-progress" ? "#c0392b" : "#e67e22";
@@ -99,8 +104,8 @@ function EditableProgressBar({ item, clientId, onUpdate }: { item: ActivityItem;
             <span className="text-[16px] text-[#666]">%</span>
           </div>
         ) : (
-          <button onClick={() => { if (item.taskId) { setVal(item.progress.toString()); setEditing(true); } }}
-            className={cn("text-[18px] font-bold w-[60px] text-right", item.taskId ? "cursor-pointer hover:text-[#c0392b]" : "cursor-default",
+          <button onClick={() => { if (item.taskId && !isFullscreenMode) { setVal(item.progress.toString()); setEditing(true); } }}
+            className={cn("text-[18px] font-bold w-[60px] text-right", item.taskId && !isFullscreenMode ? "cursor-pointer hover:text-[#c0392b]" : "cursor-default",
               item.status === "in-progress" ? "text-[#c0392b]" : "text-[#e67e22]")}>{item.progress}%</button>
         )
       )}
@@ -117,6 +122,7 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const slideRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const qc = useQueryClient();
 
@@ -128,13 +134,13 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
 
   // Cronograma data
   const [cronograma, setCronograma] = useState<CronogramaRow[]>(() => {
-    try { const r = localStorage.getItem(`ppt-crono-${client.id}`); return r ? JSON.parse(r) : aurumCronogramaRows; } catch { return aurumCronogramaRows; }
+    try { const r = localStorage.getItem(`ppt-crono-${client.id}`); return r ? JSON.parse(r) : (client.id === "aurum" ? aurumCronogramaRows : []); } catch { return client.id === "aurum" ? aurumCronogramaRows : []; }
   });
   const saveCrono = (rows: CronogramaRow[]) => { setCronograma(rows); localStorage.setItem(`ppt-crono-${client.id}`, JSON.stringify(rows)); };
 
   // Compromisos data
   const [compromisos, setCompromisos] = useState<CompromisoRow[]>(() => {
-    try { const r = localStorage.getItem(`ppt-comp-${client.id}`); return r ? JSON.parse(r) : aurumCompromisosRows; } catch { return aurumCompromisosRows; }
+    try { const r = localStorage.getItem(`ppt-comp-${client.id}`); return r ? JSON.parse(r) : (client.id === "aurum" ? aurumCompromisosRows : []); } catch { return client.id === "aurum" ? aurumCompromisosRows : []; }
   });
   const saveComp = (rows: CompromisoRow[]) => { setCompromisos(rows); localStorage.setItem(`ppt-comp-${client.id}`, JSON.stringify(rows)); };
 
@@ -271,10 +277,10 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
 
     for (let i = 0; i < slides.length; i++) {
       setCurrentSlide(i);
-      await new Promise(r => setTimeout(r, 400)); // wait for animation
-      const slideEl = containerRef.current?.querySelector(".absolute.w-\\[1920px\\]") as HTMLElement | null;
+      await new Promise(r => setTimeout(r, 600)); // wait for animation + render
+      const slideEl = slideRef.current;
       if (!slideEl) continue;
-      const canvas = await html2canvas(slideEl, { scale: 1, useCORS: true, width: 1920, height: 1080 });
+      const canvas = await html2canvas(slideEl, { scale: 1, useCORS: true, width: 1920, height: 1080, windowWidth: 1920, windowHeight: 1080 });
       const imgData = canvas.toDataURL("image/jpeg", 0.92);
       if (i > 0) doc.addPage([1920, 1080], "landscape");
       doc.addImage(imgData, "JPEG", 0, 0, 1920, 1080);
@@ -769,7 +775,11 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
           <div className="flex-1 relative overflow-hidden" ref={containerRef}>
             <AnimatePresence mode="wait">
               <motion.div key={currentSlide} initial={{ opacity: 0, x: 60 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -60 }} transition={{ duration: 0.3 }} className="absolute inset-0">
-                <ScaledSlide containerRef={containerRef}>{slides[currentSlide]}</ScaledSlide>
+                <ScaledSlide containerRef={containerRef} slideRef={slideRef}>
+                  <EditDisabledContext.Provider value={isFullscreen}>
+                    {slides[currentSlide]}
+                  </EditDisabledContext.Provider>
+                </ScaledSlide>
               </motion.div>
             </AnimatePresence>
             {currentSlide > 0 && <button onClick={prev} className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"><ChevronLeft className="h-6 w-6" /></button>}
