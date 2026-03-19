@@ -104,8 +104,8 @@ function EditableProgressBar({ item, clientId, onUpdate }: { item: ActivityItem;
             <span className="text-[16px] text-[#666]">%</span>
           </div>
         ) : (
-          <button onClick={() => { if (item.taskId && !isFullscreenMode) { setVal(item.progress.toString()); setEditing(true); } }}
-            className={cn("text-[18px] font-bold w-[60px] text-right", item.taskId && !isFullscreenMode ? "cursor-pointer hover:text-[#c0392b]" : "cursor-default",
+          <span
+            className={cn("text-[18px] font-bold w-[60px] text-right cursor-default",
               item.status === "in-progress" ? "text-[#c0392b]" : "text-[#e67e22]")}>{item.progress}%</button>
         )
       )}
