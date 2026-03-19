@@ -11,7 +11,7 @@ export function SlideLayout({ children, className }: { children: React.ReactNode
   return <div className={cn("w-[1920px] h-[1080px] relative overflow-hidden", className)}>{children}</div>;
 }
 
-export function ScaledSlide({ children, containerRef }: { children: React.ReactNode; containerRef: React.RefObject<HTMLDivElement | null> }) {
+export function ScaledSlide({ children, containerRef, slideRef }: { children: React.ReactNode; containerRef: React.RefObject<HTMLDivElement | null>; slideRef?: React.RefObject<HTMLDivElement | null> }) {
   const [scale, setScale] = useState(0.5);
   useEffect(() => {
     const update = () => {
@@ -24,7 +24,7 @@ export function ScaledSlide({ children, containerRef }: { children: React.ReactN
     return () => window.removeEventListener("resize", update);
   }, [containerRef]);
   return (
-    <div className="absolute w-[1920px] h-[1080px]" style={{
+    <div ref={slideRef} className="absolute w-[1920px] h-[1080px]" style={{
       left: "50%", top: "50%", marginLeft: "-960px", marginTop: "-540px",
       transform: `scale(${scale})`, transformOrigin: "center center",
     }}>{children}</div>
