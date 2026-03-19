@@ -133,7 +133,7 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
 
   // Cronograma data
   const [cronograma, setCronograma] = useState<CronogramaRow[]>(() => {
-    try { const r = localStorage.getItem(`ppt-crono-${client.id}`); return r ? JSON.parse(r) : aurumCronogramaRows; } catch { return aurumCronogramaRows; }
+    try { const r = localStorage.getItem(`ppt-crono-${client.id}`); return r ? JSON.parse(r) : (client.id === "aurum" ? aurumCronogramaRows : []); } catch { return client.id === "aurum" ? aurumCronogramaRows : []; }
   });
   const saveCrono = (rows: CronogramaRow[]) => { setCronograma(rows); localStorage.setItem(`ppt-crono-${client.id}`, JSON.stringify(rows)); };
 
