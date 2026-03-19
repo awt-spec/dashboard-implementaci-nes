@@ -41,13 +41,14 @@ export function SysdeLogo({ size = 48 }: { size?: number }) {
 // ── Editable Text Component ─────────────────────────────
 
 export function EditableText({
-  value, onChange, className, multiline = false, tag: Tag = "span",
+  value, onChange, className, multiline = false, tag: Tag = "span", disabled = false,
 }: {
   value: string;
   onChange: (v: string) => void;
   className?: string;
   multiline?: boolean;
   tag?: "span" | "p" | "h1" | "h2" | "h3" | "li" | "div";
+  disabled?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
