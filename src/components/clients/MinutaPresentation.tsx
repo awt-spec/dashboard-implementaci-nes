@@ -3,9 +3,10 @@ import { type Client, type ClientTask, type Phase } from "@/data/projectData";
 import { Button } from "@/components/ui/button";
 import {
   ChevronLeft, ChevronRight, Maximize2, Minimize2, X,
-  FileText, Sparkles, ArrowRight, Pencil, Table2,
+  FileText, Sparkles, ArrowRight, Pencil, Table2, Download,
   BarChart3, Target, Zap, Clock, CheckCircle2, AlertTriangle, ListChecks
 } from "lucide-react";
+import sysdeLogo from "@/assets/sysde_logo.png";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -250,8 +251,38 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
   }, [open, next, prev, isFullscreen, editorOpen]);
 
   const toggleFullscreen = async () => {
-    if (!isFullscreen && wrapperRef.current) { await wrapperRef.current.requestFullscreen?.(); setIsFullscreen(true); }
-    else { await document.exitFullscreen?.(); setIsFullscreen(false); }
+    if (!isFullscreen && wrapperRef.current) {
+      setEditorOpen(false); // Close editor when going fullscreen
+      await wrapperRef.current.requestFullscreen?.();
+      setIsFullscreen(true);
+    } else {
+      await document.exitFullscreen?.();
+      setIsFullscreen(false);
+    }
+  };
+
+  // PDF export using html2canvas
+  const handleExportPdf = async () => {
+    const html2canvas = (await import("html2canvas")).default;
+    const jsPDF = (await import("jspdf")).default;
+    const doc = new jsPDF({ orientation: "landscape", unit: "px", format: [1920, 1080] });
+    const savedSlide = currentSlide;
+    toast.info("Exportando PDF...");
+
+    for (let i = 0; i < slides.length; i++) {
+      setCurrentSlide(i);
+      await new Promise(r => setTimeout(r, 400)); // wait for animation
+      const slideEl = containerRef.current?.querySelector(".absolute.w-\\[1920px\\]") as HTMLElement | null;
+      if (!slideEl) continue;
+      const canvas = await html2canvas(slideEl, { scale: 1, useCORS: true, width: 1920, height: 1080 });
+      const imgData = canvas.toDataURL("image/jpeg", 0.92);
+      if (i > 0) doc.addPage([1920, 1080], "landscape");
+      doc.addImage(imgData, "JPEG", 0, 0, 1920, 1080);
+    }
+
+    setCurrentSlide(savedSlide);
+    doc.save(`Presentacion_${client.name.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.pdf`);
+    toast.success("PDF exportado");
   };
 
   useEffect(() => {
@@ -673,7 +704,7 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
           <EditableText value={txt("cierre-1", "Somos tus aliados para la")} onChange={v => setTxt("cierre-1", v)} className="text-[48px] text-white/80 mb-[16px]" tag="h2" />
           <EditableText value={txt("cierre-2", "Transformación Digital de tu negocio")} onChange={v => setTxt("cierre-2", v)} className="text-[64px] font-extrabold text-white mb-[48px]" tag="h2" />
           <div className="w-[200px] h-[3px] bg-white/30 rounded-full mx-auto mb-[48px]" />
-          <div className="text-white mb-[48px]"><SysdeLogo size={80} /></div>
+          <img src={sysdeLogo} alt="Sysde" className="h-[100px] object-contain mx-auto mb-[48px]" />
           <EditableText value={txt("cierre-brand", "Sysde")} onChange={v => setTxt("cierre-brand", v)} className="text-[28px] text-white/60 mb-[64px]" tag="p" />
           <button onClick={onContinue} className="px-[56px] py-[20px] rounded-[16px] bg-white text-[#c0392b] text-[28px] font-bold hover:bg-white/90 transition-colors shadow-2xl flex items-center gap-[16px] mx-auto">
             <FileText style={{ width: 28, height: 28 }} />Crear Nueva Minuta<ArrowRight style={{ width: 28, height: 28 }} />
@@ -705,29 +736,34 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
       {open && (
         <motion.div ref={wrapperRef} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           className="fixed inset-0 z-50 bg-black/95 flex flex-col">
-          {/* Top bar */}
-          <div className="flex items-center justify-between px-4 py-2 bg-black/50 shrink-0">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={onClose} className="text-white/70 hover:text-white hover:bg-white/10"><X className="h-5 w-5" /></Button>
-              <span className="text-white/50 text-sm">{slideNames[currentSlide]} · {currentSlide + 1}/{totalSlides}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              {hasEditor && (
-                <Button variant="ghost" size="sm" onClick={() => setEditorOpen(!editorOpen)}
-                  className={cn("text-xs gap-1.5 transition-colors",
-                    editorOpen ? "text-[#ff6b6b] bg-[#c0392b]/20 hover:bg-[#c0392b]/30 hover:text-[#ff6b6b]" : "text-white/70 hover:text-white hover:bg-white/10")}>
-                  <Table2 className="h-3.5 w-3.5" /> {editorOpen ? "Cerrar Editor" : "Editar Tabla"}
+          {/* Top bar - hidden in fullscreen */}
+          {!isFullscreen && (
+            <div className="flex items-center justify-between px-4 py-2 bg-black/50 shrink-0">
+              <div className="flex items-center gap-3">
+                <Button variant="ghost" size="icon" onClick={onClose} className="text-white/70 hover:text-white hover:bg-white/10"><X className="h-5 w-5" /></Button>
+                <span className="text-white/50 text-sm">{slideNames[currentSlide]} · {currentSlide + 1}/{totalSlides}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {hasEditor && (
+                  <Button variant="ghost" size="sm" onClick={() => setEditorOpen(!editorOpen)}
+                    className={cn("text-xs gap-1.5 transition-colors",
+                      editorOpen ? "text-[#ff6b6b] bg-[#c0392b]/20 hover:bg-[#c0392b]/30 hover:text-[#ff6b6b]" : "text-white/70 hover:text-white hover:bg-white/10")}>
+                    <Table2 className="h-3.5 w-3.5" /> {editorOpen ? "Cerrar Editor" : "Editar Tabla"}
+                  </Button>
+                )}
+                <span className="text-white/30 text-xs flex items-center gap-1"><Pencil className="h-3 w-3" /> Clic para editar</span>
+                <Button variant="ghost" size="sm" onClick={handleExportPdf} className="text-white/70 hover:text-white hover:bg-white/10 text-xs gap-1.5">
+                  <Download className="h-3.5 w-3.5" /> Exportar PDF
                 </Button>
-              )}
-              <span className="text-white/30 text-xs flex items-center gap-1"><Pencil className="h-3 w-3" /> Clic para editar</span>
-              <Button variant="ghost" size="sm" onClick={onContinue} className="text-white/70 hover:text-white hover:bg-white/10 text-xs gap-1.5">
-                <Sparkles className="h-3.5 w-3.5" /> Crear Minuta
-              </Button>
-              <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="text-white/70 hover:text-white hover:bg-white/10">
-                {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-              </Button>
+                <Button variant="ghost" size="sm" onClick={onContinue} className="text-white/70 hover:text-white hover:bg-white/10 text-xs gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5" /> Crear Minuta
+                </Button>
+                <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="text-white/70 hover:text-white hover:bg-white/10">
+                  {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Slide area */}
           <div className="flex-1 relative overflow-hidden" ref={containerRef}>
@@ -738,8 +774,8 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
             </AnimatePresence>
             {currentSlide > 0 && <button onClick={prev} className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"><ChevronLeft className="h-6 w-6" /></button>}
             {currentSlide < totalSlides - 1 && <button onClick={next} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"><ChevronRight className="h-6 w-6" /></button>}
-            {/* Floating Edit Button */}
-            {hasEditor && !editorOpen && (
+            {/* Floating Edit Button - hidden in fullscreen */}
+            {!isFullscreen && hasEditor && !editorOpen && (
               <motion.button
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -750,15 +786,23 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
                 Editar Tabla
               </motion.button>
             )}
+            {/* Fullscreen exit hint */}
+            {isFullscreen && (
+              <button onClick={toggleFullscreen} className="absolute top-4 right-4 z-20 p-2 rounded-full bg-black/30 hover:bg-black/50 text-white/50 hover:text-white transition-colors">
+                <Minimize2 className="h-5 w-5" />
+              </button>
+            )}
           </div>
 
-          {/* Bottom nav */}
-          <div className="flex items-center justify-center gap-1.5 px-4 py-3 bg-black/50 shrink-0 flex-wrap">
-            {slideNames.map((name, i) => (
-              <button key={i} onClick={() => setCurrentSlide(i)}
-                className={cn("px-2.5 py-1 rounded-lg text-[11px] transition-all", i === currentSlide ? "bg-white/20 text-white font-medium" : "text-white/40 hover:text-white/70 hover:bg-white/5")}>{name}</button>
-            ))}
-          </div>
+          {/* Bottom nav - hidden in fullscreen */}
+          {!isFullscreen && (
+            <div className="flex items-center justify-center gap-1.5 px-4 py-3 bg-black/50 shrink-0 flex-wrap">
+              {slideNames.map((name, i) => (
+                <button key={i} onClick={() => setCurrentSlide(i)}
+                  className={cn("px-2.5 py-1 rounded-lg text-[11px] transition-all", i === currentSlide ? "bg-white/20 text-white font-medium" : "text-white/40 hover:text-white/70 hover:bg-white/5")}>{name}</button>
+              ))}
+            </div>
+          )}
 
           {/* Side Panel Editor */}
           <TableEditorPanel
