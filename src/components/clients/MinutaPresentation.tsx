@@ -81,6 +81,7 @@ function buildActivityGroups(client: Client): ActivityGroup[] {
 // ── Editable Progress Bar ───────────────────────────────
 
 function EditableProgressBar({ item, clientId, onUpdate }: { item: ActivityItem; clientId: string; onUpdate: (taskId: number, newProgress: number) => void }) {
+  const isFullscreenMode = useContext(PresentationModeContext);
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(item.progress.toString());
   const barColor = item.progress === 100 ? "#27ae60" : item.status === "in-progress" ? "#c0392b" : "#e67e22";
