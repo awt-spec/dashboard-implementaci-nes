@@ -30,7 +30,7 @@ export default function Login() {
           <div className="mx-auto h-14 w-14 rounded-xl bg-primary flex items-center justify-center mb-2">
             <span className="text-primary-foreground font-black text-xl">S</span>
           </div>
-          <CardTitle className="text-2xl font-bold text-foreground">CISDE PMO</CardTitle>
+          <CardTitle className="text-2xl font-bold text-foreground">Sysde PMO</CardTitle>
           <CardDescription>Ingresa tus credenciales para acceder al sistema</CardDescription>
         </CardHeader>
         <CardContent>
