@@ -22,6 +22,7 @@ import { DeliverablesTab } from "./tabs/DeliverablesTab";
 import { RisksTab } from "./tabs/RisksTab";
 import { CollaborationTab } from "./tabs/CollaborationTab";
 import { TaskViewSwitcher } from "@/components/tasks/TaskViewSwitcher";
+import { ContactsTab } from "./tabs/ContactsTab";
 import { FunnelTab } from "./tabs/FunnelTab";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
