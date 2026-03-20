@@ -195,7 +195,7 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
           <TabsTrigger value="tareas">Tareas</TabsTrigger>
           <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
           <TabsTrigger value="entregables">Entregables</TabsTrigger>
-          
+          <TabsTrigger value="equipo">Equipo Cliente</TabsTrigger>
           <TabsTrigger value="pendientes">Pendientes</TabsTrigger>
           <TabsTrigger value="minutas">Minutas</TabsTrigger>
           <TabsTrigger value="riesgos">Riesgos</TabsTrigger>
