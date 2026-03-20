@@ -210,6 +210,10 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
           <DeliverablesTab deliverables={client.deliverables} clientId={client.id} tasks={client.tasks} />
         </TabsContent>
 
+        <TabsContent value="equipo">
+          <ContactsTab clientId={client.id} />
+        </TabsContent>
+
         <TabsContent value="pipeline">
           <FunnelTab client={client} />
         </TabsContent>
