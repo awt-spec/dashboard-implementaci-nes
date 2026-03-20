@@ -5,13 +5,16 @@ import { ExecutiveOverview } from "@/components/dashboard/ExecutiveOverview";
 import { ClientList } from "@/components/clients/ClientList";
 import { ClientDetail } from "@/components/clients/ClientDetail";
 import TasksDashboard from "@/pages/TasksDashboard";
+import AdminUsers from "@/pages/AdminUsers";
 import { useClients } from "@/hooks/useClients";
+import { useAuth } from "@/hooks/useAuth";
 import { clients as staticClients, projectInfo } from "@/data/projectData";
 import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ShareReportDialog } from "@/components/dashboard/ShareReportDialog";
 
 const Index = () => {
+  const { role } = useAuth();
   const [activeSection, setActiveSection] = useState("overview");
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
   const { data: clients } = useClients();
@@ -20,11 +23,18 @@ const Index = () => {
     document.documentElement.classList.toggle("dark", dark);
   }, [dark]);
 
+  // Gerente can only see overview
+  useEffect(() => {
+    if (role === "gerente" && activeSection !== "overview") {
+      setActiveSection("overview");
+    }
+  }, [role, activeSection]);
+
   const handleSectionChange = (section: string) => {
+    if (role === "gerente" && section !== "overview") return;
     setActiveSection(section);
   };
 
-  // Use data from Supabase or fallback to static
   const clientData = clients && clients.length > 0 ? clients : staticClients;
 
   const selectedClient = activeSection.startsWith("client-")
@@ -35,6 +45,7 @@ const Index = () => {
     if (activeSection === "overview") return "Resumen Ejecutivo";
     if (activeSection === "clients") return "Gestión de Clientes";
     if (activeSection === "tasks") return "Tareas Global";
+    if (activeSection === "users") return "Gestión de Usuarios";
     if (selectedClient) return selectedClient.name;
     return "Dashboard";
   };
@@ -64,16 +75,14 @@ const Index = () => {
           <main className="flex-1 overflow-auto p-4 md:p-6">
             <div className="w-full">
               {activeSection === "overview" && <ExecutiveOverview />}
-
               {activeSection === "tasks" && <TasksDashboard />}
-
+              {activeSection === "users" && <AdminUsers />}
               {activeSection === "clients" && (
                 <ClientList
                   onSelectClient={(id) => setActiveSection(`client-${id}`)}
                   selectedClientId={undefined}
                 />
               )}
-
               {selectedClient && (
                 <ClientDetail
                   client={selectedClient}
