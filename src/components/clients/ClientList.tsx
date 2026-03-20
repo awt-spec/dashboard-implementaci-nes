@@ -6,6 +6,8 @@ import { Building2, MapPin, Search, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { useAuth } from "@/hooks/useAuth";
+import { CreateClientDialog } from "./CreateClientDialog";
 
 const statusConfig: Record<Client["status"], { label: string; className: string }> = {
   activo: { label: "Activo", className: "bg-success text-success-foreground" },
@@ -21,6 +23,7 @@ interface ClientListProps {
 
 export function ClientList({ onSelectClient, selectedClientId }: ClientListProps) {
   const { data: clients, isLoading, error } = useClients();
+  const { role } = useAuth();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("todos");
 
@@ -47,6 +50,9 @@ export function ClientList({ onSelectClient, selectedClientId }: ClientListProps
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-3">
+        {(role === "admin" || role === "pm") && (
+          <CreateClientDialog />
+        )}
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Buscar cliente..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
