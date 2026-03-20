@@ -24,6 +24,7 @@ interface ClientListProps {
 export function ClientList({ onSelectClient, selectedClientId }: ClientListProps) {
   const { data: clients, isLoading, error } = useClients();
   const { role } = useAuth();
+  const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("todos");
 
   // Use static data as fallback
