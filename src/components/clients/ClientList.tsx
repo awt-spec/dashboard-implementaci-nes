@@ -6,6 +6,8 @@ import { Building2, MapPin, Search, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { useAuth } from "@/hooks/useAuth";
+import { CreateClientDialog } from "./CreateClientDialog";
 
 const statusConfig: Record<Client["status"], { label: string; className: string }> = {
   activo: { label: "Activo", className: "bg-success text-success-foreground" },
