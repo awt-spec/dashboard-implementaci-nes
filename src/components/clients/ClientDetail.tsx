@@ -22,6 +22,7 @@ import { DeliverablesTab } from "./tabs/DeliverablesTab";
 import { RisksTab } from "./tabs/RisksTab";
 import { CollaborationTab } from "./tabs/CollaborationTab";
 import { TaskViewSwitcher } from "@/components/tasks/TaskViewSwitcher";
+import { ContactsTab } from "./tabs/ContactsTab";
 import { FunnelTab } from "./tabs/FunnelTab";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -194,7 +195,7 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
           <TabsTrigger value="tareas">Tareas</TabsTrigger>
           <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
           <TabsTrigger value="entregables">Entregables</TabsTrigger>
-          
+          <TabsTrigger value="equipo">Equipo Cliente</TabsTrigger>
           <TabsTrigger value="pendientes">Pendientes</TabsTrigger>
           <TabsTrigger value="minutas">Minutas</TabsTrigger>
           <TabsTrigger value="riesgos">Riesgos</TabsTrigger>
@@ -207,6 +208,10 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
 
         <TabsContent value="entregables">
           <DeliverablesTab deliverables={client.deliverables} clientId={client.id} tasks={client.tasks} />
+        </TabsContent>
+
+        <TabsContent value="equipo">
+          <ContactsTab clientId={client.id} />
         </TabsContent>
 
         <TabsContent value="pipeline">
