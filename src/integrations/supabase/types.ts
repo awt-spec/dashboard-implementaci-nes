@@ -492,6 +492,41 @@ export type Database = {
           },
         ]
       }
+      presentation_data: {
+        Row: {
+          client_id: string
+          created_at: string
+          data: Json
+          data_key: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          data?: Json
+          data_key: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          data?: Json
+          data_key?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "presentation_data_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       presentation_feedback: {
         Row: {
           comments: string | null
