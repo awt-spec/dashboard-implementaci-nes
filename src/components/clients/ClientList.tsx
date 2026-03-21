@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useClients } from "@/hooks/useClients";
-import { clients as staticClients, type Client } from "@/data/projectData";
+import { type Client } from "@/data/projectData";
 import { Building2, MapPin, Search, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
