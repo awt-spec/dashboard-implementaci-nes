@@ -98,7 +98,7 @@ export function CreateMinutaWizard({ client, clientId, open, onClose }: CreateMi
         );
         if (match) {
           const { data: dbTask } = await supabase
-            .from("tasks").select("id").eq("client_id", clientId).eq("original_id", match.id).single();
+            .from("tasks").select("id").eq("client_id", clientId).eq("original_id", match.id).maybeSingle();
           updates.push({ task: match, dbId: dbTask?.id, newStatus: tu.suggestedStatus, note: tu.note, enabled: true });
         }
       }
