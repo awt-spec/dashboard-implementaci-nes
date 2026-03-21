@@ -12,7 +12,7 @@ import { ExecutivePresentation } from "./ExecutivePresentation";
 
 export function ExecutiveOverview() {
   const { data: clientsData, isLoading } = useClients();
-  const clients = clientsData && clientsData.length > 0 ? clientsData : staticClients;
+  const clients = clientsData || [];
 
   const [filterClient, setFilterClient] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
