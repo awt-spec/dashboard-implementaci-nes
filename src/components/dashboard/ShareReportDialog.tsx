@@ -161,7 +161,7 @@ export function ShareReportDialog({ trigger }: ShareReportDialogProps) {
                   <SelectValue placeholder="Seleccionar cliente" />
                 </SelectTrigger>
                 <SelectContent>
-                  {clients.map(c => (
+                  {clientsList.map(c => (
                     <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                   ))}
                 </SelectContent>
