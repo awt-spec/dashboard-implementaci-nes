@@ -1,14 +1,15 @@
 import jsPDF from "jspdf";
-import { clients, type Client } from "@/data/projectData";
+import { type Client } from "@/data/projectData";
 import type { ReportSection } from "@/components/dashboard/ShareReportDialog";
 
 interface ExportOptions {
   mode: "resumen" | "cliente";
   sections: ReportSection[];
   client?: Client;
+  clients?: Client[];
 }
 
-export function exportReportPdf({ mode, sections, client }: ExportOptions) {
+export function exportReportPdf({ mode, sections, client, clients = [] }: ExportOptions) {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const margin = 15;
