@@ -155,23 +155,17 @@ export function EditableCell({
   );
 }
 
-// ── Slide Text Storage (localStorage) ───────────────────
+// ── Slide Text Storage (DB-backed) ───────────────────
 
 export type SlideTexts = Record<string, string>;
 
-function getStorageKey(clientId: string) {
-  return `ppt-texts-${clientId}`;
+// These are now no-ops / stubs — actual load/save happens via usePresentationData hook
+export function loadSlideTexts(_clientId: string): SlideTexts {
+  return {};
 }
 
-export function loadSlideTexts(clientId: string): SlideTexts {
-  try {
-    const raw = localStorage.getItem(getStorageKey(clientId));
-    return raw ? JSON.parse(raw) : {};
-  } catch { return {}; }
-}
-
-export function saveSlideTexts(clientId: string, texts: SlideTexts) {
-  localStorage.setItem(getStorageKey(clientId), JSON.stringify(texts));
+export function saveSlideTexts(_clientId: string, _texts: SlideTexts) {
+  // No-op: saving is handled by usePresentationData hook in MinutaPresentation
 }
 
 // ── Progress Helpers ────────────────────────────────────
