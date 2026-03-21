@@ -35,7 +35,7 @@ const Index = () => {
     setActiveSection(section);
   };
 
-  const clientData = clients && clients.length > 0 ? clients : staticClients;
+  const clientData = clients || [];
 
   const selectedClient = activeSection.startsWith("client-")
     ? clientData.find(c => c.id === activeSection.replace("client-", ""))
