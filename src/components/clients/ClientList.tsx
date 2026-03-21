@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useClients } from "@/hooks/useClients";
-import { clients as staticClients, type Client } from "@/data/projectData";
+import { type Client } from "@/data/projectData";
 import { Building2, MapPin, Search, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
@@ -27,8 +27,7 @@ export function ClientList({ onSelectClient, selectedClientId }: ClientListProps
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("todos");
 
-  // Use static data as fallback
-  const clientData = clients && clients.length > 0 ? clients : staticClients;
+  const clientData = clients || [];
 
   const filtered = clientData.filter(c => {
     const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||

@@ -1,14 +1,15 @@
 import jsPDF from "jspdf";
-import { clients, type Client } from "@/data/projectData";
+import { type Client } from "@/data/projectData";
 import type { ReportSection } from "@/components/dashboard/ShareReportDialog";
 
 interface ExportOptions {
   mode: "resumen" | "cliente";
   sections: ReportSection[];
   client?: Client;
+  clients?: Client[];
 }
 
-export function exportReportPdf({ mode, sections, client }: ExportOptions) {
+export function exportReportPdf({ mode, sections, client, clients = [] }: ExportOptions) {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const margin = 15;
@@ -40,7 +41,7 @@ export function exportReportPdf({ mode, sections, client }: ExportOptions) {
   doc.setTextColor(30, 30, 30);
 
   if (mode === "resumen") {
-    exportResumenSections(doc, sections, margin, contentW, y, checkPage);
+    exportResumenSections(doc, sections, margin, contentW, y, checkPage, clients);
   } else if (client) {
     exportClientSections(doc, sections, client, margin, contentW, y, checkPage);
   }
@@ -62,7 +63,7 @@ export function exportReportPdf({ mode, sections, client }: ExportOptions) {
   doc.save(filename);
 }
 
-function exportResumenSections(doc: jsPDF, sections: ReportSection[], margin: number, contentW: number, startY: number, checkPage: (n: number) => void) {
+function exportResumenSections(doc: jsPDF, sections: ReportSection[], margin: number, contentW: number, startY: number, checkPage: (n: number) => void, clients: Client[]) {
   let y = startY;
 
   if (sections.includes("kpis")) {

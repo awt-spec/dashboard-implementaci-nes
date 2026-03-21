@@ -1,5 +1,6 @@
 import { useSearchParams } from "react-router-dom";
-import { clients, projectInfo } from "@/data/projectData";
+import { projectInfo } from "@/data/projectData";
+import { useClients } from "@/hooks/useClients";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
@@ -14,6 +15,8 @@ const tooltipStyle = {
 
 export default function Report() {
   const [params] = useSearchParams();
+  const { data: clientsData } = useClients();
+  const clients = clientsData || [];
   const mode = params.get("mode") || "resumen";
   const clientId = params.get("client") || "";
   const sections = (params.get("sections") || "").split(",").filter(Boolean) as ReportSection[];
@@ -38,7 +41,7 @@ export default function Report() {
       </header>
 
       <main className="max-w-5xl mx-auto p-6 space-y-6">
-        {mode === "resumen" && <ResumenSections sections={sections} />}
+        {mode === "resumen" && <ResumenSections sections={sections} clients={clients} />}
         {mode === "cliente" && client && <ClientSections sections={sections} client={client} />}
       </main>
 
@@ -49,7 +52,7 @@ export default function Report() {
   );
 }
 
-function ResumenSections({ sections }: { sections: ReportSection[] }) {
+function ResumenSections({ sections, clients }: { sections: ReportSection[]; clients: any[] }) {
   const avgProgress = Math.round(clients.reduce((s, c) => s + c.progress, 0) / clients.length);
   const totalRisks = clients.reduce((s, c) => s + c.risks.filter(r => r.status === "abierto").length, 0);
   const allTasks = clients.flatMap(c => c.tasks);
@@ -176,7 +179,7 @@ function ResumenSections({ sections }: { sections: ReportSection[] }) {
   );
 }
 
-function ClientSections({ sections, client }: { sections: ReportSection[]; client: typeof clients[0] }) {
+function ClientSections({ sections, client }: { sections: ReportSection[]; client: any }) {
   const statusLabels: Record<string, string> = { activo: "Activo", "en-riesgo": "En Riesgo", pausado: "Pausado", completado: "Completado" };
 
   return (

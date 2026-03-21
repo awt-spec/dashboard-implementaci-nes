@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { clients } from "@/data/projectData";
+import { useClients } from "@/hooks/useClients";
 import { Share2, Link2, FileDown, Copy, Check } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { exportReportPdf } from "@/lib/exportReportPdf";
@@ -51,9 +51,11 @@ interface ShareReportDialogProps {
 }
 
 export function ShareReportDialog({ trigger }: ShareReportDialogProps) {
+  const { data: clients } = useClients();
+  const clientsList = clients || [];
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"resumen" | "cliente">("resumen");
-  const [selectedClient, setSelectedClient] = useState<string>(clients[0]?.id || "");
+  const [selectedClient, setSelectedClient] = useState<string>(clientsList[0]?.id || "");
   const [selectedSections, setSelectedSections] = useState<ReportSection[]>([
     "kpis", "status-chart", "alerts", "progress-cards",
   ]);
@@ -94,8 +96,8 @@ export function ShareReportDialog({ trigger }: ShareReportDialogProps) {
   };
 
   const handleExportPdf = () => {
-    const client = mode === "cliente" ? clients.find(c => c.id === selectedClient) : undefined;
-    exportReportPdf({ mode, sections: selectedSections, client });
+    const client = mode === "cliente" ? clientsList.find(c => c.id === selectedClient) : undefined;
+    exportReportPdf({ mode, sections: selectedSections, client, clients: clientsList });
     toast({ title: "PDF generado", description: "El reporte fue descargado exitosamente." });
   };
 
@@ -159,7 +161,7 @@ export function ShareReportDialog({ trigger }: ShareReportDialogProps) {
                   <SelectValue placeholder="Seleccionar cliente" />
                 </SelectTrigger>
                 <SelectContent>
-                  {clients.map(c => (
+                  {clientsList.map(c => (
                     <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                   ))}
                 </SelectContent>

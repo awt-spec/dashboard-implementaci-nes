@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useClients } from "@/hooks/useClients";
-import { clients as staticClients, type ClientTask } from "@/data/projectData";
+import { type ClientTask } from "@/data/projectData";
 import { TaskBoard } from "@/components/tasks/TaskBoard";
 import { TaskCalendar } from "@/components/tasks/TaskCalendar";
 import { TaskTimeline } from "@/components/tasks/TaskTimeline";
@@ -28,7 +28,7 @@ const views: { key: ViewType; label: string; icon: typeof LayoutList }[] = [
 
 export default function TasksDashboard() {
   const { data: clientsData, isLoading } = useClients();
-  const clients = clientsData && clientsData.length > 0 ? clientsData : staticClients;
+  const clients = clientsData || [];
 
   const [view, setView] = useState<ViewType>("kanban");
   const [filterClient, setFilterClient] = useState("all");

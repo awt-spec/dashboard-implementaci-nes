@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { useClients } from "@/hooks/useClients";
-import { clients as staticClients } from "@/data/projectData";
+// DB is the single source of truth
 import { useAuth } from "@/hooks/useAuth";
 
 const statusDot: Record<string, string> = {
@@ -34,7 +34,7 @@ interface AppSidebarProps {
 export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) {
   const { data: clientsData } = useClients();
   const { role, profile, signOut } = useAuth();
-  const clients = clientsData && clientsData.length > 0 ? clientsData : staticClients;
+  const clients = clientsData || [];
 
   // Build nav items based on role
   const mainNav = [

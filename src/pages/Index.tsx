@@ -8,7 +8,7 @@ import TasksDashboard from "@/pages/TasksDashboard";
 import AdminUsers from "@/pages/AdminUsers";
 import { useClients } from "@/hooks/useClients";
 import { useAuth } from "@/hooks/useAuth";
-import { clients as staticClients, projectInfo } from "@/data/projectData";
+import { projectInfo } from "@/data/projectData";
 import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ShareReportDialog } from "@/components/dashboard/ShareReportDialog";
@@ -35,7 +35,7 @@ const Index = () => {
     setActiveSection(section);
   };
 
-  const clientData = clients && clients.length > 0 ? clients : staticClients;
+  const clientData = clients || [];
 
   const selectedClient = activeSection.startsWith("client-")
     ? clientData.find(c => c.id === activeSection.replace("client-", ""))
