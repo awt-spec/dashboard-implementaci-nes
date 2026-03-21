@@ -38,6 +38,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    let resolved = false;
+    const resolve = () => {
+      if (!resolved) { resolved = true; setLoading(false); }
+    };
+
+    // Safety timeout — never stay loading forever
+    const timeout = setTimeout(resolve, 5000);
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         const u = session?.user ?? null;
@@ -48,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setRole(null);
           setProfile(null);
         }
-        setLoading(false);
+        resolve();
       }
     );
 
@@ -58,10 +66,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (u) {
         await fetchUserData(u);
       }
-      setLoading(false);
+      resolve();
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
