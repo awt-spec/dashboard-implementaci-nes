@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { clients } from "@/data/projectData";
+import { useClients } from "@/hooks/useClients";
 import { Share2, Link2, FileDown, Copy, Check } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { exportReportPdf } from "@/lib/exportReportPdf";
