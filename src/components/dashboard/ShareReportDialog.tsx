@@ -96,7 +96,7 @@ export function ShareReportDialog({ trigger }: ShareReportDialogProps) {
   };
 
   const handleExportPdf = () => {
-    const client = mode === "cliente" ? clients.find(c => c.id === selectedClient) : undefined;
+    const client = mode === "cliente" ? clientsList.find(c => c.id === selectedClient) : undefined;
     exportReportPdf({ mode, sections: selectedSections, client });
     toast({ title: "PDF generado", description: "El reporte fue descargado exitosamente." });
   };
