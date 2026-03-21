@@ -51,9 +51,11 @@ interface ShareReportDialogProps {
 }
 
 export function ShareReportDialog({ trigger }: ShareReportDialogProps) {
+  const { data: clients } = useClients();
+  const clientsList = clients || [];
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"resumen" | "cliente">("resumen");
-  const [selectedClient, setSelectedClient] = useState<string>(clients[0]?.id || "");
+  const [selectedClient, setSelectedClient] = useState<string>(clientsList[0]?.id || "");
   const [selectedSections, setSelectedSections] = useState<ReportSection[]>([
     "kpis", "status-chart", "alerts", "progress-cards",
   ]);
