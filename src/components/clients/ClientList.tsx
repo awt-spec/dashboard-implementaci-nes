@@ -27,8 +27,7 @@ export function ClientList({ onSelectClient, selectedClientId }: ClientListProps
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("todos");
 
-  // Use static data as fallback
-  const clientData = clients && clients.length > 0 ? clients : staticClients;
+  const clientData = clients || [];
 
   const filtered = clientData.filter(c => {
     const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
