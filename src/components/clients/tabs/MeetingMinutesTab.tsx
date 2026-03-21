@@ -32,7 +32,7 @@ export function MeetingMinutesTab({ meetingMinutes, clientId, client }: MeetingM
   const deleteMinute = useDeleteMeetingMinute();
 
   const handleDelete = async (m: MeetingMinute) => {
-    const { data } = await supabase.from("meeting_minutes").select("id").eq("client_id", clientId).eq("original_id", m.id).single();
+    const { data } = await supabase.from("meeting_minutes").select("id").eq("client_id", clientId).eq("original_id", m.id).maybeSingle();
     if (!data) return;
     deleteMinute.mutate(data.id, { onSuccess: () => toast.success("Minuta eliminada"), onError: () => toast.error("Error") });
   };

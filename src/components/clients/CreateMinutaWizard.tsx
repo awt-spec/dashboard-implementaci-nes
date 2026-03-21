@@ -98,14 +98,14 @@ export function CreateMinutaWizard({ client, clientId, open, onClose }: CreateMi
         );
         if (match) {
           const { data: dbTask } = await supabase
-            .from("tasks").select("id").eq("client_id", clientId).eq("original_id", match.id).single();
+            .from("tasks").select("id").eq("client_id", clientId).eq("original_id", match.id).maybeSingle();
           updates.push({ task: match, dbId: dbTask?.id, newStatus: tu.suggestedStatus, note: tu.note, enabled: true });
         }
       }
       for (const t of client.tasks) {
         if (!updates.find(u => u.task.id === t.id)) {
           const { data: dbTask } = await supabase
-            .from("tasks").select("id").eq("client_id", clientId).eq("original_id", t.id).single();
+            .from("tasks").select("id").eq("client_id", clientId).eq("original_id", t.id).maybeSingle();
           updates.push({ task: t, dbId: dbTask?.id, newStatus: t.status, note: "", enabled: false });
         }
       }
