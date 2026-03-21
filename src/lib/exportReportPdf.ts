@@ -41,7 +41,7 @@ export function exportReportPdf({ mode, sections, client, clients = [] }: Export
   doc.setTextColor(30, 30, 30);
 
   if (mode === "resumen") {
-    exportResumenSections(doc, sections, margin, contentW, y, checkPage);
+    exportResumenSections(doc, sections, margin, contentW, y, checkPage, clients);
   } else if (client) {
     exportClientSections(doc, sections, client, margin, contentW, y, checkPage);
   }
