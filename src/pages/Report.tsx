@@ -179,7 +179,7 @@ function ResumenSections({ sections, clients }: { sections: ReportSection[]; cli
   );
 }
 
-function ClientSections({ sections, client }: { sections: ReportSection[]; client: typeof clients[0] }) {
+function ClientSections({ sections, client }: { sections: ReportSection[]; client: any }) {
   const statusLabels: Record<string, string> = { activo: "Activo", "en-riesgo": "En Riesgo", pausado: "Pausado", completado: "Completado" };
 
   return (
