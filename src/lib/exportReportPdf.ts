@@ -63,7 +63,7 @@ export function exportReportPdf({ mode, sections, client, clients = [] }: Export
   doc.save(filename);
 }
 
-function exportResumenSections(doc: jsPDF, sections: ReportSection[], margin: number, contentW: number, startY: number, checkPage: (n: number) => void) {
+function exportResumenSections(doc: jsPDF, sections: ReportSection[], margin: number, contentW: number, startY: number, checkPage: (n: number) => void, clients: Client[]) {
   let y = startY;
 
   if (sections.includes("kpis")) {
