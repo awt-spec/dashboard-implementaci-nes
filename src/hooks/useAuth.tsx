@@ -23,24 +23,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchUserData = async (u: User) => {
-    // Fetch role
-    const { data: roleData } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", u.id)
-      .maybeSingle();
-    setRole((roleData?.role as AppRole) ?? null);
-
-    // Fetch profile
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("full_name, email, avatar_url")
-      .eq("user_id", u.id)
-      .maybeSingle();
-    setProfile(profileData ?? null);
+    try {
+      const [{ data: roleData }, { data: profileData }] = await Promise.all([
+        supabase.from("user_roles").select("role").eq("user_id", u.id).maybeSingle(),
+        supabase.from("profiles").select("full_name, email, avatar_url").eq("user_id", u.id).maybeSingle(),
+      ]);
+      setRole((roleData?.role as AppRole) ?? null);
+      setProfile(profileData ?? null);
+    } catch (err) {
+      console.error("Error fetching user data:", err);
+      setRole(null);
+      setProfile(null);
+    }
   };
 
   useEffect(() => {
+    let resolved = false;
+    const resolve = () => {
+      if (!resolved) { resolved = true; setLoading(false); }
+    };
+
+    // Safety timeout — never stay loading forever
+    const timeout = setTimeout(resolve, 5000);
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         const u = session?.user ?? null;
@@ -51,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setRole(null);
           setProfile(null);
         }
-        setLoading(false);
+        resolve();
       }
     );
 
@@ -61,10 +66,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (u) {
         await fetchUserData(u);
       }
-      setLoading(false);
+      resolve();
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
