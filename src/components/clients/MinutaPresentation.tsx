@@ -13,10 +13,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ensureTaskInDb } from "@/lib/ensureTaskInDb";
+import { useAllPresentationData } from "@/hooks/usePresentationData";
 import {
   SlideLayout, ScaledSlide, SysdeLogo, EditableText, EditableCell,
   EditDisabledContext,
-  loadSlideTexts, saveSlideTexts, extractProgress,
+  extractProgress,
   getMonthRange, getPhaseBarStyle, getCurrentDatePosition,
   type SlideTexts,
 } from "./presentation/slideHelpers";
