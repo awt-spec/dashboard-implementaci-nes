@@ -28,7 +28,7 @@ const views: { key: ViewType; label: string; icon: typeof LayoutList }[] = [
 
 export default function TasksDashboard() {
   const { data: clientsData, isLoading } = useClients();
-  const clients = clientsData && clientsData.length > 0 ? clientsData : staticClients;
+  const clients = clientsData || [];
 
   const [view, setView] = useState<ViewType>("kanban");
   const [filterClient, setFilterClient] = useState("all");
