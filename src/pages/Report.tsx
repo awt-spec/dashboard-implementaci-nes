@@ -41,7 +41,7 @@ export default function Report() {
       </header>
 
       <main className="max-w-5xl mx-auto p-6 space-y-6">
-        {mode === "resumen" && <ResumenSections sections={sections} />}
+        {mode === "resumen" && <ResumenSections sections={sections} clients={clients} />}
         {mode === "cliente" && client && <ClientSections sections={sections} client={client} />}
       </main>
 
