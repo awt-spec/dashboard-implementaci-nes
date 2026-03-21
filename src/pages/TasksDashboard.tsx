@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useClients } from "@/hooks/useClients";
-import { clients as staticClients, type ClientTask } from "@/data/projectData";
+import { type ClientTask } from "@/data/projectData";
 import { TaskBoard } from "@/components/tasks/TaskBoard";
 import { TaskCalendar } from "@/components/tasks/TaskCalendar";
 import { TaskTimeline } from "@/components/tasks/TaskTimeline";
