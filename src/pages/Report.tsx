@@ -1,5 +1,6 @@
 import { useSearchParams } from "react-router-dom";
-import { clients, projectInfo } from "@/data/projectData";
+import { projectInfo } from "@/data/projectData";
+import { useClients } from "@/hooks/useClients";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
@@ -14,6 +15,8 @@ const tooltipStyle = {
 
 export default function Report() {
   const [params] = useSearchParams();
+  const { data: clientsData } = useClients();
+  const clients = clientsData || [];
   const mode = params.get("mode") || "resumen";
   const clientId = params.get("client") || "";
   const sections = (params.get("sections") || "").split(",").filter(Boolean) as ReportSection[];
