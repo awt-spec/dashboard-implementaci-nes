@@ -23,21 +23,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchUserData = async (u: User) => {
-    // Fetch role
-    const { data: roleData } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", u.id)
-      .maybeSingle();
-    setRole((roleData?.role as AppRole) ?? null);
-
-    // Fetch profile
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("full_name, email, avatar_url")
-      .eq("user_id", u.id)
-      .maybeSingle();
-    setProfile(profileData ?? null);
+    try {
+      const [{ data: roleData }, { data: profileData }] = await Promise.all([
+        supabase.from("user_roles").select("role").eq("user_id", u.id).maybeSingle(),
+        supabase.from("profiles").select("full_name, email, avatar_url").eq("user_id", u.id).maybeSingle(),
+      ]);
+      setRole((roleData?.role as AppRole) ?? null);
+      setProfile(profileData ?? null);
+    } catch (err) {
+      console.error("Error fetching user data:", err);
+      setRole(null);
+      setProfile(null);
+    }
   };
 
   useEffect(() => {
