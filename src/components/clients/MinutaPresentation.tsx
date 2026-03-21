@@ -127,77 +127,78 @@ export function MinutaPresentation({ client, open, onClose, onContinue }: Minuta
   const wrapperRef = useRef<HTMLDivElement>(null);
   const qc = useQueryClient();
 
+  // ── DB-backed presentation data ──
+  const { dataMap, save: savePresData, loaded: presLoaded } = useAllPresentationData(client.id);
+
+  // Compute defaults for each data key
+  const defaultTexts: SlideTexts = {};
+  const defaultCrono = client.id === "aurum" ? aurumCronogramaRows : [];
+  const defaultComp = client.id === "aurum" ? aurumCompromisosRows : [];
+  const defaultCoord = client.actionItems.map((item, i) => ({
+    num: i + 1, subject: item.title, owner: item.assignee, date: item.dueDate,
+    status: item.status === "completado" ? "Hecho" : item.status === "vencido" ? "Vencido" : "Pendiente",
+    fup: item.source?.replace("FUP Semanal ", "") || "",
+  }));
+  const pendingTasks = client.tasks.filter(t => t.status === "pendiente" || t.status === "bloqueada");
+  const defaultProx = pendingTasks.map((t, i) => ({
+    num: i + 1, subject: t.title, owner: t.owner, date: t.dueDate,
+    status: i === 0 ? "N/A" : `F${i}`, fup: "",
+  }));
+  const defaultTimeline = client.phases.map(p => ({ name: p.name, startDate: p.startDate, endDate: p.endDate, status: p.status, progress: p.progress }));
+  const defaultActivity = buildActivityGroups(client).flatMap(g => g.items.map(it => ({ label: it.label, progress: it.progress, status: it.status, group: g.title })));
+  const defaultEntreg = client.deliverables.map(d => ({ id: d.id, name: d.name, date: d.deliveredDate || d.dueDate, status: d.status }));
+  const defaultRiesgos = client.risks.map(r => ({ id: r.id, description: r.description, impact: r.impact, status: r.status, mitigation: r.mitigation || "" }));
+
   // Text state
-  const [texts, setTexts] = useState<SlideTexts>(() => loadSlideTexts(client.id));
-  useEffect(() => { setTexts(loadSlideTexts(client.id)); }, [client.id]);
+  const [texts, setTexts] = useState<SlideTexts>(defaultTexts);
   const txt = (key: string, fb: string): string => texts[key] ?? fb;
-  const setTxt = (key: string, v: string) => { const n = { ...texts, [key]: v }; setTexts(n); saveSlideTexts(client.id, n); toast.success("Guardado"); };
+  const setTxt = (key: string, v: string) => { const n = { ...texts, [key]: v }; setTexts(n); savePresData("texts", n); toast.success("Guardado"); };
 
   // Cronograma data
-  const [cronograma, setCronograma] = useState<CronogramaRow[]>(() => {
-    try { const r = localStorage.getItem(`ppt-crono-${client.id}`); return r ? JSON.parse(r) : (client.id === "aurum" ? aurumCronogramaRows : []); } catch { return client.id === "aurum" ? aurumCronogramaRows : []; }
-  });
-  const saveCrono = (rows: CronogramaRow[]) => { setCronograma(rows); localStorage.setItem(`ppt-crono-${client.id}`, JSON.stringify(rows)); };
+  const [cronograma, setCronograma] = useState<CronogramaRow[]>(defaultCrono);
+  const saveCrono = (rows: CronogramaRow[]) => { setCronograma(rows); savePresData("crono", rows); };
 
   // Compromisos data
-  const [compromisos, setCompromisos] = useState<CompromisoRow[]>(() => {
-    try { const r = localStorage.getItem(`ppt-comp-${client.id}`); return r ? JSON.parse(r) : (client.id === "aurum" ? aurumCompromisosRows : []); } catch { return client.id === "aurum" ? aurumCompromisosRows : []; }
-  });
-  const saveComp = (rows: CompromisoRow[]) => { setCompromisos(rows); localStorage.setItem(`ppt-comp-${client.id}`, JSON.stringify(rows)); };
+  const [compromisos, setCompromisos] = useState<CompromisoRow[]>(defaultComp);
+  const saveComp = (rows: CompromisoRow[]) => { setCompromisos(rows); savePresData("comp", rows); };
 
-  // Coordination data (editable action items)
-  const [coordItems, setCoordItems] = useState<CoordinationRow[]>(() => {
-    try {
-      const r = localStorage.getItem(`ppt-coord-${client.id}`);
-      if (r) return JSON.parse(r);
-    } catch {}
-    return client.actionItems.map((item, i) => ({
-      num: i + 1, subject: item.title, owner: item.assignee, date: item.dueDate,
-      status: item.status === "completado" ? "Hecho" : item.status === "vencido" ? "Vencido" : "Pendiente",
-      fup: item.source?.replace("FUP Semanal ", "") || "",
-    }));
-  });
-  const saveCoord = (rows: CoordinationRow[]) => { setCoordItems(rows); localStorage.setItem(`ppt-coord-${client.id}`, JSON.stringify(rows)); };
+  // Coordination data
+  const [coordItems, setCoordItems] = useState<CoordinationRow[]>(defaultCoord);
+  const saveCoord = (rows: CoordinationRow[]) => { setCoordItems(rows); savePresData("coord", rows); };
 
-  // Próximos pasos (editable)
-  const pendingTasks = client.tasks.filter(t => t.status === "pendiente" || t.status === "bloqueada");
-  const [proxPasos, setProxPasos] = useState<CoordinationRow[]>(() => {
-    try { const r = localStorage.getItem(`ppt-prox-${client.id}`); if (r) return JSON.parse(r); } catch {}
-    return pendingTasks.map((t, i) => ({
-      num: i + 1, subject: t.title, owner: t.owner, date: t.dueDate,
-      status: i === 0 ? "N/A" : `F${i}`, fup: "",
-    }));
-  });
-  const saveProx = (rows: CoordinationRow[]) => { setProxPasos(rows); localStorage.setItem(`ppt-prox-${client.id}`, JSON.stringify(rows)); };
+  // Próximos pasos
+  const [proxPasos, setProxPasos] = useState<CoordinationRow[]>(defaultProx);
+  const saveProx = (rows: CoordinationRow[]) => { setProxPasos(rows); savePresData("prox", rows); };
 
-  // Timeline / Gantt data (editable)
-  const [timelineRows, setTimelineRows] = useState<TimelineRow[]>(() => {
-    try { const r = localStorage.getItem(`ppt-timeline-${client.id}`); if (r) return JSON.parse(r); } catch {}
-    return client.phases.map(p => ({ name: p.name, startDate: p.startDate, endDate: p.endDate, status: p.status, progress: p.progress }));
-  });
-  const saveTimeline = (rows: TimelineRow[]) => { setTimelineRows(rows); localStorage.setItem(`ppt-timeline-${client.id}`, JSON.stringify(rows)); };
+  // Timeline / Gantt data
+  const [timelineRows, setTimelineRows] = useState<TimelineRow[]>(defaultTimeline);
+  const saveTimeline = (rows: TimelineRow[]) => { setTimelineRows(rows); savePresData("timeline", rows); };
 
-  // Activity / Avance data (editable)
-  const [activityItems, setActivityItems] = useState<ActivityEditorItem[]>(() => {
-    try { const r = localStorage.getItem(`ppt-activity-${client.id}`); if (r) return JSON.parse(r); } catch {}
-    const groups = buildActivityGroups(client);
-    return groups.flatMap(g => g.items.map(it => ({ label: it.label, progress: it.progress, status: it.status, group: g.title })));
-  });
-  const saveActivity = (items: ActivityEditorItem[]) => { setActivityItems(items); localStorage.setItem(`ppt-activity-${client.id}`, JSON.stringify(items)); };
+  // Activity / Avance data
+  const [activityItems, setActivityItems] = useState<ActivityEditorItem[]>(defaultActivity);
+  const saveActivity = (items: ActivityEditorItem[]) => { setActivityItems(items); savePresData("activity", items); };
 
-  // Entregables data (editable)
-  const [entregableRows, setEntregableRows] = useState<EntregableRow[]>(() => {
-    try { const r = localStorage.getItem(`ppt-entreg-${client.id}`); if (r) return JSON.parse(r); } catch {}
-    return client.deliverables.map(d => ({ id: d.id, name: d.name, date: d.deliveredDate || d.dueDate, status: d.status }));
-  });
-  const saveEntregables = (rows: EntregableRow[]) => { setEntregableRows(rows); localStorage.setItem(`ppt-entreg-${client.id}`, JSON.stringify(rows)); };
+  // Entregables data
+  const [entregableRows, setEntregableRows] = useState<EntregableRow[]>(defaultEntreg);
+  const saveEntregables = (rows: EntregableRow[]) => { setEntregableRows(rows); savePresData("entreg", rows); };
 
-  // Riesgos data (editable)
-  const [riesgoRows, setRiesgoRows] = useState<RiesgoRow[]>(() => {
-    try { const r = localStorage.getItem(`ppt-riesgos-${client.id}`); if (r) return JSON.parse(r); } catch {}
-    return client.risks.map(r => ({ id: r.id, description: r.description, impact: r.impact, status: r.status, mitigation: r.mitigation || "" }));
-  });
-  const saveRiesgos = (rows: RiesgoRow[]) => { setRiesgoRows(rows); localStorage.setItem(`ppt-riesgos-${client.id}`, JSON.stringify(rows)); };
+  // Riesgos data
+  const [riesgoRows, setRiesgoRows] = useState<RiesgoRow[]>(defaultRiesgos);
+  const saveRiesgos = (rows: RiesgoRow[]) => { setRiesgoRows(rows); savePresData("riesgos", rows); };
+
+  // Sync from DB when loaded
+  useEffect(() => {
+    if (!presLoaded) return;
+    if (dataMap.texts) setTexts(dataMap.texts);
+    if (dataMap.crono) setCronograma(dataMap.crono);
+    if (dataMap.comp) setCompromisos(dataMap.comp);
+    if (dataMap.coord) setCoordItems(dataMap.coord);
+    if (dataMap.prox) setProxPasos(dataMap.prox);
+    if (dataMap.timeline) setTimelineRows(dataMap.timeline);
+    if (dataMap.activity) setActivityItems(dataMap.activity);
+    if (dataMap.entreg) setEntregableRows(dataMap.entreg);
+    if (dataMap.riesgos) setRiesgoRows(dataMap.riesgos);
+  }, [presLoaded, client.id]);
 
   // Build data from editable activity items
   const activityGroups = (() => {
