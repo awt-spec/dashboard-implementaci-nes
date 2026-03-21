@@ -52,7 +52,7 @@ export default function Report() {
   );
 }
 
-function ResumenSections({ sections }: { sections: ReportSection[] }) {
+function ResumenSections({ sections, clients }: { sections: ReportSection[]; clients: any[] }) {
   const avgProgress = Math.round(clients.reduce((s, c) => s + c.progress, 0) / clients.length);
   const totalRisks = clients.reduce((s, c) => s + c.risks.filter(r => r.status === "abierto").length, 0);
   const allTasks = clients.flatMap(c => c.tasks);
