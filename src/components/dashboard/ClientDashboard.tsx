@@ -360,12 +360,22 @@ function TaskListWidget({ tasks }: { tasks: any[] }) {
 }
 
 function DeliverablesWidget({ deliverables }: { deliverables: any[] }) {
+  const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const statusData = [
-    { name: "Aprobados", value: deliverables.filter(d => d.status === "aprobado").length, color: "hsl(var(--success))" },
-    { name: "Entregados", value: deliverables.filter(d => d.status === "entregado").length, color: "hsl(var(--info))" },
-    { name: "En Revisión", value: deliverables.filter(d => d.status === "en-revision").length, color: "hsl(var(--warning))" },
-    { name: "Pendientes", value: deliverables.filter(d => d.status === "pendiente").length, color: "hsl(var(--destructive))" },
+    { name: "Aprobados", value: deliverables.filter(d => d.status === "aprobado").length, color: "hsl(var(--success))", emoji: "✅" },
+    { name: "Entregados", value: deliverables.filter(d => d.status === "entregado").length, color: "hsl(var(--info))", emoji: "📦" },
+    { name: "En Revisión", value: deliverables.filter(d => d.status === "en-revision").length, color: "hsl(var(--warning))", emoji: "🔍" },
+    { name: "Pendientes", value: deliverables.filter(d => d.status === "pendiente").length, color: "hsl(var(--destructive))", emoji: "⏳" },
   ].filter(d => d.value > 0);
+
+  const renderLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+    if (percent < 0.1) return null;
+    const RADIAN = Math.PI / 180;
+    const radius = outerRadius + 18;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+    return <text x={x} y={y} fill="hsl(var(--foreground))" textAnchor={x > cx ? "start" : "end"} dominantBaseline="central" fontSize={10} fontWeight="600">{`${(percent * 100).toFixed(0)}%`}</text>;
+  };
 
   return (
     <Card>
@@ -377,28 +387,54 @@ function DeliverablesWidget({ deliverables }: { deliverables: any[] }) {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="h-36 mb-3">
+        <div className="h-44 relative">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Pie data={statusData} innerRadius={30} outerRadius={50} dataKey="value" strokeWidth={2} stroke="hsl(var(--card))">
-                {statusData.map((e, i) => <Cell key={i} fill={e.color} />)}
+              <Pie
+                data={statusData} innerRadius={34} outerRadius={56} dataKey="value"
+                strokeWidth={3} stroke="hsl(var(--card))"
+                label={renderLabel} labelLine={{ stroke: "hsl(var(--muted-foreground))", strokeWidth: 1 }}
+                onMouseEnter={(_, i) => setActiveIdx(i)} onMouseLeave={() => setActiveIdx(null)}
+                animationDuration={800} animationEasing="ease-out"
+              >
+                {statusData.map((e, i) => (
+                  <Cell key={i} fill={e.color} opacity={activeIdx !== null && activeIdx !== i ? 0.35 : 1}
+                    style={{ filter: activeIdx === i ? "brightness(1.2) drop-shadow(0 0 6px " + e.color + ")" : "none", transition: "all 0.25s ease", cursor: "pointer" }} />
+                ))}
               </Pie>
               <Tooltip contentStyle={tooltipStyle} formatter={(v: number, n: string) => [`${v} entregables`, n]} />
             </PieChart>
           </ResponsiveContainer>
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <span className="text-lg font-bold text-foreground">{deliverables.length}</span>
+            <span className="text-[9px] text-muted-foreground">Total</span>
+          </div>
         </div>
-        <ScrollArea className="h-[200px]">
+        {/* Legend with hover */}
+        <div className="flex justify-center gap-4 mt-2 pt-2 border-t border-border">
+          {statusData.map((d, i) => (
+            <motion.div key={d.name} whileHover={{ scale: 1.08 }}
+              className={`flex items-center gap-1.5 text-xs p-1 rounded transition-opacity cursor-default ${activeIdx !== null && activeIdx !== i ? 'opacity-40' : ''}`}
+              onMouseEnter={() => setActiveIdx(i)} onMouseLeave={() => setActiveIdx(null)}
+            >
+              <span>{d.emoji}</span>
+              <span className="text-muted-foreground">{d.name}</span>
+              <span className="font-bold text-foreground">{d.value}</span>
+            </motion.div>
+          ))}
+        </div>
+        <ScrollArea className="h-[180px] mt-3">
           <div className="space-y-2 pr-2">
             {deliverables.map(d => {
               const statusIcon = d.status === "aprobado" ? "✅" : d.status === "entregado" ? "📦" : d.status === "en-revision" ? "🔍" : "⏳";
               return (
-                <div key={d.id} className="flex items-start gap-2 p-2 rounded-lg border border-border text-xs">
+                <motion.div key={d.id} whileHover={{ x: 3 }} className="flex items-start gap-2 p-2.5 rounded-lg border border-border text-xs hover:border-primary/20 transition-colors">
                   <span>{statusIcon}</span>
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-foreground truncate">{d.name}</p>
                     <p className="text-muted-foreground">Vence: {d.dueDate} {d.version && `• v${d.version}`}</p>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
           </div>
