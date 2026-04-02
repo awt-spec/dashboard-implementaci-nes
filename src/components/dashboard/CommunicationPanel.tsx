@@ -197,6 +197,15 @@ export function CommunicationPanel({ client }: CommunicationPanelProps) {
     // Update thread timestamp
     await supabase.from("communication_threads").update({ updated_at: new Date().toISOString() }).eq("id", activeThread.id);
 
+    // Auto-notify: create a notification for the client
+    const catLabel = categoryConfig[activeThread.category]?.label || activeThread.category;
+    await supabase.from("client_notifications").insert({
+      client_id: activeThread.client_id,
+      title: `Nueva respuesta en "${activeThread.subject}"`,
+      message: `${userName} respondió en el hilo de ${catLabel}: "${replyMessage.trim().slice(0, 80)}${replyMessage.trim().length > 80 ? "..." : ""}"`,
+      type: activeThread.category === "alerta" ? "warning" : "info",
+    });
+
     setReplyMessage("");
     await refetch();
     // Refresh active thread messages
