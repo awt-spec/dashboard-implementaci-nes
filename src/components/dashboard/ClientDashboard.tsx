@@ -18,7 +18,10 @@ import {
   Settings, GripVertical, Eye, EyeOff, ChevronDown, ChevronUp,
   CheckSquare, ArrowRight, Users
 } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import {
+  PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  RadialBarChart, RadialBar, Legend, Area, AreaChart, Label
+} from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
 import { type Client, type Comment, type MeetingMinute } from "@/data/projectData";
 import { useCreateComment } from "@/hooks/useClients";
@@ -63,7 +66,8 @@ const commentTypeConfig: Record<string, { icon: any; color: string; label: strin
 };
 
 const tooltipStyle = {
-  background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12,
+  background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12,
+  boxShadow: "0 8px 30px -10px hsl(var(--foreground) / 0.15)", padding: "8px 12px",
 };
 
 // ── Notifications Hook ──────────────────────────────────
@@ -125,23 +129,41 @@ function useWidgetConfig(userId: string | undefined) {
 // ── Sub-components ──────────────────────────────────────
 
 function ProgressWidget({ client }: { client: Client }) {
-  const gaugeData = [{ value: client.progress }, { value: 100 - client.progress }];
+  const completedTasks = client.tasks.filter(t => t.visibility === "externa" && t.status === "completada").length;
+  const totalTasks = client.tasks.filter(t => t.visibility === "externa").length;
+  const taskPct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const deliveredPct = client.deliverables.length > 0
+    ? Math.round((client.deliverables.filter(d => ["aprobado", "entregado"].includes(d.status)).length / client.deliverables.length) * 100) : 0;
+
+  const radialData = [
+    { name: "Proyecto", value: client.progress, fill: "hsl(var(--primary))" },
+    { name: "Actividades", value: taskPct, fill: "hsl(var(--info))" },
+    { name: "Entregables", value: deliveredPct, fill: "hsl(var(--success))" },
+  ];
+
   return (
     <Card>
-      <CardContent className="p-5 flex flex-col items-center">
-        <h3 className="text-sm font-semibold text-foreground mb-3">Avance del Proyecto</h3>
-        <div className="relative w-32 h-32">
+      <CardContent className="p-5">
+        <h3 className="text-sm font-semibold text-foreground mb-2">Avance del Proyecto</h3>
+        <div className="h-52">
           <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie data={gaugeData} innerRadius={42} outerRadius={58} startAngle={90} endAngle={-270} dataKey="value" strokeWidth={0}>
-                <Cell fill="hsl(var(--primary))" />
-                <Cell fill="hsl(var(--muted))" />
-              </Pie>
-            </PieChart>
+            <RadialBarChart cx="50%" cy="50%" innerRadius="30%" outerRadius="90%" data={radialData} startAngle={180} endAngle={-180} barSize={12}>
+              <RadialBar background={{ fill: "hsl(var(--muted))" }} dataKey="value" cornerRadius={6} />
+              <Tooltip contentStyle={tooltipStyle} formatter={(v: number, n: string) => [`${v}%`, n]} />
+            </RadialBarChart>
           </ResponsiveContainer>
-          <span className="absolute inset-0 flex items-center justify-center text-2xl font-bold text-foreground">{client.progress}%</span>
         </div>
-        <p className="text-xs text-muted-foreground mt-2">Avance general de la implementación</p>
+        <div className="flex justify-center gap-5 mt-1">
+          {radialData.map(d => (
+            <div key={d.name} className="flex items-center gap-2 text-xs">
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: d.fill }} />
+              <div>
+                <span className="text-muted-foreground">{d.name}</span>
+                <span className="font-bold text-foreground ml-1">{d.value}%</span>
+              </div>
+            </div>
+          ))}
+        </div>
       </CardContent>
     </Card>
   );
@@ -172,6 +194,7 @@ function PhasesWidget({ client }: { client: Client }) {
 }
 
 function TaskChartWidget({ tasks }: { tasks: any[] }) {
+  const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const tasksByStatus = {
     completada: tasks.filter(t => t.status === "completada").length,
     "en-progreso": tasks.filter(t => t.status === "en-progreso").length,
@@ -179,10 +202,10 @@ function TaskChartWidget({ tasks }: { tasks: any[] }) {
     bloqueada: tasks.filter(t => t.status === "bloqueada").length,
   };
   const pieData = [
-    { name: "Completadas", value: tasksByStatus.completada, color: "hsl(var(--success))" },
-    { name: "En Progreso", value: tasksByStatus["en-progreso"], color: "hsl(var(--info))" },
-    { name: "Pendientes", value: tasksByStatus.pendiente, color: "hsl(var(--warning))" },
-    { name: "Bloqueadas", value: tasksByStatus.bloqueada, color: "hsl(var(--destructive))" },
+    { name: "Completadas", value: tasksByStatus.completada, color: "hsl(var(--success))", emoji: "✅" },
+    { name: "En Progreso", value: tasksByStatus["en-progreso"], color: "hsl(var(--info))", emoji: "🔄" },
+    { name: "Pendientes", value: tasksByStatus.pendiente, color: "hsl(var(--warning))", emoji: "⏳" },
+    { name: "Bloqueadas", value: tasksByStatus.bloqueada, color: "hsl(var(--destructive))", emoji: "🚫" },
   ].filter(d => d.value > 0);
 
   const barData = [
@@ -191,51 +214,95 @@ function TaskChartWidget({ tasks }: { tasks: any[] }) {
     { name: "Baja", value: tasks.filter(t => t.priority === "baja").length, fill: "hsl(var(--success))" },
   ];
 
+  const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }: any) => {
+    if (percent < 0.08) return null;
+    const RADIAN = Math.PI / 180;
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+    return (
+      <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight="bold">
+        {`${(percent * 100).toFixed(0)}%`}
+      </text>
+    );
+  };
+
   return (
     <Card>
       <CardContent className="p-5">
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-4">
           <ListTodo className="h-4 w-4 text-info" />
           <h3 className="text-sm font-semibold text-foreground">Estado de Actividades</h3>
           <Badge variant="outline" className="ml-auto text-xs">{tasks.length} total</Badge>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <div className="h-40">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={pieData} innerRadius={35} outerRadius={55} dataKey="value" strokeWidth={2} stroke="hsl(var(--card))">
-                  {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                </Pie>
-                <Tooltip contentStyle={tooltipStyle} formatter={(v: number, n: string) => [`${v} actividades`, n]} />
-              </PieChart>
-            </ResponsiveContainer>
+          {/* Donut with labels */}
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 text-center">Por Estado</p>
+            <div className="h-44 relative">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    innerRadius={32}
+                    outerRadius={62}
+                    dataKey="value"
+                    strokeWidth={3}
+                    stroke="hsl(var(--card))"
+                    labelLine={false}
+                    label={renderCustomLabel}
+                    onMouseEnter={(_, i) => setActiveIdx(i)}
+                    onMouseLeave={() => setActiveIdx(null)}
+                    animationBegin={0}
+                    animationDuration={800}
+                    animationEasing="ease-out"
+                  >
+                    {pieData.map((entry, i) => (
+                      <Cell key={i} fill={entry.color} opacity={activeIdx !== null && activeIdx !== i ? 0.4 : 1}
+                        style={{ filter: activeIdx === i ? "brightness(1.15)" : "none", transition: "all 0.2s ease", cursor: "pointer" }} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    formatter={(v: number, n: string) => [`${v} actividades (${tasks.length > 0 ? Math.round((v / tasks.length) * 100) : 0}%)`, n]}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              {/* Center label */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-lg font-bold text-foreground">{tasks.length}</span>
+                <span className="text-[9px] text-muted-foreground">Total</span>
+              </div>
+            </div>
           </div>
-          <div className="h-40">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={barData} barSize={20}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [`${v} actividades`]} />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                  {barData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+          {/* Bar chart with rounded bars and gradient feel */}
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 text-center">Por Prioridad</p>
+            <div className="h-44">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={barData} barSize={28} barGap={4}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} width={25} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [`${v} actividades`]} cursor={{ fill: "hsl(var(--muted) / 0.3)", radius: 6 }} />
+                  <Bar dataKey="value" radius={[8, 8, 0, 0]} animationDuration={800} animationEasing="ease-out">
+                    {barData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
-        <div className="grid grid-cols-4 gap-2 mt-3">
-          {[
-            { name: "Completadas", value: tasksByStatus.completada, color: "hsl(var(--success))" },
-            { name: "En Progreso", value: tasksByStatus["en-progreso"], color: "hsl(var(--info))" },
-            { name: "Pendientes", value: tasksByStatus.pendiente, color: "hsl(var(--warning))" },
-            { name: "Bloqueadas", value: tasksByStatus.bloqueada, color: "hsl(var(--destructive))" },
-          ].map(d => (
-            <div key={d.name} className="flex items-center gap-1.5 text-xs">
-              <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
-              <span className="text-muted-foreground">{d.name}</span>
-              <span className="font-bold text-foreground ml-auto">{d.value}</span>
-            </div>
+        {/* Legend */}
+        <div className="grid grid-cols-4 gap-2 mt-4 pt-3 border-t border-border">
+          {pieData.map(d => (
+            <motion.div key={d.name} whileHover={{ scale: 1.05 }} className="flex items-center gap-1.5 text-xs p-1.5 rounded-md hover:bg-muted/50 transition-colors cursor-default">
+              <span className="text-sm">{d.emoji}</span>
+              <div className="min-w-0">
+                <span className="text-muted-foreground block truncate">{d.name}</span>
+                <span className="font-bold text-foreground">{d.value}</span>
+              </div>
+            </motion.div>
           ))}
         </div>
       </CardContent>
@@ -293,12 +360,22 @@ function TaskListWidget({ tasks }: { tasks: any[] }) {
 }
 
 function DeliverablesWidget({ deliverables }: { deliverables: any[] }) {
+  const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const statusData = [
-    { name: "Aprobados", value: deliverables.filter(d => d.status === "aprobado").length, color: "hsl(var(--success))" },
-    { name: "Entregados", value: deliverables.filter(d => d.status === "entregado").length, color: "hsl(var(--info))" },
-    { name: "En Revisión", value: deliverables.filter(d => d.status === "en-revision").length, color: "hsl(var(--warning))" },
-    { name: "Pendientes", value: deliverables.filter(d => d.status === "pendiente").length, color: "hsl(var(--destructive))" },
+    { name: "Aprobados", value: deliverables.filter(d => d.status === "aprobado").length, color: "hsl(var(--success))", emoji: "✅" },
+    { name: "Entregados", value: deliverables.filter(d => d.status === "entregado").length, color: "hsl(var(--info))", emoji: "📦" },
+    { name: "En Revisión", value: deliverables.filter(d => d.status === "en-revision").length, color: "hsl(var(--warning))", emoji: "🔍" },
+    { name: "Pendientes", value: deliverables.filter(d => d.status === "pendiente").length, color: "hsl(var(--destructive))", emoji: "⏳" },
   ].filter(d => d.value > 0);
+
+  const renderLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+    if (percent < 0.1) return null;
+    const RADIAN = Math.PI / 180;
+    const radius = outerRadius + 18;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+    return <text x={x} y={y} fill="hsl(var(--foreground))" textAnchor={x > cx ? "start" : "end"} dominantBaseline="central" fontSize={10} fontWeight="600">{`${(percent * 100).toFixed(0)}%`}</text>;
+  };
 
   return (
     <Card>
@@ -310,28 +387,54 @@ function DeliverablesWidget({ deliverables }: { deliverables: any[] }) {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="h-36 mb-3">
+        <div className="h-44 relative">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Pie data={statusData} innerRadius={30} outerRadius={50} dataKey="value" strokeWidth={2} stroke="hsl(var(--card))">
-                {statusData.map((e, i) => <Cell key={i} fill={e.color} />)}
+              <Pie
+                data={statusData} innerRadius={34} outerRadius={56} dataKey="value"
+                strokeWidth={3} stroke="hsl(var(--card))"
+                label={renderLabel} labelLine={{ stroke: "hsl(var(--muted-foreground))", strokeWidth: 1 }}
+                onMouseEnter={(_, i) => setActiveIdx(i)} onMouseLeave={() => setActiveIdx(null)}
+                animationDuration={800} animationEasing="ease-out"
+              >
+                {statusData.map((e, i) => (
+                  <Cell key={i} fill={e.color} opacity={activeIdx !== null && activeIdx !== i ? 0.35 : 1}
+                    style={{ filter: activeIdx === i ? "brightness(1.2) drop-shadow(0 0 6px " + e.color + ")" : "none", transition: "all 0.25s ease", cursor: "pointer" }} />
+                ))}
               </Pie>
               <Tooltip contentStyle={tooltipStyle} formatter={(v: number, n: string) => [`${v} entregables`, n]} />
             </PieChart>
           </ResponsiveContainer>
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <span className="text-lg font-bold text-foreground">{deliverables.length}</span>
+            <span className="text-[9px] text-muted-foreground">Total</span>
+          </div>
         </div>
-        <ScrollArea className="h-[200px]">
+        {/* Legend with hover */}
+        <div className="flex justify-center gap-4 mt-2 pt-2 border-t border-border">
+          {statusData.map((d, i) => (
+            <motion.div key={d.name} whileHover={{ scale: 1.08 }}
+              className={`flex items-center gap-1.5 text-xs p-1 rounded transition-opacity cursor-default ${activeIdx !== null && activeIdx !== i ? 'opacity-40' : ''}`}
+              onMouseEnter={() => setActiveIdx(i)} onMouseLeave={() => setActiveIdx(null)}
+            >
+              <span>{d.emoji}</span>
+              <span className="text-muted-foreground">{d.name}</span>
+              <span className="font-bold text-foreground">{d.value}</span>
+            </motion.div>
+          ))}
+        </div>
+        <ScrollArea className="h-[180px] mt-3">
           <div className="space-y-2 pr-2">
             {deliverables.map(d => {
               const statusIcon = d.status === "aprobado" ? "✅" : d.status === "entregado" ? "📦" : d.status === "en-revision" ? "🔍" : "⏳";
               return (
-                <div key={d.id} className="flex items-start gap-2 p-2 rounded-lg border border-border text-xs">
+                <motion.div key={d.id} whileHover={{ x: 3 }} className="flex items-start gap-2 p-2.5 rounded-lg border border-border text-xs hover:border-primary/20 transition-colors">
                   <span>{statusIcon}</span>
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-foreground truncate">{d.name}</p>
                     <p className="text-muted-foreground">Vence: {d.dueDate} {d.version && `• v${d.version}`}</p>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
           </div>
