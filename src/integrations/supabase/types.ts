@@ -129,6 +129,30 @@ export type Database = {
           },
         ]
       }
+      client_dashboard_config: {
+        Row: {
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+          widgets: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+          widgets?: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+          widgets?: Json
+        }
+        Relationships: []
+      }
       client_financials: {
         Row: {
           billed: number
@@ -178,6 +202,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      client_notifications: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          title: string
+          type: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          title: string
+          type?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          title?: string
+          type?: string
+        }
+        Relationships: []
       }
       clients: {
         Row: {
@@ -428,6 +482,7 @@ export type Database = {
           summary: string
           title: string
           updated_at: string
+          visible_to_client: boolean
         }
         Insert: {
           action_items?: string[]
@@ -443,6 +498,7 @@ export type Database = {
           summary: string
           title: string
           updated_at?: string
+          visible_to_client?: boolean
         }
         Update: {
           action_items?: string[]
@@ -458,6 +514,7 @@ export type Database = {
           summary?: string
           title?: string
           updated_at?: string
+          visible_to_client?: boolean
         }
         Relationships: [
           {
