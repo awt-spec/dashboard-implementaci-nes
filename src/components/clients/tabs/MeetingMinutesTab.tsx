@@ -32,7 +32,7 @@ export function MeetingMinutesTab({ meetingMinutes, clientId, client }: MeetingM
   const [shareOpen, setShareOpen] = useState(false);
 
   const deleteMinute = useDeleteMeetingMinute();
-  const queryClient = (await import("@tanstack/react-query")).useQueryClient();
+  const queryClient = useQueryClient();
 
   const handleDelete = async (m: MeetingMinute) => {
     const { data } = await supabase.from("meeting_minutes").select("id").eq("client_id", clientId).eq("original_id", m.id).maybeSingle();
