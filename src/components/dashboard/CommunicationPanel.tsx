@@ -223,7 +223,7 @@ export function CommunicationPanel({ client }: CommunicationPanelProps) {
   // Find linked names
   const getLinkedLabel = (thread: Thread) => {
     if (thread.linked_task_id) {
-      const task = tasks.find(t => t.id === thread.linked_task_id);
+      const task = tasks.find(t => String(t.id) === thread.linked_task_id);
       return task ? { type: "Actividad", name: task.title, icon: ListTodo } : null;
     }
     if (thread.linked_deliverable_id) {
