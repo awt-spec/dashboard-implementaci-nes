@@ -129,23 +129,41 @@ function useWidgetConfig(userId: string | undefined) {
 // ── Sub-components ──────────────────────────────────────
 
 function ProgressWidget({ client }: { client: Client }) {
-  const gaugeData = [{ value: client.progress }, { value: 100 - client.progress }];
+  const completedTasks = client.tasks.filter(t => t.visibility === "externa" && t.status === "completada").length;
+  const totalTasks = client.tasks.filter(t => t.visibility === "externa").length;
+  const taskPct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const deliveredPct = client.deliverables.length > 0
+    ? Math.round((client.deliverables.filter(d => ["aprobado", "entregado"].includes(d.status)).length / client.deliverables.length) * 100) : 0;
+
+  const radialData = [
+    { name: "Proyecto", value: client.progress, fill: "hsl(var(--primary))" },
+    { name: "Actividades", value: taskPct, fill: "hsl(var(--info))" },
+    { name: "Entregables", value: deliveredPct, fill: "hsl(var(--success))" },
+  ];
+
   return (
     <Card>
-      <CardContent className="p-5 flex flex-col items-center">
-        <h3 className="text-sm font-semibold text-foreground mb-3">Avance del Proyecto</h3>
-        <div className="relative w-32 h-32">
+      <CardContent className="p-5">
+        <h3 className="text-sm font-semibold text-foreground mb-2">Avance del Proyecto</h3>
+        <div className="h-52">
           <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie data={gaugeData} innerRadius={42} outerRadius={58} startAngle={90} endAngle={-270} dataKey="value" strokeWidth={0}>
-                <Cell fill="hsl(var(--primary))" />
-                <Cell fill="hsl(var(--muted))" />
-              </Pie>
-            </PieChart>
+            <RadialBarChart cx="50%" cy="50%" innerRadius="30%" outerRadius="90%" data={radialData} startAngle={180} endAngle={-180} barSize={12}>
+              <RadialBar background={{ fill: "hsl(var(--muted))" }} dataKey="value" cornerRadius={6} />
+              <Tooltip contentStyle={tooltipStyle} formatter={(v: number, n: string) => [`${v}%`, n]} />
+            </RadialBarChart>
           </ResponsiveContainer>
-          <span className="absolute inset-0 flex items-center justify-center text-2xl font-bold text-foreground">{client.progress}%</span>
         </div>
-        <p className="text-xs text-muted-foreground mt-2">Avance general de la implementación</p>
+        <div className="flex justify-center gap-5 mt-1">
+          {radialData.map(d => (
+            <div key={d.name} className="flex items-center gap-2 text-xs">
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: d.fill }} />
+              <div>
+                <span className="text-muted-foreground">{d.name}</span>
+                <span className="font-bold text-foreground ml-1">{d.value}%</span>
+              </div>
+            </div>
+          ))}
+        </div>
       </CardContent>
     </Card>
   );
