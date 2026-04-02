@@ -147,6 +147,12 @@ export function MeetingMinutesTab({ meetingMinutes, clientId, client }: MeetingM
                       </motion.div>
                     )}
                     <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                      <Button variant="ghost" size="icon" className={`h-7 w-7 opacity-0 group-hover:opacity-100 transition-all ${minute.visibleToClient ? 'text-success hover:text-warning' : 'text-muted-foreground hover:text-success'}`}
+                        onClick={() => handleToggleVisibility(minute)} title={minute.visibleToClient ? "Ocultar al cliente" : "Hacer visible al cliente"}>
+                        {minute.visibleToClient ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                      </Button>
+                    </motion.div>
+                    <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
                       <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-all" onClick={() => handleDelete(minute)}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
