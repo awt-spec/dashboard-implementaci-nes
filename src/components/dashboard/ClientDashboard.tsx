@@ -18,7 +18,10 @@ import {
   Settings, GripVertical, Eye, EyeOff, ChevronDown, ChevronUp,
   CheckSquare, ArrowRight, Users
 } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import {
+  PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  RadialBarChart, RadialBar, Legend, Area, AreaChart, Label
+} from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
 import { type Client, type Comment, type MeetingMinute } from "@/data/projectData";
 import { useCreateComment } from "@/hooks/useClients";
