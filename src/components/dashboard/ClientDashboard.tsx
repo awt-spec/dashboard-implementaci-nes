@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  RadialBarChart, RadialBar, Legend, Area, AreaChart, Label
+  RadialBarChart, RadialBar, Legend, Area, AreaChart, Label, LineChart, Line, ReferenceLine
 } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
 import { type Client, type Comment, type MeetingMinute } from "@/data/projectData";
