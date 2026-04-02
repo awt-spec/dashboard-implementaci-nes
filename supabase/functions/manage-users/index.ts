@@ -85,6 +85,16 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (action === "update_password") {
+      const { user_id, password } = body;
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(user_id, { password });
+      if (error) throw error;
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     throw new Error("Unknown action");
   } catch (err: any) {
     return new Response(JSON.stringify({ error: err.message }), {
