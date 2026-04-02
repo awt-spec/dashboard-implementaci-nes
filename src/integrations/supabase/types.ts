@@ -392,6 +392,27 @@ export type Database = {
           },
         ]
       }
+      gerente_client_assignments: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       meeting_minutes: {
         Row: {
           action_items: string[]
