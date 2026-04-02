@@ -42,20 +42,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let initialDone = false;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      (_event, session) => {
         if (!mounted) return;
-        // Skip if getSession already handled the initial load
         if (!initialDone) return;
         const u = session?.user ?? null;
-        setUser(u);
-        if (u) {
-          setTimeout(async () => {
-            if (mounted) await fetchUserData(u);
-          }, 0);
-        } else {
+        if (!u) {
+          setUser(null);
           setRole(null);
           setProfile(null);
+          setLoading(false);
+          return;
         }
+        // On login: set loading=true, fetch role before showing UI
+        setLoading(true);
+        setUser(u);
+        setTimeout(async () => {
+          if (!mounted) return;
+          await fetchUserData(u);
+          if (mounted) setLoading(false);
+        }, 0);
       }
     );
 
@@ -72,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const timeout = setTimeout(() => {
       if (mounted) setLoading(false);
-    }, 4000);
+    }, 5000);
 
     return () => {
       mounted = false;
