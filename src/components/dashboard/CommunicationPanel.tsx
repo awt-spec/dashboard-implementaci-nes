@@ -163,6 +163,15 @@ export function CommunicationPanel({ client }: CommunicationPanelProps) {
       message_type: category === "general" ? "comentario" : category,
     });
 
+    // Auto-notify: new thread created
+    const catLabel = categoryConfig[category]?.label || category;
+    await supabase.from("client_notifications").insert({
+      client_id: client.id,
+      title: `Nuevo tema: "${subject.trim()}"`,
+      message: `${userName} abrió un hilo de ${catLabel}: "${firstMessage.trim().slice(0, 80)}${firstMessage.trim().length > 80 ? "..." : ""}"`,
+      type: category === "alerta" ? "warning" : "info",
+    });
+
     toast.success("Tema creado");
     setNewThreadOpen(false);
     setSubject("");
