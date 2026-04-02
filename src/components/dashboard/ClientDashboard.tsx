@@ -430,7 +430,7 @@ function TrendWidget({ client }: { client: Client }) {
   );
 }
 
-
+function TaskListWidget({ tasks }: { tasks: any[] }) {
   const [filter, setFilter] = useState("all");
   const filtered = filter === "all" ? tasks : tasks.filter(t => t.status === filter);
   return (
