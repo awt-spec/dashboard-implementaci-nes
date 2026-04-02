@@ -78,6 +78,7 @@ interface DbMeetingMinute {
   agreements: string[];
   action_items: string[];
   next_meeting: string | null;
+  visible_to_client: boolean;
 }
 
 interface DbEmailNotification {
