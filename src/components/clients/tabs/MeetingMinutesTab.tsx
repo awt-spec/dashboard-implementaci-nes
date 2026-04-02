@@ -31,11 +31,21 @@ export function MeetingMinutesTab({ meetingMinutes, clientId, client }: MeetingM
   const [shareOpen, setShareOpen] = useState(false);
 
   const deleteMinute = useDeleteMeetingMinute();
+  const queryClient = (await import("@tanstack/react-query")).useQueryClient();
 
   const handleDelete = async (m: MeetingMinute) => {
     const { data } = await supabase.from("meeting_minutes").select("id").eq("client_id", clientId).eq("original_id", m.id).maybeSingle();
     if (!data) return;
     deleteMinute.mutate(data.id, { onSuccess: () => toast.success("Minuta eliminada"), onError: () => toast.error("Error") });
+  };
+
+  const handleToggleVisibility = async (m: MeetingMinute) => {
+    const { data } = await supabase.from("meeting_minutes").select("id, visible_to_client").eq("client_id", clientId).eq("original_id", m.id).maybeSingle();
+    if (!data) return;
+    const { error } = await supabase.from("meeting_minutes").update({ visible_to_client: !data.visible_to_client }).eq("id", data.id);
+    if (error) { toast.error("Error al actualizar visibilidad"); return; }
+    toast.success(data.visible_to_client ? "Minuta oculta para el cliente" : "Minuta visible para el cliente");
+    queryClient.invalidateQueries({ queryKey: ["clients"] });
   };
 
   return (
