@@ -28,6 +28,7 @@ import { useCreateComment } from "@/hooks/useClients";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { CommunicationPanel } from "./CommunicationPanel";
 
 // ── Types ──────────────────────────────────────────────
 type WidgetId = "progress" | "phases" | "taskChart" | "taskList" | "deliverables" | "risks" | "feedback" | "recentMinutes" | "trend";
@@ -1056,7 +1057,7 @@ export function ClientDashboard({ client }: ClientDashboardProps) {
 
           {section === "minutas" && <RecentMinutesWidget minutes={client.meetingMinutes} />}
 
-          {section === "comunicacion" && <FeedbackWidget comments={client.comments} clientId={client.id} />}
+          {section === "comunicacion" && <CommunicationPanel client={client} />}
 
           {section === "notificaciones" && <NotificationsPanel clientId={client.id} />}
         </motion.div>
