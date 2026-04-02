@@ -66,6 +66,7 @@ export interface ClientTask {
   priority: "alta" | "media" | "baja";
   assignees: TaskAssignee[];
   description?: string;
+  visibility?: string;
 }
 
 export interface ActionItem {

@@ -52,6 +52,7 @@ interface DbTask {
   priority: string;
   assignees: TaskAssignee[];
   description: string | null;
+  visibility: string;
 }
 
 interface DbActionItem {
@@ -201,6 +202,7 @@ async function fetchClients(): Promise<Client[]> {
           priority: t.priority as ClientTask["priority"],
           assignees: t.assignees,
           description: t.description || undefined,
+          visibility: t.visibility || "externa",
         })),
       actionItems: actionItemsData
         .filter(a => a.client_id === c.id)

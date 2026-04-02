@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/dashboard/AppSidebar";
 import { ExecutiveOverview } from "@/components/dashboard/ExecutiveOverview";
+import { ClientDashboard } from "@/components/dashboard/ClientDashboard";
 import { ClientList } from "@/components/clients/ClientList";
 import { ClientDetail } from "@/components/clients/ClientDetail";
 import TasksDashboard from "@/pages/TasksDashboard";
@@ -9,19 +10,37 @@ import AdminUsers from "@/pages/AdminUsers";
 import { useClients } from "@/hooks/useClients";
 import { useAuth } from "@/hooks/useAuth";
 import { projectInfo } from "@/data/projectData";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ShareReportDialog } from "@/components/dashboard/ShareReportDialog";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const [activeSection, setActiveSection] = useState("overview");
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
   const { data: clients } = useClients();
+  const [assignedClientId, setAssignedClientId] = useState<string | null>(null);
+  const [loadingAssignment, setLoadingAssignment] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
   }, [dark]);
+
+  // Fetch gerente's assigned client
+  useEffect(() => {
+    if (role !== "gerente" || !user) return;
+    setLoadingAssignment(true);
+    supabase
+      .from("gerente_client_assignments")
+      .select("client_id")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        setAssignedClientId(data?.client_id ?? null);
+        setLoadingAssignment(false);
+      });
+  }, [role, user]);
 
   // Gerente can only see overview
   useEffect(() => {
@@ -41,7 +60,13 @@ const Index = () => {
     ? clientData.find(c => c.id === activeSection.replace("client-", ""))
     : null;
 
+  // For gerente: find their assigned client
+  const gerenteClient = role === "gerente" && assignedClientId
+    ? clientData.find(c => c.id === assignedClientId)
+    : null;
+
   const getTitle = () => {
+    if (role === "gerente" && gerenteClient) return `Panel de Proyecto — ${gerenteClient.name}`;
     if (activeSection === "overview") return "Resumen Ejecutivo";
     if (activeSection === "clients") return "Gestión de Clientes";
     if (activeSection === "tasks") return "Tareas Global";
@@ -65,7 +90,7 @@ const Index = () => {
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <ShareReportDialog />
+              {role !== "gerente" && <ShareReportDialog />}
               <Button variant="ghost" size="icon" onClick={() => setDark(!dark)}>
                 {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
@@ -74,7 +99,16 @@ const Index = () => {
 
           <main className="flex-1 overflow-auto p-4 md:p-6">
             <div className="w-full">
-              {activeSection === "overview" && <ExecutiveOverview />}
+              {activeSection === "overview" && role === "gerente" && (
+                loadingAssignment ? (
+                  <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                ) : gerenteClient ? (
+                  <ClientDashboard client={gerenteClient} />
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-12">No tiene un proyecto asignado. Contacte al administrador.</p>
+                )
+              )}
+              {activeSection === "overview" && role !== "gerente" && <ExecutiveOverview />}
               {activeSection === "tasks" && <TasksDashboard />}
               {activeSection === "users" && <AdminUsers />}
               {activeSection === "clients" && (
