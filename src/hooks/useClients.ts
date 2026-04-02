@@ -52,6 +52,7 @@ interface DbTask {
   priority: string;
   assignees: TaskAssignee[];
   description: string | null;
+  visibility: string;
 }
 
 interface DbActionItem {
