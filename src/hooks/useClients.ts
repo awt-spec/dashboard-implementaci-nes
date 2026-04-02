@@ -231,6 +231,7 @@ async function fetchClients(): Promise<Client[]> {
           actionItems: m.action_items,
           nextMeeting: m.next_meeting || undefined,
           presentationSnapshot: (m as any).presentation_snapshot || undefined,
+          visibleToClient: m.visible_to_client,
         })),
       emailNotifications: emailNotificationsData
         .filter(e => e.client_id === c.id)
