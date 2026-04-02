@@ -46,8 +46,9 @@ const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: "taskList", label: "Actividades Recientes", enabled: true, order: 3 },
   { id: "deliverables", label: "Entregables", enabled: true, order: 4 },
   { id: "risks", label: "Puntos de Atención", enabled: true, order: 5 },
-  { id: "recentMinutes", label: "Últimas Minutas", enabled: true, order: 6 },
-  { id: "feedback", label: "Últimos Comentarios", enabled: true, order: 7 },
+  { id: "trend", label: "Tendencia del Proyecto", enabled: true, order: 6 },
+  { id: "recentMinutes", label: "Últimas Minutas", enabled: true, order: 7 },
+  { id: "feedback", label: "Últimos Comentarios", enabled: true, order: 8 },
 ];
 
 const statusLabels: Record<string, string> = {
