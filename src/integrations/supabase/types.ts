@@ -328,6 +328,77 @@ export type Database = {
           },
         ]
       }
+      communication_threads: {
+        Row: {
+          category: string
+          client_id: string
+          created_at: string
+          created_by: string
+          id: string
+          linked_deliverable_id: string | null
+          linked_task_id: string | null
+          linked_thread_id: string | null
+          status: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          client_id: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          linked_deliverable_id?: string | null
+          linked_task_id?: string | null
+          linked_thread_id?: string | null
+          status?: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          linked_deliverable_id?: string | null
+          linked_task_id?: string | null
+          linked_thread_id?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communication_threads_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communication_threads_linked_deliverable_id_fkey"
+            columns: ["linked_deliverable_id"]
+            isOneToOne: false
+            referencedRelation: "deliverables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communication_threads_linked_task_id_fkey"
+            columns: ["linked_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communication_threads_linked_thread_id_fkey"
+            columns: ["linked_thread_id"]
+            isOneToOne: false
+            referencedRelation: "communication_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deliverables: {
         Row: {
           approved_by: string | null
@@ -996,6 +1067,44 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thread_messages: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          message_type: string
+          thread_id: string
+          user_avatar: string
+          user_name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          message_type?: string
+          thread_id: string
+          user_avatar?: string
+          user_name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          message_type?: string
+          thread_id?: string
+          user_avatar?: string
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thread_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "communication_threads"
             referencedColumns: ["id"]
           },
         ]
