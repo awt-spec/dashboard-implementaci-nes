@@ -4,14 +4,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   Calendar, Users, FileText, ChevronDown, ChevronUp, CheckSquare,
-  ArrowRight, Plus, Trash2, Presentation, Sparkles, Share2
+  ArrowRight, Plus, Trash2, Presentation, Sparkles, Share2, Eye, EyeOff
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { useDeleteMeetingMinute } from "@/hooks/useClients";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { motion, AnimatePresence } from "framer-motion";
+import { useDeleteMeetingMinute } from "@/hooks/useClients";
+import { useQueryClient } from "@tanstack/react-query";
 import { MinutaPresentation } from "../MinutaPresentation";
 import { CreateMinutaWizard } from "../CreateMinutaWizard";
 import { SharePresentationDialog } from "../SharePresentationDialog";
@@ -30,11 +32,21 @@ export function MeetingMinutesTab({ meetingMinutes, clientId, client }: MeetingM
   const [shareOpen, setShareOpen] = useState(false);
 
   const deleteMinute = useDeleteMeetingMinute();
+  const queryClient = useQueryClient();
 
   const handleDelete = async (m: MeetingMinute) => {
     const { data } = await supabase.from("meeting_minutes").select("id").eq("client_id", clientId).eq("original_id", m.id).maybeSingle();
     if (!data) return;
     deleteMinute.mutate(data.id, { onSuccess: () => toast.success("Minuta eliminada"), onError: () => toast.error("Error") });
+  };
+
+  const handleToggleVisibility = async (m: MeetingMinute) => {
+    const { data } = await supabase.from("meeting_minutes").select("id, visible_to_client").eq("client_id", clientId).eq("original_id", m.id).maybeSingle();
+    if (!data) return;
+    const { error } = await supabase.from("meeting_minutes").update({ visible_to_client: !data.visible_to_client }).eq("id", data.id);
+    if (error) { toast.error("Error al actualizar visibilidad"); return; }
+    toast.success(data.visible_to_client ? "Minuta oculta para el cliente" : "Minuta visible para el cliente");
+    queryClient.invalidateQueries({ queryKey: ["clients"] });
   };
 
   return (
@@ -134,6 +146,12 @@ export function MeetingMinutesTab({ meetingMinutes, clientId, client }: MeetingM
                         </Button>
                       </motion.div>
                     )}
+                    <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                      <Button variant="ghost" size="icon" className={`h-7 w-7 opacity-0 group-hover:opacity-100 transition-all ${minute.visibleToClient ? 'text-success hover:text-warning' : 'text-muted-foreground hover:text-success'}`}
+                        onClick={() => handleToggleVisibility(minute)} title={minute.visibleToClient ? "Ocultar al cliente" : "Hacer visible al cliente"}>
+                        {minute.visibleToClient ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                      </Button>
+                    </motion.div>
                     <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
                       <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-all" onClick={() => handleDelete(minute)}>
                         <Trash2 className="h-3.5 w-3.5" />

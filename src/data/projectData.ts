@@ -92,6 +92,7 @@ export interface MeetingMinute {
   actionItems: string[];
   nextMeeting?: string;
   presentationSnapshot?: Client;
+  visibleToClient?: boolean;
 }
 
 export interface EmailNotification {
