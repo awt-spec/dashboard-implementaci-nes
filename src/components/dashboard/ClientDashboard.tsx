@@ -1056,7 +1056,7 @@ export function ClientDashboard({ client }: ClientDashboardProps) {
 
           {section === "minutas" && <RecentMinutesWidget minutes={client.meetingMinutes} />}
 
-          {section === "comunicacion" && <FeedbackWidget comments={client.comments} clientId={client.id} />}
+          {section === "comunicacion" && <CommunicationPanel client={client} />}
 
           {section === "notificaciones" && <NotificationsPanel clientId={client.id} />}
         </motion.div>
