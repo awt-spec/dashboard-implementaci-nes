@@ -452,7 +452,7 @@ export function CommunicationPanel({ client }: CommunicationPanelProps) {
                     <SelectTrigger className="mt-1.5"><SelectValue placeholder="Seleccione..." /></SelectTrigger>
                     <SelectContent>
                       {tasks.map(t => (
-                        <SelectItem key={t.id} value={t.id}>
+                        <SelectItem key={t.id} value={String(t.id)}>
                           <span className="truncate">{t.title}</span>
                         </SelectItem>
                       ))}
