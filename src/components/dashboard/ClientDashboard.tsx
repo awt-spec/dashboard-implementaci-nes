@@ -194,6 +194,7 @@ function PhasesWidget({ client }: { client: Client }) {
 }
 
 function TaskChartWidget({ tasks }: { tasks: any[] }) {
+  const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const tasksByStatus = {
     completada: tasks.filter(t => t.status === "completada").length,
     "en-progreso": tasks.filter(t => t.status === "en-progreso").length,
@@ -201,10 +202,10 @@ function TaskChartWidget({ tasks }: { tasks: any[] }) {
     bloqueada: tasks.filter(t => t.status === "bloqueada").length,
   };
   const pieData = [
-    { name: "Completadas", value: tasksByStatus.completada, color: "hsl(var(--success))" },
-    { name: "En Progreso", value: tasksByStatus["en-progreso"], color: "hsl(var(--info))" },
-    { name: "Pendientes", value: tasksByStatus.pendiente, color: "hsl(var(--warning))" },
-    { name: "Bloqueadas", value: tasksByStatus.bloqueada, color: "hsl(var(--destructive))" },
+    { name: "Completadas", value: tasksByStatus.completada, color: "hsl(var(--success))", emoji: "✅" },
+    { name: "En Progreso", value: tasksByStatus["en-progreso"], color: "hsl(var(--info))", emoji: "🔄" },
+    { name: "Pendientes", value: tasksByStatus.pendiente, color: "hsl(var(--warning))", emoji: "⏳" },
+    { name: "Bloqueadas", value: tasksByStatus.bloqueada, color: "hsl(var(--destructive))", emoji: "🚫" },
   ].filter(d => d.value > 0);
 
   const barData = [
@@ -213,51 +214,95 @@ function TaskChartWidget({ tasks }: { tasks: any[] }) {
     { name: "Baja", value: tasks.filter(t => t.priority === "baja").length, fill: "hsl(var(--success))" },
   ];
 
+  const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }: any) => {
+    if (percent < 0.08) return null;
+    const RADIAN = Math.PI / 180;
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+    return (
+      <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight="bold">
+        {`${(percent * 100).toFixed(0)}%`}
+      </text>
+    );
+  };
+
   return (
     <Card>
       <CardContent className="p-5">
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-4">
           <ListTodo className="h-4 w-4 text-info" />
           <h3 className="text-sm font-semibold text-foreground">Estado de Actividades</h3>
           <Badge variant="outline" className="ml-auto text-xs">{tasks.length} total</Badge>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <div className="h-40">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={pieData} innerRadius={35} outerRadius={55} dataKey="value" strokeWidth={2} stroke="hsl(var(--card))">
-                  {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                </Pie>
-                <Tooltip contentStyle={tooltipStyle} formatter={(v: number, n: string) => [`${v} actividades`, n]} />
-              </PieChart>
-            </ResponsiveContainer>
+          {/* Donut with labels */}
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 text-center">Por Estado</p>
+            <div className="h-44 relative">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    innerRadius={32}
+                    outerRadius={62}
+                    dataKey="value"
+                    strokeWidth={3}
+                    stroke="hsl(var(--card))"
+                    labelLine={false}
+                    label={renderCustomLabel}
+                    onMouseEnter={(_, i) => setActiveIdx(i)}
+                    onMouseLeave={() => setActiveIdx(null)}
+                    animationBegin={0}
+                    animationDuration={800}
+                    animationEasing="ease-out"
+                  >
+                    {pieData.map((entry, i) => (
+                      <Cell key={i} fill={entry.color} opacity={activeIdx !== null && activeIdx !== i ? 0.4 : 1}
+                        style={{ filter: activeIdx === i ? "brightness(1.15)" : "none", transition: "all 0.2s ease", cursor: "pointer" }} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    formatter={(v: number, n: string) => [`${v} actividades (${tasks.length > 0 ? Math.round((v / tasks.length) * 100) : 0}%)`, n]}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              {/* Center label */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-lg font-bold text-foreground">{tasks.length}</span>
+                <span className="text-[9px] text-muted-foreground">Total</span>
+              </div>
+            </div>
           </div>
-          <div className="h-40">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={barData} barSize={20}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [`${v} actividades`]} />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                  {barData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+          {/* Bar chart with rounded bars and gradient feel */}
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 text-center">Por Prioridad</p>
+            <div className="h-44">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={barData} barSize={28} barGap={4}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} width={25} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [`${v} actividades`]} cursor={{ fill: "hsl(var(--muted) / 0.3)", radius: 6 }} />
+                  <Bar dataKey="value" radius={[8, 8, 0, 0]} animationDuration={800} animationEasing="ease-out">
+                    {barData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
-        <div className="grid grid-cols-4 gap-2 mt-3">
-          {[
-            { name: "Completadas", value: tasksByStatus.completada, color: "hsl(var(--success))" },
-            { name: "En Progreso", value: tasksByStatus["en-progreso"], color: "hsl(var(--info))" },
-            { name: "Pendientes", value: tasksByStatus.pendiente, color: "hsl(var(--warning))" },
-            { name: "Bloqueadas", value: tasksByStatus.bloqueada, color: "hsl(var(--destructive))" },
-          ].map(d => (
-            <div key={d.name} className="flex items-center gap-1.5 text-xs">
-              <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
-              <span className="text-muted-foreground">{d.name}</span>
-              <span className="font-bold text-foreground ml-auto">{d.value}</span>
-            </div>
+        {/* Legend */}
+        <div className="grid grid-cols-4 gap-2 mt-4 pt-3 border-t border-border">
+          {pieData.map(d => (
+            <motion.div key={d.name} whileHover={{ scale: 1.05 }} className="flex items-center gap-1.5 text-xs p-1.5 rounded-md hover:bg-muted/50 transition-colors cursor-default">
+              <span className="text-sm">{d.emoji}</span>
+              <div className="min-w-0">
+                <span className="text-muted-foreground block truncate">{d.name}</span>
+                <span className="font-bold text-foreground">{d.value}</span>
+              </div>
+            </motion.div>
           ))}
         </div>
       </CardContent>
