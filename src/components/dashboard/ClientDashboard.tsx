@@ -28,6 +28,7 @@ import { useCreateComment } from "@/hooks/useClients";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { CommunicationPanel } from "./CommunicationPanel";
 
 // ── Types ──────────────────────────────────────────────
 type WidgetId = "progress" | "phases" | "taskChart" | "taskList" | "deliverables" | "risks" | "feedback" | "recentMinutes" | "trend";
