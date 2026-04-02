@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  RadialBarChart, RadialBar, Legend, Area, AreaChart, Label
+  RadialBarChart, RadialBar, Legend, Area, AreaChart, Label, LineChart, Line, ReferenceLine
 } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
 import { type Client, type Comment, type MeetingMinute } from "@/data/projectData";
@@ -30,7 +30,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
 // ── Types ──────────────────────────────────────────────
-type WidgetId = "progress" | "phases" | "taskChart" | "taskList" | "deliverables" | "risks" | "feedback" | "recentMinutes";
+type WidgetId = "progress" | "phases" | "taskChart" | "taskList" | "deliverables" | "risks" | "feedback" | "recentMinutes" | "trend";
 
 interface WidgetConfig {
   id: WidgetId;
@@ -46,8 +46,9 @@ const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: "taskList", label: "Actividades Recientes", enabled: true, order: 3 },
   { id: "deliverables", label: "Entregables", enabled: true, order: 4 },
   { id: "risks", label: "Puntos de Atención", enabled: true, order: 5 },
-  { id: "recentMinutes", label: "Últimas Minutas", enabled: true, order: 6 },
-  { id: "feedback", label: "Últimos Comentarios", enabled: true, order: 7 },
+  { id: "trend", label: "Tendencia del Proyecto", enabled: true, order: 6 },
+  { id: "recentMinutes", label: "Últimas Minutas", enabled: true, order: 7 },
+  { id: "feedback", label: "Últimos Comentarios", enabled: true, order: 8 },
 ];
 
 const statusLabels: Record<string, string> = {
@@ -302,6 +303,125 @@ function TaskChartWidget({ tasks }: { tasks: any[] }) {
                 <span className="text-muted-foreground block truncate">{d.name}</span>
                 <span className="font-bold text-foreground">{d.value}</span>
               </div>
+            </motion.div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function TrendWidget({ client }: { client: Client }) {
+  const tasks = client.tasks.filter(t => t.visibility === "externa");
+  
+  // Build timeline data from phases and task due dates
+  const months: string[] = [];
+  const now = new Date();
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(d.toLocaleDateString("es", { month: "short", year: "2-digit" }));
+  }
+  
+  // Simulate cumulative progress based on completed tasks over time
+  const totalTasks = tasks.length || 1;
+  const totalDeliverables = client.deliverables.length || 1;
+  
+  const trendData = months.map((month, idx) => {
+    const factor = (idx + 1) / months.length;
+    const completedTasks = tasks.filter(t => t.status === "completada").length;
+    const completedDeliverables = client.deliverables.filter(d => ["aprobado", "entregado"].includes(d.status)).length;
+    
+    // Progressive curve based on current completion
+    const taskProgress = Math.min(100, Math.round((completedTasks / totalTasks) * 100 * factor));
+    const deliverableProgress = Math.min(100, Math.round((completedDeliverables / totalDeliverables) * 100 * factor));
+    const projectProgress = Math.min(100, Math.round(client.progress * factor));
+    
+    return {
+      month,
+      proyecto: projectProgress,
+      actividades: taskProgress,
+      entregables: deliverableProgress,
+    };
+  });
+
+  const [hoveredLine, setHoveredLine] = useState<string | null>(null);
+
+  const lines = [
+    { key: "proyecto", name: "Proyecto", color: "hsl(var(--primary))", strokeWidth: 3 },
+    { key: "actividades", name: "Actividades", color: "hsl(var(--info))", strokeWidth: 2 },
+    { key: "entregables", name: "Entregables", color: "hsl(var(--success))", strokeWidth: 2 },
+  ];
+
+  return (
+    <Card className="lg:col-span-2">
+      <CardContent className="p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Tendencia del Proyecto</h3>
+          </div>
+          <Badge variant="outline" className="text-xs">{client.progress}% actual</Badge>
+        </div>
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={trendData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+              <defs>
+                <linearGradient id="gradProject" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="gradActividades" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="hsl(var(--info))" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="hsl(var(--info))" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="gradEntregables" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="hsl(var(--success))" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="hsl(var(--success))" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} width={30} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+              <Tooltip contentStyle={tooltipStyle} formatter={(v: number, n: string) => [`${v}%`, n]} />
+              <ReferenceLine y={100} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" strokeOpacity={0.4} />
+              <Area
+                type="monotone" dataKey="proyecto" name="Proyecto"
+                stroke="hsl(var(--primary))" strokeWidth={hoveredLine === "proyecto" || !hoveredLine ? 3 : 1.5}
+                fill="url(#gradProject)" dot={{ r: 4, fill: "hsl(var(--primary))", stroke: "hsl(var(--card))", strokeWidth: 2 }}
+                activeDot={{ r: 6, fill: "hsl(var(--primary))", stroke: "hsl(var(--card))", strokeWidth: 2 }}
+                opacity={hoveredLine && hoveredLine !== "proyecto" ? 0.3 : 1}
+                animationDuration={1000} animationEasing="ease-out"
+              />
+              <Area
+                type="monotone" dataKey="actividades" name="Actividades"
+                stroke="hsl(var(--info))" strokeWidth={hoveredLine === "actividades" || !hoveredLine ? 2 : 1}
+                fill="url(#gradActividades)" dot={{ r: 3, fill: "hsl(var(--info))", stroke: "hsl(var(--card))", strokeWidth: 2 }}
+                activeDot={{ r: 5, fill: "hsl(var(--info))", stroke: "hsl(var(--card))", strokeWidth: 2 }}
+                opacity={hoveredLine && hoveredLine !== "actividades" ? 0.3 : 1}
+                animationDuration={1000} animationEasing="ease-out"
+              />
+              <Area
+                type="monotone" dataKey="entregables" name="Entregables"
+                stroke="hsl(var(--success))" strokeWidth={hoveredLine === "entregables" || !hoveredLine ? 2 : 1}
+                fill="url(#gradEntregables)" dot={{ r: 3, fill: "hsl(var(--success))", stroke: "hsl(var(--card))", strokeWidth: 2 }}
+                activeDot={{ r: 5, fill: "hsl(var(--success))", stroke: "hsl(var(--card))", strokeWidth: 2 }}
+                opacity={hoveredLine && hoveredLine !== "entregables" ? 0.3 : 1}
+                animationDuration={1000} animationEasing="ease-out"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="flex justify-center gap-5 mt-3 pt-3 border-t border-border">
+          {lines.map(l => (
+            <motion.div
+              key={l.key}
+              className="flex items-center gap-2 text-xs cursor-pointer px-2 py-1 rounded-md hover:bg-muted/50 transition-colors"
+              onMouseEnter={() => setHoveredLine(l.key)}
+              onMouseLeave={() => setHoveredLine(null)}
+              whileHover={{ scale: 1.05 }}
+            >
+              <div className="w-4 h-0.5 rounded-full" style={{ backgroundColor: l.color, height: l.strokeWidth }} />
+              <span className="text-muted-foreground">{l.name}</span>
             </motion.div>
           ))}
         </div>
@@ -762,6 +882,7 @@ export function ClientDashboard({ client }: ClientDashboardProps) {
       case "taskList": return <TaskListWidget tasks={tasks} />;
       case "deliverables": return <DeliverablesWidget deliverables={client.deliverables} />;
       case "risks": return <RisksWidget risks={client.risks} />;
+      case "trend": return <TrendWidget client={client} />;
       case "recentMinutes": return <RecentMinutesWidget minutes={client.meetingMinutes} />;
       case "feedback": return <FeedbackWidget comments={client.comments} clientId={client.id} />;
       default: return null;
