@@ -667,6 +667,7 @@ function FeedbackWidget({ comments, clientId }: { comments: Comment[]; clientId:
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [type, setType] = useState("comentario");
+  const [filter, setFilter] = useState("all");
 
   const handleSubmit = () => {
     if (!message.trim()) { toast.error("Escribe un mensaje"); return; }
@@ -681,64 +682,142 @@ function FeedbackWidget({ comments, clientId }: { comments: Comment[]; clientId:
     });
   };
 
+  const filtered = filter === "all" ? comments : comments.filter(c => c.type === filter);
+
+  // Stats
+  const stats = [
+    { type: "comentario", label: "Comentarios", emoji: "💬", count: comments.filter(c => c.type === "comentario").length },
+    { type: "aprobacion", label: "Aprobaciones", emoji: "👍", count: comments.filter(c => c.type === "aprobacion").length },
+    { type: "solicitud", label: "Solicitudes", emoji: "📨", count: comments.filter(c => c.type === "solicitud").length },
+    { type: "alerta", label: "Alertas", emoji: "🔔", count: comments.filter(c => c.type === "alerta").length },
+  ];
+
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm flex items-center gap-2"><MessageCircle className="h-4 w-4 text-info" /> Comunicación</CardTitle>
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild><Button size="sm" className="gap-1.5 h-7 text-xs"><Plus className="h-3 w-3" /> Nuevo</Button></DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader><DialogTitle>Enviar Comentario</DialogTitle></DialogHeader>
-              <div className="space-y-3 pt-2">
+    <div className="space-y-4">
+      {/* Stats row */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {stats.map((s, i) => (
+          <motion.div key={s.type} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+            <Card
+              className={`cursor-pointer transition-all hover:shadow-md ${filter === s.type ? "ring-2 ring-primary" : ""}`}
+              onClick={() => setFilter(filter === s.type ? "all" : s.type)}
+            >
+              <CardContent className="p-4 flex items-center gap-3">
+                <span className="text-2xl">{s.emoji}</span>
                 <div>
-                  <label className="text-xs font-medium text-foreground">Tipo</label>
-                  <Select value={type} onValueChange={setType}>
-                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="comentario">💬 Comentario</SelectItem>
-                      <SelectItem value="aprobacion">👍 Aprobación</SelectItem>
-                      <SelectItem value="solicitud">📨 Solicitud</SelectItem>
-                      <SelectItem value="alerta">🔔 Alerta</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <p className="text-lg font-bold text-foreground">{s.count}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase">{s.label}</p>
                 </div>
-                <div>
-                  <label className="text-xs font-medium text-foreground">Mensaje</label>
-                  <Textarea value={message} onChange={e => setMessage(e.target.value)} className="mt-1 min-h-[100px]" placeholder="Escriba su comentario..." />
-                </div>
-                <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={handleSubmit}>Enviar</Button></div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-[250px]">
-          <div className="space-y-3 pr-2">
-            {comments.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">¡Sea el primero en compartir su opinión!</p>
-            ) : comments.map(comment => {
-              const cfg = commentTypeConfig[comment.type] || commentTypeConfig.comentario;
-              const TypeIcon = cfg.icon;
-              return (
-                <div key={comment.id} className="flex items-start gap-3">
-                  <Avatar className="h-8 w-8 shrink-0"><AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">{comment.avatar}</AvatarFallback></Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-sm font-semibold text-foreground">{comment.user}</span>
-                      <TypeIcon className={`h-3.5 w-3.5 ${cfg.color}`} />
-                      <span className="text-[10px] text-muted-foreground">{comment.date}</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{comment.message}</p>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Main area */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* New comment form - always visible */}
+        <Card className="lg:col-span-1">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Send className="h-4 w-4 text-primary" /> Nuevo Mensaje
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <label className="text-xs font-medium text-foreground">Tipo de mensaje</label>
+              <Select value={type} onValueChange={setType}>
+                <SelectTrigger className="mt-1.5 h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="comentario">💬 Comentario</SelectItem>
+                  <SelectItem value="aprobacion">👍 Aprobación</SelectItem>
+                  <SelectItem value="solicitud">📨 Solicitud</SelectItem>
+                  <SelectItem value="alerta">🔔 Alerta</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-foreground">Mensaje</label>
+              <Textarea
+                value={message}
+                onChange={e => setMessage(e.target.value)}
+                className="mt-1.5 min-h-[120px] resize-none"
+                placeholder="Comparta su opinión, solicitud o aprobación..."
+              />
+            </div>
+            <Button onClick={handleSubmit} disabled={!message.trim()} className="w-full gap-2">
+              <Send className="h-4 w-4" /> Enviar Mensaje
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Feed */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <MessageCircle className="h-4 w-4 text-info" /> Conversación
+                <Badge variant="outline" className="text-xs">{filtered.length} mensajes</Badge>
+              </CardTitle>
+              {filter !== "all" && (
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setFilter("all")}>
+                  Ver todos
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[400px]">
+              <div className="space-y-1 pr-2">
+                {filtered.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <MessageCircle className="h-10 w-10 text-muted-foreground/30 mb-3" />
+                    <p className="text-sm font-medium text-muted-foreground">Sin mensajes aún</p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">¡Sea el primero en compartir su opinión!</p>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        </ScrollArea>
-      </CardContent>
-    </Card>
+                ) : filtered.map((comment, idx) => {
+                  const cfg = commentTypeConfig[comment.type] || commentTypeConfig.comentario;
+                  const TypeIcon = cfg.icon;
+                  const isOwn = comment.user === profile?.full_name;
+                  return (
+                    <motion.div
+                      key={comment.id}
+                      initial={{ opacity: 0, x: isOwn ? 10 : -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: Math.min(idx * 0.03, 0.3) }}
+                      className={`flex gap-3 p-3 rounded-xl transition-colors hover:bg-muted/30 ${isOwn ? "flex-row-reverse" : ""}`}
+                    >
+                      <Avatar className="h-9 w-9 shrink-0">
+                        <AvatarFallback className={`text-xs font-bold ${isOwn ? "bg-primary/15 text-primary" : "bg-info/15 text-info"}`}>
+                          {comment.avatar}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className={`flex-1 min-w-0 ${isOwn ? "text-right" : ""}`}>
+                        <div className={`flex items-center gap-2 mb-1 ${isOwn ? "justify-end" : ""}`}>
+                          <span className="text-xs font-semibold text-foreground">{comment.user}</span>
+                          <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${cfg.color} border-current/20`}>
+                            <TypeIcon className="h-3 w-3 mr-0.5" />
+                            {cfg.label}
+                          </Badge>
+                          <span className="text-[10px] text-muted-foreground">{comment.date}</span>
+                        </div>
+                        <div className={`inline-block rounded-xl px-3 py-2 text-sm max-w-[90%] ${
+                          isOwn
+                            ? "bg-primary/10 text-foreground rounded-tr-sm"
+                            : "bg-muted/50 text-foreground rounded-tl-sm"
+                        }`}>
+                          {comment.message}
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }
 
