@@ -13,8 +13,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDeleteMeetingMinute } from "@/hooks/useClients";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import { MinutaPresentation } from "../MinutaPresentation";
 import { CreateMinutaWizard } from "../CreateMinutaWizard";
 import { SharePresentationDialog } from "../SharePresentationDialog";
