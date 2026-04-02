@@ -4,10 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   Calendar, Users, FileText, ChevronDown, ChevronUp, CheckSquare,
-  ArrowRight, Plus, Trash2, Presentation, Sparkles, Share2
+  ArrowRight, Plus, Trash2, Presentation, Sparkles, Share2, Eye, EyeOff
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDeleteMeetingMinute } from "@/hooks/useClients";
 import { supabase } from "@/integrations/supabase/client";
