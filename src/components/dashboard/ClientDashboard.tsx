@@ -882,6 +882,7 @@ export function ClientDashboard({ client }: ClientDashboardProps) {
       case "taskList": return <TaskListWidget tasks={tasks} />;
       case "deliverables": return <DeliverablesWidget deliverables={client.deliverables} />;
       case "risks": return <RisksWidget risks={client.risks} />;
+      case "trend": return <TrendWidget client={client} />;
       case "recentMinutes": return <RecentMinutesWidget minutes={client.meetingMinutes} />;
       case "feedback": return <FeedbackWidget comments={client.comments} clientId={client.id} />;
       default: return null;
