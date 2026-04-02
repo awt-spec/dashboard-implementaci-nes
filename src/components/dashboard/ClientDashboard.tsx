@@ -66,7 +66,8 @@ const commentTypeConfig: Record<string, { icon: any; color: string; label: strin
 };
 
 const tooltipStyle = {
-  background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12,
+  background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12,
+  boxShadow: "0 8px 30px -10px hsl(var(--foreground) / 0.15)", padding: "8px 12px",
 };
 
 // ── Notifications Hook ──────────────────────────────────
