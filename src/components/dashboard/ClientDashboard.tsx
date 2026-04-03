@@ -869,66 +869,141 @@ function NotificationsPanel({ clientId }: { clientId: string }) {
   );
 }
 
-// ── Widget Configurator ──────────────────────────────────
-function WidgetConfigurator({ widgets, onSave }: { widgets: WidgetConfig[]; onSave: (w: WidgetConfig[]) => void }) {
-  const [open, setOpen] = useState(false);
+// ── Widget Configurator (Drag & Drop) ──────────────────
+function WidgetConfigurator({ widgets, onSave, editMode, setEditMode }: { widgets: WidgetConfig[]; onSave: (w: WidgetConfig[]) => void; editMode: boolean; setEditMode: (v: boolean) => void }) {
   const [local, setLocal] = useState(widgets);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
 
   useEffect(() => { setLocal(widgets); }, [widgets]);
+
+  const sorted = [...local].sort((a, b) => a.order - b.order);
 
   const toggle = (id: WidgetId) => {
     setLocal(prev => prev.map(w => w.id === id ? { ...w, enabled: !w.enabled } : w));
   };
 
-  const moveUp = (idx: number) => {
-    if (idx === 0) return;
-    const copy = [...local];
-    [copy[idx - 1], copy[idx]] = [copy[idx], copy[idx - 1]];
-    copy.forEach((w, i) => w.order = i);
-    setLocal(copy);
+  const handleDragStart = (idx: number) => (e: React.DragEvent) => {
+    setDragIdx(idx);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(idx));
   };
 
-  const moveDown = (idx: number) => {
-    if (idx === local.length - 1) return;
-    const copy = [...local];
-    [copy[idx], copy[idx + 1]] = [copy[idx + 1], copy[idx]];
-    copy.forEach((w, i) => w.order = i);
-    setLocal(copy);
+  const handleDragOver = (idx: number) => (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (idx !== dragOverIdx) setDragOverIdx(idx);
   };
 
-  const handleSave = () => { onSave(local); setOpen(false); toast.success("Vista personalizada guardada"); };
+  const handleDrop = (dropIdx: number) => (e: React.DragEvent) => {
+    e.preventDefault();
+    if (dragIdx === null || dragIdx === dropIdx) { setDragIdx(null); setDragOverIdx(null); return; }
+    const copy = [...sorted];
+    const [moved] = copy.splice(dragIdx, 1);
+    copy.splice(dropIdx, 0, moved);
+    copy.forEach((w, i) => w.order = i);
+    setLocal(copy);
+    setDragIdx(null);
+    setDragOverIdx(null);
+  };
+
+  const handleDragEnd = () => { setDragIdx(null); setDragOverIdx(null); };
+
+  const handleSave = () => { onSave(local); setEditMode(false); toast.success("Vista personalizada guardada"); };
+  const handleCancel = () => { setLocal(widgets); setEditMode(false); };
+  const handleReset = () => { setLocal(DEFAULT_WIDGETS); };
+
+  const widgetIcons: Record<string, any> = {
+    progress: TrendingUp, phases: Calendar, taskChart: CheckCircle2, taskList: ListTodo,
+    deliverables: FileCheck, risks: AlertTriangle, trend: TrendingUp, recentMinutes: FileText,
+    customCharts: Settings, feedback: MessageSquare,
+  };
+
+  if (!editMode) {
+    return (
+      <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs" onClick={() => setEditMode(true)}>
+        <Settings className="h-3.5 w-3.5" /> Personalizar Vista
+      </Button>
+    );
+  }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs"><Settings className="h-3.5 w-3.5" /> Personalizar Vista</Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader><DialogTitle>Personalizar Dashboard</DialogTitle></DialogHeader>
-        <p className="text-xs text-muted-foreground">Activa o desactiva widgets y cambia su orden de aparición.</p>
-        <div className="space-y-1 mt-3">
-          {local.sort((a, b) => a.order - b.order).map((w, idx) => (
-            <div key={w.id} className="flex items-center gap-2 p-2 rounded-lg border border-border">
-              <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="text-sm text-foreground flex-1">{w.label}</span>
-              <div className="flex items-center gap-1 shrink-0">
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => moveUp(idx)} disabled={idx === 0}>
-                  <ChevronUp className="h-3 w-3" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => moveDown(idx)} disabled={idx === local.length - 1}>
-                  <ChevronDown className="h-3 w-3" />
-                </Button>
+    <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="w-full">
+      <Card className="border-primary/30 bg-primary/5 shadow-md">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-primary/15 flex items-center justify-center">
+                <GripVertical className="h-4 w-4 text-primary" />
               </div>
-              <Switch checked={w.enabled} onCheckedChange={() => toggle(w.id)} />
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Personalizar Dashboard</h3>
+                <p className="text-[10px] text-muted-foreground">Arrastre para reordenar • Active o desactive widgets</p>
+              </div>
             </div>
-          ))}
-        </div>
-        <div className="flex justify-end gap-2 mt-4">
-          <Button variant="outline" onClick={() => { setLocal(DEFAULT_WIDGETS); }}>Restablecer</Button>
-          <Button onClick={handleSave}>Guardar</Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleReset}>Restablecer</Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleCancel}>Cancelar</Button>
+              <Button size="sm" className="h-7 text-xs gap-1" onClick={handleSave}><CheckSquare className="h-3 w-3" /> Guardar</Button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+            {sorted.map((w, idx) => {
+              const WIcon = widgetIcons[w.id] || Settings;
+              const isDragging = dragIdx === idx;
+              const isDragOver = dragOverIdx === idx;
+              return (
+                <motion.div
+                  key={w.id}
+                  layout
+                  draggable
+                  onDragStart={handleDragStart(idx)}
+                  onDragOver={handleDragOver(idx)}
+                  onDrop={handleDrop(idx)}
+                  onDragEnd={handleDragEnd}
+                  className={`relative flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 cursor-grab active:cursor-grabbing transition-all select-none ${
+                    isDragging
+                      ? "opacity-40 scale-95 border-primary/40"
+                      : isDragOver
+                        ? "border-primary bg-primary/10 scale-[1.02] shadow-md"
+                        : w.enabled
+                          ? "border-primary/20 bg-card hover:border-primary/40 hover:shadow-sm"
+                          : "border-border bg-muted/30 opacity-60 hover:opacity-80"
+                  }`}
+                >
+                  {/* Order badge */}
+                  {w.enabled && (
+                    <div className="absolute -top-1.5 -left-1.5 h-5 w-5 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center shadow-sm">
+                      {sorted.filter(s => s.enabled).indexOf(w) + 1 || "—"}
+                    </div>
+                  )}
+
+                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${w.enabled ? "bg-primary/15" : "bg-muted"}`}>
+                    <WIcon className={`h-4 w-4 ${w.enabled ? "text-primary" : "text-muted-foreground"}`} />
+                  </div>
+                  <span className="text-[10px] font-medium text-center text-foreground leading-tight">{w.label}</span>
+
+                  {/* Toggle */}
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggle(w.id); }}
+                      className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-medium border transition-colors cursor-pointer ${
+                        w.enabled
+                          ? "bg-primary/10 border-primary/20 text-primary"
+                          : "bg-muted border-border text-muted-foreground"
+                      }`}
+                    >
+                      {w.enabled ? <><Eye className="h-2.5 w-2.5" /> Visible</> : <><EyeOff className="h-2.5 w-2.5" /> Oculto</>}
+                    </button>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 }
 
