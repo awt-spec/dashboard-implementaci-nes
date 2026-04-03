@@ -10,12 +10,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import {
   MessageSquare, ThumbsUp, Send, Bell, Plus, MessageCircle,
   Link2, FileCheck, ListTodo, ChevronRight, CheckCircle2,
   Clock, ArrowLeft, Search, Filter, Pin, PinOff,
   Sparkles, CornerDownRight, CircleDot, Archive, Inbox,
-  Star, Hash, Zap, Eye
+  Star, Hash, Zap, Eye, Smile
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
