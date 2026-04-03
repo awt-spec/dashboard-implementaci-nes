@@ -302,167 +302,185 @@ export function CommunicationPanel({ client }: CommunicationPanelProps) {
   const openCount = threads.filter(t => t.status === "abierto").length;
   const resolvedCount = threads.filter(t => t.status === "resuelto").length;
 
-  // ── Thread Detail View ──
+  // ── Thread Detail View (WhatsApp/Teams style) ──
   if (activeThread) {
     const linked = getLinkedLabel(activeThread);
     const catCfg = categoryConfig[activeThread.category] || categoryConfig.general;
     const stCfg = statusConfig[activeThread.status] || statusConfig.abierto;
     const CatIcon = catCfg.icon;
     const StIcon = stCfg.icon;
+    const myName = profile?.full_name || "";
+
+    // Group consecutive messages from same author
+    const groupedMessages: { author: string; avatar: string; isOwn: boolean; msgs: ThreadMessage[] }[] = [];
+    (activeThread.messages || []).forEach((msg) => {
+      const isOwn = msg.user_name === myName;
+      const last = groupedMessages[groupedMessages.length - 1];
+      const sameAuthor = last && last.author === msg.user_name;
+      const withinTime = last && (new Date(msg.created_at).getTime() - new Date(last.msgs[last.msgs.length - 1].created_at).getTime()) < 120000;
+      if (sameAuthor && withinTime) {
+        last.msgs.push(msg);
+      } else {
+        groupedMessages.push({ author: msg.user_name, avatar: msg.user_avatar, isOwn, msgs: [msg] });
+      }
+    });
 
     return (
-      <div className="space-y-3">
-        {/* Back + Header bar */}
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground hover:text-foreground" onClick={() => setActiveThread(null)}>
-            <ArrowLeft className="h-4 w-4" /> Temas
+      <div className="flex flex-col h-[560px]">
+        {/* Top bar — Teams style */}
+        <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border bg-card rounded-t-xl shrink-0">
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => setActiveThread(null)}>
+            <ArrowLeft className="h-4 w-4" />
           </Button>
-          <Separator orientation="vertical" className="h-5" />
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <div className={`h-7 w-7 rounded-lg ${catCfg.bg} flex items-center justify-center`}>
-              <CatIcon className={`h-3.5 w-3.5 ${catCfg.text}`} />
+          <div className={`h-8 w-8 rounded-lg ${catCfg.bg} flex items-center justify-center shrink-0`}>
+            <CatIcon className={`h-4 w-4 ${catCfg.text}`} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm font-semibold text-foreground truncate leading-tight">{activeThread.subject}</h3>
+            <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+              <span>{activeThread.messages?.length || 0} mensajes</span>
+              {linked && (
+                <>
+                  <span>·</span>
+                  <span className={`flex items-center gap-0.5 ${catCfg.text}`}>
+                    <Link2 className="h-2.5 w-2.5" /> {linked.name}
+                  </span>
+                </>
+              )}
             </div>
-            <h3 className="text-sm font-semibold text-foreground truncate">{activeThread.subject}</h3>
           </div>
           <Select value={activeThread.status} onValueChange={v => handleStatusChange(activeThread.id, v)}>
-            <SelectTrigger className="h-7 w-auto border gap-1 px-2 shadow-none text-xs">
+            <SelectTrigger className="h-7 w-auto border gap-1 px-2 shadow-none text-xs rounded-lg">
               <StIcon className="h-3 w-3" />
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {Object.entries(statusConfig).map(([k, v]) => (
                 <SelectItem key={k} value={k}>
-                  <span className="flex items-center gap-1.5">
-                    <v.icon className="h-3 w-3" /> {v.label}
-                  </span>
+                  <span className="flex items-center gap-1.5"><v.icon className="h-3 w-3" /> {v.label}</span>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
-        {/* Thread metadata */}
-        <Card className="border-dashed">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-              <span className="flex items-center gap-1">
-                <Hash className="h-3 w-3" />
-                {catCfg.label}
-              </span>
-              <span>Creado por <strong className="text-foreground">{activeThread.created_by}</strong></span>
-              <span>{new Date(activeThread.created_at).toLocaleDateString("es", { day: "2-digit", month: "long", year: "numeric" })}</span>
-              <span className="flex items-center gap-1">
-                <MessageSquare className="h-3 w-3" /> {activeThread.messages?.length || 0} mensajes
-              </span>
-              {linked && (
-                <span className={`flex items-center gap-1 ${catCfg.text} font-medium`}>
-                  <Link2 className="h-3 w-3" />
-                  {linked.type}: {linked.name}
-                </span>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Chat area — WhatsApp style */}
+        <ScrollArea className="flex-1 bg-muted/10">
+          <div className="px-4 py-3 space-y-1">
+            {(activeThread.messages || []).map((msg, idx) => {
+              const isOwn = msg.user_name === myName;
+              const msgCat = categoryConfig[msg.message_type] || categoryConfig.general;
+              const prevMsg = idx > 0 ? activeThread.messages![idx - 1] : null;
+              const showDateDivider = idx === 0 || new Date(msg.created_at).toDateString() !== new Date(prevMsg!.created_at).toDateString();
+              const showAuthor = !prevMsg || prevMsg.user_name !== msg.user_name || (new Date(msg.created_at).getTime() - new Date(prevMsg.created_at).getTime()) > 120000;
+              const isLastInGroup = idx === activeThread.messages!.length - 1 || activeThread.messages![idx + 1].user_name !== msg.user_name || (new Date(activeThread.messages![idx + 1].created_at).getTime() - new Date(msg.created_at).getTime()) > 120000;
 
-        {/* Messages */}
-        <Card>
-          <CardContent className="p-0">
-            <ScrollArea className="h-[380px]">
-              <div className="p-4 space-y-0.5">
-                {(activeThread.messages || []).map((msg, idx) => {
-                  const isOwn = msg.user_name === profile?.full_name;
-                  const msgCat = categoryConfig[msg.message_type] || categoryConfig.general;
-                  const showDateDivider = idx === 0 || new Date(msg.created_at).toDateString() !== new Date(activeThread.messages![idx - 1].created_at).toDateString();
-
-                  return (
-                    <div key={msg.id}>
-                      {showDateDivider && (
-                        <div className="flex items-center gap-3 my-4">
-                          <div className="flex-1 h-px bg-border" />
-                          <span className="text-[10px] text-muted-foreground font-medium px-2 py-0.5 rounded-full bg-muted/50">
-                            {new Date(msg.created_at).toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" })}
-                          </span>
-                          <div className="flex-1 h-px bg-border" />
-                        </div>
-                      )}
-                      <motion.div
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: Math.min(idx * 0.02, 0.2) }}
-                        className={`group flex gap-2.5 py-2 px-2 rounded-lg hover:bg-muted/30 transition-colors ${isOwn ? "flex-row-reverse" : ""}`}
-                      >
-                        <Avatar className="h-8 w-8 shrink-0 mt-0.5">
-                          <AvatarFallback className={`text-[10px] font-bold ${isOwn ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
-                            {msg.user_avatar}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className={`flex-1 min-w-0 ${isOwn ? "items-end" : ""}`}>
-                          <div className={`flex items-baseline gap-2 mb-0.5 ${isOwn ? "justify-end" : ""}`}>
-                            <span className="text-xs font-semibold text-foreground">{msg.user_name}</span>
-                            {msg.message_type !== "comentario" && (
-                              <Badge variant="outline" className={`text-[9px] px-1.5 py-0 h-4 border ${msgCat.text} ${msgCat.bg}`}>
-                                {msgCat.label}
-                              </Badge>
-                            )}
-                            <span className="text-[10px] text-muted-foreground/60">
-                              {new Date(msg.created_at).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })}
-                            </span>
-                          </div>
-                          <div className={`inline-block max-w-[85%] ${
-                            isOwn
-                              ? "bg-primary/10 rounded-2xl rounded-tr-md"
-                              : "bg-muted/40 rounded-2xl rounded-tl-md"
-                          } px-3.5 py-2 text-sm leading-relaxed text-foreground`}>
-                            {msg.message}
-                          </div>
-                        </div>
-                      </motion.div>
+              return (
+                <div key={msg.id}>
+                  {showDateDivider && (
+                    <div className="flex justify-center my-3">
+                      <span className="text-[10px] text-muted-foreground font-medium px-3 py-1 rounded-full bg-muted/60 shadow-sm">
+                        {new Date(msg.created_at).toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" })}
+                      </span>
                     </div>
-                  );
-                })}
-                <div ref={messagesEndRef} />
-              </div>
-            </ScrollArea>
+                  )}
+                  <motion.div
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className={`flex ${isOwn ? "justify-end" : "justify-start"} ${showAuthor ? "mt-3" : "mt-0.5"}`}
+                  >
+                    <div className={`flex gap-2 max-w-[80%] ${isOwn ? "flex-row-reverse" : ""}`}>
+                      {/* Avatar — only show at start of group */}
+                      {!isOwn ? (
+                        <div className="w-7 shrink-0">
+                          {showAuthor && (
+                            <Avatar className="h-7 w-7">
+                              <AvatarFallback className="text-[9px] font-bold bg-muted text-muted-foreground">
+                                {msg.user_avatar}
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
+                        </div>
+                      ) : null}
 
-            {/* Reply */}
-            <div className="border-t border-border p-3 bg-muted/20">
-              <div className="flex items-end gap-2">
-                <div className="flex-1 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Select value={replyType} onValueChange={setReplyType}>
-                      <SelectTrigger className="h-7 w-auto text-[11px] border-0 bg-muted/50 px-2 shadow-none gap-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="comentario">💬 Comentario</SelectItem>
-                        <SelectItem value="aprobacion">✅ Aprobación</SelectItem>
-                        <SelectItem value="solicitud">📋 Solicitud</SelectItem>
-                        <SelectItem value="alerta">⚠️ Alerta</SelectItem>
-                        <SelectItem value="feedback">⭐ Feedback</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <span className="text-[10px] text-muted-foreground/50">Ctrl+Enter para enviar</span>
-                  </div>
-                  <Textarea
-                    value={replyMessage}
-                    onChange={e => setReplyMessage(e.target.value)}
-                    className="min-h-[50px] max-h-[120px] resize-none text-sm bg-background"
-                    placeholder="Escriba su respuesta..."
-                    onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleReply(); }}
-                  />
+                      <div className={`${isOwn ? "items-end" : "items-start"} flex flex-col`}>
+                        {/* Author name — only first in group */}
+                        {showAuthor && !isOwn && (
+                          <span className="text-[10px] font-semibold text-foreground/70 mb-0.5 ml-1">{msg.user_name}</span>
+                        )}
+
+                        {/* Bubble */}
+                        <div className={`relative px-3 py-2 text-sm leading-relaxed ${
+                          isOwn
+                            ? `bg-primary text-primary-foreground ${isLastInGroup ? "rounded-2xl rounded-br-md" : "rounded-2xl"}`
+                            : `bg-card border border-border shadow-sm ${isLastInGroup ? "rounded-2xl rounded-bl-md" : "rounded-2xl"}`
+                        }`}>
+                          {/* Category badge inside bubble for non-comment types */}
+                          {msg.message_type !== "comentario" && (
+                            <div className={`flex items-center gap-1 text-[9px] font-semibold mb-1 ${
+                              isOwn ? "text-primary-foreground/70" : `${msgCat.text}`
+                            }`}>
+                              {msgCat.emoji} {msgCat.label}
+                            </div>
+                          )}
+                          <p className="whitespace-pre-wrap break-words">{msg.message}</p>
+                          <span className={`text-[9px] mt-1 block text-right ${
+                            isOwn ? "text-primary-foreground/50" : "text-muted-foreground/50"
+                          }`}>
+                            {new Date(msg.created_at).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
                 </div>
-                <Button
-                  onClick={handleReply}
-                  disabled={!replyMessage.trim()}
-                  size="icon"
-                  className="h-10 w-10 rounded-xl shrink-0"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
+              );
+            })}
+            <div ref={messagesEndRef} />
+          </div>
+        </ScrollArea>
+
+        {/* Input bar — WhatsApp style */}
+        <div className="px-3 py-2.5 border-t border-border bg-card rounded-b-xl shrink-0">
+          <div className="flex items-end gap-2">
+            <Select value={replyType} onValueChange={setReplyType}>
+              <SelectTrigger className="h-9 w-9 border-0 bg-muted/50 p-0 shadow-none rounded-full shrink-0 flex items-center justify-center">
+                <span className="text-sm">{(categoryConfig[replyType] || categoryConfig.general).emoji}</span>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="comentario">💬 Comentario</SelectItem>
+                <SelectItem value="aprobacion">✅ Aprobación</SelectItem>
+                <SelectItem value="solicitud">📋 Solicitud</SelectItem>
+                <SelectItem value="alerta">⚠️ Alerta</SelectItem>
+                <SelectItem value="feedback">⭐ Feedback</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex-1 relative">
+              <Textarea
+                value={replyMessage}
+                onChange={e => setReplyMessage(e.target.value)}
+                className="min-h-[40px] max-h-[100px] resize-none text-sm bg-muted/30 border-0 rounded-2xl py-2.5 px-4 pr-12 focus-visible:ring-1"
+                placeholder="Escribe un mensaje..."
+                rows={1}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleReply();
+                  }
+                }}
+              />
             </div>
-          </CardContent>
-        </Card>
+            <Button
+              onClick={handleReply}
+              disabled={!replyMessage.trim()}
+              size="icon"
+              className="h-9 w-9 rounded-full shrink-0"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
