@@ -967,6 +967,7 @@ export function ClientDashboard({ client }: ClientDashboardProps) {
       case "trend": return <TrendWidget client={client} />;
       case "recentMinutes": return <RecentMinutesWidget minutes={client.meetingMinutes} />;
       case "feedback": return <FeedbackWidget comments={client.comments} clientId={client.id} />;
+      case "customCharts": return <CustomChartBuilder client={client} />;
       default: return null;
     }
   };
