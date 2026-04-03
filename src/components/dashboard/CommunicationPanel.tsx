@@ -326,31 +326,26 @@ export function CommunicationPanel({ client }: CommunicationPanelProps) {
     });
 
     return (
-      <div className="flex flex-col h-[560px]">
-        {/* Top bar — Teams style */}
-        <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border bg-card rounded-t-xl shrink-0">
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => setActiveThread(null)}>
+      <div className="flex flex-col h-[580px] rounded-xl overflow-hidden border border-border shadow-sm">
+        {/* ─── Top bar (Teams style) ─── */}
+        <div className="flex items-center gap-3 px-4 py-3 bg-card border-b border-border shrink-0">
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-full" onClick={() => setActiveThread(null)}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div className={`h-8 w-8 rounded-lg ${catCfg.bg} flex items-center justify-center shrink-0`}>
-            <CatIcon className={`h-4 w-4 ${catCfg.text}`} />
-          </div>
+          <Avatar className="h-9 w-9 shrink-0">
+            <AvatarFallback className={`text-xs font-bold ${catCfg.bg} ${catCfg.text}`}>
+              {catCfg.emoji}
+            </AvatarFallback>
+          </Avatar>
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold text-foreground truncate leading-tight">{activeThread.subject}</h3>
-            <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-              <span>{activeThread.messages?.length || 0} mensajes</span>
-              {linked && (
-                <>
-                  <span>·</span>
-                  <span className={`flex items-center gap-0.5 ${catCfg.text}`}>
-                    <Link2 className="h-2.5 w-2.5" /> {linked.name}
-                  </span>
-                </>
-              )}
-            </div>
+            <h3 className="text-[13px] font-semibold text-foreground truncate">{activeThread.subject}</h3>
+            <p className="text-[10px] text-muted-foreground truncate">
+              {activeThread.messages?.length || 0} mensajes
+              {linked && <> · <Link2 className="h-2.5 w-2.5 inline" /> {linked.name}</>}
+            </p>
           </div>
           <Select value={activeThread.status} onValueChange={v => handleStatusChange(activeThread.id, v)}>
-            <SelectTrigger className="h-7 w-auto border gap-1 px-2 shadow-none text-xs rounded-lg">
+            <SelectTrigger className="h-7 w-auto border gap-1 px-2 shadow-none text-[11px] rounded-full">
               <StIcon className="h-3 w-3" />
               <SelectValue />
             </SelectTrigger>
@@ -364,76 +359,100 @@ export function CommunicationPanel({ client }: CommunicationPanelProps) {
           </Select>
         </div>
 
-        {/* Chat area — WhatsApp style */}
-        <ScrollArea className="flex-1 bg-muted/10">
-          <div className="px-4 py-3 space-y-1">
+        {/* ─── Chat messages (WhatsApp wallpaper feel) ─── */}
+        <ScrollArea className="flex-1" style={{ background: "hsl(var(--muted) / 0.15)" }}>
+          <div className="px-3 sm:px-6 py-4">
             {(activeThread.messages || []).map((msg, idx) => {
               const isOwn = msg.user_name === myName;
               const msgCat = categoryConfig[msg.message_type] || categoryConfig.general;
               const prevMsg = idx > 0 ? activeThread.messages![idx - 1] : null;
-              const showDateDivider = idx === 0 || new Date(msg.created_at).toDateString() !== new Date(prevMsg!.created_at).toDateString();
-              const showAuthor = !prevMsg || prevMsg.user_name !== msg.user_name || (new Date(msg.created_at).getTime() - new Date(prevMsg.created_at).getTime()) > 120000;
-              const isLastInGroup = idx === activeThread.messages!.length - 1 || activeThread.messages![idx + 1].user_name !== msg.user_name || (new Date(activeThread.messages![idx + 1].created_at).getTime() - new Date(msg.created_at).getTime()) > 120000;
+              const showDate = idx === 0 || new Date(msg.created_at).toDateString() !== new Date(prevMsg!.created_at).toDateString();
+              const sameAuthorAsPrev = prevMsg && prevMsg.user_name === msg.user_name && (new Date(msg.created_at).getTime() - new Date(prevMsg.created_at).getTime()) < 120000;
+              const nextMsg = idx < activeThread.messages!.length - 1 ? activeThread.messages![idx + 1] : null;
+              const sameAuthorAsNext = nextMsg && nextMsg.user_name === msg.user_name && (new Date(nextMsg.created_at).getTime() - new Date(msg.created_at).getTime()) < 120000;
+
+              // Bubble corner radius logic (WhatsApp style)
+              const isFirst = !sameAuthorAsPrev;
+              const isLast = !sameAuthorAsNext;
+              let bubbleRadius = "rounded-lg";
+              if (isOwn) {
+                if (isFirst && isLast) bubbleRadius = "rounded-2xl rounded-tr-sm";
+                else if (isFirst) bubbleRadius = "rounded-2xl rounded-tr-sm rounded-br-md";
+                else if (isLast) bubbleRadius = "rounded-2xl rounded-br-sm";
+                else bubbleRadius = "rounded-xl";
+              } else {
+                if (isFirst && isLast) bubbleRadius = "rounded-2xl rounded-tl-sm";
+                else if (isFirst) bubbleRadius = "rounded-2xl rounded-tl-sm rounded-bl-md";
+                else if (isLast) bubbleRadius = "rounded-2xl rounded-bl-sm";
+                else bubbleRadius = "rounded-xl";
+              }
 
               return (
                 <div key={msg.id}>
-                  {showDateDivider && (
-                    <div className="flex justify-center my-3">
-                      <span className="text-[10px] text-muted-foreground font-medium px-3 py-1 rounded-full bg-muted/60 shadow-sm">
-                        {new Date(msg.created_at).toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" })}
+                  {showDate && (
+                    <div className="flex justify-center my-4">
+                      <span className="text-[10px] text-muted-foreground font-medium px-3 py-1 rounded-full bg-card shadow-sm border border-border">
+                        {new Date(msg.created_at).toLocaleDateString("es", { weekday: "short", day: "numeric", month: "short" })}
                       </span>
                     </div>
                   )}
-                  <motion.div
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.15 }}
-                    className={`flex ${isOwn ? "justify-end" : "justify-start"} ${showAuthor ? "mt-3" : "mt-0.5"}`}
-                  >
-                    <div className={`flex gap-2 max-w-[80%] ${isOwn ? "flex-row-reverse" : ""}`}>
-                      {/* Avatar — only show at start of group */}
-                      {!isOwn ? (
-                        <div className="w-7 shrink-0">
-                          {showAuthor && (
+
+                  <div className={`flex ${isOwn ? "justify-end" : "justify-start"} ${isFirst && idx > 0 ? "mt-3" : "mt-[3px]"}`}>
+                    <div className={`flex gap-1.5 ${isOwn ? "flex-row-reverse" : ""}`} style={{ maxWidth: "75%" }}>
+                      {/* Avatar (only for others, only first in group) */}
+                      {!isOwn && (
+                        <div className="w-7 shrink-0 self-end">
+                          {isLast ? (
                             <Avatar className="h-7 w-7">
                               <AvatarFallback className="text-[9px] font-bold bg-muted text-muted-foreground">
                                 {msg.user_avatar}
                               </AvatarFallback>
                             </Avatar>
-                          )}
+                          ) : null}
                         </div>
-                      ) : null}
+                      )}
 
-                      <div className={`${isOwn ? "items-end" : "items-start"} flex flex-col`}>
-                        {/* Author name — only first in group */}
-                        {showAuthor && !isOwn && (
-                          <span className="text-[10px] font-semibold text-foreground/70 mb-0.5 ml-1">{msg.user_name}</span>
+                      {/* Bubble */}
+                      <div className={`relative ${bubbleRadius} px-3 py-[7px] shadow-sm ${
+                        isOwn
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-card text-foreground border border-border"
+                      }`}>
+                        {/* Author name (first message in group, not own) */}
+                        {isFirst && !isOwn && (
+                          <p className={`text-[11px] font-semibold mb-0.5 ${msgCat.text}`}>
+                            {msg.user_name}
+                          </p>
                         )}
 
-                        {/* Bubble */}
-                        <div className={`relative px-3 py-2 text-sm leading-relaxed ${
-                          isOwn
-                            ? `bg-primary text-primary-foreground ${isLastInGroup ? "rounded-2xl rounded-br-md" : "rounded-2xl"}`
-                            : `bg-card border border-border shadow-sm ${isLastInGroup ? "rounded-2xl rounded-bl-md" : "rounded-2xl"}`
-                        }`}>
-                          {/* Category badge inside bubble for non-comment types */}
-                          {msg.message_type !== "comentario" && (
-                            <div className={`flex items-center gap-1 text-[9px] font-semibold mb-1 ${
-                              isOwn ? "text-primary-foreground/70" : `${msgCat.text}`
-                            }`}>
-                              {msgCat.emoji} {msgCat.label}
-                            </div>
-                          )}
-                          <p className="whitespace-pre-wrap break-words">{msg.message}</p>
-                          <span className={`text-[9px] mt-1 block text-right ${
-                            isOwn ? "text-primary-foreground/50" : "text-muted-foreground/50"
+                        {/* Category tag for non-comment types */}
+                        {msg.message_type !== "comentario" && isFirst && (
+                          <span className={`inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md mb-1 ${
+                            isOwn
+                              ? "bg-primary-foreground/15 text-primary-foreground"
+                              : `${msgCat.bg} ${msgCat.text}`
                           }`}>
+                            {msgCat.emoji} {msgCat.label}
+                          </span>
+                        )}
+
+                        {/* Message text */}
+                        <p className="text-[13px] leading-[1.45] whitespace-pre-wrap break-words">{msg.message}</p>
+
+                        {/* Time + read indicator */}
+                        <div className={`flex items-center gap-1 justify-end mt-0.5 -mb-0.5 ${
+                          isOwn ? "text-primary-foreground/45" : "text-muted-foreground/40"
+                        }`}>
+                          <span className="text-[9px] leading-none">
                             {new Date(msg.created_at).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })}
                           </span>
+                          {isOwn && (
+                            <CheckCircle2 className="h-2.5 w-2.5" />
+                          )}
                         </div>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 </div>
               );
             })}
@@ -441,12 +460,13 @@ export function CommunicationPanel({ client }: CommunicationPanelProps) {
           </div>
         </ScrollArea>
 
-        {/* Input bar — WhatsApp style */}
-        <div className="px-3 py-2.5 border-t border-border bg-card rounded-b-xl shrink-0">
+        {/* ─── Input bar (WhatsApp style) ─── */}
+        <div className="px-3 py-2 bg-card border-t border-border shrink-0">
           <div className="flex items-end gap-2">
+            {/* Type selector as emoji button */}
             <Select value={replyType} onValueChange={setReplyType}>
-              <SelectTrigger className="h-9 w-9 border-0 bg-muted/50 p-0 shadow-none rounded-full shrink-0 flex items-center justify-center">
-                <span className="text-sm">{(categoryConfig[replyType] || categoryConfig.general).emoji}</span>
+              <SelectTrigger className="h-10 w-10 border-0 bg-muted/40 p-0 shadow-none rounded-full shrink-0 flex items-center justify-center hover:bg-muted/70 transition-colors">
+                <span className="text-base">{(categoryConfig[replyType] || categoryConfig.general).emoji}</span>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="comentario">💬 Comentario</SelectItem>
@@ -456,11 +476,13 @@ export function CommunicationPanel({ client }: CommunicationPanelProps) {
                 <SelectItem value="feedback">⭐ Feedback</SelectItem>
               </SelectContent>
             </Select>
-            <div className="flex-1 relative">
+
+            {/* Message input */}
+            <div className="flex-1">
               <Textarea
                 value={replyMessage}
                 onChange={e => setReplyMessage(e.target.value)}
-                className="min-h-[40px] max-h-[100px] resize-none text-sm bg-muted/30 border-0 rounded-2xl py-2.5 px-4 pr-12 focus-visible:ring-1"
+                className="min-h-[40px] max-h-[100px] resize-none text-[13px] bg-muted/20 border border-border rounded-3xl py-2.5 px-4 focus-visible:ring-1 focus-visible:ring-primary/30"
                 placeholder="Escribe un mensaje..."
                 rows={1}
                 onKeyDown={e => {
@@ -471,13 +493,21 @@ export function CommunicationPanel({ client }: CommunicationPanelProps) {
                 }}
               />
             </div>
+
+            {/* Send button */}
             <Button
               onClick={handleReply}
               disabled={!replyMessage.trim()}
               size="icon"
-              className="h-9 w-9 rounded-full shrink-0"
+              className="h-10 w-10 rounded-full shrink-0 shadow-md"
             >
               <Send className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
             </Button>
           </div>
         </div>
