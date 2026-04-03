@@ -1098,6 +1098,9 @@ export function ClientDashboard({ client }: ClientDashboardProps) {
         <motion.div key={section} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.15 }}>
           {section === "dashboard" && (
             <div className="space-y-4">
+              <div className="flex justify-end">
+                <WidgetConfigurator widgets={widgets} onSave={saveWidgets} editMode={editMode} setEditMode={setEditMode} />
+              </div>
               {/* KPIs */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
@@ -1120,8 +1123,6 @@ export function ClientDashboard({ client }: ClientDashboardProps) {
                   <div key={w.id} className={w.id === "phases" || w.id === "taskList" || w.id === "customCharts" ? "lg:col-span-2" : ""}>{renderWidget(w)}</div>
                 ))}
               </div>
-              {/* Widget configurator at the bottom */}
-              <WidgetConfigurator widgets={widgets} onSave={saveWidgets} editMode={editMode} setEditMode={setEditMode} />
             </div>
           )}
 
