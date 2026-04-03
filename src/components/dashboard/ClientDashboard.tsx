@@ -1124,6 +1124,8 @@ export function ClientDashboard({ client }: ClientDashboardProps) {
                   <div key={w.id} className={w.id === "phases" || w.id === "taskList" || w.id === "customCharts" ? "lg:col-span-2" : ""}>{renderWidget(w)}</div>
                 ))}
               </div>
+              {/* Widget configurator at the bottom */}
+              <WidgetConfigurator widgets={widgets} onSave={saveWidgets} editMode={editMode} setEditMode={setEditMode} />
             </div>
           )}
 
