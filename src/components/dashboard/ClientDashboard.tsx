@@ -954,13 +954,12 @@ function WidgetConfigurator({ widgets, onSave, editMode, setEditMode }: { widget
               const isDragging = dragIdx === idx;
               const isDragOver = dragOverIdx === idx;
               return (
-                <motion.div
+                <div
                   key={w.id}
-                  layout
                   draggable
-                  onDragStart={handleDragStart(idx)}
-                  onDragOver={handleDragOver(idx)}
-                  onDrop={handleDrop(idx)}
+                  onDragStart={handleDragStart(idx) as any}
+                  onDragOver={handleDragOver(idx) as any}
+                  onDrop={handleDrop(idx) as any}
                   onDragEnd={handleDragEnd}
                   className={`relative flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 cursor-grab active:cursor-grabbing transition-all select-none ${
                     isDragging
