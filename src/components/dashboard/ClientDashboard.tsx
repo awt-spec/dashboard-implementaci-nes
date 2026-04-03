@@ -29,9 +29,10 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { CommunicationPanel } from "./CommunicationPanel";
+import { CustomChartBuilder } from "./CustomChartBuilder";
 
 // ── Types ──────────────────────────────────────────────
-type WidgetId = "progress" | "phases" | "taskChart" | "taskList" | "deliverables" | "risks" | "feedback" | "recentMinutes" | "trend";
+type WidgetId = "progress" | "phases" | "taskChart" | "taskList" | "deliverables" | "risks" | "feedback" | "recentMinutes" | "trend" | "customCharts";
 
 interface WidgetConfig {
   id: WidgetId;
@@ -49,7 +50,8 @@ const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: "risks", label: "Puntos de Atención", enabled: true, order: 5 },
   { id: "trend", label: "Tendencia del Proyecto", enabled: true, order: 6 },
   { id: "recentMinutes", label: "Últimas Minutas", enabled: true, order: 7 },
-  { id: "feedback", label: "Últimos Comentarios", enabled: true, order: 8 },
+  { id: "customCharts", label: "Gráficos Personalizados", enabled: true, order: 8 },
+  { id: "feedback", label: "Últimos Comentarios", enabled: true, order: 9 },
 ];
 
 const statusLabels: Record<string, string> = {
@@ -965,6 +967,7 @@ export function ClientDashboard({ client }: ClientDashboardProps) {
       case "trend": return <TrendWidget client={client} />;
       case "recentMinutes": return <RecentMinutesWidget minutes={client.meetingMinutes} />;
       case "feedback": return <FeedbackWidget comments={client.comments} clientId={client.id} />;
+      case "customCharts": return <CustomChartBuilder client={client} />;
       default: return null;
     }
   };
@@ -1040,7 +1043,7 @@ export function ClientDashboard({ client }: ClientDashboardProps) {
               {/* Dynamic widgets */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {enabledWidgets.map(w => (
-                  <div key={w.id} className={w.id === "phases" || w.id === "taskList" ? "lg:col-span-2" : ""}>{renderWidget(w)}</div>
+                  <div key={w.id} className={w.id === "phases" || w.id === "taskList" || w.id === "customCharts" ? "lg:col-span-2" : ""}>{renderWidget(w)}</div>
                 ))}
               </div>
             </div>
