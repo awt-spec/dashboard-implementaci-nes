@@ -973,7 +973,7 @@ function WidgetConfigurator({ widgets, onSave, editMode, setEditMode }: { widget
                 >
                   {/* Order badge */}
                   {w.enabled && (
-                    <div className="absolute -top-1.5 -left-1.5 h-5 w-5 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center shadow-sm">
+                    <div className="absolute -top-1.5 -left-1.5 h-5 w-5 rounded-full bg-foreground text-background text-[9px] font-bold flex items-center justify-center shadow-sm">
                       {sorted.filter(s => s.enabled).indexOf(w) + 1 || "—"}
                     </div>
                   )}
