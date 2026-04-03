@@ -20,7 +20,7 @@ import { type Client } from "@/data/projectData";
 
 // ── Types ──────────────────────────────
 type ChartType = "bar" | "pie" | "line" | "area" | "radial";
-type DataSource = "tasks_status" | "tasks_priority" | "deliverables_status" | "phases_progress" | "risks_impact" | "tasks_owner";
+type DataSource = "tasks_status" | "tasks_priority" | "deliverables_status" | "phases_progress" | "risks_impact" | "tasks_owner" | "tasks_team";
 
 interface CustomChart {
   id: string;
