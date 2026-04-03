@@ -16,11 +16,11 @@ Deno.serve(async (req) => {
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
     const passwords: Record<string, string> = {
-      "704ca2cf-85ed-4283-8317-10874cd43b51": "Adm!n$ysde2026#",
-      "5fac295b-833f-4972-bb23-9c4edfd08ad1": "Pm@Fern4ndo!2026",
-      "9b682208-c910-4128-831e-1ea497abdaab": "Aurum#Ger3nte!26",
-      "67deb6be-154b-437d-99f8-115d4b701489": "Arkf!n#Ger3nte26",
-      "154e6669-7bbc-4b19-b4c2-8dcf37fe9dbd": "Ap3x#Ger3nte!26",
+      "704ca2cf-85ed-4283-8317-10874cd43b51": "AdminSysde2026!",
+      "5fac295b-833f-4972-bb23-9c4edfd08ad1": "PmFernando2026!",
+      "9b682208-c910-4128-831e-1ea497abdaab": "GerenteAurum2026!",
+      "67deb6be-154b-437d-99f8-115d4b701489": "GerenteArkfin2026!",
+      "154e6669-7bbc-4b19-b4c2-8dcf37fe9dbd": "GerenteApex2026!",
     };
 
     const results: Record<string, string> = {};
