@@ -87,6 +87,19 @@ function extractData(client: Client, source: DataSource): { name: string; value:
       return Object.entries(ownerMap).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 8);
     }
 
+    case "tasks_team": {
+      const teamMap: Record<string, number> = {};
+      tasks.forEach(t => {
+        // Use responsibleTeam if available from assignees, otherwise extract company/team from owner
+        const assignees = (t.assignees || []) as Array<{ name: string; role: string }>;
+        const team = assignees.length > 0 && assignees[0].role
+          ? assignees[0].role
+          : t.owner.includes(" - ") ? t.owner.split(" - ")[1].trim() : t.owner;
+        teamMap[team] = (teamMap[team] || 0) + 1;
+      });
+      return Object.entries(teamMap).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 8);
+    }
+
     case "deliverables_status":
       return [
         { name: "Aprobados", value: client.deliverables.filter(d => d.status === "aprobado").length },
