@@ -178,6 +178,45 @@ export function CommunicationPanel({ client }: CommunicationPanelProps) {
   const [replyMessage, setReplyMessage] = useState("");
   const [replyType, setReplyType] = useState("comentario");
 
+  // Reactions
+  const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
+  const [openEmojiPicker, setOpenEmojiPicker] = useState<string | null>(null);
+
+  const fetchReactions = useCallback(async (messageIds: string[]) => {
+    if (messageIds.length === 0) return;
+    const { data } = await supabase
+      .from("message_reactions")
+      .select("*")
+      .in("message_id", messageIds);
+    const grouped: Record<string, Reaction[]> = {};
+    (data || []).forEach((r: any) => {
+      if (!grouped[r.message_id]) grouped[r.message_id] = [];
+      grouped[r.message_id].push(r);
+    });
+    setReactions(grouped);
+  }, []);
+
+  // Fetch reactions when active thread changes
+  useEffect(() => {
+    if (activeThread?.messages?.length) {
+      fetchReactions(activeThread.messages.map(m => m.id));
+    }
+  }, [activeThread?.messages?.length, fetchReactions]);
+
+  const handleToggleReaction = async (messageId: string, emoji: string) => {
+    const userName = profile?.full_name || "Cliente";
+    const existing = (reactions[messageId] || []).find(r => r.user_name === userName && r.emoji === emoji);
+    if (existing) {
+      await supabase.from("message_reactions").delete().eq("id", existing.id);
+    } else {
+      await supabase.from("message_reactions").insert({ message_id: messageId, user_name: userName, emoji });
+    }
+    setOpenEmojiPicker(null);
+    if (activeThread?.messages) {
+      fetchReactions(activeThread.messages.map(m => m.id));
+    }
+  };
+
   const tasks = client.tasks.filter(t => t.visibility === "externa");
   const deliverables = client.deliverables;
 
