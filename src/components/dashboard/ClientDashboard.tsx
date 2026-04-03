@@ -929,7 +929,7 @@ function WidgetConfigurator({ widgets, onSave, editMode, setEditMode }: { widget
 
   return (
     <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="w-full">
-      <Card className="border-primary/30 bg-primary/5 shadow-md">
+      <Card className="border-border shadow-md bg-card">
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -961,19 +961,19 @@ function WidgetConfigurator({ widgets, onSave, editMode, setEditMode }: { widget
                   onDragOver={handleDragOver(idx) as any}
                   onDrop={handleDrop(idx) as any}
                   onDragEnd={handleDragEnd}
-                  className={`relative flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 cursor-grab active:cursor-grabbing transition-all select-none ${
+                  className={`relative flex flex-col items-center gap-1.5 p-3 rounded-xl border cursor-grab active:cursor-grabbing transition-all select-none ${
                     isDragging
-                      ? "opacity-40 scale-95 border-primary/40"
+                      ? "opacity-40 scale-95 border-muted-foreground/40"
                       : isDragOver
-                        ? "border-primary bg-primary/10 scale-[1.02] shadow-md"
+                        ? "border-primary bg-accent scale-[1.02] shadow-md"
                         : w.enabled
-                          ? "border-primary/20 bg-card hover:border-primary/40 hover:shadow-sm"
+                          ? "border-border bg-card hover:border-muted-foreground/40 hover:shadow-sm"
                           : "border-border bg-muted/30 opacity-60 hover:opacity-80"
                   }`}
                 >
                   {/* Order badge */}
                   {w.enabled && (
-                    <div className="absolute -top-1.5 -left-1.5 h-5 w-5 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center shadow-sm">
+                    <div className="absolute -top-1.5 -left-1.5 h-5 w-5 rounded-full bg-foreground text-background text-[9px] font-bold flex items-center justify-center shadow-sm">
                       {sorted.filter(s => s.enabled).indexOf(w) + 1 || "—"}
                     </div>
                   )}
@@ -1091,7 +1091,7 @@ export function ClientDashboard({ client }: ClientDashboardProps) {
             )}
           </Button>
         ))}
-        {section === "dashboard" && <div className="ml-auto"><WidgetConfigurator widgets={widgets} onSave={saveWidgets} editMode={editMode} setEditMode={setEditMode} /></div>}
+        {section === "dashboard" && !editMode && <div className="ml-auto"><WidgetConfigurator widgets={widgets} onSave={saveWidgets} editMode={editMode} setEditMode={setEditMode} /></div>}
       </div>
 
       {/* Content */}
