@@ -20,7 +20,7 @@ import { type Client } from "@/data/projectData";
 
 // ── Types ──────────────────────────────
 type ChartType = "bar" | "pie" | "line" | "area" | "radial";
-type DataSource = "tasks_status" | "tasks_priority" | "deliverables_status" | "phases_progress" | "risks_impact" | "tasks_owner";
+type DataSource = "tasks_status" | "tasks_priority" | "deliverables_status" | "phases_progress" | "risks_impact" | "tasks_owner" | "tasks_team";
 
 interface CustomChart {
   id: string;
@@ -41,7 +41,8 @@ const CHART_TYPES: { value: ChartType; label: string; icon: any }[] = [
 const DATA_SOURCES: { value: DataSource; label: string; description: string }[] = [
   { value: "tasks_status", label: "Actividades por Estado", description: "Completadas, en progreso, pendientes, bloqueadas" },
   { value: "tasks_priority", label: "Actividades por Prioridad", description: "Alta, media, baja" },
-  { value: "tasks_owner", label: "Actividades por Responsable", description: "Distribución por persona asignada" },
+  { value: "tasks_owner", label: "Actividades por Persona", description: "Distribución por persona individual asignada" },
+  { value: "tasks_team", label: "Actividades por Empresa/Equipo", description: "Agrupación por empresa o equipo responsable" },
   { value: "deliverables_status", label: "Entregables por Estado", description: "Aprobados, entregados, en revisión, pendientes" },
   { value: "phases_progress", label: "Progreso de Fases", description: "Porcentaje de avance por fase" },
   { value: "risks_impact", label: "Riesgos por Impacto", description: "Alto, medio, bajo" },
@@ -84,6 +85,19 @@ function extractData(client: Client, source: DataSource): { name: string; value:
       const ownerMap: Record<string, number> = {};
       tasks.forEach(t => { ownerMap[t.owner] = (ownerMap[t.owner] || 0) + 1; });
       return Object.entries(ownerMap).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 8);
+    }
+
+    case "tasks_team": {
+      const teamMap: Record<string, number> = {};
+      tasks.forEach(t => {
+        // Use responsibleTeam if available from assignees, otherwise extract company/team from owner
+        const assignees = (t.assignees || []) as Array<{ name: string; role: string }>;
+        const team = assignees.length > 0 && assignees[0].role
+          ? assignees[0].role
+          : t.owner.includes(" - ") ? t.owner.split(" - ")[1].trim() : t.owner;
+        teamMap[team] = (teamMap[team] || 0) + 1;
+      });
+      return Object.entries(teamMap).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 8);
     }
 
     case "deliverables_status":

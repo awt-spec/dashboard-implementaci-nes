@@ -799,16 +799,45 @@ export function CommunicationPanel({ client }: CommunicationPanelProps) {
           {loading ? (
             <Card><CardContent className="p-8 text-center text-muted-foreground text-sm">Cargando conversaciones...</CardContent></Card>
           ) : filteredThreads.length === 0 ? (
-            <Card>
-              <CardContent className="p-12 text-center">
-                <div className="h-16 w-16 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-4">
-                  <MessageCircle className="h-8 w-8 text-muted-foreground/30" />
+            <Card className="border-dashed border-2">
+              <CardContent className="p-8">
+                <div className="text-center mb-6">
+                  <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                    <MessageCircle className="h-7 w-7 text-primary" />
+                  </div>
+                  <h4 className="text-sm font-semibold text-foreground">Centro de Comunicación</h4>
+                  <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+                    Comuníquese con el equipo del proyecto de forma organizada. Siga estos pasos para comenzar:
+                  </p>
                 </div>
-                <p className="text-sm font-medium text-muted-foreground">Sin conversaciones</p>
-                <p className="text-xs text-muted-foreground/60 mt-1 mb-5">Inicie un tema para comunicarse con el equipo</p>
-                <Button size="sm" className="gap-1.5" onClick={() => setNewThreadOpen(true)}>
-                  <Plus className="h-4 w-4" /> Iniciar Conversación
-                </Button>
+
+                {/* Step-by-step guide */}
+                <div className="space-y-3 max-w-sm mx-auto mb-6">
+                  {[
+                    { step: 1, icon: Plus, title: "Cree un tema", desc: "Haga clic en \"Nuevo Tema\" para iniciar una conversación" },
+                    { step: 2, icon: Hash, title: "Elija la categoría", desc: "Comentario, aprobación, solicitud, alerta o feedback" },
+                    { step: 3, icon: Link2, title: "Vincúlelo (opcional)", desc: "Asocie el hilo a una actividad o entregable específico" },
+                    { step: 4, icon: Send, title: "Envíe su mensaje", desc: "El equipo será notificado y podrá responder" },
+                  ].map(({ step, icon: StepIcon, title, desc }) => (
+                    <div key={step} className="flex items-start gap-3 p-2.5 rounded-lg bg-muted/30 border border-border/50">
+                      <div className="h-7 w-7 rounded-full bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
+                        <span className="text-xs font-bold text-primary">{step}</span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                          <StepIcon className="h-3 w-3 text-primary" /> {title}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="text-center">
+                  <Button size="sm" className="gap-1.5 rounded-lg" onClick={() => setNewThreadOpen(true)}>
+                    <Plus className="h-4 w-4" /> Iniciar Primera Conversación
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ) : filteredThreads.map((thread, idx) => {
