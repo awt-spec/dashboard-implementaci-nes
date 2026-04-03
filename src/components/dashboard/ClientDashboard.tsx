@@ -961,13 +961,13 @@ function WidgetConfigurator({ widgets, onSave, editMode, setEditMode }: { widget
                   onDragOver={handleDragOver(idx) as any}
                   onDrop={handleDrop(idx) as any}
                   onDragEnd={handleDragEnd}
-                  className={`relative flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 cursor-grab active:cursor-grabbing transition-all select-none ${
+                  className={`relative flex flex-col items-center gap-1.5 p-3 rounded-xl border cursor-grab active:cursor-grabbing transition-all select-none ${
                     isDragging
-                      ? "opacity-40 scale-95 border-primary/40"
+                      ? "opacity-40 scale-95 border-muted-foreground/40"
                       : isDragOver
-                        ? "border-primary bg-primary/10 scale-[1.02] shadow-md"
+                        ? "border-primary bg-accent scale-[1.02] shadow-md"
                         : w.enabled
-                          ? "border-primary/20 bg-card hover:border-primary/40 hover:shadow-sm"
+                          ? "border-border bg-card hover:border-muted-foreground/40 hover:shadow-sm"
                           : "border-border bg-muted/30 opacity-60 hover:opacity-80"
                   }`}
                 >
