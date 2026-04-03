@@ -269,7 +269,12 @@ export function CommunicationPanel({ client }: CommunicationPanelProps) {
       type: category === "alerta" ? "warning" : "info",
     });
 
-    toast.success("Tema creado exitosamente");
+    const catEmoji = categoryConfig[category]?.emoji || "💬";
+    const catLabelText = categoryConfig[category]?.label || "General";
+    toast.success(`${catEmoji} Tema creado: "${subject.trim()}"`, {
+      description: `Se notificó al equipo del proyecto · Categoría: ${catLabelText}`,
+      duration: 5000,
+    });
     setNewThreadOpen(false);
     setSubject("");
     setCategory("general");
@@ -694,8 +699,19 @@ export function CommunicationPanel({ client }: CommunicationPanelProps) {
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
+              {/* Notification preview banner */}
+              <div className="flex items-start gap-2.5 p-3 rounded-lg bg-primary/5 border border-primary/15">
+                <Bell className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-medium text-foreground">Se enviará una notificación automática</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    El equipo del proyecto recibirá un aviso al crear este tema de conversación.
+                  </p>
+                </div>
+              </div>
+
               <div>
-                <label className="text-xs font-medium text-foreground">Asunto</label>
+                <label className="text-xs font-medium text-foreground">Asunto <span className="text-destructive">*</span></label>
                 <Input value={subject} onChange={e => setSubject(e.target.value)} className="mt-1.5" placeholder="Ej: Revisión del entregable de configuración" />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -749,7 +765,7 @@ export function CommunicationPanel({ client }: CommunicationPanelProps) {
                 </div>
               )}
               <div>
-                <label className="text-xs font-medium text-foreground">Primer Mensaje</label>
+                <label className="text-xs font-medium text-foreground">Primer Mensaje <span className="text-destructive">*</span></label>
                 <Textarea
                   value={firstMessage}
                   onChange={e => setFirstMessage(e.target.value)}
@@ -757,10 +773,29 @@ export function CommunicationPanel({ client }: CommunicationPanelProps) {
                   placeholder="Escriba el mensaje inicial del tema..."
                 />
               </div>
+
+              {/* Preview of notification that will be sent */}
+              {subject.trim() && firstMessage.trim() && (
+                <div className="p-3 rounded-lg border border-border bg-muted/30">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Vista previa de la notificación</p>
+                  <div className="flex items-start gap-2">
+                    <div className={`h-6 w-6 rounded-md ${categoryConfig[category]?.bg || "bg-muted"} flex items-center justify-center shrink-0`}>
+                      <span className="text-xs">{categoryConfig[category]?.emoji || "💬"}</span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-foreground truncate">Nuevo tema: "{subject.trim()}"</p>
+                      <p className="text-[10px] text-muted-foreground line-clamp-1">
+                        {profile?.full_name || "Usuario"} abrió un hilo de {categoryConfig[category]?.label || "General"}: "{firstMessage.trim().slice(0, 60)}{firstMessage.trim().length > 60 ? "..." : ""}"
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setNewThreadOpen(false)}>Cancelar</Button>
                 <Button onClick={handleCreateThread} disabled={!subject.trim() || !firstMessage.trim()} className="gap-1.5">
-                  <Send className="h-3.5 w-3.5" /> Crear Tema
+                  <Send className="h-3.5 w-3.5" /> Crear y Notificar
                 </Button>
               </div>
             </div>
