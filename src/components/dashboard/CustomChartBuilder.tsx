@@ -41,7 +41,8 @@ const CHART_TYPES: { value: ChartType; label: string; icon: any }[] = [
 const DATA_SOURCES: { value: DataSource; label: string; description: string }[] = [
   { value: "tasks_status", label: "Actividades por Estado", description: "Completadas, en progreso, pendientes, bloqueadas" },
   { value: "tasks_priority", label: "Actividades por Prioridad", description: "Alta, media, baja" },
-  { value: "tasks_owner", label: "Actividades por Responsable", description: "Distribución por persona asignada" },
+  { value: "tasks_owner", label: "Actividades por Persona", description: "Distribución por persona individual asignada" },
+  { value: "tasks_team", label: "Actividades por Empresa/Equipo", description: "Agrupación por empresa o equipo responsable" },
   { value: "deliverables_status", label: "Entregables por Estado", description: "Aprobados, entregados, en revisión, pendientes" },
   { value: "phases_progress", label: "Progreso de Fases", description: "Porcentaje de avance por fase" },
   { value: "risks_impact", label: "Riesgos por Impacto", description: "Alto, medio, bajo" },
