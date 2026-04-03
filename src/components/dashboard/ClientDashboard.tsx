@@ -1016,6 +1016,7 @@ type Section = "dashboard" | "actividades" | "entregables" | "minutas" | "comuni
 export function ClientDashboard({ client }: ClientDashboardProps) {
   const { user, profile } = useAuth();
   const [section, setSection] = useState<Section>("dashboard");
+  const [editMode, setEditMode] = useState(false);
   const { widgets, saveWidgets, loaded } = useWidgetConfig(user?.id);
 
   const tasks = client.tasks.filter(t => t.visibility === "externa");
