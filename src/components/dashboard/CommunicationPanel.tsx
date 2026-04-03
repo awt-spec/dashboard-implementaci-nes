@@ -269,7 +269,12 @@ export function CommunicationPanel({ client }: CommunicationPanelProps) {
       type: category === "alerta" ? "warning" : "info",
     });
 
-    toast.success("Tema creado exitosamente");
+    const catEmoji = categoryConfig[category]?.emoji || "💬";
+    const catLabelText = categoryConfig[category]?.label || "General";
+    toast.success(`${catEmoji} Tema creado: "${subject.trim()}"`, {
+      description: `Se notificó al equipo del proyecto · Categoría: ${catLabelText}`,
+      duration: 5000,
+    });
     setNewThreadOpen(false);
     setSubject("");
     setCategory("general");
