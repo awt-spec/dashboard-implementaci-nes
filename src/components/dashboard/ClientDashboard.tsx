@@ -1043,7 +1043,7 @@ export function ClientDashboard({ client }: ClientDashboardProps) {
               {/* Dynamic widgets */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {enabledWidgets.map(w => (
-                  <div key={w.id} className={w.id === "phases" || w.id === "taskList" ? "lg:col-span-2" : ""}>{renderWidget(w)}</div>
+                  <div key={w.id} className={w.id === "phases" || w.id === "taskList" || w.id === "customCharts" ? "lg:col-span-2" : ""}>{renderWidget(w)}</div>
                 ))}
               </div>
             </div>
