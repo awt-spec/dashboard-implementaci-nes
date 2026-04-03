@@ -508,12 +508,8 @@ export function CommunicationPanel({ client }: CommunicationPanelProps) {
       </div>
     );
   }
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+
+
 
   // ── Thread List View ──
   return (
