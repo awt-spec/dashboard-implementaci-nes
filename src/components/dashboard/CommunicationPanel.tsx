@@ -461,44 +461,110 @@ export function CommunicationPanel({ client }: CommunicationPanelProps) {
                         </div>
                       )}
 
-                      {/* Bubble */}
-                      <div className={`relative ${bubbleRadius} px-3 py-[7px] shadow-sm ${
-                        isOwn
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-card text-foreground border border-border"
-                      }`}>
-                        {/* Author name (first message in group, not own) */}
-                        {isFirst && !isOwn && (
-                          <p className={`text-[11px] font-semibold mb-0.5 ${msgCat.text}`}>
-                            {msg.user_name}
-                          </p>
-                        )}
-
-                        {/* Category tag for non-comment types */}
-                        {msg.message_type !== "comentario" && isFirst && (
-                          <span className={`inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md mb-1 ${
-                            isOwn
-                              ? "bg-primary-foreground/15 text-primary-foreground"
-                              : `${msgCat.bg} ${msgCat.text}`
-                          }`}>
-                            {msgCat.emoji} {msgCat.label}
-                          </span>
-                        )}
-
-                        {/* Message text */}
-                        <p className="text-[13px] leading-[1.45] whitespace-pre-wrap break-words">{msg.message}</p>
-
-                        {/* Time + read indicator */}
-                        <div className={`flex items-center gap-1 justify-end mt-0.5 -mb-0.5 ${
-                          isOwn ? "text-primary-foreground/45" : "text-muted-foreground/40"
+                      {/* Bubble + reactions */}
+                      <div className="flex flex-col">
+                        <div className={`group/bubble relative ${bubbleRadius} px-3 py-[7px] shadow-sm ${
+                          isOwn
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-card text-foreground border border-border"
                         }`}>
-                          <span className="text-[9px] leading-none">
-                            {new Date(msg.created_at).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })}
-                          </span>
-                          {isOwn && (
-                            <CheckCircle2 className="h-2.5 w-2.5" />
+                          {/* Author name (first message in group, not own) */}
+                          {isFirst && !isOwn && (
+                            <p className={`text-[11px] font-semibold mb-0.5 ${msgCat.text}`}>
+                              {msg.user_name}
+                            </p>
                           )}
+
+                          {/* Category tag for non-comment types */}
+                          {msg.message_type !== "comentario" && isFirst && (
+                            <span className={`inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md mb-1 ${
+                              isOwn
+                                ? "bg-primary-foreground/15 text-primary-foreground"
+                                : `${msgCat.bg} ${msgCat.text}`
+                            }`}>
+                              {msgCat.emoji} {msgCat.label}
+                            </span>
+                          )}
+
+                          {/* Message text */}
+                          <p className="text-[13px] leading-[1.45] whitespace-pre-wrap break-words">{msg.message}</p>
+
+                          {/* Time + read indicator */}
+                          <div className={`flex items-center gap-1 justify-end mt-0.5 -mb-0.5 ${
+                            isOwn ? "text-primary-foreground/45" : "text-muted-foreground/40"
+                          }`}>
+                            <span className="text-[9px] leading-none">
+                              {new Date(msg.created_at).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                            {isOwn && (
+                              <CheckCircle2 className="h-2.5 w-2.5" />
+                            )}
+                          </div>
+
+                          {/* Emoji react button — appears on hover */}
+                          <Popover open={openEmojiPicker === msg.id} onOpenChange={open => setOpenEmojiPicker(open ? msg.id : null)}>
+                            <PopoverTrigger asChild>
+                              <button
+                                className={`absolute ${isOwn ? "-left-3" : "-right-3"} -bottom-2 h-6 w-6 rounded-full bg-card border border-border shadow-sm flex items-center justify-center opacity-0 group-hover/bubble:opacity-100 transition-opacity hover:scale-110 cursor-pointer`}
+                              >
+                                <Smile className="h-3.5 w-3.5 text-muted-foreground" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent side="top" className="w-auto p-1.5 rounded-xl" align={isOwn ? "end" : "start"}>
+                              <div className="flex gap-0.5">
+                                {QUICK_EMOJIS.map(emoji => {
+                                  const myReaction = (reactions[msg.id] || []).find(r => r.user_name === (profile?.full_name || "") && r.emoji === emoji);
+                                  return (
+                                    <button
+                                      key={emoji}
+                                      onClick={() => handleToggleReaction(msg.id, emoji)}
+                                      className={`h-8 w-8 rounded-lg flex items-center justify-center text-lg hover:bg-muted/70 transition-colors cursor-pointer ${myReaction ? "bg-primary/15 ring-1 ring-primary/30" : ""}`}
+                                    >
+                                      {emoji}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </PopoverContent>
+                          </Popover>
                         </div>
+
+                        {/* Reaction pills below bubble */}
+                        {reactions[msg.id] && reactions[msg.id].length > 0 && (
+                          <div className={`flex gap-1 mt-1 flex-wrap ${isOwn ? "justify-end" : "justify-start"}`}>
+                            <TooltipProvider delayDuration={200}>
+                              {Object.entries(
+                                reactions[msg.id].reduce<Record<string, string[]>>((acc, r) => {
+                                  if (!acc[r.emoji]) acc[r.emoji] = [];
+                                  acc[r.emoji].push(r.user_name);
+                                  return acc;
+                                }, {})
+                              ).map(([emoji, users]) => {
+                                const isMine = users.includes(profile?.full_name || "");
+                                return (
+                                  <Tooltip key={emoji}>
+                                    <TooltipTrigger asChild>
+                                      <button
+                                        onClick={() => handleToggleReaction(msg.id, emoji)}
+                                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] border transition-colors cursor-pointer ${
+                                          isMine
+                                            ? "bg-primary/10 border-primary/30 text-foreground"
+                                            : "bg-card border-border text-muted-foreground hover:bg-muted/50"
+                                        }`}
+                                      >
+                                        <span>{emoji}</span>
+                                        <span className="font-medium">{users.length}</span>
+                                      </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="text-xs">
+                                      {users.join(", ")}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                );
+                              })}
+                            </TooltipProvider>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
