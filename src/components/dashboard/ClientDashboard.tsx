@@ -32,7 +32,7 @@ import { CommunicationPanel } from "./CommunicationPanel";
 import { CustomChartBuilder } from "./CustomChartBuilder";
 
 // ── Types ──────────────────────────────────────────────
-type WidgetId = "progress" | "phases" | "taskChart" | "taskList" | "deliverables" | "risks" | "feedback" | "recentMinutes" | "trend";
+type WidgetId = "progress" | "phases" | "taskChart" | "taskList" | "deliverables" | "risks" | "feedback" | "recentMinutes" | "trend" | "customCharts";
 
 interface WidgetConfig {
   id: WidgetId;
