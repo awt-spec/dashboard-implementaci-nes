@@ -68,7 +68,16 @@ const statusConfig: Record<string, { label: string; color: string; icon: typeof 
   "en-espera": { label: "En Espera", color: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/20", icon: Clock },
 };
 
-function useThreads(clientId: string) {
+const QUICK_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🙏", "🎉", "🔥"];
+
+interface Reaction {
+  id: string;
+  message_id: string;
+  user_name: string;
+  emoji: string;
+}
+
+
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(true);
 
