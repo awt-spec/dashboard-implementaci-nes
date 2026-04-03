@@ -76,8 +76,7 @@ interface Reaction {
   user_name: string;
   emoji: string;
 }
-
-
+function useThreads(clientId: string) {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(true);
 
