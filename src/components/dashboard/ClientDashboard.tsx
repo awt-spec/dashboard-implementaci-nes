@@ -50,7 +50,8 @@ const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: "risks", label: "Puntos de Atención", enabled: true, order: 5 },
   { id: "trend", label: "Tendencia del Proyecto", enabled: true, order: 6 },
   { id: "recentMinutes", label: "Últimas Minutas", enabled: true, order: 7 },
-  { id: "feedback", label: "Últimos Comentarios", enabled: true, order: 8 },
+  { id: "customCharts", label: "Gráficos Personalizados", enabled: true, order: 8 },
+  { id: "feedback", label: "Últimos Comentarios", enabled: true, order: 9 },
 ];
 
 const statusLabels: Record<string, string> = {
