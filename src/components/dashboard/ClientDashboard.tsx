@@ -996,7 +996,7 @@ function WidgetConfigurator({ widgets, onSave, editMode, setEditMode }: { widget
                       {w.enabled ? <><Eye className="h-2.5 w-2.5" /> Visible</> : <><EyeOff className="h-2.5 w-2.5" /> Oculto</>}
                     </button>
                   </div>
-                </motion.div>
+                </div>
               );
             })}
           </div>
