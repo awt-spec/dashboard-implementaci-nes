@@ -75,10 +75,10 @@ export default function Login() {
           <div className="mt-6 p-3 rounded-lg bg-muted/50 border border-border">
             <p className="text-xs font-medium text-muted-foreground mb-2">Cuentas demo:</p>
             <div className="space-y-1 text-xs text-muted-foreground">
-              <p><strong className="text-foreground">Admin:</strong> admin@sysde.com / Adm!n$ysde2026#</p>
-              <p><strong className="text-foreground">PM:</strong> pm@sysde.com / Pm@Fern4ndo!2026</p>
+              <p><strong className="text-foreground">Admin:</strong> admin@cisde.com / AdminSysde2026!</p>
+              <p><strong className="text-foreground">PM:</strong> pm.fernando@sysde.com / PmFernando2026!</p>
               <p><strong className="text-foreground">Aurum:</strong> gerente.aurum@sysde.com / Aurum#Ger3nte!26</p>
-              <p><strong className="text-foreground">Arkfin:</strong> gerente.arkfin@sysde.com / Arkf!n#Ger3nte26</p>
+              <p><strong className="text-foreground">Arkfin:</strong> gerente.arkfin@sysde.com / GerenteArkfin2026!</p>
               <p><strong className="text-foreground">Apex:</strong> gerente.apex@sysde.com / Ap3x#Ger3nte!26</p>
             </div>
           </div>
