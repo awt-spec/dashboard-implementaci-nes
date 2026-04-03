@@ -1091,7 +1091,6 @@ export function ClientDashboard({ client }: ClientDashboardProps) {
             )}
           </Button>
         ))}
-        {section === "dashboard" && !editMode && <div className="ml-auto"><WidgetConfigurator widgets={widgets} onSave={saveWidgets} editMode={editMode} setEditMode={setEditMode} /></div>}
       </div>
 
       {/* Content */}
