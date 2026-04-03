@@ -929,7 +929,7 @@ function WidgetConfigurator({ widgets, onSave, editMode, setEditMode }: { widget
 
   return (
     <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="w-full">
-      <Card className="border-primary/30 bg-primary/5 shadow-md">
+      <Card className="border-border shadow-md bg-card">
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
