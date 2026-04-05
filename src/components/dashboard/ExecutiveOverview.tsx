@@ -2,13 +2,15 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useClients } from "@/hooks/useClients";
 // DB is the single source of truth — no static fallback
-import { TrendingUp, CheckCircle, AlertTriangle, Users, Clock, ShieldAlert, Filter, BarChart3, Target, FileCheck, Layers, Loader2, Presentation } from "lucide-react";
+import { TrendingUp, CheckCircle, AlertTriangle, Users, Clock, ShieldAlert, Filter, BarChart3, Target, FileCheck, Layers, Loader2, Presentation, AlertOctagon } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ExecutivePresentation } from "./ExecutivePresentation";
+import { ProjectKPIs } from "./ProjectKPIs";
+import { UpcomingDeliverables } from "./UpcomingDeliverables";
 
 export function ExecutiveOverview() {
   const { data: clientsData, isLoading } = useClients();
@@ -56,7 +58,7 @@ export function ExecutiveOverview() {
   };
 
   const riskAlerts = clients.flatMap(c =>
-    c.risks.filter(r => r.status === "abierto").map(r => ({ clientName: c.name, clientId: c.id, type: "risk" as const, impact: r.impact, description: r.description, mitigation: r.mitigation }))
+    c.risks.filter(r => r.status === "abierto").map(r => ({ clientName: c.name, clientId: c.id, type: (r.category === "obstaculo" ? "obstacle" : "risk") as "risk" | "obstacle" | "blocked", impact: r.impact, description: r.description, mitigation: r.mitigation }))
   );
   const blockedTasks = clients.flatMap(c =>
     c.tasks.filter(t => t.status === "bloqueada").map(t => ({ clientName: c.name, clientId: c.id, type: "blocked" as const, impact: "alto" as const, description: t.title, mitigation: `Responsable: ${t.owner} — Vence: ${t.dueDate}` }))
@@ -351,6 +353,12 @@ export function ExecutiveOverview() {
         </motion.div>
       </div>
 
+      {/* KPIs & Upcoming Deliverables */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ProjectKPIs clients={clients} />
+        <UpcomingDeliverables clients={clients} />
+      </div>
+
       {/* Critical Alerts with Filters */}
       {allAlerts.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
@@ -374,9 +382,10 @@ export function ExecutiveOverview() {
                 <Select value={filterType} onValueChange={setFilterType}>
                   <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue placeholder="Tipo" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todos los tipos</SelectItem>
-                    <SelectItem value="risk">Riesgo Abierto</SelectItem>
-                    <SelectItem value="blocked">Tarea Bloqueada</SelectItem>
+                     <SelectItem value="all">Todos los tipos</SelectItem>
+                     <SelectItem value="risk">Riesgo Abierto</SelectItem>
+                     <SelectItem value="obstacle">Obstáculo</SelectItem>
+                     <SelectItem value="blocked">Tarea Bloqueada</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={filterImpact} onValueChange={setFilterImpact}>
@@ -403,7 +412,7 @@ export function ExecutiveOverview() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <span className="text-xs font-bold text-foreground truncate">{alert.clientName}</span>
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">{alert.type === "risk" ? "Riesgo" : "Bloqueada"}</Badge>
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">{alert.type === "risk" ? "Riesgo" : alert.type === "obstacle" ? "Obstáculo" : "Bloqueada"}</Badge>
                           <Badge variant={alert.impact === "alto" ? "destructive" : "secondary"} className="text-[10px] px-1.5 py-0 shrink-0">{alert.impact.charAt(0).toUpperCase() + alert.impact.slice(1)}</Badge>
                         </div>
                         <p className="text-xs text-muted-foreground leading-relaxed">{alert.description}</p>

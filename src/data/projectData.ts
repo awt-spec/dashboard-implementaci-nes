@@ -121,6 +121,7 @@ export interface Risk {
   impact: "alto" | "medio" | "bajo";
   status: "abierto" | "mitigado" | "cerrado";
   mitigation?: string;
+  category?: "riesgo" | "obstaculo";
 }
 
 export const projectInfo = {

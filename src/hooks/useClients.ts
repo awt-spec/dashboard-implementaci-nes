@@ -113,6 +113,7 @@ interface DbRisk {
   impact: string;
   status: string;
   mitigation: string | null;
+  category: string;
 }
 
 // Fetch all clients with related data
@@ -263,6 +264,7 @@ async function fetchClients(): Promise<Client[]> {
           impact: r.impact as Risk["impact"],
           status: r.status as Risk["status"],
           mitigation: r.mitigation || undefined,
+          category: (r.category as Risk["category"]) || "riesgo",
         })),
     };
   });
@@ -395,7 +397,7 @@ export function useDeleteDeliverable() {
 export function useCreateRisk() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { client_id: string; original_id: string; description: string; impact: string; status: string; mitigation?: string }) => {
+    mutationFn: async (data: { client_id: string; original_id: string; description: string; impact: string; status: string; mitigation?: string; category?: string }) => {
       const { error } = await supabase.from("risks").insert([data]);
       if (error) throw error;
     },

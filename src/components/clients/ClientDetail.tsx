@@ -26,6 +26,8 @@ import { ContactsTab } from "./tabs/ContactsTab";
 import { FunnelTab } from "./tabs/FunnelTab";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { ProjectKPIs } from "@/components/dashboard/ProjectKPIs";
+import { UpcomingDeliverables } from "@/components/dashboard/UpcomingDeliverables";
 import { useQueryClient } from "@tanstack/react-query";
 
 const phaseStatusConfig = {
@@ -127,6 +129,12 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
           </motion.div>
         ))}
       </div>
+
+      {/* SPI/CPI KPIs */}
+      <ProjectKPIs clients={[client]} client={client} />
+
+      {/* Upcoming Deliverables */}
+      <UpcomingDeliverables clients={[client]} client={client} />
 
       {/* Progress Section - Fixed, not a tab */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
