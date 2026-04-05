@@ -376,9 +376,10 @@ export function ExecutiveOverview() {
                 <Select value={filterType} onValueChange={setFilterType}>
                   <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue placeholder="Tipo" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todos los tipos</SelectItem>
-                    <SelectItem value="risk">Riesgo Abierto</SelectItem>
-                    <SelectItem value="blocked">Tarea Bloqueada</SelectItem>
+                     <SelectItem value="all">Todos los tipos</SelectItem>
+                     <SelectItem value="risk">Riesgo Abierto</SelectItem>
+                     <SelectItem value="obstacle">Obstáculo</SelectItem>
+                     <SelectItem value="blocked">Tarea Bloqueada</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={filterImpact} onValueChange={setFilterImpact}>
