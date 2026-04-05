@@ -406,7 +406,7 @@ export function ExecutiveOverview() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <span className="text-xs font-bold text-foreground truncate">{alert.clientName}</span>
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">{alert.type === "risk" ? "Riesgo" : "Bloqueada"}</Badge>
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">{alert.type === "risk" ? "Riesgo" : alert.type === "obstacle" ? "Obstáculo" : "Bloqueada"}</Badge>
                           <Badge variant={alert.impact === "alto" ? "destructive" : "secondary"} className="text-[10px] px-1.5 py-0 shrink-0">{alert.impact.charAt(0).toUpperCase() + alert.impact.slice(1)}</Badge>
                         </div>
                         <p className="text-xs text-muted-foreground leading-relaxed">{alert.description}</p>
