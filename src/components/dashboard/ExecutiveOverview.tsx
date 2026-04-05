@@ -58,7 +58,7 @@ export function ExecutiveOverview() {
   };
 
   const riskAlerts = clients.flatMap(c =>
-    c.risks.filter(r => r.status === "abierto").map(r => ({ clientName: c.name, clientId: c.id, type: "risk" as const, impact: r.impact, description: r.description, mitigation: r.mitigation }))
+    c.risks.filter(r => r.status === "abierto").map(r => ({ clientName: c.name, clientId: c.id, type: (r.category === "obstaculo" ? "obstacle" : "risk") as "risk" | "obstacle" | "blocked", impact: r.impact, description: r.description, mitigation: r.mitigation }))
   );
   const blockedTasks = clients.flatMap(c =>
     c.tasks.filter(t => t.status === "bloqueada").map(t => ({ clientName: c.name, clientId: c.id, type: "blocked" as const, impact: "alto" as const, description: t.title, mitigation: `Responsable: ${t.owner} — Vence: ${t.dueDate}` }))
