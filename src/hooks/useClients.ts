@@ -397,7 +397,7 @@ export function useDeleteDeliverable() {
 export function useCreateRisk() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { client_id: string; original_id: string; description: string; impact: string; status: string; mitigation?: string }) => {
+    mutationFn: async (data: { client_id: string; original_id: string; description: string; impact: string; status: string; mitigation?: string; category?: string }) => {
       const { error } = await supabase.from("risks").insert([data]);
       if (error) throw error;
     },
