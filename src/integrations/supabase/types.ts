@@ -787,6 +787,7 @@ export type Database = {
       }
       risks: {
         Row: {
+          category: string
           client_id: string
           created_at: string
           description: string
@@ -798,6 +799,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          category?: string
           client_id: string
           created_at?: string
           description: string
@@ -809,6 +811,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          category?: string
           client_id?: string
           created_at?: string
           description?: string
