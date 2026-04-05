@@ -264,6 +264,7 @@ async function fetchClients(): Promise<Client[]> {
           impact: r.impact as Risk["impact"],
           status: r.status as Risk["status"],
           mitigation: r.mitigation || undefined,
+          category: (r.category as Risk["category"]) || "riesgo",
         })),
     };
   });
