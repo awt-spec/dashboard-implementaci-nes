@@ -130,6 +130,12 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
         ))}
       </div>
 
+      {/* SPI/CPI KPIs */}
+      <ProjectKPIs clients={[client]} client={client} />
+
+      {/* Upcoming Deliverables */}
+      <UpcomingDeliverables clients={[client]} client={client} />
+
       {/* Progress Section - Fixed, not a tab */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
