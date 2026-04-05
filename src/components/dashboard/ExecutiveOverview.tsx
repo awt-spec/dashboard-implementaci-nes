@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ExecutivePresentation } from "./ExecutivePresentation";
+import { ProjectKPIs } from "./ProjectKPIs";
+import { UpcomingDeliverables } from "./UpcomingDeliverables";
 
 export function ExecutiveOverview() {
   const { data: clientsData, isLoading } = useClients();
