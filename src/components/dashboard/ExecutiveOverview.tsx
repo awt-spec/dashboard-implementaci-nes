@@ -353,6 +353,12 @@ export function ExecutiveOverview() {
         </motion.div>
       </div>
 
+      {/* KPIs & Upcoming Deliverables */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ProjectKPIs clients={clients} />
+        <UpcomingDeliverables clients={clients} />
+      </div>
+
       {/* Critical Alerts with Filters */}
       {allAlerts.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
