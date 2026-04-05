@@ -113,6 +113,7 @@ interface DbRisk {
   impact: string;
   status: string;
   mitigation: string | null;
+  category: string;
 }
 
 // Fetch all clients with related data
