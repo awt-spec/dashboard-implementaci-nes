@@ -53,6 +53,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLoading(false);
           return;
         }
+        // Mark this tab as having an active login
+        sessionStorage.setItem("sysde_session_active", "1");
         // On login: set loading=true, fetch role before showing UI
         setLoading(true);
         setUser(u);
@@ -64,16 +66,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!mounted) return;
-      const u = session?.user ?? null;
-      setUser(u);
-      if (u) {
-        await fetchUserData(u);
-      }
-      initialDone = true;
-      if (mounted) setLoading(false);
-    });
+    // If no sessionStorage flag, sign out any persisted session so user sees login
+    const sessionActive = sessionStorage.getItem("sysde_session_active");
+    if (!sessionActive) {
+      supabase.auth.signOut().then(() => {
+        if (mounted) {
+          setUser(null);
+          setRole(null);
+          setProfile(null);
+          initialDone = true;
+          setLoading(false);
+        }
+      });
+    } else {
+      supabase.auth.getSession().then(async ({ data: { session } }) => {
+        if (!mounted) return;
+        const u = session?.user ?? null;
+        setUser(u);
+        if (u) {
+          await fetchUserData(u);
+        }
+        initialDone = true;
+        if (mounted) setLoading(false);
+      });
+    }
 
     const timeout = setTimeout(() => {
       if (mounted) setLoading(false);
