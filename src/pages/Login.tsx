@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { LogIn, Eye, EyeOff } from "lucide-react";
+import sysdelogo from "@/assets/logo-sysde.png";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -27,10 +28,10 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-2">
-          <div className="mx-auto h-14 w-14 rounded-xl bg-primary flex items-center justify-center mb-2">
-            <span className="text-primary-foreground font-black text-xl">S</span>
+          <div className="mx-auto h-16 w-16 rounded-xl bg-primary flex items-center justify-center mb-2 p-2">
+            <img src={sysdelogo} alt="Sysde" className="h-full w-full object-contain" />
           </div>
-          <CardTitle className="text-2xl font-bold text-foreground">Sysde PMO</CardTitle>
+          <CardTitle className="text-2xl font-bold text-foreground">Sysde Support</CardTitle>
           <CardDescription>Ingresa tus credenciales para acceder al sistema</CardDescription>
         </CardHeader>
         <CardContent>
