@@ -78,10 +78,10 @@ export default function Login() {
             <div className="space-y-1 text-xs text-muted-foreground">
               {[
                 { label: "Admin", email: "admin@sysde.com", pw: "AdminSysde2026!" },
-                { label: "PM", email: "pm.fernando@sysde.com", pw: "PmFernando2026!" },
-                { label: "Aurum", email: "gerente.aurum@sysde.com", pw: "Aurum#Ger3nte!26" },
+                { label: "PM", email: "pm@sysde.com", pw: "PmFernando2026!" },
+                { label: "Aurum", email: "gerente.aurum@sysde.com", pw: "GerenteAurum2026!" },
                 { label: "Arkfin", email: "gerente.arkfin@sysde.com", pw: "GerenteArkfin2026!" },
-                { label: "Apex", email: "gerente.apex@sysde.com", pw: "Ap3x#Ger3nte!26" },
+                { label: "Apex", email: "gerente.apex@sysde.com", pw: "GerenteApex2026!" },
               ].map((acc) => (
                 <button
                   key={acc.email}
