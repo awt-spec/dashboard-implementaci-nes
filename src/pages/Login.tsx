@@ -74,13 +74,24 @@ export default function Login() {
           </form>
 
           <div className="mt-6 p-3 rounded-lg bg-muted/50 border border-border">
-            <p className="text-xs font-medium text-muted-foreground mb-2">Cuentas demo:</p>
+            <p className="text-xs font-medium text-muted-foreground mb-2">Cuentas demo <span className="italic">(clic para autocompletar)</span>:</p>
             <div className="space-y-1 text-xs text-muted-foreground">
-              <p><strong className="text-foreground">Admin:</strong> admin@sysde.com / AdminSysde2026!</p>
-              <p><strong className="text-foreground">PM:</strong> pm.fernando@sysde.com / PmFernando2026!</p>
-              <p><strong className="text-foreground">Aurum:</strong> gerente.aurum@sysde.com / Aurum#Ger3nte!26</p>
-              <p><strong className="text-foreground">Arkfin:</strong> gerente.arkfin@sysde.com / GerenteArkfin2026!</p>
-              <p><strong className="text-foreground">Apex:</strong> gerente.apex@sysde.com / Ap3x#Ger3nte!26</p>
+              {[
+                { label: "Admin", email: "admin@sysde.com", pw: "AdminSysde2026!" },
+                { label: "PM", email: "pm.fernando@sysde.com", pw: "PmFernando2026!" },
+                { label: "Aurum", email: "gerente.aurum@sysde.com", pw: "Aurum#Ger3nte!26" },
+                { label: "Arkfin", email: "gerente.arkfin@sysde.com", pw: "GerenteArkfin2026!" },
+                { label: "Apex", email: "gerente.apex@sysde.com", pw: "Ap3x#Ger3nte!26" },
+              ].map((acc) => (
+                <button
+                  key={acc.email}
+                  type="button"
+                  className="w-full text-left px-2 py-1.5 rounded-md hover:bg-accent/60 transition-colors cursor-pointer"
+                  onClick={() => { setEmail(acc.email); setPassword(acc.pw); }}
+                >
+                  <strong className="text-foreground">{acc.label}:</strong> {acc.email}
+                </button>
+              ))}
             </div>
           </div>
         </CardContent>
