@@ -95,6 +95,19 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (action === "update_email") {
+      const { user_id, email } = body;
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(user_id, { email, email_confirm: true });
+      if (error) throw error;
+
+      // Update profile email too
+      await supabaseAdmin.from("profiles").update({ email }).eq("user_id", user_id);
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     throw new Error("Unknown action");
   } catch (err: any) {
     return new Response(JSON.stringify({ error: err.message }), {
