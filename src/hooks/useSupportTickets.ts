@@ -69,11 +69,10 @@ export function useAllSupportTickets() {
   return useQuery({
     queryKey: ["support-tickets-all"],
     queryFn: async () => {
-      // Get all support client IDs first
-      const { data: clients } = await supabase
+      const { data: clients } = await (supabase
         .from("clients")
-        .select("id")
-        .eq("client_type" as any, "soporte");
+        .select("id") as any)
+        .eq("client_type", "soporte");
       const ids = (clients || []).map((c: any) => c.id);
       if (ids.length === 0) return [];
       
