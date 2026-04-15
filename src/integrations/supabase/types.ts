@@ -914,6 +914,45 @@ export type Database = {
           },
         ]
       }
+      support_minutes: {
+        Row: {
+          action_items: string[]
+          agreements: string[]
+          cases_referenced: string[]
+          client_id: string
+          created_at: string
+          date: string
+          id: string
+          summary: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          action_items?: string[]
+          agreements?: string[]
+          cases_referenced?: string[]
+          client_id: string
+          created_at?: string
+          date: string
+          id?: string
+          summary?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          action_items?: string[]
+          agreements?: string[]
+          cases_referenced?: string[]
+          client_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          summary?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       support_tickets: {
         Row: {
           ai_classification: string | null
