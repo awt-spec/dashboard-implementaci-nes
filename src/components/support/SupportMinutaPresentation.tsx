@@ -123,9 +123,15 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
     return () => document.removeEventListener("fullscreenchange", h);
   }, []);
 
-  const openEditor = (type: "agreements" | "actions") => {
+  const openEditor = (type: "agreements" | "actions" | "summary" | "title") => {
     setEditorType(type);
-    setEditItems(type === "agreements" ? [...localAgreements] : [...localActions]);
+    if (type === "agreements") setEditItems([...localAgreements]);
+    else if (type === "actions") setEditItems([...localActions]);
+    else if (type === "summary") setEditSummary(localSummary);
+    else if (type === "title") {
+      setEditTitle(localTitle);
+      setEditAttendees(localAttendees.join(", "));
+    }
     setNewItem("");
     setEditorOpen(true);
   };
@@ -142,16 +148,28 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
 
   const handleSaveEditor = async () => {
     setSaving(true);
-    const updates = editorType === "agreements"
-      ? { agreements: editItems }
-      : { action_items: editItems };
+    let updates: Record<string, any> = {};
+    if (editorType === "agreements") {
+      updates = { agreements: editItems };
+    } else if (editorType === "actions") {
+      updates = { action_items: editItems };
+    } else if (editorType === "summary") {
+      updates = { summary: editSummary };
+    } else if (editorType === "title") {
+      updates = { title: editTitle, attendees: editAttendees.split(",").map(s => s.trim()).filter(Boolean) };
+    }
     const { error } = await supabase.from("support_minutes").update(updates).eq("id", minuta.id);
     if (error) {
       toast.error("Error al guardar");
     } else {
-      toast.success(editorType === "agreements" ? "Acuerdos actualizados" : "Acciones actualizadas");
+      toast.success("Cambios guardados");
       if (editorType === "agreements") setLocalAgreements(editItems);
-      else setLocalActions(editItems);
+      else if (editorType === "actions") setLocalActions(editItems);
+      else if (editorType === "summary") setLocalSummary(editSummary);
+      else if (editorType === "title") {
+        setLocalTitle(editTitle);
+        setLocalAttendees(editAttendees.split(",").map(s => s.trim()).filter(Boolean));
+      }
       onMinutaUpdated?.();
     }
     setSaving(false);
