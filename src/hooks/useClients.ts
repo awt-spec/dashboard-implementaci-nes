@@ -15,6 +15,7 @@ interface DbClient {
   status: string;
   progress: number;
   team_assigned: string[];
+  client_type?: string;
 }
 
 interface DbPhase {
