@@ -179,14 +179,14 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
   }, [filteredActive]);
 
   const topCritical = useMemo(() => {
-    return [...filteredActive]
+    return [...chartTickets]
       .sort((a, b) => {
         const prio = (p: string) => p === "Critica, Impacto Negocio" ? 0 : p === "Alta" ? 1 : p === "Media" ? 2 : 3;
         const diff = prio(a.prioridad) - prio(b.prioridad);
         return diff !== 0 ? diff : b.dias_antiguedad - a.dias_antiguedad;
       })
       .slice(0, 15);
-  }, [filteredActive]);
+  }, [chartTickets]);
 
   const clientName = (id: string) => clients.find(c => c.id === id)?.name || id;
 
