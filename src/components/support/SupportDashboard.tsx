@@ -39,10 +39,14 @@ const estadoColors: Record<string, string> = {
 
 const CHART_COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "hsl(var(--warning))", "hsl(220,70%,55%)", "hsl(150,60%,50%)", "hsl(280,60%,60%)", "hsl(30,80%,55%)"];
 
-export function SupportDashboard() {
+interface SupportDashboardProps {
+  initialClientId?: string;
+}
+
+export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
   const { data: clients = [] } = useSupportClients();
   const { data: allTickets = [], isLoading } = useAllSupportTickets();
-  const [selectedClient, setSelectedClient] = useState<string>("all");
+  const [selectedClient, setSelectedClient] = useState<string>(initialClientId || "all");
   const [search, setSearch] = useState("");
   const [prioridadFilter, setPrioridadFilter] = useState<string>("all");
 
