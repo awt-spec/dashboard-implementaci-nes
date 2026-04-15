@@ -46,10 +46,13 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
-  const [editorType, setEditorType] = useState<"agreements" | "actions">("agreements");
+  const [editorType, setEditorType] = useState<"agreements" | "actions" | "summary" | "title">("agreements");
   const [editItems, setEditItems] = useState<string[]>([]);
   const [newItem, setNewItem] = useState("");
   const [saving, setSaving] = useState(false);
+  const [editSummary, setEditSummary] = useState(minuta.summary);
+  const [editTitle, setEditTitle] = useState(minuta.title);
+  const [editAttendees, setEditAttendees] = useState(minuta.attendees.join(", "));
   const containerRef = useRef<HTMLDivElement>(null);
   const slideRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -57,10 +60,16 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
   // Local state for live editing
   const [localAgreements, setLocalAgreements] = useState(minuta.agreements);
   const [localActions, setLocalActions] = useState(minuta.action_items);
+  const [localSummary, setLocalSummary] = useState(minuta.summary);
+  const [localTitle, setLocalTitle] = useState(minuta.title);
+  const [localAttendees, setLocalAttendees] = useState(minuta.attendees);
 
   useEffect(() => {
     setLocalAgreements(minuta.agreements);
     setLocalActions(minuta.action_items);
+    setLocalSummary(minuta.summary);
+    setLocalTitle(minuta.title);
+    setLocalAttendees(minuta.attendees);
   }, [minuta]);
 
   // Match by ticket_id OR by uuid id
