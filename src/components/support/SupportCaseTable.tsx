@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ChevronDown, ChevronUp, Brain, Calendar, User, Tag, FileText, AlertTriangle, Save, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Brain, Calendar, User, Tag, FileText, AlertTriangle, Save, Loader2, CheckSquare, ArrowRight } from "lucide-react";
 import type { SupportTicket } from "@/hooks/useSupportTickets";
 import { useUpdateSupportTicket } from "@/hooks/useSupportTickets";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const prioridadColors: Record<string, string> = {
   "Critica, Impacto Negocio": "bg-red-600 text-white",
