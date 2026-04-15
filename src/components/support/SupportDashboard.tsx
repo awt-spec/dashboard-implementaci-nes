@@ -85,11 +85,16 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
 
   const tickets = useMemo(() => {
     let t = allTickets;
-    if (selectedClient !== "all") t = t.filter(tk => tk.client_id === selectedClient);
+    // In client view, ALWAYS scope to this client
+    if (isClientView) {
+      t = t.filter(tk => tk.client_id === initialClientId);
+    } else if (selectedClient !== "all") {
+      t = t.filter(tk => tk.client_id === selectedClient);
+    }
     if (prioridadFilter !== "all") t = t.filter(tk => tk.prioridad === prioridadFilter);
     if (search) t = t.filter(tk => tk.asunto.toLowerCase().includes(search.toLowerCase()) || tk.ticket_id.toLowerCase().includes(search.toLowerCase()));
     return t;
-  }, [allTickets, selectedClient, prioridadFilter, search]);
+  }, [allTickets, selectedClient, prioridadFilter, search, isClientView, initialClientId]);
 
   // Scoped tickets: respect both initialClientId AND selectedClient dropdown
   const scopedTickets = useMemo(() => {
