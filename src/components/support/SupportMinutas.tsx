@@ -78,19 +78,8 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
 
       const { data, error } = await supabase.functions.invoke("summarize-transcript", {
         body: {
-          transcript: `MINUTA DE SOPORTE - ${clientName}\nFecha: ${new Date().toLocaleDateString("es")}\nParticipantes: ${selectedAttendees.join(", ") || "Por definir"}\n\nCasos activos del cliente:\n${casesSummary}`,
-          systemPrompt: `Eres un gerente de soporte técnico. Genera una minuta ejecutiva de soporte basada en los casos del cliente.
-Incluye:
-1. Título descriptivo
-2. Resumen ejecutivo del estado actual con métricas clave
-3. Detalle de casos críticos con responsable y estado
-4. Acuerdos y compromisos
-5. Acciones a seguir con responsables y fechas sugeridas
-
-Responde en formato JSON:
-{"title":"...","summary":"...","agreements":["..."],"action_items":["Responsable - Acción - Fecha sugerida"],"cases_highlighted":["ticket_id1"]}
-
-Responde SOLO con JSON válido, sin markdown.`,
+          transcript: `MINUTA DE SOPORTE - ${clientName}\nFecha: ${new Date().toLocaleDateString("es")}\nParticipantes: ${selectedAttendees.join(", ") || "Por definir"}\n\nCasos activos del cliente:\n${casesSummary}\n\nGenera una minuta ejecutiva de soporte con título, resumen, acuerdos y acciones a seguir.`,
+          clientName: clientName,
         },
       });
 
