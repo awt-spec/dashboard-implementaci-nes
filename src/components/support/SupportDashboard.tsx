@@ -721,7 +721,19 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
           )}
         </TabsContent>
 
-        {/* Data Import Tab */}
+        {/* Acuerdos Tab */}
+        <TabsContent value="acuerdos" className="mt-4">
+          {(isClientView || selectedClient !== "all") ? (
+            <SupportAgreementsTab clientId={isClientView ? initialClientId! : selectedClient} />
+          ) : (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <FileText className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">Selecciona un cliente para ver acuerdos y acciones</p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
         <TabsContent value="import" className="mt-4">
           <SupportDataLoader clientId={isClientView ? initialClientId : (selectedClient !== "all" ? selectedClient : undefined)} />
         </TabsContent>
