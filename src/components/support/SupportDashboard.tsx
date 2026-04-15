@@ -333,12 +333,12 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
       <Tabs defaultValue="overview">
         <TabsList className="flex-wrap">
           <TabsTrigger value="overview">Vista General</TabsTrigger>
-          <TabsTrigger value="heatmap">Mapa de Calor</TabsTrigger>
+          {!isClientView && <TabsTrigger value="heatmap">Mapa de Calor</TabsTrigger>}
           <TabsTrigger value="charts">Gráficos</TabsTrigger>
           <TabsTrigger value="ai">Clasificación IA</TabsTrigger>
           <TabsTrigger value="cases">Detalle de Casos</TabsTrigger>
-          {(isClientView || selectedClient !== "all") && <TabsTrigger value="minutas">Minutas</TabsTrigger>}
-          <TabsTrigger value="import">Cargar Datos</TabsTrigger>
+          {isClientView && <TabsTrigger value="minutas">Minutas</TabsTrigger>}
+          {!isClientView && <TabsTrigger value="import">Cargar Datos</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4 mt-4">
