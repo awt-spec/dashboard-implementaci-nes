@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useClients } from "@/hooks/useClients";
+import { useSupportTickets } from "@/hooks/useSupportTickets";
 // DB is the single source of truth — no static fallback
 import { TrendingUp, CheckCircle, AlertTriangle, Users, Clock, ShieldAlert, Filter, BarChart3, Target, FileCheck, Layers, Loader2, Presentation, AlertOctagon } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
@@ -14,7 +15,10 @@ import { UpcomingDeliverables } from "./UpcomingDeliverables";
 
 export function ExecutiveOverview() {
   const { data: clientsData, isLoading } = useClients();
+  const { data: supportData } = useSupportTickets();
   const clients = clientsData || [];
+  const supportTickets = supportData?.tickets || [];
+  const supportClients = (supportData?.clients || []).map(c => ({ id: c.id, name: c.name }));
 
   const [filterClient, setFilterClient] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
