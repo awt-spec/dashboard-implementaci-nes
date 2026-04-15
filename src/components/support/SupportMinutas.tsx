@@ -106,8 +106,8 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
         date: now.split("T")[0],
         summary: parsed.summary || "",
         cases_referenced: parsed.cases_highlighted || casesToUse.map(t => t.ticket_id),
-        action_items: parsed.action_items || [],
-        agreements: parsed.agreements || [],
+        action_items: [...manualActions, ...(parsed.action_items || [])],
+        agreements: [...manualAgreements, ...(parsed.agreements || [])],
         attendees: selectedAttendees,
       };
 
@@ -120,6 +120,10 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
       setNewTitle("");
       setSelectedCaseIds([]);
       setSelectedAttendees([]);
+      setManualAgreements([]);
+      setManualActions([]);
+      setNewAgreement("");
+      setNewAction("");
       setPresentationId((inserted as any).id);
       toast.success("Minuta generada exitosamente");
     } catch (e: any) {
