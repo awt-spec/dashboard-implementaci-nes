@@ -174,6 +174,16 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
   }
 
   return (
+    <>
+      {presentingMinuta && (
+        <SupportMinutaPresentation
+          minuta={presentingMinuta}
+          tickets={tickets}
+          clientName={clientName}
+          open={!!presentationId}
+          onClose={() => setPresentationId(null)}
+        />
+      )}
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
