@@ -197,6 +197,15 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
           onMinutaUpdated={loadMinutas}
         />
       )}
+      {shareMinuta && (
+        <ShareSupportPresentationDialog
+          minuta={shareMinuta}
+          tickets={tickets}
+          clientName={clientName}
+          open={!!shareMinutaId}
+          onClose={() => setShareMinutaId(null)}
+        />
+      )}
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
