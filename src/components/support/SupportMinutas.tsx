@@ -417,6 +417,10 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
                     <Button size="icon" variant="ghost" className="h-7 w-7 opacity-0 group-hover:opacity-100" onClick={e => { e.stopPropagation(); setPresentationId(m.id); }}>
                       <Presentation className="h-3.5 w-3.5 text-primary" />
                     </Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 opacity-0 group-hover:opacity-100" onClick={e => { e.stopPropagation(); setShareMinutaId(m.id); }}
+                      title="Compartir con feedback">
+                      <Share2 className="h-3.5 w-3.5 text-emerald-400" />
+                    </Button>
                     <Button size="icon" variant="ghost" className="h-7 w-7 opacity-0 group-hover:opacity-100" onClick={e => { e.stopPropagation(); startEdit(m); setExpandedId(m.id); }}>
                       <Edit3 className="h-3.5 w-3.5" />
                     </Button>
