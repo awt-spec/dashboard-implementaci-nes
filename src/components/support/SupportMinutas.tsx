@@ -474,5 +474,6 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
         );
       })}
     </div>
+    </>
   );
 }
