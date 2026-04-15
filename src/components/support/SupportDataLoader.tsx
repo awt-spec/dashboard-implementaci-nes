@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Upload, FileSpreadsheet, FileText, ClipboardPaste, Loader2, CheckCircle2,
-  AlertTriangle, Clock, Trash2, X
+  AlertTriangle, Clock, Trash2, X, Sparkles
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
