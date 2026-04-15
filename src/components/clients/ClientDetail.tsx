@@ -59,7 +59,7 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
   const handlePhaseUpdate = async (phaseName: string, field: string, value: string | number) => {
     const { data } = await supabase.from("phases").select("id").eq("client_id", client.id).eq("name", phaseName).single();
     if (!data) return;
-    const { error } = await supabase.from("phases").update({ [field]: value }).eq("id", data.id);
+    const { error } = await supabase.from("phases").update({ [field]: value } as any).eq("id", data.id);
     if (error) { toast.error("Error al actualizar fase"); return; }
     toast.success("Fase actualizada");
     queryClient.invalidateQueries({ queryKey: ["clients"] });

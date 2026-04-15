@@ -79,6 +79,7 @@ export default function Login() {
               {[
                 { label: "Admin", email: "admin@sysde.com", pw: "AdminSysde2026!" },
                 { label: "PM", email: "pm@sysde.com", pw: "PmFernando2026!" },
+                { label: "Soporte (Hellen)", email: "hellen.calvo@sysde.com", pw: "HellenCalvo2026!" },
                 { label: "Aurum", email: "gerente.aurum@sysde.com", pw: "GerenteAurum2026!" },
                 { label: "Arkfin", email: "gerente.arkfin@sysde.com", pw: "GerenteArkfin2026!" },
                 { label: "Apex", email: "gerente.apex@sysde.com", pw: "GerenteApex2026!" },

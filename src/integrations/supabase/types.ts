@@ -235,6 +235,7 @@ export type Database = {
       }
       clients: {
         Row: {
+          client_type: string
           contact_email: string
           contact_name: string
           contract_end: string
@@ -250,6 +251,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          client_type?: string
           contact_email: string
           contact_name: string
           contract_end: string
@@ -265,6 +267,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          client_type?: string
           contact_email?: string
           contact_name?: string
           contract_end?: string
@@ -866,6 +869,115 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "shared_presentations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_data_updates: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          records_count: number
+          source_name: string | null
+          source_type: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          records_count?: number
+          source_name?: string | null
+          source_type?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          records_count?: number
+          source_name?: string | null
+          source_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_data_updates_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_tickets: {
+        Row: {
+          ai_classification: string | null
+          ai_risk_level: string | null
+          ai_summary: string | null
+          asunto: string
+          client_id: string
+          created_at: string
+          dias_antiguedad: number
+          estado: string
+          fecha_entrega: string | null
+          fecha_registro: string | null
+          id: string
+          notas: string | null
+          prioridad: string
+          producto: string
+          responsable: string | null
+          ticket_id: string
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          ai_classification?: string | null
+          ai_risk_level?: string | null
+          ai_summary?: string | null
+          asunto?: string
+          client_id: string
+          created_at?: string
+          dias_antiguedad?: number
+          estado?: string
+          fecha_entrega?: string | null
+          fecha_registro?: string | null
+          id?: string
+          notas?: string | null
+          prioridad?: string
+          producto?: string
+          responsable?: string | null
+          ticket_id: string
+          tipo?: string
+          updated_at?: string
+        }
+        Update: {
+          ai_classification?: string | null
+          ai_risk_level?: string | null
+          ai_summary?: string | null
+          asunto?: string
+          client_id?: string
+          created_at?: string
+          dias_antiguedad?: number
+          estado?: string
+          fecha_entrega?: string | null
+          fecha_registro?: string | null
+          id?: string
+          notas?: string | null
+          prioridad?: string
+          producto?: string
+          responsable?: string | null
+          ticket_id?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"

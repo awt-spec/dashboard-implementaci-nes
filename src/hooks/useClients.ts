@@ -15,6 +15,7 @@ interface DbClient {
   status: string;
   progress: number;
   team_assigned: string[];
+  client_type?: string;
 }
 
 interface DbPhase {
@@ -167,6 +168,7 @@ async function fetchClients(): Promise<Client[]> {
       contractEnd: c.contract_end,
       status: c.status as Client["status"],
       progress: c.progress,
+      client_type: c.client_type,
       teamAssigned: c.team_assigned,
       phases: phasesData
         .filter(p => p.client_id === c.id)
@@ -352,7 +354,7 @@ export function useUpdateTask() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: { id: string; updates: Record<string, unknown> }) => {
-      const { error } = await supabase.from("tasks").update(data.updates).eq("id", data.id);
+      const { error } = await supabase.from("tasks").update(data.updates as any).eq("id", data.id);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["clients"] }); },
@@ -375,7 +377,7 @@ export function useUpdateDeliverable() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: { id: string; updates: Record<string, unknown> }) => {
-      const { error } = await supabase.from("deliverables").update(data.updates).eq("id", data.id);
+      const { error } = await supabase.from("deliverables").update(data.updates as any).eq("id", data.id);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["clients"] }); },
@@ -409,7 +411,7 @@ export function useUpdateRisk() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: { id: string; updates: Record<string, unknown> }) => {
-      const { error } = await supabase.from("risks").update(data.updates).eq("id", data.id);
+      const { error } = await supabase.from("risks").update(data.updates as any).eq("id", data.id);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["clients"] }); },
@@ -500,7 +502,7 @@ export function useUpdateActionItem() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: { id: string; updates: Record<string, unknown> }) => {
-      const { error } = await supabase.from("action_items").update(data.updates).eq("id", data.id);
+      const { error } = await supabase.from("action_items").update(data.updates as any).eq("id", data.id);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["clients"] }); },
