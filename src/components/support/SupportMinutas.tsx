@@ -1,10 +1,9 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { FileText, Plus, Calendar, Sparkles, Loader2, ChevronDown, ChevronUp, Trash2, Edit2 } from "lucide-react";
+import { FileText, Plus, Calendar, Sparkles, Loader2, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -18,6 +17,7 @@ interface Props {
 
 interface Minuta {
   id: string;
+  client_id: string;
   title: string;
   date: string;
   summary: string;
@@ -29,11 +29,26 @@ interface Minuta {
 
 export function SupportMinutas({ tickets, clientName, clientId }: Props) {
   const [minutas, setMinutas] = useState<Minuta[]>([]);
+  const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [selectedCaseIds, setSelectedCaseIds] = useState<string[]>([]);
+
+  // Load minutas from DB
+  useEffect(() => {
+    setLoading(true);
+    supabase
+      .from("support_minutes")
+      .select("*")
+      .eq("client_id", clientId)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => {
+        if (data) setMinutas(data as any);
+        setLoading(false);
+      });
+  }, [clientId]);
 
   const activeTickets = useMemo(() =>
     tickets.filter(t => !["CERRADA", "ANULADA"].includes(t.estado)),
@@ -86,23 +101,31 @@ Responde SOLO con JSON válido, sin markdown.`,
         parsed = { title: "Minuta de Soporte", summary: String(data), agreements: [], action_items: [], cases_highlighted: [] };
       }
 
-      const minuta: Minuta = {
-        id: crypto.randomUUID(),
+      const now = new Date().toISOString();
+      const minutaRow = {
+        client_id: clientId,
         title: newTitle || parsed.title || `Minuta de Soporte - ${clientName}`,
-        date: new Date().toISOString().split("T")[0],
+        date: now.split("T")[0],
         summary: parsed.summary || "",
         cases_referenced: parsed.cases_highlighted || casesToUse.map(t => t.ticket_id),
         action_items: parsed.action_items || [],
         agreements: parsed.agreements || [],
-        created_at: new Date().toISOString(),
       };
 
-      setMinutas(prev => [minuta, ...prev]);
+      const { data: inserted, error: insertErr } = await supabase
+        .from("support_minutes")
+        .insert([minutaRow] as any)
+        .select()
+        .single();
+
+      if (insertErr) throw insertErr;
+
+      setMinutas(prev => [inserted as any, ...prev]);
       setShowCreate(false);
       setNewTitle("");
       setSelectedCaseIds([]);
-      setExpandedId(minuta.id);
-      toast.success("Minuta generada exitosamente");
+      setExpandedId((inserted as any).id);
+      toast.success("Minuta generada y guardada exitosamente");
     } catch (e: any) {
       toast.error(e.message || "Error generando minuta");
     } finally {
@@ -110,9 +133,20 @@ Responde SOLO con JSON válido, sin markdown.`,
     }
   };
 
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from("support_minutes").delete().eq("id", id);
+    if (error) { toast.error("Error eliminando minuta"); return; }
+    setMinutas(prev => prev.filter(x => x.id !== id));
+    toast.success("Minuta eliminada");
+  };
+
   const toggleCase = (id: string) => {
     setSelectedCaseIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
+
+  if (loading) {
+    return <div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+  }
 
   return (
     <div className="space-y-4">
@@ -142,7 +176,6 @@ Responde SOLO con JSON válido, sin markdown.`,
                   onChange={e => setNewTitle(e.target.value)}
                   className="text-xs"
                 />
-
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-2">
                     Seleccionar casos a incluir ({selectedCaseIds.length > 0 ? `${selectedCaseIds.length} seleccionados` : "todos los activos por defecto"})
@@ -150,12 +183,7 @@ Responde SOLO con JSON válido, sin markdown.`,
                   <div className="max-h-[200px] overflow-y-auto space-y-1 border border-border rounded-md p-2">
                     {activeTickets.slice(0, 50).map(t => (
                       <label key={t.id} className="flex items-center gap-2 text-xs hover:bg-muted/30 p-1 rounded cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={selectedCaseIds.includes(t.id)}
-                          onChange={() => toggleCase(t.id)}
-                          className="rounded"
-                        />
+                        <input type="checkbox" checked={selectedCaseIds.includes(t.id)} onChange={() => toggleCase(t.id)} className="rounded" />
                         <span className="font-mono font-bold">{t.ticket_id}</span>
                         <span className="truncate flex-1">{t.asunto}</span>
                         <Badge variant="outline" className="text-[9px] shrink-0">{t.estado}</Badge>
@@ -163,15 +191,12 @@ Responde SOLO con JSON válido, sin markdown.`,
                     ))}
                   </div>
                 </div>
-
                 <div className="flex gap-2">
                   <Button size="sm" className="gap-1.5 text-xs" onClick={handleGenerateMinuta} disabled={generating}>
                     {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                     {generating ? "Generando..." : "Generar con IA"}
                   </Button>
-                  <Button size="sm" variant="outline" className="text-xs" onClick={() => setShowCreate(false)}>
-                    Cancelar
-                  </Button>
+                  <Button size="sm" variant="outline" className="text-xs" onClick={() => setShowCreate(false)}>Cancelar</Button>
                 </div>
               </CardContent>
             </Card>
@@ -179,7 +204,6 @@ Responde SOLO con JSON válido, sin markdown.`,
         )}
       </AnimatePresence>
 
-      {/* Critical cases summary */}
       {criticalTickets.length > 0 && (
         <Card className="border-destructive/20">
           <CardContent className="p-3">
@@ -195,7 +219,6 @@ Responde SOLO con JSON válido, sin markdown.`,
         </Card>
       )}
 
-      {/* Minutas list */}
       {minutas.length === 0 && !showCreate && (
         <Card>
           <CardContent className="p-8 text-center">
@@ -212,10 +235,7 @@ Responde SOLO con JSON válido, sin markdown.`,
           <motion.div key={m.id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <Card className={isExpanded ? "border-primary/30" : ""}>
               <CardContent className="p-0">
-                <div
-                  className="flex items-center gap-3 p-3 cursor-pointer hover:bg-muted/20 transition-colors"
-                  onClick={() => setExpandedId(isExpanded ? null : m.id)}
-                >
+                <div className="flex items-center gap-3 p-3 cursor-pointer hover:bg-muted/20 transition-colors" onClick={() => setExpandedId(isExpanded ? null : m.id)}>
                   {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold truncate">{m.title}</p>
@@ -225,61 +245,38 @@ Responde SOLO con JSON válido, sin markdown.`,
                       {m.cases_referenced.length} casos referenciados
                     </p>
                   </div>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 shrink-0"
-                    onClick={e => {
-                      e.stopPropagation();
-                      setMinutas(prev => prev.filter(x => x.id !== m.id));
-                    }}
-                  >
+                  <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={e => { e.stopPropagation(); handleDelete(m.id); }}>
                     <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
                   </Button>
                 </div>
-
                 <AnimatePresence>
                   {isExpanded && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden"
-                    >
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                       <div className="px-4 pb-4 space-y-4 border-t border-border/50">
                         <div className="pt-3">
                           <h4 className="text-xs font-bold text-muted-foreground uppercase mb-1">Resumen Ejecutivo</h4>
                           <p className="text-xs text-foreground whitespace-pre-wrap bg-muted/20 rounded-md p-3">{m.summary}</p>
                         </div>
-
                         {m.agreements.length > 0 && (
                           <div>
                             <h4 className="text-xs font-bold text-muted-foreground uppercase mb-1">Acuerdos</h4>
                             <ul className="space-y-1">
                               {m.agreements.map((a, i) => (
-                                <li key={i} className="text-xs flex items-start gap-2">
-                                  <span className="text-primary mt-0.5">✓</span>
-                                  <span>{a}</span>
-                                </li>
+                                <li key={i} className="text-xs flex items-start gap-2"><span className="text-primary mt-0.5">✓</span><span>{a}</span></li>
                               ))}
                             </ul>
                           </div>
                         )}
-
                         {m.action_items.length > 0 && (
                           <div>
                             <h4 className="text-xs font-bold text-muted-foreground uppercase mb-1">Acciones a Seguir</h4>
                             <ul className="space-y-1">
                               {m.action_items.map((a, i) => (
-                                <li key={i} className="text-xs flex items-start gap-2">
-                                  <span className="text-warning mt-0.5">→</span>
-                                  <span>{a}</span>
-                                </li>
+                                <li key={i} className="text-xs flex items-start gap-2"><span className="text-warning mt-0.5">→</span><span>{a}</span></li>
                               ))}
                             </ul>
                           </div>
                         )}
-
                         <div>
                           <h4 className="text-xs font-bold text-muted-foreground uppercase mb-1">Casos Referenciados</h4>
                           <div className="flex flex-wrap gap-1">
