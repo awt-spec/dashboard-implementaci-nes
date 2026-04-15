@@ -48,6 +48,10 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
   const [newAttendee, setNewAttendee] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<Minuta>>({});
+  const [manualAgreements, setManualAgreements] = useState<string[]>([]);
+  const [manualActions, setManualActions] = useState<string[]>([]);
+  const [newAgreement, setNewAgreement] = useState("");
+  const [newAction, setNewAction] = useState("");
 
   useEffect(() => {
     setLoading(true);
