@@ -344,9 +344,15 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4 mt-4">
+          {showingAllInCharts && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-info/10 border border-info/20 text-xs text-info">
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+              <span>Todos los casos están cerrados. Mostrando datos históricos completos.</span>
+            </div>
+          )}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Estado de Casos Activos</CardTitle></CardHeader>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">{showingAllInCharts ? "Estado de Todos los Casos" : "Estado de Casos Activos"}</CardTitle></CardHeader>
               <CardContent>
                 <div className="h-[200px]">
                   <ResponsiveContainer width="100%" height="100%">
