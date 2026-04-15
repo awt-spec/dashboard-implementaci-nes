@@ -564,8 +564,8 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
                 <span className="text-white/50 text-sm">{slideNames[currentSlide]} · {currentSlide + 1}/{totalSlides}</span>
               </div>
               <div className="flex items-center gap-2">
-                {(currentSlide === 4 || currentSlide === 5) && (
-                  <Button variant="ghost" size="sm" onClick={() => openEditor(currentSlide === 4 ? "agreements" : "actions")}
+                {getSlideEditorType(currentSlide) && (
+                  <Button variant="ghost" size="sm" onClick={() => openEditor(getSlideEditorType(currentSlide)!)}
                     className="text-white/70 hover:text-white hover:bg-white/10 text-xs gap-1.5">
                     <Pencil className="h-3.5 w-3.5" /> Editar
                   </Button>
@@ -623,38 +623,72 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
                   <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
                     <div className="flex items-center gap-3">
                       <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ background: editorColor }}>
-                        {editorType === "agreements" ? <CheckSquare className="h-4 w-4 text-white" /> : <ArrowRight className="h-4 w-4 text-white" />}
+                        {editorType === "agreements" ? <CheckSquare className="h-4 w-4 text-white" /> :
+                         editorType === "actions" ? <ArrowRight className="h-4 w-4 text-white" /> :
+                         editorType === "title" ? <FileText className="h-4 w-4 text-white" /> :
+                         <FileText className="h-4 w-4 text-white" />}
                       </div>
-                      <span className="text-white font-semibold text-sm">{editorTitle}</span>
+                      <span className="text-white font-semibold text-sm">{editorTitleText}</span>
                     </div>
                     <button onClick={() => setEditorOpen(false)} className="h-8 w-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-colors">
                       <X className="h-4 w-4" />
                     </button>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                    {editItems.map((item, idx) => (
-                      <div key={idx} className="flex items-start gap-2 bg-white/5 rounded-lg p-3 group">
-                        <span className="text-white/30 text-xs font-mono mt-1 shrink-0 w-5 text-right">{idx + 1}</span>
-                        <p className="text-white/90 text-sm flex-1 leading-relaxed">{item}</p>
-                        <button onClick={() => handleRemoveItem(idx)} className="shrink-0 h-6 w-6 rounded hover:bg-red-500/20 flex items-center justify-center text-white/30 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
-                          <Trash2 className="h-3 w-3" />
-                        </button>
+                  <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                    {/* Title/Portada editor */}
+                    {editorType === "title" && (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-white/50 text-xs uppercase tracking-wider block mb-2">Título</label>
+                          <Input value={editTitle} onChange={e => setEditTitle(e.target.value)}
+                            className="bg-white/5 border-white/10 text-white text-sm placeholder:text-white/30" />
+                        </div>
+                        <div>
+                          <label className="text-white/50 text-xs uppercase tracking-wider block mb-2">Asistentes (separados por coma)</label>
+                          <Textarea value={editAttendees} onChange={e => setEditAttendees(e.target.value)}
+                            className="bg-white/5 border-white/10 text-white text-sm placeholder:text-white/30 min-h-[80px]"
+                            placeholder="Nombre 1, Nombre 2..." />
+                        </div>
                       </div>
-                    ))}
+                    )}
 
-                    <div className="flex gap-2 mt-3">
-                      <Input
-                        value={newItem}
-                        onChange={e => setNewItem(e.target.value)}
-                        placeholder={editorType === "agreements" ? "Nuevo acuerdo..." : "Nueva acción..."}
-                        className="bg-white/5 border-white/10 text-white text-sm placeholder:text-white/30"
-                        onKeyDown={e => { if (e.key === "Enter") handleAddItem(); }}
-                      />
-                      <Button size="icon" variant="ghost" className="shrink-0 text-white/50 hover:text-white hover:bg-white/10" onClick={handleAddItem}>
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    {/* Summary editor */}
+                    {editorType === "summary" && (
+                      <div>
+                        <label className="text-white/50 text-xs uppercase tracking-wider block mb-2">Resumen Ejecutivo</label>
+                        <Textarea value={editSummary} onChange={e => setEditSummary(e.target.value)}
+                          className="bg-white/5 border-white/10 text-white text-sm placeholder:text-white/30 min-h-[200px]"
+                          placeholder="Resumen de la sesión..." />
+                      </div>
+                    )}
+
+                    {/* List editor (agreements/actions) */}
+                    {(editorType === "agreements" || editorType === "actions") && (
+                      <>
+                        {editItems.map((item, idx) => (
+                          <div key={idx} className="flex items-start gap-2 bg-white/5 rounded-lg p-3 group">
+                            <span className="text-white/30 text-xs font-mono mt-1 shrink-0 w-5 text-right">{idx + 1}</span>
+                            <p className="text-white/90 text-sm flex-1 leading-relaxed">{item}</p>
+                            <button onClick={() => handleRemoveItem(idx)} className="shrink-0 h-6 w-6 rounded hover:bg-red-500/20 flex items-center justify-center text-white/30 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                        <div className="flex gap-2 mt-3">
+                          <Input
+                            value={newItem}
+                            onChange={e => setNewItem(e.target.value)}
+                            placeholder={editorType === "agreements" ? "Nuevo acuerdo..." : "Nueva acción..."}
+                            className="bg-white/5 border-white/10 text-white text-sm placeholder:text-white/30"
+                            onKeyDown={e => { if (e.key === "Enter") handleAddItem(); }}
+                          />
+                          <Button size="icon" variant="ghost" className="shrink-0 text-white/50 hover:text-white hover:bg-white/10" onClick={handleAddItem}>
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   <div className="border-t border-white/10 p-4">
