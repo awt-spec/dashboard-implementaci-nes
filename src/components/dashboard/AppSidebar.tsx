@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, Users, Building2, ListTodo, Shield, LogOut
+  LayoutDashboard, Users, Building2, ListTodo, Shield, LogOut, Headset
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
@@ -39,7 +39,8 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
   // Build nav items based on role
   const mainNav = [
     { id: "overview", title: "Resumen Ejecutivo", icon: LayoutDashboard, roles: ["admin", "pm", "gerente"] },
-    { id: "clients", title: "Clientes", icon: Building2, roles: ["admin", "pm"] },
+    { id: "clients", title: "Implementación", icon: Building2, roles: ["admin", "pm"] },
+    { id: "soporte", title: "Soporte", icon: Headset, roles: ["admin", "pm"] },
     { id: "tasks", title: "Tareas Global", icon: ListTodo, roles: ["admin", "pm"] },
     { id: "users", title: "Usuarios", icon: Shield, roles: ["admin"] },
   ].filter(item => role && item.roles.includes(role));
