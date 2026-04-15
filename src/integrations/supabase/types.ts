@@ -876,6 +876,39 @@ export type Database = {
           },
         ]
       }
+      shared_support_presentations: {
+        Row: {
+          client_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          presentation_snapshot: Json
+          selected_slides: number[]
+          title: string
+          token: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          presentation_snapshot: Json
+          selected_slides?: number[]
+          title: string
+          token?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          presentation_snapshot?: Json
+          selected_slides?: number[]
+          title?: string
+          token?: string
+        }
+        Relationships: []
+      }
       support_data_updates: {
         Row: {
           client_id: string
@@ -956,12 +989,58 @@ export type Database = {
         }
         Relationships: []
       }
+      support_presentation_feedback: {
+        Row: {
+          comments: string | null
+          created_at: string
+          deliverable_ratings: Json | null
+          id: string
+          media_urls: Json | null
+          overall_sentiment: string | null
+          priority_rankings: Json | null
+          service_quality: string | null
+          shared_presentation_id: string
+        }
+        Insert: {
+          comments?: string | null
+          created_at?: string
+          deliverable_ratings?: Json | null
+          id?: string
+          media_urls?: Json | null
+          overall_sentiment?: string | null
+          priority_rankings?: Json | null
+          service_quality?: string | null
+          shared_presentation_id: string
+        }
+        Update: {
+          comments?: string | null
+          created_at?: string
+          deliverable_ratings?: Json | null
+          id?: string
+          media_urls?: Json | null
+          overall_sentiment?: string | null
+          priority_rankings?: Json | null
+          service_quality?: string | null
+          shared_presentation_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_presentation_feedback_shared_presentation_id_fkey"
+            columns: ["shared_presentation_id"]
+            isOneToOne: false
+            referencedRelation: "shared_support_presentations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       support_tickets: {
         Row: {
           ai_classification: string | null
           ai_risk_level: string | null
           ai_summary: string | null
           asunto: string
+          case_actions: string[]
+          case_agreements: string[]
           client_id: string
           created_at: string
           dias_antiguedad: number
@@ -982,6 +1061,8 @@ export type Database = {
           ai_risk_level?: string | null
           ai_summary?: string | null
           asunto?: string
+          case_actions?: string[]
+          case_agreements?: string[]
           client_id: string
           created_at?: string
           dias_antiguedad?: number
@@ -1002,6 +1083,8 @@ export type Database = {
           ai_risk_level?: string | null
           ai_summary?: string | null
           asunto?: string
+          case_actions?: string[]
+          case_agreements?: string[]
           client_id?: string
           created_at?: string
           dias_antiguedad?: number

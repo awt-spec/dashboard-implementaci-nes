@@ -7,11 +7,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   FileText, Plus, Calendar, Sparkles, Loader2, ChevronDown, ChevronUp, Trash2,
-  Users, CheckSquare, ArrowRight, Presentation, Edit3, Save, X, UserPlus, AlertTriangle
+  Users, CheckSquare, ArrowRight, Presentation, Edit3, Save, X, UserPlus, AlertTriangle, Share2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { SupportMinutaPresentation } from "./SupportMinutaPresentation";
+import { ShareSupportPresentationDialog } from "./ShareSupportPresentationDialog";
 import { toast } from "sonner";
 import type { SupportTicket } from "@/hooks/useSupportTickets";
 
@@ -41,6 +42,7 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
   const [generating, setGenerating] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [presentationId, setPresentationId] = useState<string | null>(null);
+  const [shareMinutaId, setShareMinutaId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [selectedCaseIds, setSelectedCaseIds] = useState<string[]>([]);
@@ -178,6 +180,7 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
 
   // Presentation view for a specific minuta
   const presentingMinuta = minutas.find(m => m.id === presentationId);
+  const shareMinuta = minutas.find(m => m.id === shareMinutaId);
 
   if (loading) {
     return <div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
@@ -193,6 +196,15 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
           open={!!presentationId}
           onClose={() => setPresentationId(null)}
           onMinutaUpdated={loadMinutas}
+        />
+      )}
+      {shareMinuta && (
+        <ShareSupportPresentationDialog
+          minuta={shareMinuta}
+          tickets={tickets}
+          clientName={clientName}
+          open={!!shareMinutaId}
+          onClose={() => setShareMinutaId(null)}
         />
       )}
     <div className="space-y-4">
@@ -404,6 +416,10 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
                   <div className="flex items-center gap-1 shrink-0">
                     <Button size="icon" variant="ghost" className="h-7 w-7 opacity-0 group-hover:opacity-100" onClick={e => { e.stopPropagation(); setPresentationId(m.id); }}>
                       <Presentation className="h-3.5 w-3.5 text-primary" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 opacity-0 group-hover:opacity-100" onClick={e => { e.stopPropagation(); setShareMinutaId(m.id); }}
+                      title="Compartir con feedback">
+                      <Share2 className="h-3.5 w-3.5 text-emerald-400" />
                     </Button>
                     <Button size="icon" variant="ghost" className="h-7 w-7 opacity-0 group-hover:opacity-100" onClick={e => { e.stopPropagation(); startEdit(m); setExpandedId(m.id); }}>
                       <Edit3 className="h-3.5 w-3.5" />
