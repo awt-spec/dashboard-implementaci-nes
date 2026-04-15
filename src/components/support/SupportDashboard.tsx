@@ -18,6 +18,9 @@ import {
 import { useSupportClients, useAllSupportTickets, type SupportTicket } from "@/hooks/useSupportTickets";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { SupportChartBuilder } from "./SupportChartBuilder";
+import { SupportCaseTable } from "./SupportCaseTable";
+import { SupportClientHeatmap } from "./SupportClientHeatmap";
 
 const prioridadColors: Record<string, string> = {
   "Critica, Impacto Negocio": "bg-red-600 text-white",
@@ -172,6 +175,14 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
 
   const clientName = (id: string) => clients.find(c => c.id === id)?.name || id;
 
+  // Tickets enriched with client name for chart builder
+  const ticketsWithClientName = useMemo(() =>
+    tickets.map(t => ({ ...t, client_name: clientName(t.client_id) })),
+    [tickets, clients]
+  );
+
+  const selectedClientName = selectedClient !== "all" ? clientName(selectedClient) : "";
+
   // AI Classification handler
   const handleClassify = useCallback(async () => {
     setClassifying(true);
@@ -274,6 +285,7 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
         <TabsList>
           <TabsTrigger value="overview">Vista General</TabsTrigger>
           <TabsTrigger value="heatmap">Mapa de Calor</TabsTrigger>
+          <TabsTrigger value="charts">Gráficos</TabsTrigger>
           <TabsTrigger value="ai">Clasificación IA</TabsTrigger>
           <TabsTrigger value="cases">Detalle de Casos</TabsTrigger>
         </TabsList>
@@ -426,107 +438,98 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
           </div>
         </TabsContent>
 
-        {/* HEATMAP TAB - Enhanced */}
+        {/* HEATMAP TAB - Per-client when filtered, summary when all */}
         <TabsContent value="heatmap" className="mt-4 space-y-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Activity className="h-4 w-4" /> Mapa de Calor — Prioridad por Cliente
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs border-collapse">
-                  <thead>
-                    <tr>
-                      <th className="text-left p-2 font-medium text-muted-foreground border-b border-border min-w-[160px]">Cliente</th>
-                      <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-16">Total</th>
-                      <th className="text-center p-2 font-medium border-b border-border w-16" style={{ color: "rgb(239,68,68)" }}>Crítica</th>
-                      <th className="text-center p-2 font-medium border-b border-border w-16" style={{ color: "rgb(249,115,22)" }}>Alta</th>
-                      <th className="text-center p-2 font-medium border-b border-border w-16" style={{ color: "rgb(234,179,8)" }}>Media</th>
-                      <th className="text-center p-2 font-medium border-b border-border w-14" style={{ color: "rgb(148,163,184)" }}>Baja</th>
-                      <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-16">Prom Días</th>
-                      <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-16">Máx Días</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {heatMapData.map(row => (
-                      <tr key={row.id} className="hover:bg-muted/20 transition-colors">
-                        <td className="p-2 font-medium border-b border-border/30 truncate max-w-[200px]">{row.name}</td>
-                        <td className="p-2 text-center font-bold border-b border-border/30" style={heatBg(row.activos, maxActivos, 59, 130, 246)}>
-                          {row.activos}
-                          {row.total > row.activos && <span className="text-muted-foreground font-normal">/{row.total}</span>}
-                        </td>
-                        <td className="p-2 text-center font-bold border-b border-border/30 rounded-sm" style={heatBg(row.critica, maxCrit, 239, 68, 68)}>
-                          {row.critica || ""}
-                        </td>
-                        <td className="p-2 text-center font-bold border-b border-border/30 rounded-sm" style={heatBg(row.alta, maxAlta, 249, 115, 22)}>
-                          {row.alta || ""}
-                        </td>
-                        <td className="p-2 text-center border-b border-border/30 rounded-sm" style={heatBg(row.media, maxMedia, 234, 179, 8)}>
-                          {row.media || ""}
-                        </td>
-                        <td className="p-2 text-center text-muted-foreground border-b border-border/30">
-                          {row.baja || ""}
-                        </td>
-                        <td className="p-2 text-center font-mono border-b border-border/30">
-                          <span className={row.avgDias > 180 ? "text-destructive font-bold" : row.avgDias > 90 ? "text-warning" : "text-muted-foreground"}>
-                            {row.activos > 0 ? row.avgDias : "—"}
-                          </span>
-                        </td>
-                        <td className="p-2 text-center font-mono border-b border-border/30">
-                          <span className={row.maxDias > 365 ? "text-destructive font-bold" : row.maxDias > 180 ? "text-warning" : ""}>
-                            {row.activos > 0 ? row.maxDias : "—"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
+          {selectedClient !== "all" ? (
+            <SupportClientHeatmap tickets={tickets} clientName={selectedClientName} />
+          ) : (
+            <>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Activity className="h-4 w-4" /> Mapa de Calor — Prioridad por Cliente
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
+                        <tr>
+                          <th className="text-left p-2 font-medium text-muted-foreground border-b border-border min-w-[160px]">Cliente</th>
+                          <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-16">Total</th>
+                          <th className="text-center p-2 font-medium border-b border-border w-16" style={{ color: "rgb(239,68,68)" }}>Crítica</th>
+                          <th className="text-center p-2 font-medium border-b border-border w-16" style={{ color: "rgb(249,115,22)" }}>Alta</th>
+                          <th className="text-center p-2 font-medium border-b border-border w-16" style={{ color: "rgb(234,179,8)" }}>Media</th>
+                          <th className="text-center p-2 font-medium border-b border-border w-14" style={{ color: "rgb(148,163,184)" }}>Baja</th>
+                          <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-16">Prom Días</th>
+                          <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-16">Máx Días</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {heatMapData.map(row => (
+                          <tr key={row.id} className="hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => setSelectedClient(row.id)}>
+                            <td className="p-2 font-medium border-b border-border/30 truncate max-w-[200px]">{row.name}</td>
+                            <td className="p-2 text-center font-bold border-b border-border/30" style={heatBg(row.activos, maxActivos, 59, 130, 246)}>
+                              {row.activos}{row.total > row.activos && <span className="text-muted-foreground font-normal">/{row.total}</span>}
+                            </td>
+                            <td className="p-2 text-center font-bold border-b border-border/30 rounded-sm" style={heatBg(row.critica, maxCrit, 239, 68, 68)}>{row.critica || ""}</td>
+                            <td className="p-2 text-center font-bold border-b border-border/30 rounded-sm" style={heatBg(row.alta, maxAlta, 249, 115, 22)}>{row.alta || ""}</td>
+                            <td className="p-2 text-center border-b border-border/30 rounded-sm" style={heatBg(row.media, maxMedia, 234, 179, 8)}>{row.media || ""}</td>
+                            <td className="p-2 text-center text-muted-foreground border-b border-border/30">{row.baja || ""}</td>
+                            <td className="p-2 text-center font-mono border-b border-border/30">
+                              <span className={row.avgDias > 180 ? "text-destructive font-bold" : row.avgDias > 90 ? "text-warning" : "text-muted-foreground"}>{row.activos > 0 ? row.avgDias : "—"}</span>
+                            </td>
+                            <td className="p-2 text-center font-mono border-b border-border/30">
+                              <span className={row.maxDias > 365 ? "text-destructive font-bold" : row.maxDias > 180 ? "text-warning" : ""}>{row.activos > 0 ? row.maxDias : "—"}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-2 italic">Clic en un cliente para ver mapa de calor por caso individual</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Activity className="h-4 w-4" /> Mapa de Calor — Estado por Cliente
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
+                        <tr>
+                          <th className="text-left p-2 font-medium text-muted-foreground border-b border-border min-w-[160px]">Cliente</th>
+                          <th className="text-center p-2 font-medium border-b border-border w-20" style={{ color: "rgb(59,130,246)" }}>En Atención</th>
+                          <th className="text-center p-2 font-medium border-b border-border w-20" style={{ color: "rgb(234,179,8)" }}>Entregada</th>
+                          <th className="text-center p-2 font-medium border-b border-border w-20" style={{ color: "rgb(249,115,22)" }}>Pendiente</th>
+                          <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-16">Activos</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {heatMapData.filter(r => r.activos > 0).map(row => (
+                          <tr key={row.id} className="hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => setSelectedClient(row.id)}>
+                            <td className="p-2 font-medium border-b border-border/30 truncate max-w-[200px]">{row.name}</td>
+                            <td className="p-2 text-center font-bold border-b border-border/30" style={heatBg(row.enAtencion, Math.max(1, ...heatMapData.map(r => r.enAtencion)), 59, 130, 246)}>{row.enAtencion || ""}</td>
+                            <td className="p-2 text-center font-bold border-b border-border/30" style={heatBg(row.entregada, maxEntregada, 234, 179, 8)}>{row.entregada || ""}</td>
+                            <td className="p-2 text-center font-bold border-b border-border/30" style={heatBg(row.pendiente, maxPendiente, 249, 115, 22)}>{row.pendiente || ""}</td>
+                            <td className="p-2 text-center font-bold border-b border-border/30">{row.activos}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </TabsContent>
 
-          {/* Second heatmap: Estado by client */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Activity className="h-4 w-4" /> Mapa de Calor — Estado por Cliente
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs border-collapse">
-                  <thead>
-                    <tr>
-                      <th className="text-left p-2 font-medium text-muted-foreground border-b border-border min-w-[160px]">Cliente</th>
-                      <th className="text-center p-2 font-medium border-b border-border w-20" style={{ color: "rgb(59,130,246)" }}>En Atención</th>
-                      <th className="text-center p-2 font-medium border-b border-border w-20" style={{ color: "rgb(234,179,8)" }}>Entregada</th>
-                      <th className="text-center p-2 font-medium border-b border-border w-20" style={{ color: "rgb(249,115,22)" }}>Pendiente</th>
-                      <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-16">Activos</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {heatMapData.filter(r => r.activos > 0).map(row => (
-                      <tr key={row.id} className="hover:bg-muted/20 transition-colors">
-                        <td className="p-2 font-medium border-b border-border/30 truncate max-w-[200px]">{row.name}</td>
-                        <td className="p-2 text-center font-bold border-b border-border/30" style={heatBg(row.enAtencion, Math.max(1, ...heatMapData.map(r => r.enAtencion)), 59, 130, 246)}>
-                          {row.enAtencion || ""}
-                        </td>
-                        <td className="p-2 text-center font-bold border-b border-border/30" style={heatBg(row.entregada, maxEntregada, 234, 179, 8)}>
-                          {row.entregada || ""}
-                        </td>
-                        <td className="p-2 text-center font-bold border-b border-border/30" style={heatBg(row.pendiente, maxPendiente, 249, 115, 22)}>
-                          {row.pendiente || ""}
-                        </td>
-                        <td className="p-2 text-center font-bold border-b border-border/30">{row.activos}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Custom Charts Tab */}
+        <TabsContent value="charts" className="mt-4">
+          <SupportChartBuilder tickets={ticketsWithClientName} />
         </TabsContent>
 
         {/* AI Classification Tab */}
@@ -636,7 +639,7 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
           </Card>
         </TabsContent>
 
-        {/* Cases Detail Tab */}
+        {/* Cases Detail Tab - Expandable */}
         <TabsContent value="cases" className="mt-4">
           <Card>
             <CardHeader className="pb-2">
@@ -646,51 +649,7 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
-                <table className="w-full text-xs">
-                  <thead className="sticky top-0 bg-card z-10">
-                    <tr className="border-b border-border">
-                      <th className="text-left p-2 font-medium text-muted-foreground">ID</th>
-                      <th className="text-left p-2 font-medium text-muted-foreground">Cliente</th>
-                      <th className="text-left p-2 font-medium text-muted-foreground">Producto</th>
-                      <th className="text-left p-2 font-medium text-muted-foreground">Asunto</th>
-                      <th className="text-left p-2 font-medium text-muted-foreground">Tipo</th>
-                      <th className="text-left p-2 font-medium text-muted-foreground">Prioridad</th>
-                      <th className="text-left p-2 font-medium text-muted-foreground">Estado</th>
-                      <th className="text-left p-2 font-medium text-muted-foreground">IA</th>
-                      <th className="text-right p-2 font-medium text-muted-foreground">Días</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tickets.map(t => (
-                      <tr key={t.id} className={`border-b border-border/50 hover:bg-muted/30 ${["CERRADA", "ANULADA"].includes(t.estado) ? "opacity-50" : ""}`}>
-                        <td className="p-2 font-mono font-bold whitespace-nowrap">{t.ticket_id}</td>
-                        <td className="p-2 whitespace-nowrap">{clientName(t.client_id)}</td>
-                        <td className="p-2 whitespace-nowrap">{t.producto}</td>
-                        <td className="p-2 max-w-[250px] truncate">{t.asunto}</td>
-                        <td className="p-2 whitespace-nowrap">{t.tipo}</td>
-                        <td className="p-2"><Badge className={`text-[10px] ${prioridadColors[t.prioridad] || "bg-muted"}`}>{t.prioridad}</Badge></td>
-                        <td className="p-2"><Badge variant="outline" className={`text-[10px] ${estadoColors[t.estado] || ""}`}>{t.estado}</Badge></td>
-                        <td className="p-2">
-                          {t.ai_classification ? (
-                            <TooltipProvider>
-                              <UITooltip>
-                                <TooltipTrigger>
-                                  <Badge variant="outline" className={`text-[10px] ${aiRiskColors[t.ai_risk_level || ""] || "border-violet-500/40 text-violet-400"}`}>
-                                    {t.ai_classification}
-                                  </Badge>
-                                </TooltipTrigger>
-                                <TooltipContent><p className="text-xs max-w-[300px]">{t.ai_summary || t.ai_classification}</p></TooltipContent>
-                              </UITooltip>
-                            </TooltipProvider>
-                          ) : <span className="text-muted-foreground">—</span>}
-                        </td>
-                        <td className="p-2 text-right font-mono">{t.dias_antiguedad}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <SupportCaseTable tickets={tickets} clientName={clientName} />
             </CardContent>
           </Card>
         </TabsContent>
