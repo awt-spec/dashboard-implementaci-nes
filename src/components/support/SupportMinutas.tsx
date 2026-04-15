@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -53,7 +53,7 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
   const [newAgreement, setNewAgreement] = useState("");
   const [newAction, setNewAction] = useState("");
 
-  useEffect(() => {
+  const loadMinutas = useCallback(() => {
     setLoading(true);
     supabase.from("support_minutes").select("*").eq("client_id", clientId)
       .order("created_at", { ascending: false })
@@ -62,6 +62,8 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
         setLoading(false);
       });
   }, [clientId]);
+
+  useEffect(() => { loadMinutas(); }, [loadMinutas]);
 
   const activeTickets = useMemo(() =>
     tickets.filter(t => !["CERRADA", "ANULADA"].includes(t.estado)), [tickets]);
@@ -190,6 +192,7 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
           clientName={clientName}
           open={!!presentationId}
           onClose={() => setPresentationId(null)}
+          onMinutaUpdated={loadMinutas}
         />
       )}
     <div className="space-y-4">
