@@ -131,8 +131,10 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
 
   const handleSaveEditor = async () => {
     setSaving(true);
-    const field = editorType === "agreements" ? "agreements" : "action_items";
-    const { error } = await supabase.from("support_minutes").update({ [field]: editItems }).eq("id", minuta.id);
+    const updates = editorType === "agreements"
+      ? { agreements: editItems }
+      : { action_items: editItems };
+    const { error } = await supabase.from("support_minutes").update(updates).eq("id", minuta.id);
     if (error) {
       toast.error("Error al guardar");
     } else {
