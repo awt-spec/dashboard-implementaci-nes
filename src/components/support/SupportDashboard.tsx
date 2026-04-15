@@ -90,16 +90,17 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
     return t;
   }, [allTickets, selectedClient, prioridadFilter, search]);
 
-  // For client view, stats are scoped to THIS client only
+  // Scoped tickets: respect both initialClientId AND selectedClient dropdown
   const scopedTickets = useMemo(() => {
     if (isClientView) return allTickets.filter(t => t.client_id === initialClientId);
+    if (selectedClient !== "all") return allTickets.filter(t => t.client_id === selectedClient);
     return allTickets;
-  }, [allTickets, initialClientId, isClientView]);
+  }, [allTickets, initialClientId, isClientView, selectedClient]);
 
   const activeTickets = useMemo(() => scopedTickets.filter(t => !["CERRADA", "ANULADA"].includes(t.estado)), [scopedTickets]);
   const filteredActive = useMemo(() => tickets.filter(t => !["CERRADA", "ANULADA"].includes(t.estado)), [tickets]);
 
-  // Stats - scoped
+  // Stats - always scoped to scopedTickets (which respects client selection)
   const totalActive = activeTickets.length;
   const entregadaSinCierre = activeTickets.filter(t => t.estado === "ENTREGADA").length;
   const mayores365 = activeTickets.filter(t => t.dias_antiguedad > 365).length;
@@ -324,12 +325,13 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
       </div>
 
       <Tabs defaultValue="overview">
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="overview">Vista General</TabsTrigger>
           <TabsTrigger value="heatmap">Mapa de Calor</TabsTrigger>
           <TabsTrigger value="charts">Gráficos</TabsTrigger>
           <TabsTrigger value="ai">Clasificación IA</TabsTrigger>
           <TabsTrigger value="cases">Detalle de Casos</TabsTrigger>
+          {(isClientView || selectedClient !== "all") && <TabsTrigger value="minutas">Minutas</TabsTrigger>}
           <TabsTrigger value="import">Cargar Datos</TabsTrigger>
         </TabsList>
 
@@ -694,6 +696,17 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Minutas Tab */}
+        {(isClientView || selectedClient !== "all") && (
+          <TabsContent value="minutas" className="mt-4">
+            <SupportMinutas
+              tickets={scopedTickets}
+              clientName={isClientView ? (selectedClientObj?.name || "") : selectedClientName}
+              clientId={isClientView ? initialClientId! : selectedClient}
+            />
+          </TabsContent>
+        )}
 
         {/* Data Import Tab */}
         <TabsContent value="import" className="mt-4">
