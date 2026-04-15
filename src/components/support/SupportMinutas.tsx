@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
+import { SupportMinutaPresentation } from "./SupportMinutaPresentation";
 import { toast } from "sonner";
 import type { SupportTicket } from "@/hooks/useSupportTickets";
 
@@ -168,181 +169,21 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
   // Presentation view for a specific minuta
   const presentingMinuta = minutas.find(m => m.id === presentationId);
 
-  if (presentingMinuta) {
-    const refCases = tickets.filter(t => presentingMinuta.cases_referenced.includes(t.ticket_id));
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setPresentationId(null)}>
-            ← Volver a Minutas
-          </Button>
-          <Badge variant="outline" className="text-xs">{new Date(presentingMinuta.date).toLocaleDateString("es", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</Badge>
-        </div>
-
-        {/* Presentation Header */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-            <CardContent className="p-6">
-              <div className="flex items-start gap-4">
-                <div className="h-12 w-12 rounded-2xl bg-primary/20 flex items-center justify-center shrink-0">
-                  <Presentation className="h-6 w-6 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h2 className="text-lg font-black text-foreground">{presentingMinuta.title}</h2>
-                  <p className="text-sm text-muted-foreground mt-1">{clientName} — Sesión de Soporte</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Participants */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> Participantes ({presentingMinuta.attendees.length})</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {presentingMinuta.attendees.map((a, i) => (
-                  <div key={i} className="flex items-center gap-2 bg-secondary rounded-full px-3 py-1.5">
-                    <Avatar className="h-6 w-6">
-                      <AvatarFallback className="bg-primary/10 text-primary text-[9px] font-bold">
-                        {a.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-xs font-medium">{a}</span>
-                  </div>
-                ))}
-                {presentingMinuta.attendees.length === 0 && (
-                  <p className="text-xs text-muted-foreground">Sin participantes registrados</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Executive Summary */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Resumen Ejecutivo</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{presentingMinuta.summary}</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Referenced Cases with details */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-warning" /> Casos Referenciados ({refCases.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {refCases.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th className="text-left p-2 font-medium text-muted-foreground">ID</th>
-                        <th className="text-left p-2 font-medium text-muted-foreground">Asunto</th>
-                        <th className="text-left p-2 font-medium text-muted-foreground">Estado</th>
-                        <th className="text-left p-2 font-medium text-muted-foreground">Prioridad</th>
-                        <th className="text-left p-2 font-medium text-muted-foreground">Responsable</th>
-                        <th className="text-left p-2 font-medium text-muted-foreground">Producto</th>
-                        <th className="text-right p-2 font-medium text-muted-foreground">Días</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {refCases.map(t => (
-                        <tr key={t.id} className="border-b border-border/50 hover:bg-muted/30">
-                          <td className="p-2 font-mono font-bold">{t.ticket_id}</td>
-                          <td className="p-2 max-w-[200px] truncate">{t.asunto}</td>
-                          <td className="p-2"><Badge variant="outline" className="text-[10px]">{t.estado}</Badge></td>
-                          <td className="p-2">
-                            <Badge className={`text-[10px] ${t.prioridad.includes("Critica") ? "bg-red-600 text-white" : t.prioridad === "Alta" ? "bg-destructive text-destructive-foreground" : "bg-muted text-muted-foreground"}`}>
-                              {t.prioridad}
-                            </Badge>
-                          </td>
-                          <td className="p-2">{t.responsable || "—"}</td>
-                          <td className="p-2">{t.producto}</td>
-                          <td className="p-2 text-right font-mono font-bold">
-                            <span className={t.dias_antiguedad > 365 ? "text-destructive" : t.dias_antiguedad > 90 ? "text-warning" : ""}>{t.dias_antiguedad}</span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="flex flex-wrap gap-1.5">
-                  {presentingMinuta.cases_referenced.map(c => (
-                    <Badge key={c} variant="outline" className="text-[10px]">{c}</Badge>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Agreements & Action Items side by side */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {presentingMinuta.agreements.length > 0 && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-              <Card className="h-full">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <CheckSquare className="h-4 w-4 text-emerald-500" /> Acuerdos ({presentingMinuta.agreements.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-2">
-                    {presentingMinuta.agreements.map((a, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm">
-                        <CheckSquare className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
-                        <span>{a}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-          {presentingMinuta.action_items.length > 0 && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
-              <Card className="h-full">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <ArrowRight className="h-4 w-4 text-amber-500" /> Acciones a Seguir ({presentingMinuta.action_items.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-2">
-                    {presentingMinuta.action_items.map((a, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm">
-                        <ArrowRight className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                        <span>{a}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   if (loading) {
     return <div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
   }
 
   return (
+    <>
+      {presentingMinuta && (
+        <SupportMinutaPresentation
+          minuta={presentingMinuta}
+          tickets={tickets}
+          clientName={clientName}
+          open={!!presentationId}
+          onClose={() => setPresentationId(null)}
+        />
+      )}
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -633,5 +474,6 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
         );
       })}
     </div>
+    </>
   );
 }
