@@ -18,6 +18,8 @@ export interface SupportTicket {
   ai_summary: string | null;
   responsable: string | null;
   notas: string | null;
+  case_agreements: string[];
+  case_actions: string[];
   created_at: string;
   updated_at: string;
 }
