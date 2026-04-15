@@ -142,7 +142,7 @@ export function ExecutiveOverview() {
           <Presentation className="h-4 w-4" /> Presentación Ejecutiva
         </Button>
       </div>
-      <ExecutivePresentation clients={clients} open={showPresentation} onClose={() => setShowPresentation(false)} />
+      <ExecutivePresentation clients={clients} supportTickets={supportTickets} supportClients={supportClients} open={showPresentation} onClose={() => setShowPresentation(false)} />
 
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
