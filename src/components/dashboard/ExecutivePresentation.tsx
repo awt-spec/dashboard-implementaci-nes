@@ -3,7 +3,7 @@ import { type Client } from "@/data/projectData";
 import { Button } from "@/components/ui/button";
 import {
   ChevronLeft, ChevronRight, Maximize2, Minimize2, X, Download,
-  BarChart3, AlertTriangle, FileCheck, Users, TrendingUp, CheckCircle2
+  BarChart3, AlertTriangle, FileCheck, Users, TrendingUp, CheckCircle2, Headset, Clock
 } from "lucide-react";
 import sysdeLogo from "@/assets/sysde_default_logo.png";
 import { motion, AnimatePresence } from "framer-motion";
@@ -12,29 +12,52 @@ import { toast } from "sonner";
 import {
   SlideLayout, ScaledSlide, SysdeLogo, EditDisabledContext,
 } from "@/components/clients/presentation/slideHelpers";
+import type { SupportTicket } from "@/hooks/useSupportTickets";
 
 interface ExecutivePresentationProps {
   clients: Client[];
+  supportTickets?: SupportTicket[];
+  supportClients?: { id: string; name: string }[];
   open: boolean;
   onClose: () => void;
 }
 
-export function ExecutivePresentation({ clients, open, onClose }: ExecutivePresentationProps) {
+export function ExecutivePresentation({ clients, supportTickets = [], supportClients = [], open, onClose }: ExecutivePresentationProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const slideRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const activeClients = clients.filter(c => c.status === "activo").length;
-  const atRisk = clients.filter(c => c.status === "en-riesgo").length;
-  const completed = clients.filter(c => c.status === "completado").length;
-  const avgProgress = Math.round(clients.reduce((s, c) => s + c.progress, 0) / clients.length);
-  const allTasks = clients.flatMap(c => c.tasks);
-  const totalRisks = clients.reduce((s, c) => s + c.risks.filter(r => r.status === "abierto").length, 0);
-  const allDeliverables = clients.flatMap(c => c.deliverables);
+  // Implementation metrics
+  const implClients = clients.filter(c => c.client_type === "implementacion");
+  const activeClients = implClients.filter(c => c.status === "activo").length;
+  const atRisk = implClients.filter(c => c.status === "en-riesgo").length;
+  const completed = implClients.filter(c => c.status === "completado").length;
+  const avgProgress = implClients.length > 0 ? Math.round(implClients.reduce((s, c) => s + c.progress, 0) / implClients.length) : 0;
+  const allTasks = implClients.flatMap(c => c.tasks);
+  const totalRisks = implClients.reduce((s, c) => s + c.risks.filter(r => r.status === "abierto").length, 0);
+  const allDeliverables = implClients.flatMap(c => c.deliverables);
 
-  const slideNames = ["Portada", "KPIs", "Progreso", "Tareas", "Entregables", "Riesgos", "Cierre"];
+  // Support metrics
+  const activeTickets = supportTickets.filter(t => !["CERRADA", "ANULADA"].includes(t.estado));
+  const criticalTickets = supportTickets.filter(t => t.prioridad.includes("Critica") || t.prioridad === "Alta");
+  const oldTickets = supportTickets.filter(t => t.dias_antiguedad > 365);
+  const aiClassified = supportTickets.filter(t => t.ai_classification).length;
+  const ticketsByClient: Record<string, { name: string; total: number; open: number; critical: number }> = {};
+  supportTickets.forEach(t => {
+    const sc = supportClients.find(c => c.id === t.client_id);
+    const name = sc?.name || t.client_id;
+    if (!ticketsByClient[t.client_id]) ticketsByClient[t.client_id] = { name, total: 0, open: 0, critical: 0 };
+    ticketsByClient[t.client_id].total++;
+    if (!["CERRADA", "ANULADA"].includes(t.estado)) ticketsByClient[t.client_id].open++;
+    if (t.prioridad.includes("Critica") || t.prioridad === "Alta") ticketsByClient[t.client_id].critical++;
+  });
+  const hasSupportData = supportTickets.length > 0;
+
+  const slideNames = hasSupportData
+    ? ["Portada", "KPIs", "Progreso", "Tareas", "Entregables", "Riesgos", "Soporte KPIs", "Soporte por Cliente", "Cierre"]
+    : ["Portada", "KPIs", "Progreso", "Tareas", "Entregables", "Riesgos", "Cierre"];
   const totalSlides = slideNames.length;
 
   const next = useCallback(() => setCurrentSlide(s => Math.min(s + 1, totalSlides - 1)), [totalSlides]);
@@ -109,7 +132,7 @@ export function ExecutivePresentation({ clients, open, onClose }: ExecutivePrese
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
             <p className="text-[20px] text-[#999] uppercase tracking-[4px] mb-[16px]">SERVICIOS Y TECNOLOGÍA QUE GENERAN VALOR A LA INDUSTRIA FINANCIERA</p>
             <h1 className="text-[64px] font-bold text-[#333] leading-[1.1] mb-[32px]">Resumen Ejecutivo Global</h1>
-            <h2 className="text-[48px] font-extrabold text-[#c0392b] mb-[40px]">{clients.length} Implementaciones</h2>
+            <h2 className="text-[48px] font-extrabold text-[#c0392b] mb-[40px]">{implClients.length} Implementaciones{hasSupportData ? ` · ${supportClients.length} Soporte` : ""}</h2>
             <div className="w-[80px] h-[4px] bg-[#c0392b] mb-[40px]" />
             <p className="text-[24px] text-[#666] mb-[8px]">{new Date().toLocaleDateString("es", { day: "2-digit", month: "long", year: "numeric" })}</p>
           </motion.div>
@@ -156,7 +179,7 @@ export function ExecutivePresentation({ clients, open, onClose }: ExecutivePrese
         <p className="text-[20px] font-bold text-[#c0392b] uppercase tracking-[2px]">SINCRONIZACIÓN</p>
         <h2 className="text-[48px] font-bold text-[#333] mt-[8px] mb-[40px]">Progreso por Cliente</h2>
         <div className="space-y-[28px]">
-          {clients.map((c, i) => {
+          {implClients.map((c, i) => {
             const barColor = c.status === "en-riesgo" ? "#c0392b" : c.progress >= 80 ? "#27ae60" : c.progress >= 40 ? "#e67e22" : "#3b82f6";
             const statusLabel = c.status === "activo" ? "Activo" : c.status === "en-riesgo" ? "En Riesgo" : c.status === "completado" ? "Completado" : "Pausado";
             const statusColor = c.status === "en-riesgo" ? "#c0392b" : c.status === "activo" ? "#27ae60" : c.status === "completado" ? "#3b82f6" : "#999";
@@ -193,7 +216,7 @@ export function ExecutivePresentation({ clients, open, onClose }: ExecutivePrese
             <div className="w-[140px] px-[16px] py-[16px] text-[18px] font-bold text-white text-center border-l border-white/10">Pendientes</div>
             <div className="w-[140px] px-[16px] py-[16px] text-[18px] font-bold text-white text-center border-l border-white/10">Bloqueadas</div>
           </div>
-          {clients.map((c, i) => {
+          {implClients.map((c, i) => {
             const comp = c.tasks.filter(t => t.status === "completada").length;
             const prog = c.tasks.filter(t => t.status === "en-progreso").length;
             const pend = c.tasks.filter(t => t.status === "pendiente").length;
@@ -239,7 +262,7 @@ export function ExecutivePresentation({ clients, open, onClose }: ExecutivePrese
             <div className="w-[140px] px-[16px] py-[16px] text-[18px] font-bold text-white text-center border-l border-white/10">En Revisión</div>
             <div className="w-[140px] px-[16px] py-[16px] text-[18px] font-bold text-white text-center border-l border-white/10">Pendientes</div>
           </div>
-          {clients.map((c, i) => (
+          {implClients.map((c, i) => (
             <motion.div key={c.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
               className={cn("flex border-b border-[#f0f0f0]", i % 2 === 0 ? "bg-white" : "bg-[#fafafa]")}>
               <div className="flex-1 px-[24px] py-[18px] text-[20px] text-[#333] font-medium">{c.name}</div>
@@ -262,7 +285,7 @@ export function ExecutivePresentation({ clients, open, onClose }: ExecutivePrese
         <p className="text-[20px] font-bold text-[#c0392b] uppercase tracking-[2px]">ALERTAS</p>
         <h2 className="text-[44px] font-bold text-[#333] mt-[8px] mb-[32px]">Riesgos Abiertos por Cliente</h2>
         <div className="space-y-[20px]">
-          {clients.filter(c => c.risks.some(r => r.status === "abierto")).map((c, ci) => (
+          {implClients.filter(c => c.risks.some(r => r.status === "abierto")).map((c, ci) => (
             <motion.div key={c.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: ci * 0.08 }}>
               <div className="flex items-center gap-[16px] mb-[12px]">
                 <span className="text-[24px] font-bold text-[#333]">{c.name}</span>
@@ -286,6 +309,79 @@ export function ExecutivePresentation({ clients, open, onClose }: ExecutivePrese
     </SlideLayout>
   );
 
+  // ── SUPPORT SLIDES ──
+  const slideSoporteKpis = hasSupportData ? (
+    <SlideLayout key="soporte-kpis" className="bg-white">
+      <div className="absolute left-0 top-0 bottom-0 w-[12px] bg-[#c0392b]" />
+      <div className="absolute inset-0 px-[100px] py-[60px]">
+        <div className="flex items-center gap-[20px] mb-[48px]">
+          <div className="h-[56px] w-[56px] rounded-[14px] bg-gradient-to-br from-[#c0392b] to-[#922b21] flex items-center justify-center shadow-lg">
+            <Headset className="text-white" style={{ width: 28, height: 28 }} />
+          </div>
+          <div>
+            <p className="text-[14px] font-bold text-[#c0392b] uppercase tracking-[3px]">SOPORTE TÉCNICO</p>
+            <h2 className="text-[48px] font-extrabold text-[#1a1a2e]">Indicadores de Soporte</h2>
+          </div>
+        </div>
+        <div className="grid grid-cols-4 gap-[32px] mb-[48px]">
+          {[
+            { label: "Total Tickets", value: supportTickets.length, color: "#c0392b", icon: Headset },
+            { label: "Tickets Activos", value: activeTickets.length, color: "#e67e22", icon: Clock },
+            { label: "Críticos / Alta", value: criticalTickets.length, color: "#c0392b", icon: AlertTriangle },
+            { label: "> 365 Días", value: oldTickets.length, color: "#8e44ad", icon: Clock },
+          ].map((kpi, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + i * 0.1 }}
+              className="rounded-[16px] border-[2px] border-[#eee] p-[32px] relative overflow-hidden text-center">
+              <div className="absolute top-0 left-0 right-0 h-[4px]" style={{ background: kpi.color }} />
+              <div className="w-[64px] h-[64px] rounded-[16px] flex items-center justify-center mx-auto mb-[16px]" style={{ background: kpi.color + "15" }}>
+                <kpi.icon style={{ width: 32, height: 32, color: kpi.color }} />
+              </div>
+              <p className="text-[56px] font-extrabold" style={{ color: kpi.color }}>{kpi.value}</p>
+              <p className="text-[20px] text-[#666] mt-[8px]">{kpi.label}</p>
+            </motion.div>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-[32px]">
+          <div className="bg-[#fafafa] rounded-[16px] border-[2px] border-[#eee] p-[32px] text-center">
+            <p className="text-[20px] text-[#666]">Clientes de Soporte</p>
+            <p className="text-[56px] font-extrabold text-[#333]">{supportClients.length}</p>
+          </div>
+          <div className="bg-[#fafafa] rounded-[16px] border-[2px] border-[#eee] p-[32px] text-center">
+            <p className="text-[20px] text-[#666]">Clasificados por IA</p>
+            <p className="text-[56px] font-extrabold text-[#8e44ad]">{aiClassified}</p>
+          </div>
+        </div>
+      </div>
+    </SlideLayout>
+  ) : null;
+
+  const slideSoporteClientes = hasSupportData ? (
+    <SlideLayout key="soporte-clients" className="bg-white">
+      <div className="absolute left-0 top-0 bottom-0 w-[12px] bg-[#c0392b]" />
+      <div className="absolute inset-0 px-[80px] py-[50px]">
+        <p className="text-[20px] font-bold text-[#c0392b] uppercase tracking-[2px]">DISTRIBUCIÓN</p>
+        <h2 className="text-[44px] font-bold text-[#333] mt-[8px] mb-[32px]">Tickets por Cliente de Soporte</h2>
+        <div className="rounded-[16px] overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.08)] border border-[#eee]">
+          <div className="flex bg-gradient-to-r from-[#c0392b] to-[#a0302b]">
+            <div className="flex-1 px-[24px] py-[16px] text-[20px] font-bold text-white">Cliente</div>
+            <div className="w-[140px] px-[16px] py-[16px] text-[18px] font-bold text-white text-center border-l border-white/10">Total</div>
+            <div className="w-[140px] px-[16px] py-[16px] text-[18px] font-bold text-white text-center border-l border-white/10">Abiertos</div>
+            <div className="w-[140px] px-[16px] py-[16px] text-[18px] font-bold text-white text-center border-l border-white/10">Críticos</div>
+          </div>
+          {Object.values(ticketsByClient).sort((a, b) => b.open - a.open).slice(0, 12).map((c, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+              className={cn("flex border-b border-[#f0f0f0]", i % 2 === 0 ? "bg-white" : "bg-[#fafafa]")}>
+              <div className="flex-1 px-[24px] py-[18px] text-[20px] text-[#333] font-medium truncate">{c.name}</div>
+              <div className="w-[140px] px-[16px] py-[18px] text-[20px] font-bold text-[#333] text-center border-l border-[#f0f0f0]">{c.total}</div>
+              <div className="w-[140px] px-[16px] py-[18px] text-[20px] font-bold text-[#e67e22] text-center border-l border-[#f0f0f0]">{c.open}</div>
+              <div className="w-[140px] px-[16px] py-[18px] text-[20px] font-bold text-[#c0392b] text-center border-l border-[#f0f0f0]">{c.critical}</div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </SlideLayout>
+  ) : null;
+
   const slideCierre = (
     <SlideLayout key="close" className="bg-[#c0392b]">
       <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -300,7 +396,11 @@ export function ExecutivePresentation({ clients, open, onClose }: ExecutivePrese
     </SlideLayout>
   );
 
-  const slides = [slidePortada, slideKpis, slideProgreso, slideTareas, slideEntregables, slideRiesgos, slideCierre];
+  const slides = [
+    slidePortada, slideKpis, slideProgreso, slideTareas, slideEntregables, slideRiesgos,
+    ...(hasSupportData ? [slideSoporteKpis, slideSoporteClientes] : []),
+    slideCierre,
+  ].filter(Boolean);
 
   return (
     <AnimatePresence>

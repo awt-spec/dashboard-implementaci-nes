@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronDown, ChevronUp, Brain, Calendar, User, Tag, FileText, AlertTriangle } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { ChevronDown, ChevronUp, Brain, Calendar, User, Tag, FileText, AlertTriangle, Save, Loader2 } from "lucide-react";
 import type { SupportTicket } from "@/hooks/useSupportTickets";
 import { useUpdateSupportTicket } from "@/hooks/useSupportTickets";
 import { motion, AnimatePresence } from "framer-motion";
@@ -28,6 +29,9 @@ const estadoColors: Record<string, string> = {
   "VALORACIÓN": "bg-pink-500/20 text-pink-400 border-pink-500/30",
 };
 
+const ESTADOS = ["EN ATENCIÓN", "ENTREGADA", "PENDIENTE", "POR CERRAR", "CERRADA", "ANULADA", "COTIZADA", "APROBADA", "ON HOLD", "VALORACIÓN"];
+const PRIORIDADES = ["Critica, Impacto Negocio", "Alta", "Media", "Baja"];
+
 const aiRiskColors: Record<string, string> = {
   critical: "bg-red-600/20 text-red-400 border-red-600/40",
   high: "bg-orange-500/20 text-orange-400 border-orange-500/40",
@@ -47,12 +51,27 @@ interface Props {
 
 export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [editingField, setEditingField] = useState<{ id: string; field: string } | null>(null);
+  const [editNotas, setEditNotas] = useState("");
+  const [editAiSummary, setEditAiSummary] = useState("");
+  const [saving, setSaving] = useState(false);
   const updateTicket = useUpdateSupportTicket();
 
-  const handleAssignResponsable = (ticketId: string, responsable: string) => {
+  const handleUpdate = (ticketId: string, updates: Record<string, any>, msg: string) => {
     updateTicket.mutate(
-      { id: ticketId, updates: { responsable: responsable === "__none__" ? null : responsable } },
-      { onSuccess: () => toast.success("Responsable actualizado") }
+      { id: ticketId, updates },
+      { onSuccess: () => { toast.success(msg); setEditingField(null); } }
+    );
+  };
+
+  const handleSaveText = async (ticketId: string, field: string, value: string) => {
+    setSaving(true);
+    updateTicket.mutate(
+      { id: ticketId, updates: { [field]: value || null } },
+      {
+        onSuccess: () => { toast.success("Guardado"); setEditingField(null); setSaving(false); },
+        onError: () => { toast.error("Error al guardar"); setSaving(false); },
+      }
     );
   };
 
@@ -78,7 +97,7 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
             const isExpanded = expandedId === t.id;
             const isClosed = ["CERRADA", "ANULADA"].includes(t.estado);
             return (
-              <>
+              <> 
                 <tr
                   key={t.id}
                   className={`border-b border-border/50 hover:bg-muted/30 cursor-pointer transition-colors ${isClosed ? "opacity-50" : ""} ${isExpanded ? "bg-muted/20" : ""}`}
@@ -116,7 +135,7 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
                         >
                           <div className="p-4 bg-muted/10 border-b border-border">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              {/* Left: Main info */}
+                              {/* Left: Main info + inline edits */}
                               <div className="space-y-3">
                                 <h4 className="font-bold text-sm text-foreground flex items-center gap-1.5">
                                   <FileText className="h-3.5 w-3.5 text-primary" />
@@ -128,13 +147,53 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
                                     <span className="text-muted-foreground">ID:</span>
                                     <span className="font-mono font-bold">{t.ticket_id}</span>
                                   </div>
+
+                                  {/* Estado - editable */}
+                                  <div className="flex items-center gap-2">
+                                    <Tag className="h-3 w-3 text-muted-foreground" />
+                                    <span className="text-muted-foreground">Estado:</span>
+                                    <Select
+                                      value={t.estado}
+                                      onValueChange={v => handleUpdate(t.id, { estado: v }, "Estado actualizado")}
+                                    >
+                                      <SelectTrigger className="h-6 text-xs w-[160px]" onClick={e => e.stopPropagation()}>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {ESTADOS.map(e => (
+                                          <SelectItem key={e} value={e}>{e}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+
+                                  {/* Prioridad - editable */}
+                                  <div className="flex items-center gap-2">
+                                    <AlertTriangle className="h-3 w-3 text-muted-foreground" />
+                                    <span className="text-muted-foreground">Prioridad:</span>
+                                    <Select
+                                      value={t.prioridad}
+                                      onValueChange={v => handleUpdate(t.id, { prioridad: v }, "Prioridad actualizada")}
+                                    >
+                                      <SelectTrigger className="h-6 text-xs w-[180px]" onClick={e => e.stopPropagation()}>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {PRIORIDADES.map(p => (
+                                          <SelectItem key={p} value={p}>{p}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+
+                                  {/* Responsable */}
                                   <div className="flex items-center gap-2">
                                     <User className="h-3 w-3 text-muted-foreground" />
                                     <span className="text-muted-foreground">Responsable:</span>
                                     {teamMembers.length > 0 ? (
                                       <Select
                                         value={t.responsable || "__none__"}
-                                        onValueChange={v => handleAssignResponsable(t.id, v)}
+                                        onValueChange={v => handleUpdate(t.id, { responsable: v === "__none__" ? null : v }, "Responsable actualizado")}
                                       >
                                         <SelectTrigger className="h-6 text-xs w-[160px]" onClick={e => e.stopPropagation()}>
                                           <SelectValue placeholder="Asignar..." />
@@ -150,6 +209,7 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
                                       <span className="font-medium">{t.responsable || "Sin asignar"}</span>
                                     )}
                                   </div>
+
                                   <div className="flex items-center gap-2">
                                     <Calendar className="h-3 w-3 text-muted-foreground" />
                                     <span className="text-muted-foreground">Registro:</span>
@@ -170,19 +230,42 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
                                 </div>
                               </div>
 
-                              {/* Center: Subject & Notes */}
+                              {/* Center: Subject & Notas (editable) */}
                               <div className="space-y-3">
                                 <h4 className="font-bold text-sm text-foreground">Asunto Completo</h4>
                                 <p className="text-xs text-foreground bg-card rounded-md p-2 border border-border/50">{t.asunto}</p>
-                                {t.notas && (
-                                  <>
-                                    <h4 className="font-bold text-sm text-foreground">Notas</h4>
-                                    <p className="text-xs text-muted-foreground bg-card rounded-md p-2 border border-border/50">{t.notas}</p>
-                                  </>
+
+                                <div className="flex items-center justify-between">
+                                  <h4 className="font-bold text-sm text-foreground">Notas</h4>
+                                  {editingField?.id === t.id && editingField?.field === "notas" ? (
+                                    <div className="flex gap-1">
+                                      <Button size="icon" variant="ghost" className="h-5 w-5" disabled={saving}
+                                        onClick={e => { e.stopPropagation(); handleSaveText(t.id, "notas", editNotas); }}>
+                                        {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3 text-primary" />}
+                                      </Button>
+                                      <Button size="icon" variant="ghost" className="h-5 w-5"
+                                        onClick={e => { e.stopPropagation(); setEditingField(null); }}>
+                                        <span className="text-xs">✕</span>
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <Button size="sm" variant="ghost" className="h-5 text-[10px] px-1.5"
+                                      onClick={e => { e.stopPropagation(); setEditingField({ id: t.id, field: "notas" }); setEditNotas(t.notas || ""); }}>
+                                      Editar
+                                    </Button>
+                                  )}
+                                </div>
+                                {editingField?.id === t.id && editingField?.field === "notas" ? (
+                                  <Textarea value={editNotas} onChange={e => setEditNotas(e.target.value)}
+                                    className="text-xs min-h-[60px]" onClick={e => e.stopPropagation()} />
+                                ) : (
+                                  <p className="text-xs text-muted-foreground bg-card rounded-md p-2 border border-border/50">
+                                    {t.notas || "Sin notas"}
+                                  </p>
                                 )}
                               </div>
 
-                              {/* Right: AI Analysis */}
+                              {/* Right: AI Analysis (editable summary) */}
                               <div className="space-y-3">
                                 <h4 className="font-bold text-sm text-foreground flex items-center gap-1.5">
                                   <Brain className="h-3.5 w-3.5 text-violet-400" />
@@ -200,12 +283,36 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
                                         {aiRiskLabels[t.ai_risk_level || ""] || t.ai_risk_level || "—"}
                                       </Badge>
                                     </div>
-                                    {t.ai_summary && (
-                                      <div>
-                                        <span className="text-muted-foreground">Resumen:</span>
-                                        <p className="text-foreground mt-1 bg-card rounded-md p-2 border border-violet-500/20">{t.ai_summary}</p>
+                                    <div>
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-muted-foreground">Resumen IA:</span>
+                                        {editingField?.id === t.id && editingField?.field === "ai_summary" ? (
+                                          <div className="flex gap-1">
+                                            <Button size="icon" variant="ghost" className="h-5 w-5" disabled={saving}
+                                              onClick={e => { e.stopPropagation(); handleSaveText(t.id, "ai_summary", editAiSummary); }}>
+                                              {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3 text-primary" />}
+                                            </Button>
+                                            <Button size="icon" variant="ghost" className="h-5 w-5"
+                                              onClick={e => { e.stopPropagation(); setEditingField(null); }}>
+                                              <span className="text-xs">✕</span>
+                                            </Button>
+                                          </div>
+                                        ) : (
+                                          <Button size="sm" variant="ghost" className="h-5 text-[10px] px-1.5"
+                                            onClick={e => { e.stopPropagation(); setEditingField({ id: t.id, field: "ai_summary" }); setEditAiSummary(t.ai_summary || ""); }}>
+                                            Editar
+                                          </Button>
+                                        )}
                                       </div>
-                                    )}
+                                      {editingField?.id === t.id && editingField?.field === "ai_summary" ? (
+                                        <Textarea value={editAiSummary} onChange={e => setEditAiSummary(e.target.value)}
+                                          className="text-xs min-h-[60px] mt-1" onClick={e => e.stopPropagation()} />
+                                      ) : (
+                                        <p className="text-foreground mt-1 bg-card rounded-md p-2 border border-violet-500/20">
+                                          {t.ai_summary || "Sin resumen"}
+                                        </p>
+                                      )}
+                                    </div>
                                   </div>
                                 ) : (
                                   <p className="text-xs text-muted-foreground italic">No clasificado aún. Use "Clasificar con IA" para analizar.</p>

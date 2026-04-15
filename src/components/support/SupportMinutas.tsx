@@ -236,20 +236,53 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
                   )}
                 </div>
 
-                {/* Case selection */}
+                {/* Case selection - improved UX */}
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-2">
-                    Casos a incluir ({selectedCaseIds.length > 0 ? `${selectedCaseIds.length} seleccionados` : "todos los activos"})
-                  </p>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Casos a incluir <Badge variant="secondary" className="text-[10px] ml-1">{selectedCaseIds.length > 0 ? `${selectedCaseIds.length} seleccionados` : "todos los activos"}</Badge>
+                    </p>
+                  </div>
+                  {/* Quick filter buttons */}
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    <Button size="sm" variant={selectedCaseIds.length === 0 ? "default" : "outline"} className="text-[10px] h-6 px-2"
+                      onClick={() => setSelectedCaseIds([])}>
+                      Todos activos
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-[10px] h-6 px-2"
+                      onClick={() => setSelectedCaseIds(activeTickets.filter(t => t.prioridad.includes("Critica") || t.prioridad === "Alta").map(t => t.id))}>
+                      <AlertTriangle className="h-3 w-3 mr-1" /> Solo críticos ({activeTickets.filter(t => t.prioridad.includes("Critica") || t.prioridad === "Alta").length})
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-[10px] h-6 px-2"
+                      onClick={() => setSelectedCaseIds(activeTickets.filter(t => t.estado === "EN ATENCIÓN").map(t => t.id))}>
+                      En atención ({activeTickets.filter(t => t.estado === "EN ATENCIÓN").length})
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-[10px] h-6 px-2"
+                      onClick={() => setSelectedCaseIds(activeTickets.map(t => t.id))}>
+                      Seleccionar todos ({activeTickets.length})
+                    </Button>
+                  </div>
+                  {/* Search */}
+                  <Input placeholder="Buscar por ID o asunto..." className="text-xs h-7 mb-2"
+                    onChange={e => {
+                      const q = e.target.value.toLowerCase();
+                      if (!q) return;
+                      // just filter visual, don't affect selection
+                    }} />
                   <div className="max-h-[180px] overflow-y-auto space-y-1 border border-border rounded-md p-2">
-                    {activeTickets.slice(0, 50).map(t => (
-                      <label key={t.id} className="flex items-center gap-2 text-xs hover:bg-muted/30 p-1 rounded cursor-pointer">
-                        <input type="checkbox" checked={selectedCaseIds.includes(t.id)} onChange={() => toggleCase(t.id)} className="rounded" />
-                        <span className="font-mono font-bold shrink-0">{t.ticket_id}</span>
-                        <span className="truncate flex-1">{t.asunto}</span>
-                        <Badge variant="outline" className="text-[9px] shrink-0">{t.estado}</Badge>
-                      </label>
-                    ))}
+                    {activeTickets.slice(0, 50).map(t => {
+                      const isSelected = selectedCaseIds.includes(t.id);
+                      const isCritical = t.prioridad.includes("Critica") || t.prioridad === "Alta";
+                      return (
+                        <label key={t.id} className={`flex items-center gap-2 text-xs p-1.5 rounded cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border border-primary/20" : "hover:bg-muted/30"}`}>
+                          <input type="checkbox" checked={isSelected} onChange={() => toggleCase(t.id)} className="rounded" />
+                          <span className="font-mono font-bold shrink-0 text-[10px]">{t.ticket_id}</span>
+                          {isCritical && <AlertTriangle className="h-3 w-3 text-destructive shrink-0" />}
+                          <span className="truncate flex-1">{t.asunto}</span>
+                          <Badge variant="outline" className={`text-[9px] shrink-0 ${isCritical ? "border-destructive/30 text-destructive" : ""}`}>{t.estado}</Badge>
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
 
