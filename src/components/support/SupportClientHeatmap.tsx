@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Activity, X, Flame, Clock, Shield, Zap } from "lucide-react";
+import { Activity, X, Flame, Clock, Shield, Zap, TrendingUp, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { SupportTicket } from "@/hooks/useSupportTickets";
 
@@ -13,52 +13,58 @@ function prioLabel(p: string) {
 }
 
 function prioIcon(p: string) {
-  if (p === "Critica, Impacto Negocio") return <Flame className="h-3 w-3" />;
-  if (p === "Alta") return <Zap className="h-3 w-3" />;
-  if (p === "Media") return <Shield className="h-3 w-3" />;
-  return <Clock className="h-3 w-3" />;
+  if (p === "Critica, Impacto Negocio") return <Flame className="h-3.5 w-3.5" />;
+  if (p === "Alta") return <Zap className="h-3.5 w-3.5" />;
+  if (p === "Media") return <Shield className="h-3.5 w-3.5" />;
+  return <Clock className="h-3.5 w-3.5" />;
 }
 
-// Gradient-based heat: priority sets hue, aging sets lightness/saturation
-function caseHeatGradient(prioridad: string, dias: number): string {
-  const configs: Record<string, { h: number; s: number }> = {
-    "Critica, Impacto Negocio": { h: 0, s: 85 },
-    "Alta": { h: 25, s: 80 },
-    "Media": { h: 45, s: 75 },
-    "Baja": { h: 210, s: 30 },
+// Rich color system: priority sets base, aging modulates
+function caseColor(prioridad: string, dias: number) {
+  const palettes: Record<string, { bg: string[]; text: string[]; border: string[]; glow: string }> = {
+    "Critica, Impacto Negocio": {
+      bg: ["#fca5a5", "#f87171", "#ef4444", "#dc2626", "#991b1b"],
+      text: ["#7f1d1d", "#7f1d1d", "#fff", "#fff", "#fff"],
+      border: ["#fecaca", "#fca5a5", "#f87171", "#ef4444", "#dc2626"],
+      glow: "rgba(239,68,68,0.5)",
+    },
+    "Alta": {
+      bg: ["#fdba74", "#fb923c", "#f97316", "#ea580c", "#c2410c"],
+      text: ["#7c2d12", "#7c2d12", "#fff", "#fff", "#fff"],
+      border: ["#fed7aa", "#fdba74", "#fb923c", "#f97316", "#ea580c"],
+      glow: "rgba(249,115,22,0.4)",
+    },
+    "Media": {
+      bg: ["#fde68a", "#fcd34d", "#f59e0b", "#d97706", "#b45309"],
+      text: ["#78350f", "#78350f", "#78350f", "#fff", "#fff"],
+      border: ["#fef3c7", "#fde68a", "#fcd34d", "#f59e0b", "#d97706"],
+      glow: "rgba(245,158,11,0.3)",
+    },
+    "Baja": {
+      bg: ["#cbd5e1", "#94a3b8", "#64748b", "#475569", "#334155"],
+      text: ["#1e293b", "#1e293b", "#fff", "#fff", "#fff"],
+      border: ["#e2e8f0", "#cbd5e1", "#94a3b8", "#64748b", "#475569"],
+      glow: "rgba(100,116,139,0.2)",
+    },
   };
-  const { h, s } = configs[prioridad] || { h: 210, s: 30 };
-  // Aging drives luminance: newer=lighter, older=darker
-  let l = 65;
-  if (dias > 365) l = 30;
-  else if (dias > 180) l = 38;
-  else if (dias > 90) l = 46;
-  else if (dias > 30) l = 55;
-  return `hsl(${h}, ${s}%, ${l}%)`;
+  const p = palettes[prioridad] || palettes["Baja"];
+  let idx = 0;
+  if (dias > 365) idx = 4;
+  else if (dias > 180) idx = 3;
+  else if (dias > 90) idx = 2;
+  else if (dias > 30) idx = 1;
+  return { bg: p.bg[idx], text: p.text[idx], border: p.border[idx], glow: p.glow };
 }
 
-function caseGlow(prioridad: string, dias: number): string {
-  if (prioridad === "Critica, Impacto Negocio" && dias > 90)
-    return "0 0 12px rgba(239,68,68,0.6), 0 0 4px rgba(239,68,68,0.3)";
-  if (prioridad === "Alta" && dias > 180)
-    return "0 0 8px rgba(249,115,22,0.4)";
-  return "none";
-}
-
-function agingEmoji(dias: number) {
-  if (dias > 365) return "🔥";
-  if (dias > 180) return "🟠";
-  if (dias > 90) return "🟡";
-  if (dias > 30) return "🟢";
-  return "⚪";
-}
-
-// Size based on aging — older = bigger visual weight
-function cellSize(dias: number): number {
-  if (dias > 365) return 48;
-  if (dias > 180) return 42;
-  if (dias > 90) return 38;
-  return 34;
+// Dynamic sizing — older/critical = bigger presence
+function cellSize(dias: number, prioridad: string): number {
+  let base = 44;
+  if (dias > 365) base = 60;
+  else if (dias > 180) base = 54;
+  else if (dias > 90) base = 50;
+  else if (dias > 30) base = 46;
+  if (prioridad === "Critica, Impacto Negocio") base += 4;
+  return base;
 }
 
 interface Props {
@@ -92,22 +98,22 @@ export function SupportClientHeatmap({ tickets, clientName }: Props) {
 
   const summary = useMemo(() => {
     const byPrio: Record<string, number> = {};
-    let maxDias = 0;
-    let avgDias = 0;
+    let maxDias = 0, totalDias = 0;
     activeTickets.forEach(t => {
       byPrio[t.prioridad] = (byPrio[t.prioridad] || 0) + 1;
       if (t.dias_antiguedad > maxDias) maxDias = t.dias_antiguedad;
-      avgDias += t.dias_antiguedad;
+      totalDias += t.dias_antiguedad;
     });
-    avgDias = activeTickets.length > 0 ? Math.round(avgDias / activeTickets.length) : 0;
-    return { byPrio, total: activeTickets.length, maxDias, avgDias };
+    const avgDias = activeTickets.length > 0 ? Math.round(totalDias / activeTickets.length) : 0;
+    const critical = (byPrio["Critica, Impacto Negocio"] || 0) + (byPrio["Alta"] || 0);
+    return { byPrio, total: activeTickets.length, maxDias, avgDias, critical };
   }, [activeTickets]);
 
   if (activeTickets.length === 0) {
     return (
       <Card className="border-dashed">
         <CardContent className="p-12 text-center text-muted-foreground text-sm">
-          <Activity className="h-8 w-8 mx-auto mb-2 opacity-30" />
+          <Activity className="h-8 w-8 mx-auto mb-3 opacity-20" />
           No hay casos activos para {clientName}
         </CardContent>
       </Card>
@@ -118,217 +124,275 @@ export function SupportClientHeatmap({ tickets, clientName }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* KPI Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}
-          className="rounded-xl border border-border bg-gradient-to-br from-card to-muted/30 p-3 text-center">
-          <div className="text-2xl font-black tracking-tight">{summary.total}</div>
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Casos Activos</div>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-          className="rounded-xl border border-red-500/30 bg-gradient-to-br from-red-500/10 to-card p-3 text-center">
-          <div className="text-2xl font-black tracking-tight text-red-400">{summary.byPrio["Critica, Impacto Negocio"] || 0}</div>
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Críticas</div>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-          className="rounded-xl border border-orange-500/30 bg-gradient-to-br from-orange-500/10 to-card p-3 text-center">
-          <div className="text-2xl font-black tracking-tight text-orange-400">{summary.maxDias}</div>
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Máx. Días</div>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-          className="rounded-xl border border-border bg-gradient-to-br from-card to-muted/30 p-3 text-center">
-          <div className="text-2xl font-black tracking-tight">{summary.avgDias}</div>
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Promedio Días</div>
-        </motion.div>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[
+          { label: "Casos Activos", value: summary.total, icon: Activity, color: "from-blue-500/15 to-transparent", borderColor: "border-blue-500/20", textColor: "text-blue-500" },
+          { label: "Críticos + Altos", value: summary.critical, icon: AlertTriangle, color: "from-red-500/15 to-transparent", borderColor: "border-red-500/20", textColor: "text-red-500" },
+          { label: "Máx. Antigüedad", value: `${summary.maxDias}d`, icon: TrendingUp, color: "from-orange-500/15 to-transparent", borderColor: "border-orange-500/20", textColor: "text-orange-500" },
+          { label: "Promedio Días", value: `${summary.avgDias}d`, icon: Clock, color: "from-muted to-transparent", borderColor: "border-border", textColor: "text-foreground" },
+        ].map((kpi, i) => (
+          <motion.div key={kpi.label}
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.05, type: "spring", stiffness: 200 }}
+            className={`relative overflow-hidden rounded-xl border ${kpi.borderColor} bg-gradient-to-br ${kpi.color} p-4`}>
+            <kpi.icon className={`absolute top-3 right-3 h-5 w-5 ${kpi.textColor} opacity-20`} />
+            <div className={`text-2xl font-black tracking-tight ${kpi.textColor}`}>{kpi.value}</div>
+            <div className="text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5">{kpi.label}</div>
+          </motion.div>
+        ))}
       </div>
 
-      {/* Heatmap Card */}
-      <Card className="overflow-hidden">
-        <CardHeader className="pb-2 bg-gradient-to-r from-card via-muted/20 to-card">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-primary/10">
+      {/* Main Heatmap */}
+      <Card className="overflow-hidden border-border/50">
+        <CardHeader className="pb-3 border-b border-border/30">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <CardTitle className="text-sm flex items-center gap-2.5">
+              <div className="p-1.5 rounded-lg bg-primary/10 shadow-sm">
                 <Activity className="h-4 w-4 text-primary" />
               </div>
-              Mapa de Calor — {clientName}
+              <span>Mapa de Calor — <span className="text-primary">{clientName}</span></span>
             </CardTitle>
-            <div className="flex gap-1 bg-muted/40 rounded-lg p-0.5">
+            <div className="flex gap-0.5 bg-muted/50 rounded-lg p-0.5 border border-border/30">
               {(["prioridad", "estado"] as const).map(g => (
                 <button key={g} onClick={() => setGroupBy(g)}
-                  className={`text-[10px] px-3 py-1 rounded-md font-medium transition-all ${groupBy === g ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
-                  {g === "prioridad" ? "Prioridad" : "Estado"}
+                  className={`text-[11px] px-3 py-1.5 rounded-md font-semibold transition-all duration-200 ${
+                    groupBy === g
+                      ? "bg-background text-foreground shadow-sm border border-border/50"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}>
+                  {g === "prioridad" ? "Por Prioridad" : "Por Estado"}
                 </button>
               ))}
             </div>
           </div>
-          <p className="text-[10px] text-muted-foreground mt-1">
-            Cada celda = 1 caso. Tamaño y oscuridad = antigüedad. Click para detalles.
+          <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
+            Cada celda representa un caso. El <strong>color</strong> indica la prioridad, el <strong>tamaño y oscuridad</strong> reflejan la antigüedad. Haz <strong>click</strong> en una celda para ver el detalle completo.
           </p>
         </CardHeader>
-        <CardContent className="pt-4 space-y-5">
+
+        <CardContent className="pt-5 space-y-6">
           {/* Legend */}
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-muted-foreground px-1">
-            <span className="font-semibold text-foreground">Prioridad:</span>
-            {prioridadOrder.map(p => (
-              <span key={p} className="flex items-center gap-1">
-                <span className="w-3.5 h-3.5 rounded-[4px] inline-block shadow-sm" style={{ background: caseHeatGradient(p, 60) }} />
-                {prioLabel(p)}
-              </span>
-            ))}
-            <span className="font-semibold text-foreground ml-2">Antigüedad:</span>
-            {[
-              { label: "<1m", d: 15 },
-              { label: "1-3m", d: 60 },
-              { label: "3-6m", d: 120 },
-              { label: ">6m", d: 200 },
-              { label: ">1a", d: 400 },
-            ].map(({ label, d }) => (
-              <span key={label} className="flex items-center gap-1">
-                <span className="w-3.5 h-3.5 rounded-[4px] inline-block" style={{ background: caseHeatGradient("Media", d) }} />
-                {label}
-              </span>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] px-1">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-foreground text-xs">Prioridad:</span>
+              {prioridadOrder.map(p => {
+                const c = caseColor(p, 60);
+                return (
+                  <span key={p} className="flex items-center gap-1.5">
+                    <span className="w-4 h-4 rounded-full shadow-sm border" style={{ background: c.bg, borderColor: c.border }} />
+                    <span className="text-muted-foreground">{prioLabel(p)}</span>
+                  </span>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-foreground text-xs">Antigüedad:</span>
+              {[
+                { label: "<1m", d: 10, p: "Media" },
+                { label: "1-3m", d: 60, p: "Media" },
+                { label: "3-6m", d: 120, p: "Media" },
+                { label: ">6m", d: 200, p: "Media" },
+                { label: ">1a", d: 400, p: "Media" },
+              ].map(({ label, d, p }) => {
+                const c = caseColor(p, d);
+                return (
+                  <span key={label} className="flex items-center gap-1">
+                    <span className="w-4 h-4 rounded-full shadow-sm border" style={{ background: c.bg, borderColor: c.border }} />
+                    <span className="text-muted-foreground">{label}</span>
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Grouped Bubbles */}
+          <div className="space-y-6">
+            {Array.from(grouped.entries()).map(([group, cases], gi) => (
+              <motion.div key={group}
+                initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: gi * 0.08, type: "spring", stiffness: 180 }}
+              >
+                {/* Group Header */}
+                <div className="flex items-center gap-2.5 mb-3">
+                  <span className="flex items-center gap-1.5 text-sm font-bold">
+                    {groupBy === "prioridad" && prioIcon(group)}
+                    {groupBy === "prioridad" ? prioLabel(group) : group}
+                  </span>
+                  <Badge variant="secondary" className="text-[10px] font-mono px-2 h-5">{cases.length}</Badge>
+                  <div className="flex-1 h-px bg-gradient-to-r from-border/60 to-transparent" />
+                </div>
+
+                {/* Bubble Grid */}
+                <div className="flex flex-wrap gap-2 items-end">
+                  {cases.map((t, i) => {
+                    const size = cellSize(t.dias_antiguedad, t.prioridad);
+                    const color = caseColor(t.prioridad, t.dias_antiguedad);
+                    const isHovered = hoveredId === t.id;
+                    const isExpanded = expandedId === t.id;
+
+                    return (
+                      <motion.div key={t.id} className="relative"
+                        initial={{ opacity: 0, scale: 0.3 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: gi * 0.05 + i * 0.02, type: "spring", stiffness: 260, damping: 18 }}>
+
+                        <motion.button
+                          whileHover={{ scale: 1.15, y: -4 }}
+                          whileTap={{ scale: 0.92 }}
+                          onHoverStart={() => setHoveredId(t.id)}
+                          onHoverEnd={() => setHoveredId(null)}
+                          onClick={() => setExpandedId(isExpanded ? null : t.id)}
+                          className="relative flex items-center justify-center cursor-pointer transition-shadow duration-300"
+                          style={{
+                            width: size,
+                            height: size,
+                            borderRadius: "16px",
+                            background: `linear-gradient(135deg, ${color.bg}, ${color.border})`,
+                            color: color.text,
+                            fontSize: size > 50 ? 14 : size > 44 ? 12 : 11,
+                            fontWeight: 800,
+                            fontFamily: "monospace",
+                            border: `2px solid ${isExpanded ? "hsl(var(--primary))" : color.border}`,
+                            boxShadow: isHovered
+                              ? `0 8px 24px ${color.glow}, 0 0 0 2px ${color.border}`
+                              : isExpanded
+                                ? `0 0 0 3px hsl(var(--primary)), 0 4px 12px rgba(0,0,0,0.15)`
+                                : `0 2px 8px rgba(0,0,0,0.1)`,
+                          }}>
+                          <span className="drop-shadow-sm">{t.dias_antiguedad}</span>
+
+                          {/* Fire badge for >1 year */}
+                          {t.dias_antiguedad > 365 && (
+                            <motion.span
+                              animate={{ scale: [1, 1.25, 1], rotate: [0, 5, -5, 0] }}
+                              transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}
+                              className="absolute -top-1.5 -right-1.5 text-sm drop-shadow-md">
+                              🔥
+                            </motion.span>
+                          )}
+
+                          {/* AI classified indicator */}
+                          {t.ai_classification && (
+                            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-violet-500 border border-background shadow-sm" />
+                          )}
+                        </motion.button>
+
+                        {/* Rich Tooltip */}
+                        <AnimatePresence>
+                          {isHovered && !isExpanded && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 6, scale: 0.92 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: 6, scale: 0.92 }}
+                              transition={{ duration: 0.15 }}
+                              className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
+                              <div className="bg-popover/95 backdrop-blur-md border border-border rounded-xl shadow-2xl px-3.5 py-2.5 min-w-[200px] max-w-[260px]">
+                                <div className="flex items-center gap-2 mb-1.5">
+                                  <span className="w-2.5 h-2.5 rounded-full" style={{ background: color.bg }} />
+                                  <span className="font-bold text-xs text-popover-foreground">{t.ticket_id}</span>
+                                </div>
+                                <p className="text-[11px] text-muted-foreground leading-snug truncate mb-1.5">{t.asunto}</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded-md font-semibold" style={{ background: `${color.bg}30`, color: color.bg }}>
+                                    {prioLabel(t.prioridad)}
+                                  </span>
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-muted/60 text-muted-foreground">{t.estado}</span>
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-muted/60 text-muted-foreground">{t.tipo}</span>
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-muted/60 text-muted-foreground font-mono">{t.dias_antiguedad}d</span>
+                                </div>
+                                {t.ai_summary && (
+                                  <p className="text-[9px] text-muted-foreground mt-1.5 pt-1.5 border-t border-border/40 italic line-clamp-2">🤖 {t.ai_summary}</p>
+                                )}
+                              </div>
+                              <div className="w-2.5 h-2.5 bg-popover/95 border-b border-r border-border rotate-45 absolute left-1/2 -translate-x-1/2 -bottom-1.5" />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </motion.div>
             ))}
           </div>
 
-          {/* Grouped grid */}
-          {Array.from(grouped.entries()).map(([group, cases], gi) => (
-            <motion.div key={group}
-              initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: gi * 0.06 }}
-              className="space-y-2">
-              <div className="flex items-center gap-2 px-1">
-                <span className="text-xs font-bold flex items-center gap-1.5">
-                  {groupBy === "prioridad" && prioIcon(group)}
-                  {groupBy === "prioridad" ? prioLabel(group) : group}
-                </span>
-                <Badge variant="secondary" className="text-[10px] font-mono">{cases.length}</Badge>
-                <div className="flex-1 h-px bg-border/40" />
-              </div>
-              <div className="flex flex-wrap gap-1.5 pl-1">
-                {cases.map((t, i) => {
-                  const size = cellSize(t.dias_antiguedad);
-                  const isHovered = hoveredId === t.id;
-                  const isExpanded = expandedId === t.id;
-                  return (
-                    <motion.button
-                      key={t.id}
-                      initial={{ opacity: 0, scale: 0.5 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: gi * 0.04 + i * 0.015, type: "spring", stiffness: 300, damping: 20 }}
-                      whileHover={{ scale: 1.2, zIndex: 20 }}
-                      whileTap={{ scale: 0.9 }}
-                      onHoverStart={() => setHoveredId(t.id)}
-                      onHoverEnd={() => setHoveredId(null)}
-                      onClick={() => setExpandedId(isExpanded ? null : t.id)}
-                      className={`relative rounded-lg font-mono font-black flex flex-col items-center justify-center cursor-pointer transition-all duration-200 ${isExpanded ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : ""}`}
-                      style={{
-                        width: size,
-                        height: size,
-                        fontSize: size > 40 ? 11 : 9,
-                        background: caseHeatGradient(t.prioridad, t.dias_antiguedad),
-                        boxShadow: isHovered ? caseGlow(t.prioridad, t.dias_antiguedad) : "0 1px 3px rgba(0,0,0,0.2)",
-                        color: t.dias_antiguedad > 60 || t.prioridad === "Critica, Impacto Negocio" ? "white" : "rgba(0,0,0,0.8)",
-                      }}
-                    >
-                      <span>{t.dias_antiguedad}</span>
-                      {t.dias_antiguedad > 365 && (
-                        <motion.span
-                          animate={{ scale: [1, 1.3, 1] }}
-                          transition={{ repeat: Infinity, duration: 1.5 }}
-                          className="absolute -top-1 -right-1 text-[10px]"
-                        >🔥</motion.span>
-                      )}
-                      {/* Hover tooltip */}
-                      <AnimatePresence>
-                        {isHovered && !isExpanded && (
-                          <motion.div
-                            initial={{ opacity: 0, y: 4, scale: 0.9 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: 4, scale: 0.9 }}
-                            className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-30 pointer-events-none"
-                          >
-                            <div className="bg-popover border border-border rounded-lg shadow-xl px-3 py-2 text-[10px] whitespace-nowrap text-popover-foreground">
-                              <div className="font-bold text-[11px]">{t.ticket_id}</div>
-                              <div className="text-muted-foreground max-w-[200px] truncate">{t.asunto}</div>
-                              <div className="flex gap-2 mt-1">
-                                <span>{prioLabel(t.prioridad)}</span>
-                                <span>·</span>
-                                <span>{t.estado}</span>
-                                <span>·</span>
-                                <span>{t.tipo}</span>
-                              </div>
-                            </div>
-                            <div className="w-2 h-2 bg-popover border-b border-r border-border rotate-45 absolute left-1/2 -translate-x-1/2 -bottom-1" />
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </motion.button>
-                  );
-                })}
-              </div>
-            </motion.div>
-          ))}
-
-          {/* Expanded detail panel */}
-          <AnimatePresence>
+          {/* Expanded Detail Panel */}
+          <AnimatePresence mode="wait">
             {expandedTicket && (
               <motion.div
-                key="detail"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden"
-              >
-                <div className="rounded-xl border border-primary/30 bg-gradient-to-br from-primary/5 via-card to-card p-4 space-y-3 mt-2">
-                  <div className="flex justify-between items-start">
+                key={expandedTicket.id}
+                initial={{ opacity: 0, y: 12, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: "auto" }}
+                exit={{ opacity: 0, y: -8, height: 0 }}
+                transition={{ type: "spring", stiffness: 200, damping: 22 }}
+                className="overflow-hidden">
+                <div className="rounded-2xl border border-border/50 bg-gradient-to-br from-muted/30 via-card to-card p-5 shadow-lg mt-1">
+                  {/* Header */}
+                  <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center font-mono font-black text-sm"
-                        style={{ background: caseHeatGradient(expandedTicket.prioridad, expandedTicket.dias_antiguedad), color: "white" }}>
+                      <motion.div
+                        initial={{ rotate: -10 }} animate={{ rotate: 0 }}
+                        className="w-12 h-12 rounded-xl flex items-center justify-center font-mono font-black text-base shadow-md"
+                        style={{
+                          background: `linear-gradient(135deg, ${caseColor(expandedTicket.prioridad, expandedTicket.dias_antiguedad).bg}, ${caseColor(expandedTicket.prioridad, expandedTicket.dias_antiguedad).border})`,
+                          color: caseColor(expandedTicket.prioridad, expandedTicket.dias_antiguedad).text,
+                        }}>
                         {expandedTicket.dias_antiguedad}
-                      </div>
+                      </motion.div>
                       <div>
-                        <div className="font-mono font-bold text-sm">{expandedTicket.ticket_id}</div>
-                        <div className="text-xs text-muted-foreground max-w-md">{expandedTicket.asunto}</div>
+                        <div className="font-mono font-bold text-base">{expandedTicket.ticket_id}</div>
+                        <div className="text-xs text-muted-foreground max-w-lg leading-relaxed">{expandedTicket.asunto}</div>
                       </div>
                     </div>
-                    <button onClick={() => setExpandedId(null)}
-                      className="p-1 rounded-md hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors">
+                    <motion.button whileHover={{ scale: 1.1, rotate: 90 }} whileTap={{ scale: 0.9 }}
+                      onClick={() => setExpandedId(null)}
+                      className="p-1.5 rounded-lg hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors">
                       <X className="h-4 w-4" />
-                    </button>
+                    </motion.button>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {/* Detail Cards Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
                     {[
-                      { label: "Prioridad", value: prioLabel(expandedTicket.prioridad), color: caseHeatGradient(expandedTicket.prioridad, 60) },
+                      { label: "Prioridad", value: prioLabel(expandedTicket.prioridad), accent: caseColor(expandedTicket.prioridad, 60).bg },
                       { label: "Estado", value: expandedTicket.estado },
-                      { label: "Antigüedad", value: `${expandedTicket.dias_antiguedad} días ${agingEmoji(expandedTicket.dias_antiguedad)}` },
+                      { label: "Antigüedad", value: `${expandedTicket.dias_antiguedad} días` },
                       { label: "Tipo", value: expandedTicket.tipo },
                       { label: "Producto", value: expandedTicket.producto },
-                      { label: "Responsable", value: expandedTicket.responsable || "—" },
-                      ...(expandedTicket.ai_classification ? [{ label: "🤖 IA Clasificación", value: expandedTicket.ai_classification }] : []),
-                      ...(expandedTicket.ai_risk_level ? [{ label: "🤖 IA Riesgo", value: expandedTicket.ai_risk_level }] : []),
+                      { label: "Responsable", value: expandedTicket.responsable || "Sin asignar" },
+                      ...(expandedTicket.fecha_registro ? [{ label: "Registro", value: new Date(expandedTicket.fecha_registro).toLocaleDateString("es") }] : []),
+                      ...(expandedTicket.ai_classification ? [{ label: "🤖 Clasificación", value: expandedTicket.ai_classification }] : []),
+                      ...(expandedTicket.ai_risk_level ? [{ label: "🤖 Riesgo", value: expandedTicket.ai_risk_level }] : []),
                     ].map((item, i) => (
-                      <motion.div key={i} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
-                        className="rounded-lg bg-muted/30 border border-border/30 px-3 py-2">
-                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{item.label}</div>
-                        <div className="text-xs font-semibold mt-0.5" style={item.color ? { color: item.color } : undefined}>{item.value}</div>
+                      <motion.div key={i}
+                        initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.03 }}
+                        className="rounded-xl bg-background/60 border border-border/30 px-3 py-2.5 backdrop-blur-sm">
+                        <div className="text-[9px] text-muted-foreground uppercase tracking-widest font-semibold">{item.label}</div>
+                        <div className="text-xs font-semibold mt-1 truncate" style={item.accent ? { color: item.accent } : undefined}>
+                          {item.value}
+                        </div>
                       </motion.div>
                     ))}
                   </div>
 
+                  {/* AI Summary */}
                   {expandedTicket.ai_summary && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
-                      className="rounded-lg bg-primary/5 border border-primary/20 px-3 py-2">
-                      <div className="text-[10px] text-primary font-semibold mb-0.5">🤖 Resumen IA</div>
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }}
+                      className="mt-3 rounded-xl bg-violet-500/5 border border-violet-500/20 px-4 py-3">
+                      <div className="text-[10px] text-violet-400 font-bold uppercase tracking-wider mb-1">🤖 Resumen Inteligente</div>
                       <p className="text-xs text-muted-foreground leading-relaxed">{expandedTicket.ai_summary}</p>
                     </motion.div>
                   )}
 
+                  {/* Notes */}
                   {expandedTicket.notas && (
-                    <div className="rounded-lg bg-muted/20 border border-border/30 px-3 py-2">
-                      <div className="text-[10px] text-muted-foreground font-semibold mb-0.5">📝 Notas</div>
-                      <p className="text-xs text-muted-foreground">{expandedTicket.notas}</p>
-                    </div>
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+                      className="mt-2 rounded-xl bg-muted/20 border border-border/30 px-4 py-3">
+                      <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-1">📝 Notas</div>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{expandedTicket.notas}</p>
+                    </motion.div>
                   )}
                 </div>
               </motion.div>
