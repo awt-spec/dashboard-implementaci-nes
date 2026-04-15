@@ -23,6 +23,7 @@ import { SupportCaseTable } from "./SupportCaseTable";
 import { SupportClientHeatmap } from "./SupportClientHeatmap";
 import { SupportDataLoader } from "./SupportDataLoader";
 import { SupportMinutas } from "./SupportMinutas";
+import { SupportAgreementsTab } from "./SupportAgreementsTab";
 
 const prioridadColors: Record<string, string> = {
   "Critica, Impacto Negocio": "bg-red-600 text-white",
@@ -335,6 +336,7 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
           <TabsTrigger value="ai">Clasificación IA</TabsTrigger>
           <TabsTrigger value="cases">Detalle de Casos</TabsTrigger>
           <TabsTrigger value="minutas">Minutas</TabsTrigger>
+          {(isClientView || selectedClient !== "all") && <TabsTrigger value="acuerdos">Acuerdos</TabsTrigger>}
           {!isClientView && <TabsTrigger value="import">Cargar Datos</TabsTrigger>}
         </TabsList>
 
