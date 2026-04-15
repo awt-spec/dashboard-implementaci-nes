@@ -5,10 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   AlertTriangle, Search, Ticket, Clock, CheckCircle2,
-  Flame, Activity, Filter, Brain, Loader2, Sparkles, RefreshCw
+  Flame, Activity, Filter, Brain, Loader2, Sparkles, RefreshCw,
+  ArrowLeft, Building2, MapPin, Mail, User
 } from "lucide-react";
 import { motion } from "framer-motion";
 import {
@@ -56,7 +56,6 @@ const aiRiskLabels: Record<string, string> = {
 
 const CHART_COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "hsl(var(--warning))", "hsl(220,70%,55%)", "hsl(150,60%,50%)", "hsl(280,60%,60%)", "hsl(30,80%,55%)"];
 
-// Heat cell color: returns a CSS background based on value intensity
 function heatBg(value: number, max: number, baseR: number, baseG: number, baseB: number) {
   if (value === 0) return undefined;
   const intensity = Math.min(1, value / Math.max(1, max));
@@ -66,15 +65,18 @@ function heatBg(value: number, max: number, baseR: number, baseG: number, baseB:
 
 interface SupportDashboardProps {
   initialClientId?: string;
+  onBack?: () => void;
 }
 
-export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
+export function SupportDashboard({ initialClientId, onBack }: SupportDashboardProps) {
   const { data: clients = [] } = useSupportClients();
   const { data: allTickets = [], isLoading, refetch } = useAllSupportTickets();
   const [selectedClient, setSelectedClient] = useState<string>(initialClientId || "all");
   const [search, setSearch] = useState("");
   const [prioridadFilter, setPrioridadFilter] = useState<string>("all");
   const [classifying, setClassifying] = useState(false);
+
+  const isClientView = !!initialClientId;
 
   useEffect(() => {
     if (initialClientId) setSelectedClient(initialClientId);
@@ -88,16 +90,22 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
     return t;
   }, [allTickets, selectedClient, prioridadFilter, search]);
 
-  const activeTickets = useMemo(() => allTickets.filter(t => !["CERRADA", "ANULADA"].includes(t.estado)), [allTickets]);
+  // For client view, stats are scoped to THIS client only
+  const scopedTickets = useMemo(() => {
+    if (isClientView) return allTickets.filter(t => t.client_id === initialClientId);
+    return allTickets;
+  }, [allTickets, initialClientId, isClientView]);
+
+  const activeTickets = useMemo(() => scopedTickets.filter(t => !["CERRADA", "ANULADA"].includes(t.estado)), [scopedTickets]);
   const filteredActive = useMemo(() => tickets.filter(t => !["CERRADA", "ANULADA"].includes(t.estado)), [tickets]);
 
-  // Stats
+  // Stats - scoped
   const totalActive = activeTickets.length;
   const entregadaSinCierre = activeTickets.filter(t => t.estado === "ENTREGADA").length;
   const mayores365 = activeTickets.filter(t => t.dias_antiguedad > 365).length;
   const criticos = activeTickets.filter(t => t.prioridad === "Critica, Impacto Negocio").length;
-  const cerradas = allTickets.filter(t => ["CERRADA", "ANULADA"].includes(t.estado)).length;
-  const classifiedCount = allTickets.filter(t => t.ai_classification).length;
+  const cerradas = scopedTickets.filter(t => ["CERRADA", "ANULADA"].includes(t.estado)).length;
+  const classifiedCount = scopedTickets.filter(t => t.ai_classification).length;
 
   // Charts data
   const estadoData = useMemo(() => {
@@ -132,16 +140,15 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
     }));
   }, [filteredActive]);
 
-  // Enhanced Heat map data: client × estado × prioridad
+  // Heat map data for general view
   const heatMapData = useMemo(() => {
+    if (isClientView) return [];
+    const allActiveTickets = allTickets.filter(t => !["CERRADA", "ANULADA"].includes(t.estado));
     return clients.map(c => {
-      const ct = activeTickets.filter(t => t.client_id === c.id);
+      const ct = allActiveTickets.filter(t => t.client_id === c.id);
       const total = allTickets.filter(t => t.client_id === c.id).length;
       return {
-        id: c.id,
-        name: c.name,
-        total,
-        activos: ct.length,
+        id: c.id, name: c.name, total, activos: ct.length,
         critica: ct.filter(t => t.prioridad === "Critica, Impacto Negocio").length,
         alta: ct.filter(t => t.prioridad === "Alta").length,
         media: ct.filter(t => t.prioridad === "Media").length,
@@ -153,9 +160,8 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
         avgDias: ct.length > 0 ? Math.round(ct.reduce((s, t) => s + t.dias_antiguedad, 0) / ct.length) : 0,
       };
     }).sort((a, b) => b.activos - a.activos);
-  }, [clients, activeTickets, allTickets]);
+  }, [clients, allTickets, isClientView]);
 
-  // AI Classification data
   const aiClassData = useMemo(() => {
     const counts: Record<string, number> = {};
     filteredActive.filter(t => t.ai_classification).forEach(t => {
@@ -176,20 +182,22 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
 
   const clientName = (id: string) => clients.find(c => c.id === id)?.name || id;
 
-  // Tickets enriched with client name for chart builder
   const ticketsWithClientName = useMemo(() =>
     tickets.map(t => ({ ...t, client_name: clientName(t.client_id) })),
     [tickets, clients]
   );
 
+  const selectedClientObj = clients.find(c => c.id === initialClientId);
   const selectedClientName = selectedClient !== "all" ? clientName(selectedClient) : "";
 
-  // AI Classification handler
   const handleClassify = useCallback(async () => {
     setClassifying(true);
     try {
+      const ticketIds = isClientView
+        ? scopedTickets.filter(t => !t.ai_classification).map(t => t.id)
+        : undefined;
       const { data, error } = await supabase.functions.invoke("classify-tickets", {
-        body: {},
+        body: ticketIds ? { ticketIds } : {},
       });
       if (error) throw error;
       if (data?.error) {
@@ -203,13 +211,12 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
     } finally {
       setClassifying(false);
     }
-  }, [refetch]);
+  }, [refetch, isClientView, scopedTickets]);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
   }
 
-  // Compute maxes for heatmap
   const maxCrit = Math.max(1, ...heatMapData.map(r => r.critica));
   const maxAlta = Math.max(1, ...heatMapData.map(r => r.alta));
   const maxMedia = Math.max(1, ...heatMapData.map(r => r.media));
@@ -219,7 +226,38 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
 
   return (
     <div className="space-y-5">
-      {/* KPI Cards */}
+      {/* Client Header - only in client view */}
+      {isClientView && selectedClientObj && (
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-4">
+                {onBack && (
+                  <button onClick={onBack} className="p-1.5 rounded-md hover:bg-secondary transition-colors">
+                    <ArrowLeft className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                )}
+                <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <Building2 className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-base font-bold text-foreground">{selectedClientObj.name}</h2>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                    <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {selectedClientObj.country}</span>
+                    <span className="flex items-center gap-1"><User className="h-3 w-3" /> {selectedClientObj.contact_name}</span>
+                    <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {selectedClientObj.contact_email}</span>
+                  </div>
+                </div>
+                <Badge className={selectedClientObj.status === "activo" ? "bg-success text-success-foreground" : "bg-muted text-muted-foreground"}>
+                  {selectedClientObj.status}
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* KPI Cards - scoped */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
           { label: "Casos Activos", value: totalActive, icon: Ticket, color: "text-blue-400" },
@@ -245,16 +283,19 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
         ))}
       </div>
 
-      {/* Filters + AI Button */}
+      {/* Filters */}
       <div className="flex flex-wrap gap-2 items-center">
         <Filter className="h-4 w-4 text-muted-foreground" />
-        <Select value={selectedClient} onValueChange={setSelectedClient}>
-          <SelectTrigger className="w-[200px] h-8 text-xs"><SelectValue placeholder="Todos los clientes" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los clientes</SelectItem>
-            {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        {/* Only show client selector in general dashboard mode */}
+        {!isClientView && (
+          <Select value={selectedClient} onValueChange={setSelectedClient}>
+            <SelectTrigger className="w-[200px] h-8 text-xs"><SelectValue placeholder="Todos los clientes" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los clientes</SelectItem>
+              {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
         <Select value={prioridadFilter} onValueChange={setPrioridadFilter}>
           <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="Prioridad" /></SelectTrigger>
           <SelectContent>
@@ -362,7 +403,7 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
                   <thead>
                     <tr className="border-b border-border">
                       <th className="text-left p-2 font-medium text-muted-foreground">ID</th>
-                      <th className="text-left p-2 font-medium text-muted-foreground">Cliente</th>
+                      {!isClientView && <th className="text-left p-2 font-medium text-muted-foreground">Cliente</th>}
                       <th className="text-left p-2 font-medium text-muted-foreground">Asunto</th>
                       <th className="text-left p-2 font-medium text-muted-foreground">Estado</th>
                       <th className="text-left p-2 font-medium text-muted-foreground">Prioridad</th>
@@ -374,7 +415,7 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
                     {topCritical.map(t => (
                       <tr key={t.id} className="border-b border-border/50 hover:bg-muted/30">
                         <td className="p-2 font-mono font-bold">{t.ticket_id}</td>
-                        <td className="p-2">{clientName(t.client_id)}</td>
+                        {!isClientView && <td className="p-2">{clientName(t.client_id)}</td>}
                         <td className="p-2 max-w-[250px] truncate">{t.asunto}</td>
                         <td className="p-2"><Badge variant="outline" className={`text-[10px] ${estadoColors[t.estado] || ""}`}>{t.estado}</Badge></td>
                         <td className="p-2"><Badge className={`text-[10px] ${prioridadColors[t.prioridad] || "bg-muted"}`}>{t.prioridad}</Badge></td>
@@ -440,10 +481,10 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
           </div>
         </TabsContent>
 
-        {/* HEATMAP TAB - Per-client when filtered, summary when all */}
+        {/* HEATMAP TAB */}
         <TabsContent value="heatmap" className="mt-4 space-y-4">
-          {selectedClient !== "all" ? (
-            <SupportClientHeatmap tickets={tickets} clientName={selectedClientName} />
+          {isClientView || selectedClient !== "all" ? (
+            <SupportClientHeatmap tickets={isClientView ? scopedTickets : tickets} clientName={isClientView ? (selectedClientObj?.name || "") : selectedClientName} />
           ) : (
             <>
               <Card>
@@ -529,7 +570,6 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
           )}
         </TabsContent>
 
-        {/* Custom Charts Tab */}
         <TabsContent value="charts" className="mt-4">
           <SupportChartBuilder tickets={ticketsWithClientName} />
         </TabsContent>
@@ -540,7 +580,7 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
             <div className="flex items-center gap-2">
               <Brain className="h-5 w-5 text-violet-400" />
               <span className="text-sm font-medium">Clasificación IA de Tickets</span>
-              <Badge variant="outline" className="text-xs">{classifiedCount}/{allTickets.length} clasificados</Badge>
+              <Badge variant="outline" className="text-xs">{classifiedCount}/{scopedTickets.length} clasificados</Badge>
             </div>
             <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={handleClassify} disabled={classifying}>
               {classifying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
@@ -598,7 +638,6 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
             </div>
           )}
 
-          {/* AI classified tickets list */}
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm">Tickets con Clasificación IA</CardTitle></CardHeader>
             <CardContent>
@@ -607,7 +646,7 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
                   <thead className="sticky top-0 bg-card z-10">
                     <tr className="border-b border-border">
                       <th className="text-left p-2 font-medium text-muted-foreground">ID</th>
-                      <th className="text-left p-2 font-medium text-muted-foreground">Cliente</th>
+                      {!isClientView && <th className="text-left p-2 font-medium text-muted-foreground">Cliente</th>}
                       <th className="text-left p-2 font-medium text-muted-foreground">Asunto</th>
                       <th className="text-left p-2 font-medium text-muted-foreground">Categoría IA</th>
                       <th className="text-left p-2 font-medium text-muted-foreground">Riesgo IA</th>
@@ -618,7 +657,7 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
                     {tickets.filter(t => t.ai_classification).map(t => (
                       <tr key={t.id} className="border-b border-border/50 hover:bg-muted/30">
                         <td className="p-2 font-mono font-bold whitespace-nowrap">{t.ticket_id}</td>
-                        <td className="p-2 whitespace-nowrap">{clientName(t.client_id)}</td>
+                        {!isClientView && <td className="p-2 whitespace-nowrap">{clientName(t.client_id)}</td>}
                         <td className="p-2 max-w-[200px] truncate">{t.asunto}</td>
                         <td className="p-2"><Badge variant="outline" className="text-[10px] border-violet-500/40 text-violet-400">{t.ai_classification}</Badge></td>
                         <td className="p-2">
@@ -630,7 +669,7 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
                       </tr>
                     ))}
                     {tickets.filter(t => t.ai_classification).length === 0 && (
-                      <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">
+                      <tr><td colSpan={isClientView ? 5 : 6} className="p-8 text-center text-muted-foreground">
                         No hay tickets clasificados. Presiona "Clasificar con IA" para comenzar.
                       </td></tr>
                     )}
@@ -641,12 +680,12 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
           </Card>
         </TabsContent>
 
-        {/* Cases Detail Tab - Expandable */}
+        {/* Cases Detail Tab */}
         <TabsContent value="cases" className="mt-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center justify-between">
-                <span>Todos los Casos ({tickets.length})</span>
+                <span>{isClientView ? "Casos del Cliente" : "Todos los Casos"} ({tickets.length})</span>
                 <Badge variant="outline">{filteredActive.length} activos</Badge>
               </CardTitle>
             </CardHeader>
@@ -658,7 +697,7 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
 
         {/* Data Import Tab */}
         <TabsContent value="import" className="mt-4">
-          <SupportDataLoader clientId={selectedClient !== "all" ? selectedClient : undefined} />
+          <SupportDataLoader clientId={isClientView ? initialClientId : (selectedClient !== "all" ? selectedClient : undefined)} />
         </TabsContent>
       </Tabs>
     </div>
