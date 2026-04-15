@@ -121,6 +121,7 @@ const Index = () => {
               {activeSection === "overview" && role !== "gerente" && <ExecutiveOverview />}
               {activeSection === "tasks" && <TasksDashboard />}
               {activeSection === "soporte" && <SupportDashboard />}
+              {selectedSupportClientId && <SupportDashboard initialClientId={selectedSupportClientId} />}
               {activeSection === "users" && <AdminUsers />}
               {activeSection === "clients" && (
                 <ClientList
