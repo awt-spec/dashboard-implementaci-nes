@@ -22,6 +22,7 @@ import { SupportChartBuilder } from "./SupportChartBuilder";
 import { SupportCaseTable } from "./SupportCaseTable";
 import { SupportClientHeatmap } from "./SupportClientHeatmap";
 import { SupportDataLoader } from "./SupportDataLoader";
+import { SupportMinutas } from "./SupportMinutas";
 
 const prioridadColors: Record<string, string> = {
   "Critica, Impacto Negocio": "bg-red-600 text-white",
