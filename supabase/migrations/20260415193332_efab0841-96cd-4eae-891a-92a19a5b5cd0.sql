@@ -1,0 +1,1 @@
+ALTER TABLE public.support_minutes ADD COLUMN attendees text[] NOT NULL DEFAULT '{}'::text[];
