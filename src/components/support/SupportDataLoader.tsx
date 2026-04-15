@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Upload, FileSpreadsheet, FileText, ClipboardPaste, Loader2, CheckCircle2,
   AlertTriangle, Clock, Trash2, X
@@ -349,13 +349,18 @@ BOL-001\tError en módulo\tIncidente\tAlta\tEN ATENCIÓN\tSAP\t45`}
                       <span className="text-xs font-semibold">{parsedData.length} registros listos</span>
                       {selectedClientName && <Badge variant="secondary" className="text-[10px]">{selectedClientName}</Badge>}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-3">
+                      <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground cursor-pointer">
+                        <Checkbox checked={classifyAfter} onCheckedChange={(v) => setClassifyAfter(!!v)} className="h-3.5 w-3.5" />
+                        <Sparkles className="h-3 w-3 text-violet-400" />
+                        Clasificar con IA después
+                      </label>
                       <Button size="sm" variant="ghost" className="h-7 text-[10px] text-muted-foreground" onClick={() => { setParsedData([]); setRawText(""); }}>
                         <Trash2 className="h-3 w-3 mr-1" /> Limpiar
                       </Button>
-                      <Button size="sm" className="h-7 text-[10px] gap-1" onClick={handleImport} disabled={importing || !selectedClient}>
-                        {importing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
-                        {importing ? "Importando..." : "Importar"}
+                      <Button size="sm" className="h-7 text-[10px] gap-1" onClick={handleImport} disabled={importing || classifying || !selectedClient}>
+                        {importing ? <Loader2 className="h-3 w-3 animate-spin" /> : classifying ? <Sparkles className="h-3 w-3 animate-pulse text-violet-400" /> : <Upload className="h-3 w-3" />}
+                        {importing ? "Importando..." : classifying ? "Clasificando IA..." : "Importar"}
                       </Button>
                     </div>
                   </div>
