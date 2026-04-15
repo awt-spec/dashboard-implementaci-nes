@@ -331,6 +331,46 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
                                 )}
                               </div>
                             </div>
+                            {/* Related Agreements from Minutas */}
+                            {(() => {
+                              const related = minutas.filter(m =>
+                                (m.cases_referenced || []).includes(t.ticket_id) || (m.cases_referenced || []).includes(t.id)
+                              );
+                              if (related.length === 0) return null;
+                              const items: { text: string; type: string; minuta: string; date: string }[] = [];
+                              related.forEach(m => {
+                                (m.agreements || []).forEach((a: string) => items.push({ text: a, type: "acuerdo", minuta: m.title, date: m.date }));
+                                (m.action_items || []).forEach((a: string) => items.push({ text: a, type: "acción", minuta: m.title, date: m.date }));
+                              });
+                              if (items.length === 0) return null;
+                              return (
+                                <div className="mt-3 pt-3 border-t border-border/50">
+                                  <h4 className="font-bold text-sm text-foreground flex items-center gap-1.5 mb-2">
+                                    <CheckSquare className="h-3.5 w-3.5 text-emerald-400" />
+                                    Acuerdos y Acciones del Caso
+                                    <Badge variant="outline" className="text-[10px]">{items.length}</Badge>
+                                  </h4>
+                                  <div className="space-y-1 max-h-[150px] overflow-y-auto">
+                                    {items.map((item, idx) => (
+                                      <div key={idx} className="flex items-start gap-2 text-xs p-1.5 rounded bg-card border border-border/30">
+                                        <span className={`mt-0.5 shrink-0 ${item.type === "acuerdo" ? "text-emerald-400" : "text-blue-400"}`}>
+                                          {item.type === "acuerdo" ? <CheckSquare className="h-3 w-3" /> : <ArrowRight className="h-3 w-3" />}
+                                        </span>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-foreground">{item.text}</p>
+                                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                                            {item.minuta} • {new Date(item.date).toLocaleDateString("es")}
+                                          </p>
+                                        </div>
+                                        <Badge variant="outline" className={`text-[9px] shrink-0 ${item.type === "acuerdo" ? "border-emerald-500/30 text-emerald-400" : "border-blue-500/30 text-blue-400"}`}>
+                                          {item.type}
+                                        </Badge>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })()}
                           </div>
                         </motion.div>
                       </AnimatePresence>
