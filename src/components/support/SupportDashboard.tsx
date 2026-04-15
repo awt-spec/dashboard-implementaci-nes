@@ -72,24 +72,26 @@ interface SupportDashboardProps {
 export function SupportDashboard({ initialClientId, onBack }: SupportDashboardProps) {
   const { data: clients = [] } = useSupportClients();
   const { data: allTickets = [], isLoading, refetch } = useAllSupportTickets();
-  const [selectedClient, setSelectedClient] = useState<string>(initialClientId || "all");
+  const [selectedClient, setSelectedClient] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [prioridadFilter, setPrioridadFilter] = useState<string>("all");
   const [classifying, setClassifying] = useState(false);
 
   const isClientView = !!initialClientId;
 
-  useEffect(() => {
-    if (initialClientId) setSelectedClient(initialClientId);
-  }, [initialClientId]);
 
   const tickets = useMemo(() => {
     let t = allTickets;
-    if (selectedClient !== "all") t = t.filter(tk => tk.client_id === selectedClient);
+    // In client view, ALWAYS scope to this client
+    if (isClientView) {
+      t = t.filter(tk => tk.client_id === initialClientId);
+    } else if (selectedClient !== "all") {
+      t = t.filter(tk => tk.client_id === selectedClient);
+    }
     if (prioridadFilter !== "all") t = t.filter(tk => tk.prioridad === prioridadFilter);
     if (search) t = t.filter(tk => tk.asunto.toLowerCase().includes(search.toLowerCase()) || tk.ticket_id.toLowerCase().includes(search.toLowerCase()));
     return t;
-  }, [allTickets, selectedClient, prioridadFilter, search]);
+  }, [allTickets, selectedClient, prioridadFilter, search, isClientView, initialClientId]);
 
   // Scoped tickets: respect both initialClientId AND selectedClient dropdown
   const scopedTickets = useMemo(() => {
@@ -328,12 +330,12 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
       <Tabs defaultValue="overview">
         <TabsList className="flex-wrap">
           <TabsTrigger value="overview">Vista General</TabsTrigger>
-          <TabsTrigger value="heatmap">Mapa de Calor</TabsTrigger>
+          {!isClientView && <TabsTrigger value="heatmap">Mapa de Calor</TabsTrigger>}
           <TabsTrigger value="charts">Gráficos</TabsTrigger>
           <TabsTrigger value="ai">Clasificación IA</TabsTrigger>
           <TabsTrigger value="cases">Detalle de Casos</TabsTrigger>
-          {(isClientView || selectedClient !== "all") && <TabsTrigger value="minutas">Minutas</TabsTrigger>}
-          <TabsTrigger value="import">Cargar Datos</TabsTrigger>
+          {isClientView && <TabsTrigger value="minutas">Minutas</TabsTrigger>}
+          {!isClientView && <TabsTrigger value="import">Cargar Datos</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4 mt-4">
