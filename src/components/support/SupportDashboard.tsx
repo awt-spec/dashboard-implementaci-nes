@@ -639,7 +639,7 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
           </Card>
         </TabsContent>
 
-        {/* Cases Detail Tab */}
+        {/* Cases Detail Tab - Expandable */}
         <TabsContent value="cases" className="mt-4">
           <Card>
             <CardHeader className="pb-2">
@@ -649,51 +649,7 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
-                <table className="w-full text-xs">
-                  <thead className="sticky top-0 bg-card z-10">
-                    <tr className="border-b border-border">
-                      <th className="text-left p-2 font-medium text-muted-foreground">ID</th>
-                      <th className="text-left p-2 font-medium text-muted-foreground">Cliente</th>
-                      <th className="text-left p-2 font-medium text-muted-foreground">Producto</th>
-                      <th className="text-left p-2 font-medium text-muted-foreground">Asunto</th>
-                      <th className="text-left p-2 font-medium text-muted-foreground">Tipo</th>
-                      <th className="text-left p-2 font-medium text-muted-foreground">Prioridad</th>
-                      <th className="text-left p-2 font-medium text-muted-foreground">Estado</th>
-                      <th className="text-left p-2 font-medium text-muted-foreground">IA</th>
-                      <th className="text-right p-2 font-medium text-muted-foreground">Días</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tickets.map(t => (
-                      <tr key={t.id} className={`border-b border-border/50 hover:bg-muted/30 ${["CERRADA", "ANULADA"].includes(t.estado) ? "opacity-50" : ""}`}>
-                        <td className="p-2 font-mono font-bold whitespace-nowrap">{t.ticket_id}</td>
-                        <td className="p-2 whitespace-nowrap">{clientName(t.client_id)}</td>
-                        <td className="p-2 whitespace-nowrap">{t.producto}</td>
-                        <td className="p-2 max-w-[250px] truncate">{t.asunto}</td>
-                        <td className="p-2 whitespace-nowrap">{t.tipo}</td>
-                        <td className="p-2"><Badge className={`text-[10px] ${prioridadColors[t.prioridad] || "bg-muted"}`}>{t.prioridad}</Badge></td>
-                        <td className="p-2"><Badge variant="outline" className={`text-[10px] ${estadoColors[t.estado] || ""}`}>{t.estado}</Badge></td>
-                        <td className="p-2">
-                          {t.ai_classification ? (
-                            <TooltipProvider>
-                              <UITooltip>
-                                <TooltipTrigger>
-                                  <Badge variant="outline" className={`text-[10px] ${aiRiskColors[t.ai_risk_level || ""] || "border-violet-500/40 text-violet-400"}`}>
-                                    {t.ai_classification}
-                                  </Badge>
-                                </TooltipTrigger>
-                                <TooltipContent><p className="text-xs max-w-[300px]">{t.ai_summary || t.ai_classification}</p></TooltipContent>
-                              </UITooltip>
-                            </TooltipProvider>
-                          ) : <span className="text-muted-foreground">—</span>}
-                        </td>
-                        <td className="p-2 text-right font-mono">{t.dias_antiguedad}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <SupportCaseTable tickets={tickets} clientName={clientName} />
             </CardContent>
           </Card>
         </TabsContent>
