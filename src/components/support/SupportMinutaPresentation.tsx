@@ -32,8 +32,8 @@ interface Props {
   onClose: () => void;
 }
 
-const ACCENT = "#2980b9";
-const ACCENT_DARK = "#1a5276";
+const ACCENT = "#c0392b";
+const ACCENT_DARK = "#922b21";
 
 export function SupportMinutaPresentation({ minuta, tickets, clientName, open, onClose }: Props) {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -42,20 +42,24 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
   const slideRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const refCases = tickets.filter(t => minuta.cases_referenced.includes(t.ticket_id));
-  const activeTickets = tickets.filter(t => !["CERRADA", "ANULADA"].includes(t.estado));
-  const criticalCases = refCases.filter(t => t.prioridad.includes("Critica") || t.prioridad === "Alta")
+  // Match by ticket_id OR by uuid id
+  const refCases = tickets.filter(t =>
+    minuta.cases_referenced.includes(t.ticket_id) || minuta.cases_referenced.includes(t.id)
+  );
+  // If no matches found, use all active tickets as fallback
+  const effectiveCases = refCases.length > 0 ? refCases : tickets.filter(t => !["CERRADA", "ANULADA"].includes(t.estado));
+  const criticalCases = effectiveCases.filter(t => t.prioridad.includes("Critica") || t.prioridad === "Alta")
     .sort((a, b) => b.dias_antiguedad - a.dias_antiguedad);
 
   // Metrics
-  const totalCases = refCases.length;
-  const openCases = refCases.filter(t => !["CERRADA", "ANULADA"].includes(t.estado)).length;
+  const totalCases = effectiveCases.length;
+  const openCases = effectiveCases.filter(t => !["CERRADA", "ANULADA"].includes(t.estado)).length;
   const criticalCount = criticalCases.length;
-  const avgDays = refCases.length > 0 ? Math.round(refCases.reduce((s, t) => s + t.dias_antiguedad, 0) / refCases.length) : 0;
+  const avgDays = effectiveCases.length > 0 ? Math.round(effectiveCases.reduce((s, t) => s + t.dias_antiguedad, 0) / effectiveCases.length) : 0;
   const byEstado: Record<string, number> = {};
-  refCases.forEach(t => { byEstado[t.estado] = (byEstado[t.estado] || 0) + 1; });
+  effectiveCases.forEach(t => { byEstado[t.estado] = (byEstado[t.estado] || 0) + 1; });
   const byProducto: Record<string, number> = {};
-  refCases.forEach(t => { byProducto[t.producto] = (byProducto[t.producto] || 0) + 1; });
+  effectiveCases.forEach(t => { byProducto[t.producto] = (byProducto[t.producto] || 0) + 1; });
 
   const slideNames = ["Portada", "Métricas", "Casos Críticos", "Detalle de Casos", "Acuerdos", "Acciones", "Cierre"];
   const totalSlides = slideNames.length;
@@ -116,26 +120,28 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
   const slidePortada = (
     <SlideLayout key="cover" className="bg-white">
       <div className="absolute inset-0 flex">
-        <div className="w-[520px] h-full bg-[#2980b9] flex flex-col justify-between py-[80px] px-[60px]">
-          <div>
-            <div className="text-white/80"><SysdeLogo size={64} /></div>
-            <p className="text-[18px] text-white/60 uppercase tracking-[3px] mt-[20px]">Sysde</p>
-          </div>
-          <div>
-            <div className="flex items-center gap-[12px] mb-[20px]">
-              <Headset className="text-white/60" style={{ width: 24, height: 24 }} />
-              <span className="text-[18px] text-white/60 uppercase tracking-[2px]">Soporte Técnico</span>
+        <div className="w-[520px] h-full" style={{ background: ACCENT }} >
+          <div className="flex flex-col justify-between py-[80px] px-[60px] h-full">
+            <div>
+              <img src={sysdeLogo} alt="Sysde" className="h-[64px] object-contain brightness-0 invert" />
+              <p className="text-[18px] text-white/60 uppercase tracking-[3px] mt-[20px]">Sysde</p>
             </div>
-            <p className="text-[22px] text-white font-bold">Sesión de Seguimiento</p>
-            <p className="text-[18px] text-white/60 mt-[4px]">{new Date(minuta.date).toLocaleDateString("es", { day: "2-digit", month: "long", year: "numeric" })}</p>
+            <div>
+              <div className="flex items-center gap-[12px] mb-[20px]">
+                <Headset className="text-white/60" style={{ width: 24, height: 24 }} />
+                <span className="text-[18px] text-white/60 uppercase tracking-[2px]">Soporte Técnico</span>
+              </div>
+              <p className="text-[22px] text-white font-bold">Sesión de Seguimiento</p>
+              <p className="text-[18px] text-white/60 mt-[4px]">{new Date(minuta.date).toLocaleDateString("es", { day: "2-digit", month: "long", year: "numeric" })}</p>
+            </div>
           </div>
         </div>
         <div className="flex-1 flex flex-col justify-center px-[120px] bg-white">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
             <p className="text-[20px] text-[#999] uppercase tracking-[4px] mb-[16px]">MINUTA DE SOPORTE</p>
             <h1 className="text-[56px] font-bold text-[#333] leading-[1.1] mb-[32px]">{minuta.title}</h1>
-            <h2 className="text-[52px] font-extrabold text-[#2980b9] mb-[40px]">{clientName}</h2>
-            <div className="w-[80px] h-[4px] bg-[#2980b9] mb-[40px]" />
+            <h2 className="text-[52px] font-extrabold mb-[40px]" style={{ color: ACCENT }}>{clientName}</h2>
+            <div className="w-[80px] h-[4px] mb-[40px]" style={{ background: ACCENT }} />
             {minuta.attendees.length > 0 && (
               <div className="flex items-center gap-[12px]">
                 <Users className="text-[#999]" style={{ width: 24, height: 24 }} />
@@ -150,22 +156,21 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
 
   const slideMetricas = (
     <SlideLayout key="metrics" className="bg-white">
-      <div className="absolute left-0 top-0 bottom-0 w-[12px] bg-[#2980b9]" />
+      <div className="absolute left-0 top-0 bottom-0 w-[12px]" style={{ background: ACCENT }} />
       <div className="absolute inset-0 px-[100px] py-[60px]">
         <div className="flex items-center gap-[20px] mb-[48px]">
-          <div className="h-[56px] w-[56px] rounded-[14px] bg-gradient-to-br from-[#2980b9] to-[#1a5276] flex items-center justify-center shadow-lg">
+          <div className="h-[56px] w-[56px] rounded-[14px] flex items-center justify-center shadow-lg" style={{ background: `linear-gradient(135deg, ${ACCENT}, ${ACCENT_DARK})` }}>
             <BarChart3 className="text-white" style={{ width: 28, height: 28 }} />
           </div>
           <div>
-            <p className="text-[14px] font-bold text-[#2980b9] uppercase tracking-[3px]">RESUMEN</p>
+            <p className="text-[14px] font-bold uppercase tracking-[3px]" style={{ color: ACCENT }}>RESUMEN</p>
             <h2 className="text-[44px] font-extrabold text-[#1a1a2e]">Métricas de la Sesión</h2>
           </div>
         </div>
 
-        {/* KPI Cards */}
         <div className="grid grid-cols-4 gap-[32px] mb-[48px]">
           {[
-            { label: "Casos Referenciados", value: totalCases, color: "#2980b9", icon: FileText },
+            { label: "Casos Referenciados", value: totalCases, color: ACCENT, icon: FileText },
             { label: "Casos Abiertos", value: openCases, color: "#e67e22", icon: Clock },
             { label: "Casos Críticos", value: criticalCount, color: "#c0392b", icon: AlertTriangle },
             { label: "Prom. Días Antigüedad", value: avgDays, color: "#8e44ad", icon: Target },
@@ -180,7 +185,6 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
           ))}
         </div>
 
-        {/* Distribution */}
         <div className="grid grid-cols-2 gap-[48px]">
           <div>
             <p className="text-[20px] font-bold text-[#1a1a2e] mb-[16px]">Por Estado</p>
@@ -190,7 +194,7 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
                   <span className="text-[18px] text-[#666] w-[250px] truncate">{estado}</span>
                   <div className="flex-1 h-[24px] bg-[#e8e8e8] rounded-[4px] overflow-hidden">
                     <motion.div initial={{ width: 0 }} animate={{ width: `${(count / totalCases) * 100}%` }} transition={{ duration: 0.6, delay: 0.1 * i }}
-                      className="h-full rounded-[4px] bg-[#2980b9]" />
+                      className="h-full rounded-[4px]" style={{ background: ACCENT }} />
                   </div>
                   <span className="text-[18px] font-bold text-[#333] w-[40px] text-right">{count}</span>
                 </div>
@@ -219,19 +223,19 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
 
   const slideCriticos = (
     <SlideLayout key="critical" className="bg-white">
-      <div className="absolute left-0 top-0 bottom-0 w-[12px] bg-[#c0392b]" />
+      <div className="absolute left-0 top-0 bottom-0 w-[12px]" style={{ background: ACCENT }} />
       <div className="absolute inset-0 px-[80px] py-[50px]">
         <div className="flex items-center gap-[20px] mb-[36px]">
-          <div className="h-[56px] w-[56px] rounded-[14px] bg-gradient-to-br from-[#c0392b] to-[#922b21] flex items-center justify-center shadow-lg">
+          <div className="h-[56px] w-[56px] rounded-[14px] flex items-center justify-center shadow-lg" style={{ background: `linear-gradient(135deg, ${ACCENT}, ${ACCENT_DARK})` }}>
             <AlertTriangle className="text-white" style={{ width: 28, height: 28 }} />
           </div>
           <div>
-            <p className="text-[14px] font-bold text-[#c0392b] uppercase tracking-[3px]">ATENCIÓN</p>
+            <p className="text-[14px] font-bold uppercase tracking-[3px]" style={{ color: ACCENT }}>ATENCIÓN</p>
             <h2 className="text-[40px] font-extrabold text-[#1a1a2e]">Casos Críticos y Alta Prioridad</h2>
           </div>
         </div>
         <div className="rounded-[16px] overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.08)] border border-[#eee]">
-          <div className="flex bg-gradient-to-r from-[#c0392b] to-[#922b21]">
+          <div className="flex" style={{ background: `linear-gradient(90deg, ${ACCENT}, ${ACCENT_DARK})` }}>
             <div className="w-[120px] px-[16px] py-[16px] text-[16px] font-bold text-white">ID</div>
             <div className="flex-1 px-[16px] py-[16px] text-[18px] font-bold text-white">Asunto</div>
             <div className="w-[180px] px-[16px] py-[16px] text-[18px] font-bold text-white border-l border-white/10">Responsable</div>
@@ -239,10 +243,10 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
             <div className="w-[100px] px-[16px] py-[16px] text-[18px] font-bold text-white border-l border-white/10 text-center">Días</div>
             <div className="w-[130px] px-[16px] py-[16px] text-[18px] font-bold text-white border-l border-white/10">Estado</div>
           </div>
-          {(criticalCases.length > 0 ? criticalCases : refCases).slice(0, 10).map((t, i) => (
+          {(criticalCases.length > 0 ? criticalCases : effectiveCases).slice(0, 10).map((t, i) => (
             <motion.div key={i} initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
               className={cn("flex border-b border-[#f0f0f0] hover:bg-[#c0392b]/[0.02] transition-colors", i % 2 === 0 ? "bg-white" : "bg-[#fafafa]")}>
-              <div className="w-[120px] px-[16px] py-[16px] text-[16px] font-mono font-bold text-[#c0392b]">{t.ticket_id}</div>
+              <div className="w-[120px] px-[16px] py-[16px] text-[16px] font-mono font-bold" style={{ color: ACCENT }}>{t.ticket_id}</div>
               <div className="flex-1 px-[16px] py-[16px] text-[18px] text-[#333] truncate">{t.asunto}</div>
               <div className="w-[180px] px-[16px] py-[16px] text-[18px] font-semibold text-[#1a1a2e] border-l border-[#f0f0f0]">{t.responsable || "—"}</div>
               <div className="w-[150px] px-[16px] py-[16px] text-[16px] text-[#666] border-l border-[#f0f0f0] truncate">{t.producto}</div>
@@ -250,7 +254,7 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
                 <span className={cn("text-[20px] font-extrabold", t.dias_antiguedad > 365 ? "text-[#c0392b]" : t.dias_antiguedad > 90 ? "text-[#e67e22]" : "text-[#333]")}>{t.dias_antiguedad}</span>
               </div>
               <div className="w-[130px] px-[16px] py-[16px] border-l border-[#f0f0f0]">
-                <span className="text-[14px] px-[10px] py-[4px] rounded-full bg-[#c0392b]/10 text-[#c0392b] font-medium">{t.estado}</span>
+                <span className="text-[14px] px-[10px] py-[4px] rounded-full font-medium" style={{ background: ACCENT + "15", color: ACCENT }}>{t.estado}</span>
               </div>
             </motion.div>
           ))}
@@ -261,19 +265,19 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
 
   const slideDetalle = (
     <SlideLayout key="detail" className="bg-white">
-      <div className="absolute left-0 top-0 bottom-0 w-[12px] bg-[#2980b9]" />
+      <div className="absolute left-0 top-0 bottom-0 w-[12px]" style={{ background: ACCENT }} />
       <div className="absolute inset-0 px-[80px] py-[50px]">
         <div className="flex items-center gap-[20px] mb-[36px]">
-          <div className="h-[56px] w-[56px] rounded-[14px] bg-gradient-to-br from-[#2980b9] to-[#1a5276] flex items-center justify-center shadow-lg">
+          <div className="h-[56px] w-[56px] rounded-[14px] flex items-center justify-center shadow-lg" style={{ background: `linear-gradient(135deg, ${ACCENT}, ${ACCENT_DARK})` }}>
             <FileText className="text-white" style={{ width: 28, height: 28 }} />
           </div>
           <div>
-            <p className="text-[14px] font-bold text-[#2980b9] uppercase tracking-[3px]">DETALLE</p>
+            <p className="text-[14px] font-bold uppercase tracking-[3px]" style={{ color: ACCENT }}>DETALLE</p>
             <h2 className="text-[40px] font-extrabold text-[#1a1a2e]">Todos los Casos Referenciados</h2>
           </div>
         </div>
         <div className="rounded-[16px] overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.08)] border border-[#eee]">
-          <div className="flex bg-gradient-to-r from-[#2980b9] to-[#1a5276]">
+          <div className="flex" style={{ background: `linear-gradient(90deg, ${ACCENT}, ${ACCENT_DARK})` }}>
             <div className="w-[100px] px-[12px] py-[14px] text-[16px] font-bold text-white">ID</div>
             <div className="flex-1 px-[12px] py-[14px] text-[16px] font-bold text-white">Asunto</div>
             <div className="w-[140px] px-[12px] py-[14px] text-[16px] font-bold text-white border-l border-white/10">Tipo</div>
@@ -283,12 +287,12 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
             <div className="w-[80px] px-[12px] py-[14px] text-[16px] font-bold text-white border-l border-white/10 text-center">Días</div>
           </div>
           <div className="overflow-y-auto" style={{ maxHeight: "800px" }}>
-            {refCases.slice(0, 14).map((t, i) => {
-              const prioColor = t.prioridad.includes("Critica") ? "#c0392b" : t.prioridad === "Alta" ? "#e67e22" : "#2980b9";
+            {effectiveCases.slice(0, 14).map((t, i) => {
+              const prioColor = t.prioridad.includes("Critica") ? "#c0392b" : t.prioridad === "Alta" ? "#e67e22" : ACCENT;
               return (
                 <motion.div key={i} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
                   className={cn("flex border-b border-[#f0f0f0] text-[16px]", i % 2 === 0 ? "bg-white" : "bg-[#f8f9fc]")}>
-                  <div className="w-[100px] px-[12px] py-[12px] font-mono font-bold text-[#2980b9]">{t.ticket_id}</div>
+                  <div className="w-[100px] px-[12px] py-[12px] font-mono font-bold" style={{ color: ACCENT }}>{t.ticket_id}</div>
                   <div className="flex-1 px-[12px] py-[12px] text-[#333] truncate">{t.asunto}</div>
                   <div className="w-[140px] px-[12px] py-[12px] text-[#666] border-l border-[#f0f0f0]">{t.tipo}</div>
                   <div className="w-[150px] px-[12px] py-[12px] border-l border-[#f0f0f0]">
@@ -298,7 +302,7 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
                   </div>
                   <div className="w-[140px] px-[12px] py-[12px] font-medium text-[#1a1a2e] border-l border-[#f0f0f0]">{t.responsable || "—"}</div>
                   <div className="w-[130px] px-[12px] py-[12px] border-l border-[#f0f0f0]">
-                    <span className="text-[14px] px-[8px] py-[2px] rounded-full bg-[#2980b9]/10 text-[#2980b9] font-medium">{t.estado}</span>
+                    <span className="text-[14px] px-[8px] py-[2px] rounded-full font-medium" style={{ background: ACCENT + "15", color: ACCENT }}>{t.estado}</span>
                   </div>
                   <div className="w-[80px] px-[12px] py-[12px] text-center border-l border-[#f0f0f0] font-bold">{t.dias_antiguedad}</div>
                 </motion.div>
@@ -343,7 +347,6 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
           )}
         </div>
 
-        {/* Summary excerpt */}
         {minuta.summary && (
           <div className="mt-[48px] border-t-[2px] border-[#eee] pt-[32px]">
             <p className="text-[16px] font-bold text-[#999] uppercase tracking-[2px] mb-[12px]">Resumen Ejecutivo</p>
@@ -392,8 +395,8 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
   );
 
   const slideCierre = (
-    <SlideLayout key="close" className="bg-[#2980b9]">
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
+    <SlideLayout key="close" className="bg-white" style={{ background: ACCENT }}>
+      <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: ACCENT }}>
         <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-center">
           <Headset className="text-white/40 mx-auto mb-[32px]" style={{ width: 80, height: 80 }} />
           <h2 className="text-[48px] text-white/80 mb-[16px]">Gracias por su confianza</h2>
