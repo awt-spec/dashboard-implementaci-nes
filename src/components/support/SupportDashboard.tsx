@@ -50,7 +50,10 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
   const [search, setSearch] = useState("");
   const [prioridadFilter, setPrioridadFilter] = useState<string>("all");
 
-  const tickets = useMemo(() => {
+  useEffect(() => {
+    if (initialClientId) setSelectedClient(initialClientId);
+  }, [initialClientId]);
+
     let t = allTickets;
     if (selectedClient !== "all") t = t.filter(tk => tk.client_id === selectedClient);
     if (prioridadFilter !== "all") t = t.filter(tk => tk.prioridad === prioridadFilter);
