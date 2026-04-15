@@ -395,8 +395,8 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
   );
 
   const slideCierre = (
-    <SlideLayout key="close" className="bg-white" style={{ background: ACCENT }}>
-      <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: ACCENT }}>
+    <SlideLayout key="close" className="bg-[#c0392b]">
+      <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#c0392b]">
         <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-center">
           <Headset className="text-white/40 mx-auto mb-[32px]" style={{ width: 80, height: 80 }} />
           <h2 className="text-[48px] text-white/80 mb-[16px]">Gracias por su confianza</h2>
