@@ -334,7 +334,7 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
           <TabsTrigger value="charts">Gráficos</TabsTrigger>
           <TabsTrigger value="ai">Clasificación IA</TabsTrigger>
           <TabsTrigger value="cases">Detalle de Casos</TabsTrigger>
-          {isClientView && <TabsTrigger value="minutas">Minutas</TabsTrigger>}
+          <TabsTrigger value="minutas">Minutas</TabsTrigger>
           {!isClientView && <TabsTrigger value="import">Cargar Datos</TabsTrigger>}
         </TabsList>
 
