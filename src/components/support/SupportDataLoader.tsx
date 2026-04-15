@@ -99,7 +99,9 @@ export function SupportDataLoader({ clientId }: Props) {
   const [rawText, setRawText] = useState("");
   const [parsedData, setParsedData] = useState<ParsedTicket[]>([]);
   const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState<{ success: number; errors: number } | null>(null);
+  const [classifyAfter, setClassifyAfter] = useState(true);
+  const [classifying, setClassifying] = useState(false);
+  const [importResult, setImportResult] = useState<{ success: number; errors: number; classified?: number } | null>(null);
 
   // Last update info per client
   const [lastUpdates, setLastUpdates] = useState<Record<string, { date: string; count: number; source: string }>>({});
@@ -156,7 +158,6 @@ export function SupportDataLoader({ clientId }: Props) {
     setImporting(true);
     let success = 0, errors = 0;
 
-    // Batch insert
     const batch = parsedData.map(t => ({
       client_id: selectedClient,
       ticket_id: t.ticket_id,
@@ -178,7 +179,6 @@ export function SupportDataLoader({ clientId }: Props) {
     );
 
     if (error) {
-      // Fallback: insert one by one
       for (const ticket of batch) {
         const { error: err } = await supabase.from("support_tickets").upsert([ticket] as any, { onConflict: "client_id,ticket_id" });
         if (err) errors++;
@@ -188,7 +188,6 @@ export function SupportDataLoader({ clientId }: Props) {
       success = batch.length;
     }
 
-    // Record update
     await supabase.from("support_data_updates").insert([{
       client_id: selectedClient,
       records_count: success,
@@ -197,13 +196,35 @@ export function SupportDataLoader({ clientId }: Props) {
     }] as any);
 
     setImporting(false);
-    setImportResult({ success, errors });
     qc.invalidateQueries({ queryKey: ["support-tickets"] });
     qc.invalidateQueries({ queryKey: ["support-tickets-all"] });
 
     if (success > 0) toast.success(`${success} tickets importados exitosamente`);
     if (errors > 0) toast.error(`${errors} tickets con errores`);
-  }, [selectedClient, parsedData, mode, qc]);
+
+    // Auto-classify with AI after import
+    let classified = 0;
+    if (classifyAfter && success > 0) {
+      setClassifying(true);
+      try {
+        const { data: classResult, error: classErr } = await supabase.functions.invoke("classify-tickets", {
+          body: { clientId: selectedClient },
+        });
+        if (!classErr && classResult?.classified) {
+          classified = classResult.classified;
+          toast.success(`${classified} tickets clasificados con IA`);
+          qc.invalidateQueries({ queryKey: ["support-tickets"] });
+          qc.invalidateQueries({ queryKey: ["support-tickets-all"] });
+        }
+      } catch {
+        toast.error("Error al clasificar con IA");
+      } finally {
+        setClassifying(false);
+      }
+    }
+
+    setImportResult({ success, errors, classified });
+  }, [selectedClient, parsedData, mode, qc, classifyAfter]);
 
   const selectedClientName = clients.find(c => c.id === selectedClient)?.name || "";
 
