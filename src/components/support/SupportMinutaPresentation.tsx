@@ -418,6 +418,8 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
                   className="flex items-center gap-[16px] bg-[#27ae60]/[0.04] rounded-[12px] px-[24px] py-[16px] border border-[#27ae60]/10">
                   <span className="text-[14px] font-mono font-bold text-[#27ae60]">{ca.ticketId}</span>
                   <p className="text-[18px] text-[#333] flex-1">{ca.text}</p>
+                  {ca.responsible && <span className="text-[14px] text-[#666] font-medium">{ca.responsible}</span>}
+                  {ca.date && <span className="text-[14px] text-[#999]">{new Date(ca.date).toLocaleDateString("es")}</span>}
                 </motion.div>
               ))}
             </div>
