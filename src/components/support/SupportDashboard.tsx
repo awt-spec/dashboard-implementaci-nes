@@ -112,24 +112,27 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
   const cerradas = scopedTickets.filter(t => ["CERRADA", "ANULADA"].includes(t.estado)).length;
   const classifiedCount = scopedTickets.filter(t => t.ai_classification).length;
 
-  // Charts data
+  // Charts data — fallback to all tickets when no active ones exist
+  const chartTickets = useMemo(() => filteredActive.length > 0 ? filteredActive : tickets, [filteredActive, tickets]);
+  const showingAllInCharts = filteredActive.length === 0 && tickets.length > 0;
+
   const estadoData = useMemo(() => {
     const counts: Record<string, number> = {};
-    filteredActive.forEach(t => { counts[t.estado] = (counts[t.estado] || 0) + 1; });
+    chartTickets.forEach(t => { counts[t.estado] = (counts[t.estado] || 0) + 1; });
     return Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-  }, [filteredActive]);
+  }, [chartTickets]);
 
   const prioridadData = useMemo(() => {
     const counts: Record<string, number> = {};
-    filteredActive.forEach(t => { counts[t.prioridad] = (counts[t.prioridad] || 0) + 1; });
+    chartTickets.forEach(t => { counts[t.prioridad] = (counts[t.prioridad] || 0) + 1; });
     return Object.entries(counts).map(([name, value]) => ({ name, value }));
-  }, [filteredActive]);
+  }, [chartTickets]);
 
   const tipoData = useMemo(() => {
     const counts: Record<string, number> = {};
-    filteredActive.forEach(t => { counts[t.tipo] = (counts[t.tipo] || 0) + 1; });
+    chartTickets.forEach(t => { counts[t.tipo] = (counts[t.tipo] || 0) + 1; });
     return Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-  }, [filteredActive]);
+  }, [chartTickets]);
 
   const agingData = useMemo(() => {
     const ranges = [
@@ -141,9 +144,9 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
     ];
     return ranges.map(r => ({
       name: r.name,
-      value: filteredActive.filter(t => t.dias_antiguedad >= r.min && t.dias_antiguedad <= r.max).length,
+      value: chartTickets.filter(t => t.dias_antiguedad >= r.min && t.dias_antiguedad <= r.max).length,
     }));
-  }, [filteredActive]);
+  }, [chartTickets]);
 
   // Heat map data for general view
   const heatMapData = useMemo(() => {
@@ -176,14 +179,14 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
   }, [filteredActive]);
 
   const topCritical = useMemo(() => {
-    return [...filteredActive]
+    return [...chartTickets]
       .sort((a, b) => {
         const prio = (p: string) => p === "Critica, Impacto Negocio" ? 0 : p === "Alta" ? 1 : p === "Media" ? 2 : 3;
         const diff = prio(a.prioridad) - prio(b.prioridad);
         return diff !== 0 ? diff : b.dias_antiguedad - a.dias_antiguedad;
       })
       .slice(0, 15);
-  }, [filteredActive]);
+  }, [chartTickets]);
 
   const clientName = (id: string) => clients.find(c => c.id === id)?.name || id;
 
@@ -341,9 +344,15 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4 mt-4">
+          {showingAllInCharts && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-info/10 border border-info/20 text-xs text-info">
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+              <span>Todos los casos están cerrados. Mostrando datos históricos completos.</span>
+            </div>
+          )}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Estado de Casos Activos</CardTitle></CardHeader>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">{showingAllInCharts ? "Estado de Todos los Casos" : "Estado de Casos Activos"}</CardTitle></CardHeader>
               <CardContent>
                 <div className="h-[200px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -472,7 +481,7 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
                       <Pie
                         data={(() => {
                           const counts: Record<string, number> = {};
-                          filteredActive.forEach(t => { if (t.producto) counts[t.producto] = (counts[t.producto] || 0) + 1; });
+                          chartTickets.forEach(t => { if (t.producto) counts[t.producto] = (counts[t.producto] || 0) + 1; });
                           return Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
                         })()}
                         innerRadius={50} outerRadius={80} dataKey="value" strokeWidth={0}
