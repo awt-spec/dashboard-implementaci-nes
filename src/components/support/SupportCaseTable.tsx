@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronDown, ChevronUp, Brain, Calendar, User, Tag, FileText, AlertTriangle } from "lucide-react";
-import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { SupportTicket } from "@/hooks/useSupportTickets";
+import { useUpdateSupportTicket } from "@/hooks/useSupportTickets";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 
 const prioridadColors: Record<string, string> = {
   "Critica, Impacto Negocio": "bg-red-600 text-white",
@@ -41,10 +42,19 @@ const aiRiskLabels: Record<string, string> = {
 interface Props {
   tickets: SupportTicket[];
   clientName: (id: string) => string;
+  teamMembers?: string[];
 }
 
-export function SupportCaseTable({ tickets, clientName }: Props) {
+export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const updateTicket = useUpdateSupportTicket();
+
+  const handleAssignResponsable = (ticketId: string, responsable: string) => {
+    updateTicket.mutate(
+      { id: ticketId, updates: { responsable: responsable === "__none__" ? null : responsable } },
+      { onSuccess: () => toast.success("Responsable actualizado") }
+    );
+  };
 
   return (
     <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
@@ -121,7 +131,24 @@ export function SupportCaseTable({ tickets, clientName }: Props) {
                                   <div className="flex items-center gap-2">
                                     <User className="h-3 w-3 text-muted-foreground" />
                                     <span className="text-muted-foreground">Responsable:</span>
-                                    <span className="font-medium">{t.responsable || "Sin asignar"}</span>
+                                    {teamMembers.length > 0 ? (
+                                      <Select
+                                        value={t.responsable || "__none__"}
+                                        onValueChange={v => handleAssignResponsable(t.id, v)}
+                                      >
+                                        <SelectTrigger className="h-6 text-xs w-[160px]" onClick={e => e.stopPropagation()}>
+                                          <SelectValue placeholder="Asignar..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="__none__">Sin asignar</SelectItem>
+                                          {teamMembers.map(m => (
+                                            <SelectItem key={m} value={m}>{m}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    ) : (
+                                      <span className="font-medium">{t.responsable || "Sin asignar"}</span>
+                                    )}
                                   </div>
                                   <div className="flex items-center gap-2">
                                     <Calendar className="h-3 w-3 text-muted-foreground" />
