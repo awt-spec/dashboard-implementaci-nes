@@ -221,13 +221,13 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
         <div className="flex-1 flex flex-col justify-center px-[120px] bg-white">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
             <p className="text-[20px] text-[#999] uppercase tracking-[4px] mb-[16px]">MINUTA DE SOPORTE</p>
-            <h1 className="text-[56px] font-bold text-[#333] leading-[1.1] mb-[32px]">{minuta.title}</h1>
+            <h1 className="text-[56px] font-bold text-[#333] leading-[1.1] mb-[32px]">{localTitle}</h1>
             <h2 className="text-[52px] font-extrabold mb-[40px]" style={{ color: ACCENT }}>{clientName}</h2>
             <div className="w-[80px] h-[4px] mb-[40px]" style={{ background: ACCENT }} />
-            {minuta.attendees.length > 0 && (
+            {localAttendees.length > 0 && (
               <div className="flex items-center gap-[12px]">
                 <Users className="text-[#999]" style={{ width: 24, height: 24 }} />
-                <p className="text-[22px] text-[#666]">{minuta.attendees.join(", ")}</p>
+                <p className="text-[22px] text-[#666]">{localAttendees.join(", ")}</p>
               </div>
             )}
           </motion.div>
