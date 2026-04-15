@@ -437,7 +437,7 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
     <SlideLayout key="actions" className="bg-white">
       <div className="absolute left-0 top-0 bottom-0 w-[12px] bg-[#e67e22]" />
       <div className="absolute inset-0 px-[100px] py-[60px]">
-        <div className="flex items-center gap-[20px] mb-[48px]">
+        <div className="flex items-center gap-[20px] mb-[40px]">
           <div className="h-[56px] w-[56px] rounded-[14px] bg-gradient-to-br from-[#e67e22] to-[#d35400] flex items-center justify-center shadow-lg">
             <ArrowRight className="text-white" style={{ width: 28, height: 28 }} />
           </div>
@@ -454,24 +454,38 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
         </div>
         <div className="rounded-[16px] overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.08)] border border-[#eee]">
           <div className="flex bg-gradient-to-r from-[#e67e22] to-[#d35400]">
-            <div className="w-[60px] px-[16px] py-[16px] text-[16px] font-bold text-white/80">#</div>
-            <div className="flex-1 px-[20px] py-[16px] text-[18px] font-bold text-white">Acción</div>
+            <div className="w-[60px] px-[16px] py-[14px] text-[16px] font-bold text-white/80">#</div>
+            <div className="flex-1 px-[20px] py-[14px] text-[18px] font-bold text-white">Acción</div>
           </div>
           {localActions.length > 0 ? localActions.map((item, i) => (
             <motion.div key={i} initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }}
               className={cn("flex border-b border-[#f0f0f0] hover:bg-[#e67e22]/[0.02] transition-colors", i % 2 === 0 ? "bg-white" : "bg-[#fafafa]")}>
-              <div className="w-[60px] px-[16px] py-[20px] text-[18px] font-bold text-[#e67e22]">{i + 1}</div>
-              <div className="flex-1 px-[20px] py-[20px] flex items-center gap-[16px]">
+              <div className="w-[60px] px-[16px] py-[16px] text-[18px] font-bold text-[#e67e22]">{i + 1}</div>
+              <div className="flex-1 px-[20px] py-[16px] flex items-center gap-[16px]">
                 <ArrowRight style={{ width: 20, height: 20, color: "#e67e22" }} className="shrink-0" />
                 <span className="text-[20px] text-[#333]">{item}</span>
               </div>
             </motion.div>
           )) : (
-            <div className="text-center py-[60px]">
-              <p className="text-[24px] text-[#999]">Sin acciones pendientes</p>
+            <div className="text-center py-[40px]">
+              <p className="text-[20px] text-[#999]">Sin acciones de minuta</p>
             </div>
           )}
         </div>
+        {caseActions.length > 0 && (
+          <div className="mt-[32px]">
+            <p className="text-[18px] font-bold text-[#e67e22]/60 uppercase tracking-[2px] mb-[16px]">Acciones por Caso</p>
+            <div className="space-y-[12px]">
+              {caseActions.slice(0, 6).map((ca, i) => (
+                <motion.div key={i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 + i * 0.05 }}
+                  className="flex items-center gap-[16px] bg-[#e67e22]/[0.04] rounded-[12px] px-[24px] py-[16px] border border-[#e67e22]/10">
+                  <span className="text-[14px] font-mono font-bold text-[#e67e22]">{ca.ticketId}</span>
+                  <p className="text-[18px] text-[#333] flex-1">{ca.text}</p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </SlideLayout>
   );
