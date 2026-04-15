@@ -309,6 +309,79 @@ export function ExecutivePresentation({ clients, supportTickets = [], supportCli
     </SlideLayout>
   );
 
+  // ── SUPPORT SLIDES ──
+  const slideSoporteKpis = hasSupportData ? (
+    <SlideLayout key="soporte-kpis" className="bg-white">
+      <div className="absolute left-0 top-0 bottom-0 w-[12px] bg-[#c0392b]" />
+      <div className="absolute inset-0 px-[100px] py-[60px]">
+        <div className="flex items-center gap-[20px] mb-[48px]">
+          <div className="h-[56px] w-[56px] rounded-[14px] bg-gradient-to-br from-[#c0392b] to-[#922b21] flex items-center justify-center shadow-lg">
+            <Headset className="text-white" style={{ width: 28, height: 28 }} />
+          </div>
+          <div>
+            <p className="text-[14px] font-bold text-[#c0392b] uppercase tracking-[3px]">SOPORTE TÉCNICO</p>
+            <h2 className="text-[48px] font-extrabold text-[#1a1a2e]">Indicadores de Soporte</h2>
+          </div>
+        </div>
+        <div className="grid grid-cols-4 gap-[32px] mb-[48px]">
+          {[
+            { label: "Total Tickets", value: supportTickets.length, color: "#c0392b", icon: Headset },
+            { label: "Tickets Activos", value: activeTickets.length, color: "#e67e22", icon: Clock },
+            { label: "Críticos / Alta", value: criticalTickets.length, color: "#c0392b", icon: AlertTriangle },
+            { label: "> 365 Días", value: oldTickets.length, color: "#8e44ad", icon: Clock },
+          ].map((kpi, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + i * 0.1 }}
+              className="rounded-[16px] border-[2px] border-[#eee] p-[32px] relative overflow-hidden text-center">
+              <div className="absolute top-0 left-0 right-0 h-[4px]" style={{ background: kpi.color }} />
+              <div className="w-[64px] h-[64px] rounded-[16px] flex items-center justify-center mx-auto mb-[16px]" style={{ background: kpi.color + "15" }}>
+                <kpi.icon style={{ width: 32, height: 32, color: kpi.color }} />
+              </div>
+              <p className="text-[56px] font-extrabold" style={{ color: kpi.color }}>{kpi.value}</p>
+              <p className="text-[20px] text-[#666] mt-[8px]">{kpi.label}</p>
+            </motion.div>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-[32px]">
+          <div className="bg-[#fafafa] rounded-[16px] border-[2px] border-[#eee] p-[32px] text-center">
+            <p className="text-[20px] text-[#666]">Clientes de Soporte</p>
+            <p className="text-[56px] font-extrabold text-[#333]">{supportClients.length}</p>
+          </div>
+          <div className="bg-[#fafafa] rounded-[16px] border-[2px] border-[#eee] p-[32px] text-center">
+            <p className="text-[20px] text-[#666]">Clasificados por IA</p>
+            <p className="text-[56px] font-extrabold text-[#8e44ad]">{aiClassified}</p>
+          </div>
+        </div>
+      </div>
+    </SlideLayout>
+  ) : null;
+
+  const slideSoporteClientes = hasSupportData ? (
+    <SlideLayout key="soporte-clients" className="bg-white">
+      <div className="absolute left-0 top-0 bottom-0 w-[12px] bg-[#c0392b]" />
+      <div className="absolute inset-0 px-[80px] py-[50px]">
+        <p className="text-[20px] font-bold text-[#c0392b] uppercase tracking-[2px]">DISTRIBUCIÓN</p>
+        <h2 className="text-[44px] font-bold text-[#333] mt-[8px] mb-[32px]">Tickets por Cliente de Soporte</h2>
+        <div className="rounded-[16px] overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.08)] border border-[#eee]">
+          <div className="flex bg-gradient-to-r from-[#c0392b] to-[#a0302b]">
+            <div className="flex-1 px-[24px] py-[16px] text-[20px] font-bold text-white">Cliente</div>
+            <div className="w-[140px] px-[16px] py-[16px] text-[18px] font-bold text-white text-center border-l border-white/10">Total</div>
+            <div className="w-[140px] px-[16px] py-[16px] text-[18px] font-bold text-white text-center border-l border-white/10">Abiertos</div>
+            <div className="w-[140px] px-[16px] py-[16px] text-[18px] font-bold text-white text-center border-l border-white/10">Críticos</div>
+          </div>
+          {Object.values(ticketsByClient).sort((a, b) => b.open - a.open).slice(0, 12).map((c, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+              className={cn("flex border-b border-[#f0f0f0]", i % 2 === 0 ? "bg-white" : "bg-[#fafafa]")}>
+              <div className="flex-1 px-[24px] py-[18px] text-[20px] text-[#333] font-medium truncate">{c.name}</div>
+              <div className="w-[140px] px-[16px] py-[18px] text-[20px] font-bold text-[#333] text-center border-l border-[#f0f0f0]">{c.total}</div>
+              <div className="w-[140px] px-[16px] py-[18px] text-[20px] font-bold text-[#e67e22] text-center border-l border-[#f0f0f0]">{c.open}</div>
+              <div className="w-[140px] px-[16px] py-[18px] text-[20px] font-bold text-[#c0392b] text-center border-l border-[#f0f0f0]">{c.critical}</div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </SlideLayout>
+  ) : null;
+
   const slideCierre = (
     <SlideLayout key="close" className="bg-[#c0392b]">
       <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -323,7 +396,11 @@ export function ExecutivePresentation({ clients, supportTickets = [], supportCli
     </SlideLayout>
   );
 
-  const slides = [slidePortada, slideKpis, slideProgreso, slideTareas, slideEntregables, slideRiesgos, slideCierre];
+  const slides = [
+    slidePortada, slideKpis, slideProgreso, slideTareas, slideEntregables, slideRiesgos,
+    ...(hasSupportData ? [slideSoporteKpis, slideSoporteClientes] : []),
+    slideCierre,
+  ].filter(Boolean);
 
   return (
     <AnimatePresence>
