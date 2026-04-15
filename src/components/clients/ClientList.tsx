@@ -27,7 +27,7 @@ export function ClientList({ onSelectClient, selectedClientId }: ClientListProps
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("todos");
 
-  const clientData = clients || [];
+  const clientData = (clients || []).filter((c: any) => c.client_type === "implementacion");
 
   const filtered = clientData.filter(c => {
     const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
