@@ -55,7 +55,9 @@ export function ExecutivePresentation({ clients, supportTickets = [], supportCli
   });
   const hasSupportData = supportTickets.length > 0;
 
-  const slideNames = ["Portada", "KPIs", "Progreso", "Tareas", "Entregables", "Riesgos", "Cierre"];
+  const slideNames = hasSupportData
+    ? ["Portada", "KPIs", "Progreso", "Tareas", "Entregables", "Riesgos", "Soporte KPIs", "Soporte por Cliente", "Cierre"]
+    : ["Portada", "KPIs", "Progreso", "Tareas", "Entregables", "Riesgos", "Cierre"];
   const totalSlides = slideNames.length;
 
   const next = useCallback(() => setCurrentSlide(s => Math.min(s + 1, totalSlides - 1)), [totalSlides]);
