@@ -285,6 +285,7 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
         <TabsList>
           <TabsTrigger value="overview">Vista General</TabsTrigger>
           <TabsTrigger value="heatmap">Mapa de Calor</TabsTrigger>
+          <TabsTrigger value="charts">Gráficos</TabsTrigger>
           <TabsTrigger value="ai">Clasificación IA</TabsTrigger>
           <TabsTrigger value="cases">Detalle de Casos</TabsTrigger>
         </TabsList>
