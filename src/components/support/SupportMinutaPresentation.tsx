@@ -158,7 +158,7 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
     } else if (editorType === "title") {
       updates = { title: editTitle, attendees: editAttendees.split(",").map(s => s.trim()).filter(Boolean) };
     }
-    const { error } = await supabase.from("support_minutes").update(updates).eq("id", minuta.id);
+    const { error } = await supabase.from("support_minutes").update(updates as any).eq("id", minuta.id);
     if (error) {
       toast.error("Error al guardar");
     } else {
