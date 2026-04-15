@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
+import { SupportMinutaPresentation } from "./SupportMinutaPresentation";
 import { toast } from "sonner";
 import type { SupportTicket } from "@/hooks/useSupportTickets";
 
