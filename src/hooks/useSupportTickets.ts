@@ -1,6 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+export interface CaseAgreementItem {
+  text: string;
+  responsible: string;
+  date: string;
+  priority: string;
+}
+
 export interface SupportTicket {
   id: string;
   client_id: string;
@@ -18,8 +25,8 @@ export interface SupportTicket {
   ai_summary: string | null;
   responsable: string | null;
   notas: string | null;
-  case_agreements: string[];
-  case_actions: string[];
+  case_agreements: CaseAgreementItem[];
+  case_actions: CaseAgreementItem[];
   created_at: string;
   updated_at: string;
 }
@@ -62,9 +69,28 @@ export function useSupportTickets(clientId?: string) {
       }
       const { data, error } = await query;
       if (error) throw error;
-      return (data || []) as SupportTicket[];
+      return ((data || []) as any[]).map(normTicket);
     },
   });
+}
+
+function normTicket(t: any): SupportTicket {
+  return {
+    ...t,
+    case_agreements: normalizeItems(t.case_agreements),
+    case_actions: normalizeItems(t.case_actions),
+  };
+}
+
+function normalizeItems(val: any): CaseAgreementItem[] {
+  if (!val) return [];
+  if (Array.isArray(val)) {
+    return val.map((v: any) => {
+      if (typeof v === "string") return { text: v, responsible: "", date: "", priority: "Media" };
+      return { text: v.text || "", responsible: v.responsible || "", date: v.date || "", priority: v.priority || "Media" };
+    });
+  }
+  return [];
 }
 
 export function useAllSupportTickets() {
@@ -84,7 +110,7 @@ export function useAllSupportTickets() {
         .in("client_id", ids)
         .order("dias_antiguedad", { ascending: false });
       if (error) throw error;
-      return (data || []) as SupportTicket[];
+      return ((data || []) as any[]).map(normTicket);
     },
   });
 }
