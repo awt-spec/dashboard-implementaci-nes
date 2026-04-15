@@ -112,24 +112,27 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
   const cerradas = scopedTickets.filter(t => ["CERRADA", "ANULADA"].includes(t.estado)).length;
   const classifiedCount = scopedTickets.filter(t => t.ai_classification).length;
 
-  // Charts data
+  // Charts data — fallback to all tickets when no active ones exist
+  const chartTickets = useMemo(() => filteredActive.length > 0 ? filteredActive : tickets, [filteredActive, tickets]);
+  const showingAllInCharts = filteredActive.length === 0 && tickets.length > 0;
+
   const estadoData = useMemo(() => {
     const counts: Record<string, number> = {};
-    filteredActive.forEach(t => { counts[t.estado] = (counts[t.estado] || 0) + 1; });
+    chartTickets.forEach(t => { counts[t.estado] = (counts[t.estado] || 0) + 1; });
     return Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-  }, [filteredActive]);
+  }, [chartTickets]);
 
   const prioridadData = useMemo(() => {
     const counts: Record<string, number> = {};
-    filteredActive.forEach(t => { counts[t.prioridad] = (counts[t.prioridad] || 0) + 1; });
+    chartTickets.forEach(t => { counts[t.prioridad] = (counts[t.prioridad] || 0) + 1; });
     return Object.entries(counts).map(([name, value]) => ({ name, value }));
-  }, [filteredActive]);
+  }, [chartTickets]);
 
   const tipoData = useMemo(() => {
     const counts: Record<string, number> = {};
-    filteredActive.forEach(t => { counts[t.tipo] = (counts[t.tipo] || 0) + 1; });
+    chartTickets.forEach(t => { counts[t.tipo] = (counts[t.tipo] || 0) + 1; });
     return Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-  }, [filteredActive]);
+  }, [chartTickets]);
 
   const agingData = useMemo(() => {
     const ranges = [
@@ -141,9 +144,9 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
     ];
     return ranges.map(r => ({
       name: r.name,
-      value: filteredActive.filter(t => t.dias_antiguedad >= r.min && t.dias_antiguedad <= r.max).length,
+      value: chartTickets.filter(t => t.dias_antiguedad >= r.min && t.dias_antiguedad <= r.max).length,
     }));
-  }, [filteredActive]);
+  }, [chartTickets]);
 
   // Heat map data for general view
   const heatMapData = useMemo(() => {
