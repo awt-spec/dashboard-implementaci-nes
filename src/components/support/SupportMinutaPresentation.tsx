@@ -365,12 +365,20 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
     </SlideLayout>
   );
 
+  // Gather case-level agreements/actions
+  const caseAgreements = effectiveCases.flatMap(t =>
+    (t.case_agreements || []).map(a => ({ text: a, ticketId: t.ticket_id }))
+  );
+  const caseActions = effectiveCases.flatMap(t =>
+    (t.case_actions || []).map(a => ({ text: a, ticketId: t.ticket_id }))
+  );
+
   const slideAcuerdos = (
     <SlideLayout key="agreements" className="bg-white">
       <div className="absolute left-0 top-0 bottom-0 w-[12px] bg-[#27ae60]" />
       <div className="absolute right-0 top-0 w-[600px] h-[600px] rounded-full bg-[#27ae60]/[0.03] -translate-y-[200px] translate-x-[200px]" />
       <div className="absolute inset-0 px-[100px] py-[60px]">
-        <div className="flex items-center gap-[20px] mb-[48px]">
+        <div className="flex items-center gap-[20px] mb-[40px]">
           <div className="h-[56px] w-[56px] rounded-[14px] bg-gradient-to-br from-[#27ae60] to-[#1e8449] flex items-center justify-center shadow-lg">
             <CheckSquare className="text-white" style={{ width: 28, height: 28 }} />
           </div>
@@ -385,28 +393,40 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
             </button>
           )}
         </div>
-        <div className="space-y-[20px]">
+        <div className="space-y-[16px]">
           {localAgreements.length > 0 ? localAgreements.map((a, i) => (
             <motion.div key={i} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 + i * 0.08 }}
-              className="flex items-start gap-[20px] bg-white rounded-[16px] px-[32px] py-[24px] shadow-[0_2px_16px_rgba(0,0,0,0.06)] border border-[#eee]">
-              <div className="h-[48px] w-[48px] rounded-[12px] bg-[#27ae60]/15 flex items-center justify-center shrink-0">
-                <CheckSquare style={{ width: 24, height: 24, color: "#27ae60" }} />
+              className="flex items-start gap-[20px] bg-white rounded-[16px] px-[32px] py-[20px] shadow-[0_2px_16px_rgba(0,0,0,0.06)] border border-[#eee]">
+              <div className="h-[40px] w-[40px] rounded-[10px] bg-[#27ae60]/15 flex items-center justify-center shrink-0">
+                <CheckSquare style={{ width: 20, height: 20, color: "#27ae60" }} />
               </div>
-              <div className="flex-1">
-                <p className="text-[24px] text-[#333] leading-[1.5]">{a}</p>
-              </div>
-              <span className="text-[16px] font-bold text-[#27ae60]/40 mt-[4px]">#{i + 1}</span>
+              <p className="text-[22px] text-[#333] leading-[1.4] flex-1">{a}</p>
+              <span className="text-[14px] font-bold text-[#27ae60]/40 mt-[4px]">#{i + 1}</span>
             </motion.div>
           )) : (
-            <div className="text-center py-[80px]">
-              <p className="text-[28px] text-[#999]">Sin acuerdos registrados en esta sesión</p>
+            <div className="text-center py-[40px]">
+              <p className="text-[24px] text-[#999]">Sin acuerdos de minuta</p>
             </div>
           )}
         </div>
-        {minuta.summary && (
-          <div className="mt-[48px] border-t-[2px] border-[#eee] pt-[32px]">
+        {caseAgreements.length > 0 && (
+          <div className="mt-[32px]">
+            <p className="text-[18px] font-bold text-[#27ae60]/60 uppercase tracking-[2px] mb-[16px]">Acuerdos por Caso</p>
+            <div className="space-y-[12px]">
+              {caseAgreements.slice(0, 6).map((ca, i) => (
+                <motion.div key={i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 + i * 0.05 }}
+                  className="flex items-center gap-[16px] bg-[#27ae60]/[0.04] rounded-[12px] px-[24px] py-[16px] border border-[#27ae60]/10">
+                  <span className="text-[14px] font-mono font-bold text-[#27ae60]">{ca.ticketId}</span>
+                  <p className="text-[18px] text-[#333] flex-1">{ca.text}</p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        )}
+        {minuta.summary && localAgreements.length + caseAgreements.length < 4 && (
+          <div className="mt-[40px] border-t-[2px] border-[#eee] pt-[24px]">
             <p className="text-[16px] font-bold text-[#999] uppercase tracking-[2px] mb-[12px]">Resumen Ejecutivo</p>
-            <p className="text-[20px] text-[#666] leading-[1.6] line-clamp-4">{minuta.summary}</p>
+            <p className="text-[20px] text-[#666] leading-[1.6] line-clamp-3">{minuta.summary}</p>
           </div>
         )}
       </div>
