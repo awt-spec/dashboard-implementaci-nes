@@ -39,13 +39,13 @@ export function useSupportClients() {
   return useQuery({
     queryKey: ["support-clients"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase
         .from("clients")
-        .select("*")
-        .eq("client_type" as any, "soporte")
+        .select("*") as any)
+        .eq("client_type", "soporte")
         .order("name");
       if (error) throw error;
-      return (data || []) as unknown as SupportClient[];
+      return (data || []) as SupportClient[];
     },
   });
 }
