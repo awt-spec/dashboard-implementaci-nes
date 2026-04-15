@@ -56,7 +56,18 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
   const [editNotas, setEditNotas] = useState("");
   const [editAiSummary, setEditAiSummary] = useState("");
   const [saving, setSaving] = useState(false);
+  const [minutas, setMinutas] = useState<any[]>([]);
   const updateTicket = useUpdateSupportTicket();
+
+  // Fetch minutas for showing related agreements
+  useEffect(() => {
+    if (!tickets.length) return;
+    const clientIds = [...new Set(tickets.map(t => t.client_id))];
+    if (clientIds.length === 0) return;
+    supabase.from("support_minutes").select("id,title,date,agreements,action_items,cases_referenced")
+      .in("client_id", clientIds)
+      .then(({ data }) => { if (data) setMinutas(data); });
+  }, [tickets]);
 
   const handleUpdate = (ticketId: string, updates: Record<string, any>, msg: string) => {
     updateTicket.mutate(
