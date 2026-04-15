@@ -121,7 +121,7 @@ const Index = () => {
               {activeSection === "overview" && role !== "gerente" && <ExecutiveOverview />}
               {activeSection === "tasks" && <TasksDashboard />}
               {activeSection === "soporte" && <SupportDashboard />}
-              {selectedSupportClientId && <SupportDashboard initialClientId={selectedSupportClientId} />}
+              {selectedSupportClientId && <SupportDashboard initialClientId={selectedSupportClientId} onBack={() => setActiveSection("soporte")} />}
               {activeSection === "users" && <AdminUsers />}
               {activeSection === "clients" && (
                 <ClientList
