@@ -180,6 +180,7 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
 
   // Presentation view for a specific minuta
   const presentingMinuta = minutas.find(m => m.id === presentationId);
+  const shareMinuta = minutas.find(m => m.id === shareMinutaId);
 
   if (loading) {
     return <div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
