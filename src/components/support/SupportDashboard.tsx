@@ -1,21 +1,23 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   AlertTriangle, Search, Ticket, Clock, CheckCircle2,
-  TrendingUp, BarChart3, Activity, Flame,
-  ArrowUpRight, ArrowDownRight, Minus, Filter
+  Flame, Activity, Filter, Brain, Loader2, Sparkles, RefreshCw
 } from "lucide-react";
 import { motion } from "framer-motion";
 import {
   ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
-  Tooltip, CartesianGrid, AreaChart, Area, Treemap
+  Tooltip, CartesianGrid, AreaChart, Area
 } from "recharts";
-import { useSupportClients, useAllSupportTickets, type SupportTicket, type SupportClient } from "@/hooks/useSupportTickets";
+import { useSupportClients, useAllSupportTickets, type SupportTicket } from "@/hooks/useSupportTickets";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const prioridadColors: Record<string, string> = {
   "Critica, Impacto Negocio": "bg-red-600 text-white",
@@ -37,7 +39,26 @@ const estadoColors: Record<string, string> = {
   "VALORACIÓN": "bg-pink-500/20 text-pink-400 border-pink-500/30",
 };
 
+const aiRiskColors: Record<string, string> = {
+  critical: "bg-red-600/20 text-red-400 border-red-600/40",
+  high: "bg-orange-500/20 text-orange-400 border-orange-500/40",
+  medium: "bg-yellow-500/20 text-yellow-400 border-yellow-500/40",
+  low: "bg-green-500/20 text-green-400 border-green-500/40",
+};
+
+const aiRiskLabels: Record<string, string> = {
+  critical: "Crítico", high: "Alto", medium: "Medio", low: "Bajo",
+};
+
 const CHART_COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "hsl(var(--warning))", "hsl(220,70%,55%)", "hsl(150,60%,50%)", "hsl(280,60%,60%)", "hsl(30,80%,55%)"];
+
+// Heat cell color: returns a CSS background based on value intensity
+function heatBg(value: number, max: number, baseR: number, baseG: number, baseB: number) {
+  if (value === 0) return undefined;
+  const intensity = Math.min(1, value / Math.max(1, max));
+  const alpha = 0.15 + intensity * 0.65;
+  return { background: `rgba(${baseR},${baseG},${baseB},${alpha})`, color: intensity > 0.5 ? "white" : undefined };
+}
 
 interface SupportDashboardProps {
   initialClientId?: string;
@@ -45,10 +66,11 @@ interface SupportDashboardProps {
 
 export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
   const { data: clients = [] } = useSupportClients();
-  const { data: allTickets = [], isLoading } = useAllSupportTickets();
+  const { data: allTickets = [], isLoading, refetch } = useAllSupportTickets();
   const [selectedClient, setSelectedClient] = useState<string>(initialClientId || "all");
   const [search, setSearch] = useState("");
   const [prioridadFilter, setPrioridadFilter] = useState<string>("all");
+  const [classifying, setClassifying] = useState(false);
 
   useEffect(() => {
     if (initialClientId) setSelectedClient(initialClientId);
@@ -71,6 +93,7 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
   const mayores365 = activeTickets.filter(t => t.dias_antiguedad > 365).length;
   const criticos = activeTickets.filter(t => t.prioridad === "Critica, Impacto Negocio").length;
   const cerradas = allTickets.filter(t => ["CERRADA", "ANULADA"].includes(t.estado)).length;
+  const classifiedCount = allTickets.filter(t => t.ai_classification).length;
 
   // Charts data
   const estadoData = useMemo(() => {
@@ -105,25 +128,38 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
     }));
   }, [filteredActive]);
 
-  // Heat map data: client × prioridad
+  // Enhanced Heat map data: client × estado × prioridad
   const heatMapData = useMemo(() => {
     return clients.map(c => {
       const ct = activeTickets.filter(t => t.client_id === c.id);
+      const total = allTickets.filter(t => t.client_id === c.id).length;
       return {
-        name: c.name.length > 18 ? c.name.substring(0, 18) + "…" : c.name,
-        fullName: c.name,
+        id: c.id,
+        name: c.name,
+        total,
         activos: ct.length,
         critica: ct.filter(t => t.prioridad === "Critica, Impacto Negocio").length,
         alta: ct.filter(t => t.prioridad === "Alta").length,
         media: ct.filter(t => t.prioridad === "Media").length,
         baja: ct.filter(t => t.prioridad === "Baja").length,
-        maxDias: Math.max(0, ...ct.map(t => t.dias_antiguedad)),
+        enAtencion: ct.filter(t => t.estado === "EN ATENCIÓN").length,
         entregada: ct.filter(t => t.estado === "ENTREGADA").length,
+        pendiente: ct.filter(t => t.estado === "PENDIENTE").length,
+        maxDias: Math.max(0, ...ct.map(t => t.dias_antiguedad)),
+        avgDias: ct.length > 0 ? Math.round(ct.reduce((s, t) => s + t.dias_antiguedad, 0) / ct.length) : 0,
       };
-    }).filter(c => c.activos > 0).sort((a, b) => b.activos - a.activos);
-  }, [clients, activeTickets]);
+    }).sort((a, b) => b.activos - a.activos);
+  }, [clients, activeTickets, allTickets]);
 
-  // Top critical cases
+  // AI Classification data
+  const aiClassData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    filteredActive.filter(t => t.ai_classification).forEach(t => {
+      counts[t.ai_classification!] = (counts[t.ai_classification!] || 0) + 1;
+    });
+    return Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  }, [filteredActive]);
+
   const topCritical = useMemo(() => {
     return [...filteredActive]
       .sort((a, b) => {
@@ -136,30 +172,60 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
 
   const clientName = (id: string) => clients.find(c => c.id === id)?.name || id;
 
+  // AI Classification handler
+  const handleClassify = useCallback(async () => {
+    setClassifying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("classify-tickets", {
+        body: {},
+      });
+      if (error) throw error;
+      if (data?.error) {
+        toast.error(data.error);
+      } else {
+        toast.success(`${data?.classified || 0} tickets clasificados con IA`);
+        refetch();
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Error al clasificar tickets");
+    } finally {
+      setClassifying(false);
+    }
+  }, [refetch]);
+
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
   }
 
+  // Compute maxes for heatmap
+  const maxCrit = Math.max(1, ...heatMapData.map(r => r.critica));
+  const maxAlta = Math.max(1, ...heatMapData.map(r => r.alta));
+  const maxMedia = Math.max(1, ...heatMapData.map(r => r.media));
+  const maxActivos = Math.max(1, ...heatMapData.map(r => r.activos));
+  const maxEntregada = Math.max(1, ...heatMapData.map(r => r.entregada));
+  const maxPendiente = Math.max(1, ...heatMapData.map(r => r.pendiente));
+
   return (
     <div className="space-y-5">
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
           { label: "Casos Activos", value: totalActive, icon: Ticket, color: "text-blue-400" },
           { label: "Entregada S/Cierre", value: entregadaSinCierre, icon: Clock, color: "text-amber-400" },
           { label: ">365 Días", value: mayores365, icon: AlertTriangle, color: "text-red-400" },
           { label: "Críticos Negocio", value: criticos, icon: Flame, color: "text-rose-500" },
           { label: "Cerradas Total", value: cerradas, icon: CheckCircle2, color: "text-emerald-400" },
+          { label: "IA Clasificados", value: classifiedCount, icon: Brain, color: "text-violet-400" },
         ].map((kpi, i) => (
           <motion.div key={kpi.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
             <Card className="border-border/50">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <kpi.icon className={`h-5 w-5 ${kpi.color}`} />
+              <CardContent className="p-3 flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
                 </div>
                 <div>
-                  <p className="text-2xl font-black text-foreground">{kpi.value}</p>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{kpi.label}</p>
+                  <p className="text-xl font-black text-foreground">{kpi.value}</p>
+                  <p className="text-[9px] text-muted-foreground uppercase tracking-wide leading-tight">{kpi.label}</p>
                 </div>
               </CardContent>
             </Card>
@@ -167,7 +233,7 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
         ))}
       </div>
 
-      {/* Filters */}
+      {/* Filters + AI Button */}
       <div className="flex flex-wrap gap-2 items-center">
         <Filter className="h-4 w-4 text-muted-foreground" />
         <Select value={selectedClient} onValueChange={setSelectedClient}>
@@ -192,19 +258,28 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
           <Input className="pl-8 h-8 text-xs" placeholder="Buscar por ID o asunto..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <Badge variant="outline" className="text-xs">{filteredActive.length} activos de {tickets.length} total</Badge>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 gap-1.5 text-xs border-violet-500/50 text-violet-400 hover:bg-violet-500/10"
+          onClick={handleClassify}
+          disabled={classifying}
+        >
+          {classifying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+          Clasificar con IA
+        </Button>
       </div>
 
       <Tabs defaultValue="overview">
         <TabsList>
           <TabsTrigger value="overview">Vista General</TabsTrigger>
           <TabsTrigger value="heatmap">Mapa de Calor</TabsTrigger>
+          <TabsTrigger value="ai">Clasificación IA</TabsTrigger>
           <TabsTrigger value="cases">Detalle de Casos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4 mt-4">
-          {/* Charts Row */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Estado Distribution */}
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Estado de Casos Activos</CardTitle></CardHeader>
               <CardContent>
@@ -229,7 +304,6 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
               </CardContent>
             </Card>
 
-            {/* Prioridad Distribution */}
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Distribución por Prioridad</CardTitle></CardHeader>
               <CardContent>
@@ -247,7 +321,6 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
               </CardContent>
             </Card>
 
-            {/* Aging Distribution */}
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Antigüedad de Casos</CardTitle></CardHeader>
               <CardContent>
@@ -279,6 +352,7 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
                       <th className="text-left p-2 font-medium text-muted-foreground">Asunto</th>
                       <th className="text-left p-2 font-medium text-muted-foreground">Estado</th>
                       <th className="text-left p-2 font-medium text-muted-foreground">Prioridad</th>
+                      <th className="text-left p-2 font-medium text-muted-foreground">IA</th>
                       <th className="text-right p-2 font-medium text-muted-foreground">Días</th>
                     </tr>
                   </thead>
@@ -287,12 +361,15 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
                       <tr key={t.id} className="border-b border-border/50 hover:bg-muted/30">
                         <td className="p-2 font-mono font-bold">{t.ticket_id}</td>
                         <td className="p-2">{clientName(t.client_id)}</td>
-                        <td className="p-2 max-w-[300px] truncate">{t.asunto}</td>
+                        <td className="p-2 max-w-[250px] truncate">{t.asunto}</td>
+                        <td className="p-2"><Badge variant="outline" className={`text-[10px] ${estadoColors[t.estado] || ""}`}>{t.estado}</Badge></td>
+                        <td className="p-2"><Badge className={`text-[10px] ${prioridadColors[t.prioridad] || "bg-muted"}`}>{t.prioridad}</Badge></td>
                         <td className="p-2">
-                          <Badge variant="outline" className={`text-[10px] ${estadoColors[t.estado] || ""}`}>{t.estado}</Badge>
-                        </td>
-                        <td className="p-2">
-                          <Badge className={`text-[10px] ${prioridadColors[t.prioridad] || "bg-muted"}`}>{t.prioridad}</Badge>
+                          {t.ai_risk_level ? (
+                            <Badge variant="outline" className={`text-[10px] ${aiRiskColors[t.ai_risk_level] || ""}`}>
+                              {aiRiskLabels[t.ai_risk_level] || t.ai_risk_level}
+                            </Badge>
+                          ) : <span className="text-muted-foreground">—</span>}
                         </td>
                         <td className="p-2 text-right font-mono font-bold">
                           <span className={t.dias_antiguedad > 365 ? "text-destructive" : t.dias_antiguedad > 90 ? "text-warning" : ""}>{t.dias_antiguedad}</span>
@@ -305,7 +382,7 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
             </CardContent>
           </Card>
 
-          {/* Tipo Distribution */}
+          {/* Tipo + Producto */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Distribución por Tipo</CardTitle></CardHeader>
@@ -349,61 +426,102 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
           </div>
         </TabsContent>
 
-        <TabsContent value="heatmap" className="mt-4">
+        {/* HEATMAP TAB - Enhanced */}
+        <TabsContent value="heatmap" className="mt-4 space-y-4">
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Activity className="h-4 w-4" /> Mapa de Calor por Cliente</CardTitle></CardHeader>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Activity className="h-4 w-4" /> Mapa de Calor — Prioridad por Cliente
+              </CardTitle>
+            </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
-                <table className="w-full text-xs">
+                <table className="w-full text-xs border-collapse">
                   <thead>
-                    <tr className="border-b border-border">
-                      <th className="text-left p-2 font-medium text-muted-foreground">Cliente</th>
-                      <th className="text-center p-2 font-medium text-muted-foreground">Activos</th>
-                      <th className="text-center p-2 font-medium text-muted-foreground">Crítica</th>
-                      <th className="text-center p-2 font-medium text-muted-foreground">Alta</th>
-                      <th className="text-center p-2 font-medium text-muted-foreground">Media</th>
-                      <th className="text-center p-2 font-medium text-muted-foreground">Baja</th>
-                      <th className="text-center p-2 font-medium text-muted-foreground">Entregada</th>
-                      <th className="text-center p-2 font-medium text-muted-foreground">Máx Días</th>
-                      <th className="text-center p-2 font-medium text-muted-foreground">Riesgo</th>
+                    <tr>
+                      <th className="text-left p-2 font-medium text-muted-foreground border-b border-border min-w-[160px]">Cliente</th>
+                      <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-16">Total</th>
+                      <th className="text-center p-2 font-medium border-b border-border w-16" style={{ color: "rgb(239,68,68)" }}>Crítica</th>
+                      <th className="text-center p-2 font-medium border-b border-border w-16" style={{ color: "rgb(249,115,22)" }}>Alta</th>
+                      <th className="text-center p-2 font-medium border-b border-border w-16" style={{ color: "rgb(234,179,8)" }}>Media</th>
+                      <th className="text-center p-2 font-medium border-b border-border w-14" style={{ color: "rgb(148,163,184)" }}>Baja</th>
+                      <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-16">Prom Días</th>
+                      <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-16">Máx Días</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {heatMapData.map(row => {
-                      const riskScore = row.critica * 10 + row.alta * 3 + row.entregada * 2 + (row.maxDias > 365 ? 5 : row.maxDias > 180 ? 3 : 0);
-                      const riskLevel = riskScore >= 15 ? "Crítico" : riskScore >= 8 ? "Alto" : riskScore >= 4 ? "Medio" : "Bajo";
-                      const riskColor = riskScore >= 15 ? "bg-red-500/20 text-red-400" : riskScore >= 8 ? "bg-orange-500/20 text-orange-400" : riskScore >= 4 ? "bg-yellow-500/20 text-yellow-400" : "bg-green-500/20 text-green-400";
-                      const heatCell = (v: number, max: number) => {
-                        if (v === 0) return "";
-                        const intensity = Math.min(1, v / Math.max(1, max));
-                        return `background: rgba(239,68,68,${0.1 + intensity * 0.5})`;
-                      };
-                      const maxCrit = Math.max(...heatMapData.map(r => r.critica));
-                      const maxAlta = Math.max(...heatMapData.map(r => r.alta));
-                      return (
-                        <tr key={row.fullName} className="border-b border-border/50 hover:bg-muted/30">
-                          <td className="p-2 font-medium">{row.fullName}</td>
-                          <td className="p-2 text-center font-bold">{row.activos}</td>
-                          <td className="p-2 text-center font-bold" style={{ background: row.critica > 0 ? `rgba(239,68,68,${0.2 + row.critica / Math.max(1, maxCrit) * 0.6})` : undefined }}>
-                            {row.critica || "—"}
-                          </td>
-                          <td className="p-2 text-center" style={{ background: row.alta > 0 ? `rgba(249,115,22,${0.1 + row.alta / Math.max(1, maxAlta) * 0.4})` : undefined }}>
-                            {row.alta || "—"}
-                          </td>
-                          <td className="p-2 text-center">{row.media || "—"}</td>
-                          <td className="p-2 text-center">{row.baja || "—"}</td>
-                          <td className="p-2 text-center" style={{ background: row.entregada > 0 ? `rgba(234,179,8,${0.1 + row.entregada / 10 * 0.4})` : undefined }}>
-                            {row.entregada || "—"}
-                          </td>
-                          <td className="p-2 text-center font-mono">
-                            <span className={row.maxDias > 365 ? "text-destructive font-bold" : row.maxDias > 180 ? "text-warning" : ""}>{row.maxDias}</span>
-                          </td>
-                          <td className="p-2 text-center">
-                            <Badge variant="outline" className={`text-[10px] ${riskColor}`}>{riskLevel}</Badge>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {heatMapData.map(row => (
+                      <tr key={row.id} className="hover:bg-muted/20 transition-colors">
+                        <td className="p-2 font-medium border-b border-border/30 truncate max-w-[200px]">{row.name}</td>
+                        <td className="p-2 text-center font-bold border-b border-border/30" style={heatBg(row.activos, maxActivos, 59, 130, 246)}>
+                          {row.activos}
+                          {row.total > row.activos && <span className="text-muted-foreground font-normal">/{row.total}</span>}
+                        </td>
+                        <td className="p-2 text-center font-bold border-b border-border/30 rounded-sm" style={heatBg(row.critica, maxCrit, 239, 68, 68)}>
+                          {row.critica || ""}
+                        </td>
+                        <td className="p-2 text-center font-bold border-b border-border/30 rounded-sm" style={heatBg(row.alta, maxAlta, 249, 115, 22)}>
+                          {row.alta || ""}
+                        </td>
+                        <td className="p-2 text-center border-b border-border/30 rounded-sm" style={heatBg(row.media, maxMedia, 234, 179, 8)}>
+                          {row.media || ""}
+                        </td>
+                        <td className="p-2 text-center text-muted-foreground border-b border-border/30">
+                          {row.baja || ""}
+                        </td>
+                        <td className="p-2 text-center font-mono border-b border-border/30">
+                          <span className={row.avgDias > 180 ? "text-destructive font-bold" : row.avgDias > 90 ? "text-warning" : "text-muted-foreground"}>
+                            {row.activos > 0 ? row.avgDias : "—"}
+                          </span>
+                        </td>
+                        <td className="p-2 text-center font-mono border-b border-border/30">
+                          <span className={row.maxDias > 365 ? "text-destructive font-bold" : row.maxDias > 180 ? "text-warning" : ""}>
+                            {row.activos > 0 ? row.maxDias : "—"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Second heatmap: Estado by client */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Activity className="h-4 w-4" /> Mapa de Calor — Estado por Cliente
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr>
+                      <th className="text-left p-2 font-medium text-muted-foreground border-b border-border min-w-[160px]">Cliente</th>
+                      <th className="text-center p-2 font-medium border-b border-border w-20" style={{ color: "rgb(59,130,246)" }}>En Atención</th>
+                      <th className="text-center p-2 font-medium border-b border-border w-20" style={{ color: "rgb(234,179,8)" }}>Entregada</th>
+                      <th className="text-center p-2 font-medium border-b border-border w-20" style={{ color: "rgb(249,115,22)" }}>Pendiente</th>
+                      <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-16">Activos</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {heatMapData.filter(r => r.activos > 0).map(row => (
+                      <tr key={row.id} className="hover:bg-muted/20 transition-colors">
+                        <td className="p-2 font-medium border-b border-border/30 truncate max-w-[200px]">{row.name}</td>
+                        <td className="p-2 text-center font-bold border-b border-border/30" style={heatBg(row.enAtencion, Math.max(1, ...heatMapData.map(r => r.enAtencion)), 59, 130, 246)}>
+                          {row.enAtencion || ""}
+                        </td>
+                        <td className="p-2 text-center font-bold border-b border-border/30" style={heatBg(row.entregada, maxEntregada, 234, 179, 8)}>
+                          {row.entregada || ""}
+                        </td>
+                        <td className="p-2 text-center font-bold border-b border-border/30" style={heatBg(row.pendiente, maxPendiente, 249, 115, 22)}>
+                          {row.pendiente || ""}
+                        </td>
+                        <td className="p-2 text-center font-bold border-b border-border/30">{row.activos}</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -411,6 +529,114 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
           </Card>
         </TabsContent>
 
+        {/* AI Classification Tab */}
+        <TabsContent value="ai" className="mt-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Brain className="h-5 w-5 text-violet-400" />
+              <span className="text-sm font-medium">Clasificación IA de Tickets</span>
+              <Badge variant="outline" className="text-xs">{classifiedCount}/{allTickets.length} clasificados</Badge>
+            </div>
+            <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={handleClassify} disabled={classifying}>
+              {classifying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+              {classifying ? "Clasificando..." : "Clasificar pendientes"}
+            </Button>
+          </div>
+
+          {aiClassData.length > 0 && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader className="pb-2"><CardTitle className="text-sm">Categorías IA</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="h-[220px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={aiClassData} layout="vertical">
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis type="number" tick={{ fontSize: 10 }} />
+                        <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 9 }} />
+                        <Bar dataKey="value" fill="hsl(280,60%,60%)" radius={[0, 4, 4, 0]} />
+                        <Tooltip />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2"><CardTitle className="text-sm">Nivel de Riesgo IA</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="h-[220px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={(() => {
+                            const counts: Record<string, number> = {};
+                            filteredActive.filter(t => t.ai_risk_level).forEach(t => {
+                              const label = aiRiskLabels[t.ai_risk_level!] || t.ai_risk_level!;
+                              counts[label] = (counts[label] || 0) + 1;
+                            });
+                            return Object.entries(counts).map(([name, value]) => ({ name, value }));
+                          })()}
+                          innerRadius={50} outerRadius={80} dataKey="value" strokeWidth={0}
+                        >
+                          <Cell fill="rgb(239,68,68)" />
+                          <Cell fill="rgb(249,115,22)" />
+                          <Cell fill="rgb(234,179,8)" />
+                          <Cell fill="rgb(34,197,94)" />
+                        </Pie>
+                        <Tooltip formatter={(v: number) => [`${v} casos`, ""]} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* AI classified tickets list */}
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">Tickets con Clasificación IA</CardTitle></CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-card z-10">
+                    <tr className="border-b border-border">
+                      <th className="text-left p-2 font-medium text-muted-foreground">ID</th>
+                      <th className="text-left p-2 font-medium text-muted-foreground">Cliente</th>
+                      <th className="text-left p-2 font-medium text-muted-foreground">Asunto</th>
+                      <th className="text-left p-2 font-medium text-muted-foreground">Categoría IA</th>
+                      <th className="text-left p-2 font-medium text-muted-foreground">Riesgo IA</th>
+                      <th className="text-left p-2 font-medium text-muted-foreground">Resumen IA</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tickets.filter(t => t.ai_classification).map(t => (
+                      <tr key={t.id} className="border-b border-border/50 hover:bg-muted/30">
+                        <td className="p-2 font-mono font-bold whitespace-nowrap">{t.ticket_id}</td>
+                        <td className="p-2 whitespace-nowrap">{clientName(t.client_id)}</td>
+                        <td className="p-2 max-w-[200px] truncate">{t.asunto}</td>
+                        <td className="p-2"><Badge variant="outline" className="text-[10px] border-violet-500/40 text-violet-400">{t.ai_classification}</Badge></td>
+                        <td className="p-2">
+                          <Badge variant="outline" className={`text-[10px] ${aiRiskColors[t.ai_risk_level || ""] || ""}`}>
+                            {aiRiskLabels[t.ai_risk_level || ""] || t.ai_risk_level || "—"}
+                          </Badge>
+                        </td>
+                        <td className="p-2 max-w-[300px] truncate text-muted-foreground">{t.ai_summary || "—"}</td>
+                      </tr>
+                    ))}
+                    {tickets.filter(t => t.ai_classification).length === 0 && (
+                      <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">
+                        No hay tickets clasificados. Presiona "Clasificar con IA" para comenzar.
+                      </td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Cases Detail Tab */}
         <TabsContent value="cases" className="mt-4">
           <Card>
             <CardHeader className="pb-2">
@@ -431,6 +657,7 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
                       <th className="text-left p-2 font-medium text-muted-foreground">Tipo</th>
                       <th className="text-left p-2 font-medium text-muted-foreground">Prioridad</th>
                       <th className="text-left p-2 font-medium text-muted-foreground">Estado</th>
+                      <th className="text-left p-2 font-medium text-muted-foreground">IA</th>
                       <th className="text-right p-2 font-medium text-muted-foreground">Días</th>
                     </tr>
                   </thead>
@@ -444,6 +671,20 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
                         <td className="p-2 whitespace-nowrap">{t.tipo}</td>
                         <td className="p-2"><Badge className={`text-[10px] ${prioridadColors[t.prioridad] || "bg-muted"}`}>{t.prioridad}</Badge></td>
                         <td className="p-2"><Badge variant="outline" className={`text-[10px] ${estadoColors[t.estado] || ""}`}>{t.estado}</Badge></td>
+                        <td className="p-2">
+                          {t.ai_classification ? (
+                            <TooltipProvider>
+                              <UITooltip>
+                                <TooltipTrigger>
+                                  <Badge variant="outline" className={`text-[10px] ${aiRiskColors[t.ai_risk_level || ""] || "border-violet-500/40 text-violet-400"}`}>
+                                    {t.ai_classification}
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent><p className="text-xs max-w-[300px]">{t.ai_summary || t.ai_classification}</p></TooltipContent>
+                              </UITooltip>
+                            </TooltipProvider>
+                          ) : <span className="text-muted-foreground">—</span>}
+                        </td>
                         <td className="p-2 text-right font-mono">{t.dias_antiguedad}</td>
                       </tr>
                     ))}
