@@ -11,7 +11,7 @@ import {
   AlertTriangle, Save, Loader2, CheckSquare, ArrowRight, Clock,
   Package, Wrench, Search, Filter, X, Plus, Trash2, Sparkles, Zap
 } from "lucide-react";
-import type { SupportTicket } from "@/hooks/useSupportTickets";
+import type { SupportTicket, CaseAgreementItem } from "@/hooks/useSupportTickets";
 import { useUpdateSupportTicket } from "@/hooks/useSupportTickets";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -39,6 +39,7 @@ const estadoColors: Record<string, string> = {
 
 const ESTADOS = ["EN ATENCIÓN", "ENTREGADA", "PENDIENTE", "POR CERRAR", "CERRADA", "ANULADA", "COTIZADA", "APROBADA", "ON HOLD", "VALORACIÓN"];
 const PRIORIDADES = ["Critica, Impacto Negocio", "Alta", "Media", "Baja"];
+const ITEM_PRIORITIES = ["Alta", "Media", "Baja"];
 
 const aiRiskColors: Record<string, string> = {
   critical: "bg-red-600/20 text-red-400 border-red-600/40",
@@ -49,6 +50,12 @@ const aiRiskColors: Record<string, string> = {
 
 const aiRiskLabels: Record<string, string> = {
   critical: "Crítico", high: "Alto", medium: "Medio", low: "Bajo",
+};
+
+const itemPriorityColors: Record<string, string> = {
+  "Alta": "text-red-400 bg-red-500/10 border-red-500/20",
+  "Media": "text-amber-400 bg-amber-500/10 border-amber-500/20",
+  "Baja": "text-green-400 bg-green-500/10 border-green-500/20",
 };
 
 interface Props {
@@ -67,9 +74,12 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
   const [generatingAi, setGeneratingAi] = useState(false);
   const updateTicket = useUpdateSupportTicket();
 
-  // Case-specific agreements/actions
-  const [newCaseAgreement, setNewCaseAgreement] = useState("");
-  const [newCaseAction, setNewCaseAction] = useState("");
+  // New agreement/action form
+  const [newItemText, setNewItemText] = useState("");
+  const [newItemResponsible, setNewItemResponsible] = useState("");
+  const [newItemDate, setNewItemDate] = useState("");
+  const [newItemPriority, setNewItemPriority] = useState("Media");
+  const [addingType, setAddingType] = useState<"agreement" | "action" | null>(null);
 
   // Filters
   const [searchFilter, setSearchFilter] = useState("");
@@ -128,49 +138,26 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
     );
   };
 
-  // AI-powered case analysis
   const handleGenerateAiAnalysis = async (t: SupportTicket) => {
     setGeneratingAi(true);
     try {
       const { data, error } = await supabase.functions.invoke("summarize-transcript", {
         body: {
-          transcript: `Analiza este caso de soporte y genera un resumen ejecutivo con recomendaciones:
-
-Caso: ${t.ticket_id}
-Asunto: ${t.asunto}
-Producto: ${t.producto}
-Tipo: ${t.tipo}
-Estado: ${t.estado}
-Prioridad: ${t.prioridad}
-Días de antigüedad: ${t.dias_antiguedad}
-Responsable: ${t.responsable || "Sin asignar"}
-Notas existentes: ${t.notas || "Ninguna"}
-
-Genera un resumen conciso del caso, clasifícalo, evalúa el nivel de riesgo y sugiere próximos pasos.`,
+          transcript: `Analiza este caso de soporte y genera un resumen ejecutivo con recomendaciones:\n\nCaso: ${t.ticket_id}\nAsunto: ${t.asunto}\nProducto: ${t.producto}\nTipo: ${t.tipo}\nEstado: ${t.estado}\nPrioridad: ${t.prioridad}\nDías de antigüedad: ${t.dias_antiguedad}\nResponsable: ${t.responsable || "Sin asignar"}\nNotas existentes: ${t.notas || "Ninguna"}\n\nGenera un resumen conciso del caso, clasifícalo, evalúa el nivel de riesgo y sugiere próximos pasos.`,
           clientName: clientName(t.client_id),
         },
       });
-
       if (error) throw error;
-
       let parsed: any;
-      try {
-        parsed = typeof data === "object" && data?.summary ? data : JSON.parse(typeof data === "string" ? data : JSON.stringify(data));
-      } catch {
-        parsed = { summary: String(data) };
-      }
-
+      try { parsed = typeof data === "object" && data?.summary ? data : JSON.parse(typeof data === "string" ? data : JSON.stringify(data)); } catch { parsed = { summary: String(data) }; }
       const summary = parsed.summary || parsed.text || String(data);
       const classification = parsed.title || t.ai_classification || null;
-      
-      // Determine risk from content
       let riskLevel = t.ai_risk_level;
       if (t.prioridad.includes("Critica")) riskLevel = "critical";
       else if (t.prioridad === "Alta") riskLevel = "high";
       else if (t.dias_antiguedad > 180) riskLevel = "high";
       else if (t.prioridad === "Media") riskLevel = "medium";
       else riskLevel = "low";
-
       updateTicket.mutate(
         { id: t.id, updates: { ai_summary: summary, ai_classification: classification, ai_risk_level: riskLevel } },
         { onSuccess: () => toast.success("Análisis IA generado") }
@@ -182,37 +169,38 @@ Genera un resumen conciso del caso, clasifícalo, evalúa el nivel de riesgo y s
     }
   };
 
-  const handleAddCaseAgreement = (t: SupportTicket) => {
-    if (!newCaseAgreement.trim()) return;
-    const updated = [...(t.case_agreements || []), newCaseAgreement.trim()];
+  const resetNewItem = () => {
+    setNewItemText("");
+    setNewItemResponsible("");
+    setNewItemDate("");
+    setNewItemPriority("Media");
+    setAddingType(null);
+  };
+
+  const handleAddItem = (t: SupportTicket, type: "agreement" | "action") => {
+    if (!newItemText.trim()) return;
+    const newItem: CaseAgreementItem = {
+      text: newItemText.trim(),
+      responsible: newItemResponsible.trim(),
+      date: newItemDate,
+      priority: newItemPriority,
+    };
+    const field = type === "agreement" ? "case_agreements" : "case_actions";
+    const current = type === "agreement" ? (t.case_agreements || []) : (t.case_actions || []);
+    const updated = [...current, newItem];
     updateTicket.mutate(
-      { id: t.id, updates: { case_agreements: updated } },
-      { onSuccess: () => { toast.success("Acuerdo agregado"); setNewCaseAgreement(""); } }
+      { id: t.id, updates: { [field]: updated } },
+      { onSuccess: () => { toast.success(type === "agreement" ? "Acuerdo agregado" : "Acción agregada"); resetNewItem(); } }
     );
   };
 
-  const handleRemoveCaseAgreement = (t: SupportTicket, idx: number) => {
-    const updated = (t.case_agreements || []).filter((_, i) => i !== idx);
+  const handleRemoveItem = (t: SupportTicket, type: "agreement" | "action", idx: number) => {
+    const field = type === "agreement" ? "case_agreements" : "case_actions";
+    const current = type === "agreement" ? (t.case_agreements || []) : (t.case_actions || []);
+    const updated = current.filter((_, i) => i !== idx);
     updateTicket.mutate(
-      { id: t.id, updates: { case_agreements: updated } },
-      { onSuccess: () => toast.success("Acuerdo eliminado") }
-    );
-  };
-
-  const handleAddCaseAction = (t: SupportTicket) => {
-    if (!newCaseAction.trim()) return;
-    const updated = [...(t.case_actions || []), newCaseAction.trim()];
-    updateTicket.mutate(
-      { id: t.id, updates: { case_actions: updated } },
-      { onSuccess: () => { toast.success("Acción agregada"); setNewCaseAction(""); } }
-    );
-  };
-
-  const handleRemoveCaseAction = (t: SupportTicket, idx: number) => {
-    const updated = (t.case_actions || []).filter((_, i) => i !== idx);
-    updateTicket.mutate(
-      { id: t.id, updates: { case_actions: updated } },
-      { onSuccess: () => toast.success("Acción eliminada") }
+      { id: t.id, updates: { [field]: updated } },
+      { onSuccess: () => toast.success("Eliminado") }
     );
   };
 
@@ -234,6 +222,106 @@ Genera un resumen conciso del caso, clasifícalo, evalúa el nivel de riesgo y s
     setTipoFilter("all");
     setResponsableFilter("all");
     setPrioridadFilter("all");
+  };
+
+  const renderItemCard = (item: CaseAgreementItem, idx: number, type: "agreement" | "action", t: SupportTicket) => {
+    const isAgreement = type === "agreement";
+    const colorClass = isAgreement ? "emerald" : "blue";
+    return (
+      <motion.div
+        key={idx}
+        initial={{ opacity: 0, y: -4 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={`group rounded-xl border border-${colorClass}-500/15 bg-${colorClass}-500/5 hover:border-${colorClass}-500/30 transition-all overflow-hidden`}
+      >
+        <div className="p-3 flex items-start gap-3">
+          <div className={`h-5 w-5 rounded-md bg-${colorClass}-500/20 flex items-center justify-center shrink-0 mt-0.5`}>
+            {isAgreement ? <CheckSquare className={`h-3 w-3 text-${colorClass}-400`} /> : <ArrowRight className={`h-3 w-3 text-${colorClass}-400`} />}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-foreground leading-relaxed font-medium">{item.text}</p>
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              {item.responsible && (
+                <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/30 rounded-md px-1.5 py-0.5">
+                  <User className="h-2.5 w-2.5" />{item.responsible}
+                </span>
+              )}
+              {item.date && (
+                <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/30 rounded-md px-1.5 py-0.5">
+                  <Calendar className="h-2.5 w-2.5" />{new Date(item.date).toLocaleDateString("es")}
+                </span>
+              )}
+              <Badge variant="outline" className={`text-[9px] h-4 px-1.5 ${itemPriorityColors[item.priority] || itemPriorityColors["Media"]}`}>
+                {item.priority}
+              </Badge>
+            </div>
+          </div>
+          <button onClick={() => handleRemoveItem(t, type, idx)} className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-1 rounded-md hover:bg-destructive/10">
+            <Trash2 className="h-3 w-3" />
+          </button>
+        </div>
+      </motion.div>
+    );
+  };
+
+  const renderAddForm = (t: SupportTicket, type: "agreement" | "action") => {
+    const isActive = addingType === type;
+    const isAgreement = type === "agreement";
+    if (!isActive) {
+      return (
+        <Button
+          variant="outline"
+          size="sm"
+          className={`w-full h-8 text-[11px] gap-1.5 border-dashed ${isAgreement ? "border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/5" : "border-blue-500/30 text-blue-400 hover:bg-blue-500/5"}`}
+          onClick={() => setAddingType(type)}
+        >
+          <Plus className="h-3 w-3" /> Agregar {isAgreement ? "Acuerdo" : "Acción"}
+        </Button>
+      );
+    }
+    return (
+      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+        className={`rounded-xl border-2 border-dashed p-3 space-y-2.5 ${isAgreement ? "border-emerald-500/20 bg-emerald-500/5" : "border-blue-500/20 bg-blue-500/5"}`}>
+        <Input className="text-xs h-8" placeholder={isAgreement ? "Descripción del acuerdo..." : "Descripción de la acción..."}
+          value={newItemText} onChange={e => setNewItemText(e.target.value)} autoFocus />
+        <div className="grid grid-cols-3 gap-2">
+          <div>
+            <span className="text-[9px] text-muted-foreground uppercase tracking-wider block mb-1">Responsable</span>
+            {teamMembers.length > 0 ? (
+              <Select value={newItemResponsible || "__none__"} onValueChange={v => setNewItemResponsible(v === "__none__" ? "" : v)}>
+                <SelectTrigger className="h-7 text-[10px]"><SelectValue placeholder="Asignar..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Sin asignar</SelectItem>
+                  {teamMembers.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input className="text-[10px] h-7" placeholder="Nombre..." value={newItemResponsible} onChange={e => setNewItemResponsible(e.target.value)} />
+            )}
+          </div>
+          <div>
+            <span className="text-[9px] text-muted-foreground uppercase tracking-wider block mb-1">Fecha</span>
+            <Input type="date" className="text-[10px] h-7" value={newItemDate} onChange={e => setNewItemDate(e.target.value)} />
+          </div>
+          <div>
+            <span className="text-[9px] text-muted-foreground uppercase tracking-wider block mb-1">Prioridad</span>
+            <Select value={newItemPriority} onValueChange={setNewItemPriority}>
+              <SelectTrigger className="h-7 text-[10px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {ITEM_PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="flex gap-2 justify-end">
+          <Button variant="ghost" size="sm" className="h-7 text-[10px] px-2" onClick={resetNewItem}>Cancelar</Button>
+          <Button size="sm" className={`h-7 text-[10px] px-3 gap-1 ${isAgreement ? "bg-emerald-600 hover:bg-emerald-700" : "bg-blue-600 hover:bg-blue-700"} text-white`}
+            disabled={!newItemText.trim()} onClick={() => handleAddItem(t, type)}>
+            <Plus className="h-3 w-3" /> Agregar
+          </Button>
+        </div>
+      </motion.div>
+    );
   };
 
   return (
@@ -306,7 +394,7 @@ Genera un resumen conciso del caso, clasifícalo, evalúa el nivel de riesgo y s
                 <tr
                   key={t.id}
                   className={`border-b border-border/50 hover:bg-muted/30 cursor-pointer transition-colors ${isClosed ? "opacity-50" : ""}`}
-                  onClick={() => { setSelectedTicket(t); setEditingField(null); setNewCaseAgreement(""); setNewCaseAction(""); }}
+                  onClick={() => { setSelectedTicket(t); setEditingField(null); resetNewItem(); }}
                 >
                   <td className="p-2 font-mono font-bold whitespace-nowrap">{t.ticket_id}</td>
                   <td className="p-2 whitespace-nowrap">{clientName(t.client_id)}</td>
@@ -330,8 +418,8 @@ Genera un resumen conciso del caso, clasifícalo, evalúa el nivel de riesgo y s
         </table>
       </div>
 
-      {/* Detail Sheet/Popup */}
-      <Sheet open={!!selectedTicket} onOpenChange={open => { if (!open) setSelectedTicket(null); }}>
+      {/* Detail Sheet */}
+      <Sheet open={!!selectedTicket} onOpenChange={open => { if (!open) { setSelectedTicket(null); resetNewItem(); } }}>
         <SheetContent className="w-full sm:max-w-[560px] overflow-y-auto p-0">
           {selectedTicket && (() => {
             const t = selectedTicket;
@@ -466,9 +554,8 @@ Genera un resumen conciso del caso, clasifícalo, evalúa el nivel de riesgo y s
                       </div>
                     </TabsContent>
 
-                    {/* Tab: IA - Improved */}
+                    {/* Tab: IA */}
                     <TabsContent value="ai" className="mt-4 space-y-4">
-                      {/* AI Generate Button */}
                       <div className="rounded-xl border-2 border-dashed border-primary/20 bg-primary/5 p-4">
                         <div className="flex items-start gap-3">
                           <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
@@ -479,12 +566,7 @@ Genera un resumen conciso del caso, clasifícalo, evalúa el nivel de riesgo y s
                             <p className="text-[10px] text-muted-foreground mb-3">
                               La IA analizará el caso, generará un resumen ejecutivo, clasificación de riesgo y recomendaciones.
                             </p>
-                            <Button
-                              size="sm"
-                              className="gap-1.5 text-xs"
-                              onClick={() => handleGenerateAiAnalysis(t)}
-                              disabled={generatingAi}
-                            >
+                            <Button size="sm" className="gap-1.5 text-xs" onClick={() => handleGenerateAiAnalysis(t)} disabled={generatingAi}>
                               {generatingAi ? (
                                 <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Analizando...</>
                               ) : (
@@ -494,8 +576,6 @@ Genera un resumen conciso del caso, clasifícalo, evalúa el nivel de riesgo y s
                           </div>
                         </div>
                       </div>
-
-                      {/* AI Classification badges */}
                       {(t.ai_classification || t.ai_risk_level) && (
                         <div className="flex items-center gap-2 flex-wrap">
                           {t.ai_classification && (
@@ -511,8 +591,6 @@ Genera un resumen conciso del caso, clasifícalo, evalúa el nivel de riesgo y s
                           )}
                         </div>
                       )}
-
-                      {/* AI Summary */}
                       <div>
                         <div className="flex items-center justify-between mb-1.5">
                           <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1">
@@ -542,13 +620,12 @@ Genera un resumen conciso del caso, clasifícalo, evalúa el nivel de riesgo y s
                           <div className="text-center py-6 rounded-xl border border-dashed border-border">
                             <Brain className="h-8 w-8 text-muted-foreground/20 mx-auto mb-2" />
                             <p className="text-[11px] text-muted-foreground">Sin análisis IA aún</p>
-                            <p className="text-[10px] text-muted-foreground/60">Presiona "Generar Análisis IA" arriba</p>
                           </div>
                         )}
                       </div>
                     </TabsContent>
 
-                    {/* Tab: Acuerdos y Acciones - Improved UX */}
+                    {/* Tab: Acuerdos y Acciones - Task-like */}
                     <TabsContent value="acuerdos" className="mt-4 space-y-5">
                       {/* Case-specific agreements */}
                       <div>
@@ -560,38 +637,14 @@ Genera un resumen conciso del caso, clasifícalo, evalúa el nivel de riesgo y s
                           <Badge variant="secondary" className="text-[9px] h-4">{caseAgreements.length}</Badge>
                         </div>
                         <div className="space-y-2 mb-3">
-                          {caseAgreements.map((a, idx) => (
-                            <motion.div
-                              key={idx}
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              className="flex items-start gap-3 text-xs p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/15 group hover:border-emerald-500/30 transition-colors"
-                            >
-                              <div className="h-5 w-5 rounded-md bg-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                                <CheckSquare className="h-3 w-3 text-emerald-400" />
-                              </div>
-                              <span className="flex-1 text-foreground leading-relaxed">{a}</span>
-                              <button onClick={() => handleRemoveCaseAgreement(t, idx)} className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-1 rounded-md hover:bg-destructive/10">
-                                <Trash2 className="h-3 w-3" />
-                              </button>
-                            </motion.div>
-                          ))}
+                          {caseAgreements.map((a, idx) => renderItemCard(a, idx, "agreement", t))}
                           {caseAgreements.length === 0 && (
                             <p className="text-[11px] text-muted-foreground/60 italic pl-1">Sin acuerdos aún</p>
                           )}
                         </div>
-                        <div className="flex gap-2">
-                          <Input className="text-xs h-8 flex-1 rounded-lg" placeholder="Nuevo acuerdo..." value={newCaseAgreement}
-                            onChange={e => setNewCaseAgreement(e.target.value)}
-                            onKeyDown={e => { if (e.key === "Enter") handleAddCaseAgreement(t); }} />
-                          <Button size="sm" className="h-8 text-[11px] px-3 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
-                            disabled={!newCaseAgreement.trim()} onClick={() => handleAddCaseAgreement(t)}>
-                            <Plus className="h-3 w-3" /> Agregar
-                          </Button>
-                        </div>
+                        {renderAddForm(t, "agreement")}
                       </div>
 
-                      {/* Divider */}
                       <div className="border-t border-border/50" />
 
                       {/* Case-specific actions */}
@@ -604,35 +657,12 @@ Genera un resumen conciso del caso, clasifícalo, evalúa el nivel de riesgo y s
                           <Badge variant="secondary" className="text-[9px] h-4">{caseActions.length}</Badge>
                         </div>
                         <div className="space-y-2 mb-3">
-                          {caseActions.map((a, idx) => (
-                            <motion.div
-                              key={idx}
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              className="flex items-start gap-3 text-xs p-3 rounded-xl bg-blue-500/5 border border-blue-500/15 group hover:border-blue-500/30 transition-colors"
-                            >
-                              <div className="h-5 w-5 rounded-md bg-blue-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                                <ArrowRight className="h-3 w-3 text-blue-400" />
-                              </div>
-                              <span className="flex-1 text-foreground leading-relaxed">{a}</span>
-                              <button onClick={() => handleRemoveCaseAction(t, idx)} className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-1 rounded-md hover:bg-destructive/10">
-                                <Trash2 className="h-3 w-3" />
-                              </button>
-                            </motion.div>
-                          ))}
+                          {caseActions.map((a, idx) => renderItemCard(a, idx, "action", t))}
                           {caseActions.length === 0 && (
                             <p className="text-[11px] text-muted-foreground/60 italic pl-1">Sin acciones aún</p>
                           )}
                         </div>
-                        <div className="flex gap-2">
-                          <Input className="text-xs h-8 flex-1 rounded-lg" placeholder="Nueva acción..." value={newCaseAction}
-                            onChange={e => setNewCaseAction(e.target.value)}
-                            onKeyDown={e => { if (e.key === "Enter") handleAddCaseAction(t); }} />
-                          <Button size="sm" className="h-8 text-[11px] px-3 gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
-                            disabled={!newCaseAction.trim()} onClick={() => handleAddCaseAction(t)}>
-                            <Plus className="h-3 w-3" /> Agregar
-                          </Button>
-                        </div>
+                        {renderAddForm(t, "action")}
                       </div>
 
                       {/* Minutas-linked items */}
@@ -678,7 +708,7 @@ Genera un resumen conciso del caso, clasifícalo, evalúa el nivel de riesgo y s
                             <CheckSquare className="h-6 w-6 text-muted-foreground/30" />
                           </div>
                           <p className="text-xs text-muted-foreground font-medium">Sin acuerdos ni acciones</p>
-                          <p className="text-[10px] text-muted-foreground/60 mt-1">Agrega acuerdos o acciones usando los campos de arriba</p>
+                          <p className="text-[10px] text-muted-foreground/60 mt-1">Agrega acuerdos o acciones usando los botones de arriba</p>
                         </div>
                       )}
                     </TabsContent>

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ChevronLeft, ChevronRight, Maximize2, Minimize2, X,
   FileText, ArrowRight, Download, Users, CheckSquare,
@@ -44,10 +46,13 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
-  const [editorType, setEditorType] = useState<"agreements" | "actions">("agreements");
+  const [editorType, setEditorType] = useState<"agreements" | "actions" | "summary" | "title">("agreements");
   const [editItems, setEditItems] = useState<string[]>([]);
   const [newItem, setNewItem] = useState("");
   const [saving, setSaving] = useState(false);
+  const [editSummary, setEditSummary] = useState(minuta.summary);
+  const [editTitle, setEditTitle] = useState(minuta.title);
+  const [editAttendees, setEditAttendees] = useState(minuta.attendees.join(", "));
   const containerRef = useRef<HTMLDivElement>(null);
   const slideRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -55,10 +60,16 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
   // Local state for live editing
   const [localAgreements, setLocalAgreements] = useState(minuta.agreements);
   const [localActions, setLocalActions] = useState(minuta.action_items);
+  const [localSummary, setLocalSummary] = useState(minuta.summary);
+  const [localTitle, setLocalTitle] = useState(minuta.title);
+  const [localAttendees, setLocalAttendees] = useState(minuta.attendees);
 
   useEffect(() => {
     setLocalAgreements(minuta.agreements);
     setLocalActions(minuta.action_items);
+    setLocalSummary(minuta.summary);
+    setLocalTitle(minuta.title);
+    setLocalAttendees(minuta.attendees);
   }, [minuta]);
 
   // Match by ticket_id OR by uuid id
@@ -112,9 +123,15 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
     return () => document.removeEventListener("fullscreenchange", h);
   }, []);
 
-  const openEditor = (type: "agreements" | "actions") => {
+  const openEditor = (type: "agreements" | "actions" | "summary" | "title") => {
     setEditorType(type);
-    setEditItems(type === "agreements" ? [...localAgreements] : [...localActions]);
+    if (type === "agreements") setEditItems([...localAgreements]);
+    else if (type === "actions") setEditItems([...localActions]);
+    else if (type === "summary") setEditSummary(localSummary);
+    else if (type === "title") {
+      setEditTitle(localTitle);
+      setEditAttendees(localAttendees.join(", "));
+    }
     setNewItem("");
     setEditorOpen(true);
   };
@@ -131,16 +148,28 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
 
   const handleSaveEditor = async () => {
     setSaving(true);
-    const updates = editorType === "agreements"
-      ? { agreements: editItems }
-      : { action_items: editItems };
-    const { error } = await supabase.from("support_minutes").update(updates).eq("id", minuta.id);
+    let updates: Record<string, any> = {};
+    if (editorType === "agreements") {
+      updates = { agreements: editItems };
+    } else if (editorType === "actions") {
+      updates = { action_items: editItems };
+    } else if (editorType === "summary") {
+      updates = { summary: editSummary };
+    } else if (editorType === "title") {
+      updates = { title: editTitle, attendees: editAttendees.split(",").map(s => s.trim()).filter(Boolean) };
+    }
+    const { error } = await supabase.from("support_minutes").update(updates as any).eq("id", minuta.id);
     if (error) {
       toast.error("Error al guardar");
     } else {
-      toast.success(editorType === "agreements" ? "Acuerdos actualizados" : "Acciones actualizadas");
+      toast.success("Cambios guardados");
       if (editorType === "agreements") setLocalAgreements(editItems);
-      else setLocalActions(editItems);
+      else if (editorType === "actions") setLocalActions(editItems);
+      else if (editorType === "summary") setLocalSummary(editSummary);
+      else if (editorType === "title") {
+        setLocalTitle(editTitle);
+        setLocalAttendees(editAttendees.split(",").map(s => s.trim()).filter(Boolean));
+      }
       onMinutaUpdated?.();
     }
     setSaving(false);
@@ -192,13 +221,13 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
         <div className="flex-1 flex flex-col justify-center px-[120px] bg-white">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
             <p className="text-[20px] text-[#999] uppercase tracking-[4px] mb-[16px]">MINUTA DE SOPORTE</p>
-            <h1 className="text-[56px] font-bold text-[#333] leading-[1.1] mb-[32px]">{minuta.title}</h1>
+            <h1 className="text-[56px] font-bold text-[#333] leading-[1.1] mb-[32px]">{localTitle}</h1>
             <h2 className="text-[52px] font-extrabold mb-[40px]" style={{ color: ACCENT }}>{clientName}</h2>
             <div className="w-[80px] h-[4px] mb-[40px]" style={{ background: ACCENT }} />
-            {minuta.attendees.length > 0 && (
+            {localAttendees.length > 0 && (
               <div className="flex items-center gap-[12px]">
                 <Users className="text-[#999]" style={{ width: 24, height: 24 }} />
-                <p className="text-[22px] text-[#666]">{minuta.attendees.join(", ")}</p>
+                <p className="text-[22px] text-[#666]">{localAttendees.join(", ")}</p>
               </div>
             )}
           </motion.div>
@@ -367,10 +396,10 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
 
   // Gather case-level agreements/actions
   const caseAgreements = effectiveCases.flatMap(t =>
-    (t.case_agreements || []).map(a => ({ text: a, ticketId: t.ticket_id }))
+    (t.case_agreements || []).map(a => ({ text: a.text, responsible: a.responsible, date: a.date, priority: a.priority, ticketId: t.ticket_id }))
   );
   const caseActions = effectiveCases.flatMap(t =>
-    (t.case_actions || []).map(a => ({ text: a, ticketId: t.ticket_id }))
+    (t.case_actions || []).map(a => ({ text: a.text, responsible: a.responsible, date: a.date, priority: a.priority, ticketId: t.ticket_id }))
   );
 
   const slideAcuerdos = (
@@ -418,15 +447,17 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
                   className="flex items-center gap-[16px] bg-[#27ae60]/[0.04] rounded-[12px] px-[24px] py-[16px] border border-[#27ae60]/10">
                   <span className="text-[14px] font-mono font-bold text-[#27ae60]">{ca.ticketId}</span>
                   <p className="text-[18px] text-[#333] flex-1">{ca.text}</p>
+                  {ca.responsible && <span className="text-[14px] text-[#666] font-medium">{ca.responsible}</span>}
+                  {ca.date && <span className="text-[14px] text-[#999]">{new Date(ca.date).toLocaleDateString("es")}</span>}
                 </motion.div>
               ))}
             </div>
           </div>
         )}
-        {minuta.summary && localAgreements.length + caseAgreements.length < 4 && (
+        {localSummary && localAgreements.length + caseAgreements.length < 4 && (
           <div className="mt-[40px] border-t-[2px] border-[#eee] pt-[24px]">
             <p className="text-[16px] font-bold text-[#999] uppercase tracking-[2px] mb-[12px]">Resumen Ejecutivo</p>
-            <p className="text-[20px] text-[#666] leading-[1.6] line-clamp-3">{minuta.summary}</p>
+            <p className="text-[20px] text-[#666] leading-[1.6] line-clamp-3">{localSummary}</p>
           </div>
         )}
       </div>
@@ -481,6 +512,8 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
                   className="flex items-center gap-[16px] bg-[#e67e22]/[0.04] rounded-[12px] px-[24px] py-[16px] border border-[#e67e22]/10">
                   <span className="text-[14px] font-mono font-bold text-[#e67e22]">{ca.ticketId}</span>
                   <p className="text-[18px] text-[#333] flex-1">{ca.text}</p>
+                  {ca.responsible && <span className="text-[14px] text-[#666] font-medium">{ca.responsible}</span>}
+                  {ca.date && <span className="text-[14px] text-[#999]">{new Date(ca.date).toLocaleDateString("es")}</span>}
                 </motion.div>
               ))}
             </div>
@@ -507,8 +540,17 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
 
   const slides = [slidePortada, slideMetricas, slideCriticos, slideDetalle, slideAcuerdos, slideAcciones, slideCierre];
 
-  const editorColor = editorType === "agreements" ? "#27ae60" : "#e67e22";
-  const editorTitle = editorType === "agreements" ? "Editar Acuerdos" : "Editar Acciones";
+  const editorColorMap: Record<string, string> = { agreements: "#27ae60", actions: "#e67e22", summary: "#3498db", title: "#8e44ad" };
+  const editorTitleMap: Record<string, string> = { agreements: "Editar Acuerdos", actions: "Editar Acciones", summary: "Editar Resumen", title: "Editar Portada" };
+  const editorColor = editorColorMap[editorType] || "#3498db";
+  const editorTitleText = editorTitleMap[editorType] || "Editar";
+
+  const getSlideEditorType = (slide: number): "title" | "summary" | "agreements" | "actions" | null => {
+    if (slide === 0) return "title";
+    if (slide === 4) return "agreements";
+    if (slide === 5) return "actions";
+    return null;
+  };
 
   return (
     <AnimatePresence>
@@ -522,8 +564,8 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
                 <span className="text-white/50 text-sm">{slideNames[currentSlide]} · {currentSlide + 1}/{totalSlides}</span>
               </div>
               <div className="flex items-center gap-2">
-                {(currentSlide === 4 || currentSlide === 5) && (
-                  <Button variant="ghost" size="sm" onClick={() => openEditor(currentSlide === 4 ? "agreements" : "actions")}
+                {getSlideEditorType(currentSlide) && (
+                  <Button variant="ghost" size="sm" onClick={() => openEditor(getSlideEditorType(currentSlide)!)}
                     className="text-white/70 hover:text-white hover:bg-white/10 text-xs gap-1.5">
                     <Pencil className="h-3.5 w-3.5" /> Editar
                   </Button>
@@ -581,38 +623,72 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
                   <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
                     <div className="flex items-center gap-3">
                       <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ background: editorColor }}>
-                        {editorType === "agreements" ? <CheckSquare className="h-4 w-4 text-white" /> : <ArrowRight className="h-4 w-4 text-white" />}
+                        {editorType === "agreements" ? <CheckSquare className="h-4 w-4 text-white" /> :
+                         editorType === "actions" ? <ArrowRight className="h-4 w-4 text-white" /> :
+                         editorType === "title" ? <FileText className="h-4 w-4 text-white" /> :
+                         <FileText className="h-4 w-4 text-white" />}
                       </div>
-                      <span className="text-white font-semibold text-sm">{editorTitle}</span>
+                      <span className="text-white font-semibold text-sm">{editorTitleText}</span>
                     </div>
                     <button onClick={() => setEditorOpen(false)} className="h-8 w-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-colors">
                       <X className="h-4 w-4" />
                     </button>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                    {editItems.map((item, idx) => (
-                      <div key={idx} className="flex items-start gap-2 bg-white/5 rounded-lg p-3 group">
-                        <span className="text-white/30 text-xs font-mono mt-1 shrink-0 w-5 text-right">{idx + 1}</span>
-                        <p className="text-white/90 text-sm flex-1 leading-relaxed">{item}</p>
-                        <button onClick={() => handleRemoveItem(idx)} className="shrink-0 h-6 w-6 rounded hover:bg-red-500/20 flex items-center justify-center text-white/30 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
-                          <Trash2 className="h-3 w-3" />
-                        </button>
+                  <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                    {/* Title/Portada editor */}
+                    {editorType === "title" && (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-white/50 text-xs uppercase tracking-wider block mb-2">Título</label>
+                          <Input value={editTitle} onChange={e => setEditTitle(e.target.value)}
+                            className="bg-white/5 border-white/10 text-white text-sm placeholder:text-white/30" />
+                        </div>
+                        <div>
+                          <label className="text-white/50 text-xs uppercase tracking-wider block mb-2">Asistentes (separados por coma)</label>
+                          <Textarea value={editAttendees} onChange={e => setEditAttendees(e.target.value)}
+                            className="bg-white/5 border-white/10 text-white text-sm placeholder:text-white/30 min-h-[80px]"
+                            placeholder="Nombre 1, Nombre 2..." />
+                        </div>
                       </div>
-                    ))}
+                    )}
 
-                    <div className="flex gap-2 mt-3">
-                      <Input
-                        value={newItem}
-                        onChange={e => setNewItem(e.target.value)}
-                        placeholder={editorType === "agreements" ? "Nuevo acuerdo..." : "Nueva acción..."}
-                        className="bg-white/5 border-white/10 text-white text-sm placeholder:text-white/30"
-                        onKeyDown={e => { if (e.key === "Enter") handleAddItem(); }}
-                      />
-                      <Button size="icon" variant="ghost" className="shrink-0 text-white/50 hover:text-white hover:bg-white/10" onClick={handleAddItem}>
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    {/* Summary editor */}
+                    {editorType === "summary" && (
+                      <div>
+                        <label className="text-white/50 text-xs uppercase tracking-wider block mb-2">Resumen Ejecutivo</label>
+                        <Textarea value={editSummary} onChange={e => setEditSummary(e.target.value)}
+                          className="bg-white/5 border-white/10 text-white text-sm placeholder:text-white/30 min-h-[200px]"
+                          placeholder="Resumen de la sesión..." />
+                      </div>
+                    )}
+
+                    {/* List editor (agreements/actions) */}
+                    {(editorType === "agreements" || editorType === "actions") && (
+                      <>
+                        {editItems.map((item, idx) => (
+                          <div key={idx} className="flex items-start gap-2 bg-white/5 rounded-lg p-3 group">
+                            <span className="text-white/30 text-xs font-mono mt-1 shrink-0 w-5 text-right">{idx + 1}</span>
+                            <p className="text-white/90 text-sm flex-1 leading-relaxed">{item}</p>
+                            <button onClick={() => handleRemoveItem(idx)} className="shrink-0 h-6 w-6 rounded hover:bg-red-500/20 flex items-center justify-center text-white/30 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                        <div className="flex gap-2 mt-3">
+                          <Input
+                            value={newItem}
+                            onChange={e => setNewItem(e.target.value)}
+                            placeholder={editorType === "agreements" ? "Nuevo acuerdo..." : "Nueva acción..."}
+                            className="bg-white/5 border-white/10 text-white text-sm placeholder:text-white/30"
+                            onKeyDown={e => { if (e.key === "Enter") handleAddItem(); }}
+                          />
+                          <Button size="icon" variant="ghost" className="shrink-0 text-white/50 hover:text-white hover:bg-white/10" onClick={handleAddItem}>
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   <div className="border-t border-white/10 p-4">

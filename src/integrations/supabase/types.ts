@@ -1039,8 +1039,8 @@ export type Database = {
           ai_risk_level: string | null
           ai_summary: string | null
           asunto: string
-          case_actions: string[]
-          case_agreements: string[]
+          case_actions: Json
+          case_agreements: Json
           client_id: string
           created_at: string
           dias_antiguedad: number
@@ -1061,8 +1061,8 @@ export type Database = {
           ai_risk_level?: string | null
           ai_summary?: string | null
           asunto?: string
-          case_actions?: string[]
-          case_agreements?: string[]
+          case_actions?: Json
+          case_agreements?: Json
           client_id: string
           created_at?: string
           dias_antiguedad?: number
@@ -1083,8 +1083,8 @@ export type Database = {
           ai_risk_level?: string | null
           ai_summary?: string | null
           asunto?: string
-          case_actions?: string[]
-          case_agreements?: string[]
+          case_actions?: Json
+          case_agreements?: Json
           client_id?: string
           created_at?: string
           dias_antiguedad?: number
