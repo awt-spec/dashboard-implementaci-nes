@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   ChevronLeft, ChevronRight, Maximize2, Minimize2, X,
   FileText, ArrowRight, Download, Users, CheckSquare,
-  AlertTriangle, BarChart3, Headset, Clock, Target
+  AlertTriangle, BarChart3, Headset, Clock, Target,
+  Pencil, Plus, Trash2, Save, Loader2
 } from "lucide-react";
 import sysdeLogo from "@/assets/sysde_default_logo.png";
 import { motion, AnimatePresence } from "framer-motion";
@@ -12,6 +14,8 @@ import {
   SlideLayout, ScaledSlide, SysdeLogo, EditDisabledContext,
 } from "@/components/clients/presentation/slideHelpers";
 import type { SupportTicket } from "@/hooks/useSupportTickets";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface Minuta {
   id: string;
@@ -30,28 +34,41 @@ interface Props {
   clientName: string;
   open: boolean;
   onClose: () => void;
+  onMinutaUpdated?: () => void;
 }
 
 const ACCENT = "#c0392b";
 const ACCENT_DARK = "#922b21";
 
-export function SupportMinutaPresentation({ minuta, tickets, clientName, open, onClose }: Props) {
+export function SupportMinutaPresentation({ minuta, tickets, clientName, open, onClose, onMinutaUpdated }: Props) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editorType, setEditorType] = useState<"agreements" | "actions">("agreements");
+  const [editItems, setEditItems] = useState<string[]>([]);
+  const [newItem, setNewItem] = useState("");
+  const [saving, setSaving] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const slideRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // Local state for live editing
+  const [localAgreements, setLocalAgreements] = useState(minuta.agreements);
+  const [localActions, setLocalActions] = useState(minuta.action_items);
+
+  useEffect(() => {
+    setLocalAgreements(minuta.agreements);
+    setLocalActions(minuta.action_items);
+  }, [minuta]);
 
   // Match by ticket_id OR by uuid id
   const refCases = tickets.filter(t =>
     minuta.cases_referenced.includes(t.ticket_id) || minuta.cases_referenced.includes(t.id)
   );
-  // If no matches found, use all active tickets as fallback
   const effectiveCases = refCases.length > 0 ? refCases : tickets.filter(t => !["CERRADA", "ANULADA"].includes(t.estado));
   const criticalCases = effectiveCases.filter(t => t.prioridad.includes("Critica") || t.prioridad === "Alta")
     .sort((a, b) => b.dias_antiguedad - a.dias_antiguedad);
 
-  // Metrics
   const totalCases = effectiveCases.length;
   const openCases = effectiveCases.filter(t => !["CERRADA", "ANULADA"].includes(t.estado)).length;
   const criticalCount = criticalCases.length;
@@ -70,13 +87,14 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
+      if (editorOpen) return;
       if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); next(); }
       if (e.key === "ArrowLeft") { e.preventDefault(); prev(); }
       if (e.key === "Escape") { if (isFullscreen) toggleFullscreen(); else onClose(); }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [open, next, prev, isFullscreen]);
+  }, [open, next, prev, isFullscreen, editorOpen]);
 
   const toggleFullscreen = async () => {
     if (!isFullscreen && wrapperRef.current) {
@@ -93,6 +111,39 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
     document.addEventListener("fullscreenchange", h);
     return () => document.removeEventListener("fullscreenchange", h);
   }, []);
+
+  const openEditor = (type: "agreements" | "actions") => {
+    setEditorType(type);
+    setEditItems(type === "agreements" ? [...localAgreements] : [...localActions]);
+    setNewItem("");
+    setEditorOpen(true);
+  };
+
+  const handleAddItem = () => {
+    if (!newItem.trim()) return;
+    setEditItems(prev => [...prev, newItem.trim()]);
+    setNewItem("");
+  };
+
+  const handleRemoveItem = (idx: number) => {
+    setEditItems(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSaveEditor = async () => {
+    setSaving(true);
+    const field = editorType === "agreements" ? "agreements" : "action_items";
+    const { error } = await supabase.from("support_minutes").update({ [field]: editItems }).eq("id", minuta.id);
+    if (error) {
+      toast.error("Error al guardar");
+    } else {
+      toast.success(editorType === "agreements" ? "Acuerdos actualizados" : "Acciones actualizadas");
+      if (editorType === "agreements") setLocalAgreements(editItems);
+      else setLocalActions(editItems);
+      onMinutaUpdated?.();
+    }
+    setSaving(false);
+    setEditorOpen(false);
+  };
 
   const handleExportPdf = async () => {
     const html2canvas = (await import("html2canvas")).default;
@@ -167,7 +218,6 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
             <h2 className="text-[44px] font-extrabold text-[#1a1a2e]">Métricas de la Sesión</h2>
           </div>
         </div>
-
         <div className="grid grid-cols-4 gap-[32px] mb-[48px]">
           {[
             { label: "Casos Referenciados", value: totalCases, color: ACCENT, icon: FileText },
@@ -184,7 +234,6 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
             </motion.div>
           ))}
         </div>
-
         <div className="grid grid-cols-2 gap-[48px]">
           <div>
             <p className="text-[20px] font-bold text-[#1a1a2e] mb-[16px]">Por Estado</p>
@@ -323,13 +372,19 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
           <div className="h-[56px] w-[56px] rounded-[14px] bg-gradient-to-br from-[#27ae60] to-[#1e8449] flex items-center justify-center shadow-lg">
             <CheckSquare className="text-white" style={{ width: 28, height: 28 }} />
           </div>
-          <div>
+          <div className="flex-1">
             <p className="text-[14px] font-bold text-[#27ae60] uppercase tracking-[3px]">COMPROMISOS</p>
             <h2 className="text-[44px] font-extrabold text-[#1a1a2e]">Acuerdos de la Sesión</h2>
           </div>
+          {!isFullscreen && (
+            <button onClick={() => openEditor("agreements")}
+              className="h-[48px] w-[48px] rounded-[12px] bg-[#27ae60]/10 hover:bg-[#27ae60]/20 flex items-center justify-center transition-colors cursor-pointer">
+              <Pencil style={{ width: 22, height: 22, color: "#27ae60" }} />
+            </button>
+          )}
         </div>
         <div className="space-y-[20px]">
-          {minuta.agreements.length > 0 ? minuta.agreements.map((a, i) => (
+          {localAgreements.length > 0 ? localAgreements.map((a, i) => (
             <motion.div key={i} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 + i * 0.08 }}
               className="flex items-start gap-[20px] bg-white rounded-[16px] px-[32px] py-[24px] shadow-[0_2px_16px_rgba(0,0,0,0.06)] border border-[#eee]">
               <div className="h-[48px] w-[48px] rounded-[12px] bg-[#27ae60]/15 flex items-center justify-center shrink-0">
@@ -346,7 +401,6 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
             </div>
           )}
         </div>
-
         {minuta.summary && (
           <div className="mt-[48px] border-t-[2px] border-[#eee] pt-[32px]">
             <p className="text-[16px] font-bold text-[#999] uppercase tracking-[2px] mb-[12px]">Resumen Ejecutivo</p>
@@ -365,17 +419,23 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
           <div className="h-[56px] w-[56px] rounded-[14px] bg-gradient-to-br from-[#e67e22] to-[#d35400] flex items-center justify-center shadow-lg">
             <ArrowRight className="text-white" style={{ width: 28, height: 28 }} />
           </div>
-          <div>
+          <div className="flex-1">
             <p className="text-[14px] font-bold text-[#e67e22] uppercase tracking-[3px]">SEGUIMIENTO</p>
             <h2 className="text-[44px] font-extrabold text-[#1a1a2e]">Acciones a Seguir</h2>
           </div>
+          {!isFullscreen && (
+            <button onClick={() => openEditor("actions")}
+              className="h-[48px] w-[48px] rounded-[12px] bg-[#e67e22]/10 hover:bg-[#e67e22]/20 flex items-center justify-center transition-colors cursor-pointer">
+              <Pencil style={{ width: 22, height: 22, color: "#e67e22" }} />
+            </button>
+          )}
         </div>
         <div className="rounded-[16px] overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.08)] border border-[#eee]">
           <div className="flex bg-gradient-to-r from-[#e67e22] to-[#d35400]">
             <div className="w-[60px] px-[16px] py-[16px] text-[16px] font-bold text-white/80">#</div>
             <div className="flex-1 px-[20px] py-[16px] text-[18px] font-bold text-white">Acción</div>
           </div>
-          {minuta.action_items.length > 0 ? minuta.action_items.map((item, i) => (
+          {localActions.length > 0 ? localActions.map((item, i) => (
             <motion.div key={i} initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }}
               className={cn("flex border-b border-[#f0f0f0] hover:bg-[#e67e22]/[0.02] transition-colors", i % 2 === 0 ? "bg-white" : "bg-[#fafafa]")}>
               <div className="w-[60px] px-[16px] py-[20px] text-[18px] font-bold text-[#e67e22]">{i + 1}</div>
@@ -411,6 +471,9 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
 
   const slides = [slidePortada, slideMetricas, slideCriticos, slideDetalle, slideAcuerdos, slideAcciones, slideCierre];
 
+  const editorColor = editorType === "agreements" ? "#27ae60" : "#e67e22";
+  const editorTitle = editorType === "agreements" ? "Editar Acuerdos" : "Editar Acciones";
+
   return (
     <AnimatePresence>
       {open && (
@@ -423,6 +486,12 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
                 <span className="text-white/50 text-sm">{slideNames[currentSlide]} · {currentSlide + 1}/{totalSlides}</span>
               </div>
               <div className="flex items-center gap-2">
+                {(currentSlide === 4 || currentSlide === 5) && (
+                  <Button variant="ghost" size="sm" onClick={() => openEditor(currentSlide === 4 ? "agreements" : "actions")}
+                    className="text-white/70 hover:text-white hover:bg-white/10 text-xs gap-1.5">
+                    <Pencil className="h-3.5 w-3.5" /> Editar
+                  </Button>
+                )}
                 <Button variant="ghost" size="sm" onClick={handleExportPdf} className="text-white/70 hover:text-white hover:bg-white/10 text-xs gap-1.5">
                   <Download className="h-3.5 w-3.5" /> Exportar PDF
                 </Button>
@@ -460,6 +529,66 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
               ))}
             </div>
           )}
+
+          {/* Editor Side Panel */}
+          <AnimatePresence>
+            {editorOpen && (
+              <>
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-[55]" onClick={() => setEditorOpen(false)} />
+                <motion.div
+                  initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
+                  transition={{ type: "spring", damping: 30, stiffness: 300 }}
+                  className="fixed right-0 top-0 bottom-0 w-[420px] bg-[#1a1a2e] border-l border-white/10 z-[60] flex flex-col shadow-2xl"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ background: editorColor }}>
+                        {editorType === "agreements" ? <CheckSquare className="h-4 w-4 text-white" /> : <ArrowRight className="h-4 w-4 text-white" />}
+                      </div>
+                      <span className="text-white font-semibold text-sm">{editorTitle}</span>
+                    </div>
+                    <button onClick={() => setEditorOpen(false)} className="h-8 w-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-colors">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                    {editItems.map((item, idx) => (
+                      <div key={idx} className="flex items-start gap-2 bg-white/5 rounded-lg p-3 group">
+                        <span className="text-white/30 text-xs font-mono mt-1 shrink-0 w-5 text-right">{idx + 1}</span>
+                        <p className="text-white/90 text-sm flex-1 leading-relaxed">{item}</p>
+                        <button onClick={() => handleRemoveItem(idx)} className="shrink-0 h-6 w-6 rounded hover:bg-red-500/20 flex items-center justify-center text-white/30 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+
+                    <div className="flex gap-2 mt-3">
+                      <Input
+                        value={newItem}
+                        onChange={e => setNewItem(e.target.value)}
+                        placeholder={editorType === "agreements" ? "Nuevo acuerdo..." : "Nueva acción..."}
+                        className="bg-white/5 border-white/10 text-white text-sm placeholder:text-white/30"
+                        onKeyDown={e => { if (e.key === "Enter") handleAddItem(); }}
+                      />
+                      <Button size="icon" variant="ghost" className="shrink-0 text-white/50 hover:text-white hover:bg-white/10" onClick={handleAddItem}>
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-white/10 p-4">
+                    <Button className="w-full gap-2" style={{ background: editorColor }} onClick={handleSaveEditor} disabled={saving}>
+                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                      Guardar cambios
+                    </Button>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </motion.div>
       )}
     </AnimatePresence>
