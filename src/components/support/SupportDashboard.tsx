@@ -54,6 +54,7 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
     if (initialClientId) setSelectedClient(initialClientId);
   }, [initialClientId]);
 
+  const tickets = useMemo(() => {
     let t = allTickets;
     if (selectedClient !== "all") t = t.filter(tk => tk.client_id === selectedClient);
     if (prioridadFilter !== "all") t = t.filter(tk => tk.prioridad === prioridadFilter);
