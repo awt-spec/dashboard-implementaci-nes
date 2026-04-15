@@ -438,107 +438,98 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
           </div>
         </TabsContent>
 
-        {/* HEATMAP TAB - Enhanced */}
+        {/* HEATMAP TAB - Per-client when filtered, summary when all */}
         <TabsContent value="heatmap" className="mt-4 space-y-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Activity className="h-4 w-4" /> Mapa de Calor — Prioridad por Cliente
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs border-collapse">
-                  <thead>
-                    <tr>
-                      <th className="text-left p-2 font-medium text-muted-foreground border-b border-border min-w-[160px]">Cliente</th>
-                      <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-16">Total</th>
-                      <th className="text-center p-2 font-medium border-b border-border w-16" style={{ color: "rgb(239,68,68)" }}>Crítica</th>
-                      <th className="text-center p-2 font-medium border-b border-border w-16" style={{ color: "rgb(249,115,22)" }}>Alta</th>
-                      <th className="text-center p-2 font-medium border-b border-border w-16" style={{ color: "rgb(234,179,8)" }}>Media</th>
-                      <th className="text-center p-2 font-medium border-b border-border w-14" style={{ color: "rgb(148,163,184)" }}>Baja</th>
-                      <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-16">Prom Días</th>
-                      <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-16">Máx Días</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {heatMapData.map(row => (
-                      <tr key={row.id} className="hover:bg-muted/20 transition-colors">
-                        <td className="p-2 font-medium border-b border-border/30 truncate max-w-[200px]">{row.name}</td>
-                        <td className="p-2 text-center font-bold border-b border-border/30" style={heatBg(row.activos, maxActivos, 59, 130, 246)}>
-                          {row.activos}
-                          {row.total > row.activos && <span className="text-muted-foreground font-normal">/{row.total}</span>}
-                        </td>
-                        <td className="p-2 text-center font-bold border-b border-border/30 rounded-sm" style={heatBg(row.critica, maxCrit, 239, 68, 68)}>
-                          {row.critica || ""}
-                        </td>
-                        <td className="p-2 text-center font-bold border-b border-border/30 rounded-sm" style={heatBg(row.alta, maxAlta, 249, 115, 22)}>
-                          {row.alta || ""}
-                        </td>
-                        <td className="p-2 text-center border-b border-border/30 rounded-sm" style={heatBg(row.media, maxMedia, 234, 179, 8)}>
-                          {row.media || ""}
-                        </td>
-                        <td className="p-2 text-center text-muted-foreground border-b border-border/30">
-                          {row.baja || ""}
-                        </td>
-                        <td className="p-2 text-center font-mono border-b border-border/30">
-                          <span className={row.avgDias > 180 ? "text-destructive font-bold" : row.avgDias > 90 ? "text-warning" : "text-muted-foreground"}>
-                            {row.activos > 0 ? row.avgDias : "—"}
-                          </span>
-                        </td>
-                        <td className="p-2 text-center font-mono border-b border-border/30">
-                          <span className={row.maxDias > 365 ? "text-destructive font-bold" : row.maxDias > 180 ? "text-warning" : ""}>
-                            {row.activos > 0 ? row.maxDias : "—"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
+          {selectedClient !== "all" ? (
+            <SupportClientHeatmap tickets={tickets} clientName={selectedClientName} />
+          ) : (
+            <>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Activity className="h-4 w-4" /> Mapa de Calor — Prioridad por Cliente
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
+                        <tr>
+                          <th className="text-left p-2 font-medium text-muted-foreground border-b border-border min-w-[160px]">Cliente</th>
+                          <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-16">Total</th>
+                          <th className="text-center p-2 font-medium border-b border-border w-16" style={{ color: "rgb(239,68,68)" }}>Crítica</th>
+                          <th className="text-center p-2 font-medium border-b border-border w-16" style={{ color: "rgb(249,115,22)" }}>Alta</th>
+                          <th className="text-center p-2 font-medium border-b border-border w-16" style={{ color: "rgb(234,179,8)" }}>Media</th>
+                          <th className="text-center p-2 font-medium border-b border-border w-14" style={{ color: "rgb(148,163,184)" }}>Baja</th>
+                          <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-16">Prom Días</th>
+                          <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-16">Máx Días</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {heatMapData.map(row => (
+                          <tr key={row.id} className="hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => setSelectedClient(row.id)}>
+                            <td className="p-2 font-medium border-b border-border/30 truncate max-w-[200px]">{row.name}</td>
+                            <td className="p-2 text-center font-bold border-b border-border/30" style={heatBg(row.activos, maxActivos, 59, 130, 246)}>
+                              {row.activos}{row.total > row.activos && <span className="text-muted-foreground font-normal">/{row.total}</span>}
+                            </td>
+                            <td className="p-2 text-center font-bold border-b border-border/30 rounded-sm" style={heatBg(row.critica, maxCrit, 239, 68, 68)}>{row.critica || ""}</td>
+                            <td className="p-2 text-center font-bold border-b border-border/30 rounded-sm" style={heatBg(row.alta, maxAlta, 249, 115, 22)}>{row.alta || ""}</td>
+                            <td className="p-2 text-center border-b border-border/30 rounded-sm" style={heatBg(row.media, maxMedia, 234, 179, 8)}>{row.media || ""}</td>
+                            <td className="p-2 text-center text-muted-foreground border-b border-border/30">{row.baja || ""}</td>
+                            <td className="p-2 text-center font-mono border-b border-border/30">
+                              <span className={row.avgDias > 180 ? "text-destructive font-bold" : row.avgDias > 90 ? "text-warning" : "text-muted-foreground"}>{row.activos > 0 ? row.avgDias : "—"}</span>
+                            </td>
+                            <td className="p-2 text-center font-mono border-b border-border/30">
+                              <span className={row.maxDias > 365 ? "text-destructive font-bold" : row.maxDias > 180 ? "text-warning" : ""}>{row.activos > 0 ? row.maxDias : "—"}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-2 italic">Clic en un cliente para ver mapa de calor por caso individual</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Activity className="h-4 w-4" /> Mapa de Calor — Estado por Cliente
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
+                        <tr>
+                          <th className="text-left p-2 font-medium text-muted-foreground border-b border-border min-w-[160px]">Cliente</th>
+                          <th className="text-center p-2 font-medium border-b border-border w-20" style={{ color: "rgb(59,130,246)" }}>En Atención</th>
+                          <th className="text-center p-2 font-medium border-b border-border w-20" style={{ color: "rgb(234,179,8)" }}>Entregada</th>
+                          <th className="text-center p-2 font-medium border-b border-border w-20" style={{ color: "rgb(249,115,22)" }}>Pendiente</th>
+                          <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-16">Activos</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {heatMapData.filter(r => r.activos > 0).map(row => (
+                          <tr key={row.id} className="hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => setSelectedClient(row.id)}>
+                            <td className="p-2 font-medium border-b border-border/30 truncate max-w-[200px]">{row.name}</td>
+                            <td className="p-2 text-center font-bold border-b border-border/30" style={heatBg(row.enAtencion, Math.max(1, ...heatMapData.map(r => r.enAtencion)), 59, 130, 246)}>{row.enAtencion || ""}</td>
+                            <td className="p-2 text-center font-bold border-b border-border/30" style={heatBg(row.entregada, maxEntregada, 234, 179, 8)}>{row.entregada || ""}</td>
+                            <td className="p-2 text-center font-bold border-b border-border/30" style={heatBg(row.pendiente, maxPendiente, 249, 115, 22)}>{row.pendiente || ""}</td>
+                            <td className="p-2 text-center font-bold border-b border-border/30">{row.activos}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </TabsContent>
 
-          {/* Second heatmap: Estado by client */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Activity className="h-4 w-4" /> Mapa de Calor — Estado por Cliente
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs border-collapse">
-                  <thead>
-                    <tr>
-                      <th className="text-left p-2 font-medium text-muted-foreground border-b border-border min-w-[160px]">Cliente</th>
-                      <th className="text-center p-2 font-medium border-b border-border w-20" style={{ color: "rgb(59,130,246)" }}>En Atención</th>
-                      <th className="text-center p-2 font-medium border-b border-border w-20" style={{ color: "rgb(234,179,8)" }}>Entregada</th>
-                      <th className="text-center p-2 font-medium border-b border-border w-20" style={{ color: "rgb(249,115,22)" }}>Pendiente</th>
-                      <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-16">Activos</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {heatMapData.filter(r => r.activos > 0).map(row => (
-                      <tr key={row.id} className="hover:bg-muted/20 transition-colors">
-                        <td className="p-2 font-medium border-b border-border/30 truncate max-w-[200px]">{row.name}</td>
-                        <td className="p-2 text-center font-bold border-b border-border/30" style={heatBg(row.enAtencion, Math.max(1, ...heatMapData.map(r => r.enAtencion)), 59, 130, 246)}>
-                          {row.enAtencion || ""}
-                        </td>
-                        <td className="p-2 text-center font-bold border-b border-border/30" style={heatBg(row.entregada, maxEntregada, 234, 179, 8)}>
-                          {row.entregada || ""}
-                        </td>
-                        <td className="p-2 text-center font-bold border-b border-border/30" style={heatBg(row.pendiente, maxPendiente, 249, 115, 22)}>
-                          {row.pendiente || ""}
-                        </td>
-                        <td className="p-2 text-center font-bold border-b border-border/30">{row.activos}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Custom Charts Tab */}
+        <TabsContent value="charts" className="mt-4">
+          <SupportChartBuilder tickets={ticketsWithClientName} />
         </TabsContent>
 
         {/* AI Classification Tab */}
