@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { SupportChartBuilder } from "./SupportChartBuilder";
 import { SupportCaseTable } from "./SupportCaseTable";
 import { SupportClientHeatmap } from "./SupportClientHeatmap";
+import { SupportDataLoader } from "./SupportDataLoader";
 
 const prioridadColors: Record<string, string> = {
   "Critica, Impacto Negocio": "bg-red-600 text-white",
@@ -288,6 +289,7 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
           <TabsTrigger value="charts">Gráficos</TabsTrigger>
           <TabsTrigger value="ai">Clasificación IA</TabsTrigger>
           <TabsTrigger value="cases">Detalle de Casos</TabsTrigger>
+          <TabsTrigger value="import">Cargar Datos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4 mt-4">
