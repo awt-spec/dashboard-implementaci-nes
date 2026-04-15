@@ -918,6 +918,7 @@ export type Database = {
         Row: {
           action_items: string[]
           agreements: string[]
+          attendees: string[]
           cases_referenced: string[]
           client_id: string
           created_at: string
@@ -930,6 +931,7 @@ export type Database = {
         Insert: {
           action_items?: string[]
           agreements?: string[]
+          attendees?: string[]
           cases_referenced?: string[]
           client_id: string
           created_at?: string
@@ -942,6 +944,7 @@ export type Database = {
         Update: {
           action_items?: string[]
           agreements?: string[]
+          attendees?: string[]
           cases_referenced?: string[]
           client_id?: string
           created_at?: string

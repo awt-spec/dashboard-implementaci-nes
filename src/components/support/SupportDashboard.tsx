@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   AlertTriangle, Search, Ticket, Clock, CheckCircle2,
   Flame, Activity, Filter, Brain, Loader2, Sparkles, RefreshCw,
-  ArrowLeft, Building2, MapPin, Mail, User
+  ArrowLeft, Building2, MapPin, Mail, User, FileText
 } from "lucide-react";
 import { motion } from "framer-motion";
 import {
@@ -334,7 +334,7 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
           <TabsTrigger value="charts">Gráficos</TabsTrigger>
           <TabsTrigger value="ai">Clasificación IA</TabsTrigger>
           <TabsTrigger value="cases">Detalle de Casos</TabsTrigger>
-          {isClientView && <TabsTrigger value="minutas">Minutas</TabsTrigger>}
+          <TabsTrigger value="minutas">Minutas</TabsTrigger>
           {!isClientView && <TabsTrigger value="import">Cargar Datos</TabsTrigger>}
         </TabsList>
 
@@ -701,15 +701,23 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
         </TabsContent>
 
         {/* Minutas Tab */}
-        {(isClientView || selectedClient !== "all") && (
-          <TabsContent value="minutas" className="mt-4">
+        <TabsContent value="minutas" className="mt-4">
+          {(isClientView || selectedClient !== "all") ? (
             <SupportMinutas
               tickets={scopedTickets}
               clientName={isClientView ? (selectedClientObj?.name || "") : selectedClientName}
               clientId={isClientView ? initialClientId! : selectedClient}
+              teamMembers={isClientView ? (selectedClientObj?.team_assigned || []) : (clients.find(c => c.id === selectedClient)?.team_assigned || [])}
             />
-          </TabsContent>
-        )}
+          ) : (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <FileText className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">Selecciona un cliente para ver sus minutas</p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
 
         {/* Data Import Tab */}
         <TabsContent value="import" className="mt-4">
