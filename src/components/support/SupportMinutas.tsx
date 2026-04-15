@@ -53,7 +53,7 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
   const [newAgreement, setNewAgreement] = useState("");
   const [newAction, setNewAction] = useState("");
 
-  useEffect(() => {
+  const loadMinutas = useCallback(() => {
     setLoading(true);
     supabase.from("support_minutes").select("*").eq("client_id", clientId)
       .order("created_at", { ascending: false })
@@ -62,6 +62,8 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
         setLoading(false);
       });
   }, [clientId]);
+
+  useEffect(() => { loadMinutas(); }, [loadMinutas]);
 
   const activeTickets = useMemo(() =>
     tickets.filter(t => !["CERRADA", "ANULADA"].includes(t.estado)), [tickets]);
