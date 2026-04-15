@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   FileText, Plus, Calendar, Sparkles, Loader2, ChevronDown, ChevronUp, Trash2,
-  Users, CheckSquare, ArrowRight, Presentation, Edit3, Save, X, UserPlus, AlertTriangle, Share2
+  Users, CheckSquare, ArrowRight, Presentation, Edit3, Save, X, UserPlus, AlertTriangle, Share2,
+  Mic, ClipboardPaste, MessageSquareText
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,6 +37,8 @@ interface Minuta {
   created_at: string;
 }
 
+type GenerationMode = "cases" | "transcript";
+
 export function SupportMinutas({ tickets, clientName, clientId, teamMembers = [] }: Props) {
   const [minutas, setMinutas] = useState<Minuta[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,6 +57,9 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
   const [manualActions, setManualActions] = useState<string[]>([]);
   const [newAgreement, setNewAgreement] = useState("");
   const [newAction, setNewAction] = useState("");
+  // Transcript mode
+  const [generationMode, setGenerationMode] = useState<GenerationMode>("cases");
+  const [transcript, setTranscript] = useState("");
 
   const loadMinutas = useCallback(() => {
     setLoading(true);
@@ -75,21 +81,55 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
       .sort((a, b) => b.dias_antiguedad - a.dias_antiguedad), [activeTickets]);
 
   const handleGenerateMinuta = async () => {
+    if (generationMode === "transcript" && !transcript.trim()) {
+      toast.error("Pega la transcripción de la reunión para continuar");
+      return;
+    }
     setGenerating(true);
     try {
-      const casesToUse = selectedCaseIds.length > 0
-        ? tickets.filter(t => selectedCaseIds.includes(t.id))
-        : activeTickets.slice(0, 30);
+      let promptContent = "";
 
-      const casesSummary = casesToUse.map(t =>
-        `[${t.ticket_id}] ${t.asunto} | Estado: ${t.estado} | Prioridad: ${t.prioridad} | Días: ${t.dias_antiguedad} | Responsable: ${t.responsable || "N/A"} | Producto: ${t.producto} | Tipo: ${t.tipo} | Notas: ${t.notas || "N/A"} | IA: ${t.ai_summary || "N/A"}`
-      ).join("\n");
+      if (generationMode === "transcript") {
+        // Transcript mode: the user pasted a meeting transcript
+        const casesToUse = selectedCaseIds.length > 0
+          ? tickets.filter(t => selectedCaseIds.includes(t.id))
+          : activeTickets.slice(0, 15);
+        const casesContext = casesToUse.map(t =>
+          `[${t.ticket_id}] ${t.asunto} | ${t.estado} | ${t.prioridad}`
+        ).join("\n");
+
+        promptContent = `TRANSCRIPCIÓN DE REUNIÓN DE SOPORTE - ${clientName}
+Fecha: ${new Date().toLocaleDateString("es")}
+Participantes: ${selectedAttendees.join(", ") || "Por definir"}
+
+Contexto de casos activos:
+${casesContext}
+
+TRANSCRIPCIÓN:
+${transcript}
+
+Analiza esta transcripción y genera: título, resumen ejecutivo, acuerdos tomados, acciones a seguir y próximos pasos. Identifica los casos mencionados.`;
+      } else {
+        // Cases mode: generate from case data
+        const casesToUse = selectedCaseIds.length > 0
+          ? tickets.filter(t => selectedCaseIds.includes(t.id))
+          : activeTickets.slice(0, 30);
+        const casesSummary = casesToUse.map(t =>
+          `[${t.ticket_id}] ${t.asunto} | Estado: ${t.estado} | Prioridad: ${t.prioridad} | Días: ${t.dias_antiguedad} | Responsable: ${t.responsable || "N/A"} | Producto: ${t.producto} | Tipo: ${t.tipo} | Notas: ${t.notas || "N/A"} | IA: ${t.ai_summary || "N/A"}`
+        ).join("\n");
+
+        promptContent = `MINUTA DE SOPORTE - ${clientName}
+Fecha: ${new Date().toLocaleDateString("es")}
+Participantes: ${selectedAttendees.join(", ") || "Por definir"}
+
+Casos activos del cliente:
+${casesSummary}
+
+Genera una minuta ejecutiva de soporte con título, resumen, acuerdos y acciones a seguir.`;
+      }
 
       const { data, error } = await supabase.functions.invoke("summarize-transcript", {
-        body: {
-          transcript: `MINUTA DE SOPORTE - ${clientName}\nFecha: ${new Date().toLocaleDateString("es")}\nParticipantes: ${selectedAttendees.join(", ") || "Por definir"}\n\nCasos activos del cliente:\n${casesSummary}\n\nGenera una minuta ejecutiva de soporte con título, resumen, acuerdos y acciones a seguir.`,
-          clientName: clientName,
-        },
+        body: { transcript: promptContent, clientName },
       });
 
       if (error) throw error;
@@ -100,8 +140,12 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { title: "Minuta de Soporte", summary: text, agreements: [], action_items: [], cases_highlighted: [] };
       } catch {
-        parsed = { title: "Minuta de Soporte", summary: String(data), agreements: [], action_items: [], cases_highlighted: [] };
+        parsed = typeof data === "object" && data?.title ? data : { title: "Minuta de Soporte", summary: String(data), agreements: [], action_items: [], cases_highlighted: [] };
       }
+
+      const casesToUse = selectedCaseIds.length > 0
+        ? tickets.filter(t => selectedCaseIds.includes(t.id))
+        : activeTickets.slice(0, 30);
 
       const now = new Date().toISOString();
       const minutaRow = {
@@ -110,9 +154,9 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
         date: now.split("T")[0],
         summary: parsed.summary || "",
         cases_referenced: parsed.cases_highlighted || casesToUse.map(t => t.ticket_id),
-        action_items: [...manualActions, ...(parsed.action_items || [])],
+        action_items: [...manualActions, ...(parsed.actionItems || parsed.action_items || [])],
         agreements: [...manualAgreements, ...(parsed.agreements || [])],
-        attendees: selectedAttendees,
+        attendees: selectedAttendees.length > 0 ? selectedAttendees : (parsed.attendees || []),
       };
 
       const { data: inserted, error: insertErr } = await supabase
@@ -121,13 +165,7 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
 
       setMinutas(prev => [inserted as any, ...prev]);
       setShowCreate(false);
-      setNewTitle("");
-      setSelectedCaseIds([]);
-      setSelectedAttendees([]);
-      setManualAgreements([]);
-      setManualActions([]);
-      setNewAgreement("");
-      setNewAction("");
+      resetCreateForm();
       setPresentationId((inserted as any).id);
       toast.success("Minuta generada exitosamente");
     } catch (e: any) {
@@ -135,6 +173,18 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
     } finally {
       setGenerating(false);
     }
+  };
+
+  const resetCreateForm = () => {
+    setNewTitle("");
+    setSelectedCaseIds([]);
+    setSelectedAttendees([]);
+    setManualAgreements([]);
+    setManualActions([]);
+    setNewAgreement("");
+    setNewAction("");
+    setTranscript("");
+    setGenerationMode("cases");
   };
 
   const handleDelete = async (id: string) => {
@@ -178,7 +228,6 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
     setNewAttendee("");
   };
 
-  // Presentation view for a specific minuta
   const presentingMinuta = minutas.find(m => m.id === presentationId);
   const shareMinuta = minutas.find(m => m.id === shareMinutaId);
 
@@ -230,6 +279,63 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
               <CardContent className="space-y-4">
                 <Input placeholder="Título (opcional, IA generará uno)" value={newTitle} onChange={e => setNewTitle(e.target.value)} className="text-xs" />
 
+                {/* Generation Mode Selector */}
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Fuente de datos</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setGenerationMode("cases")}
+                      className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all text-xs ${
+                        generationMode === "cases"
+                          ? "border-primary bg-primary/5 text-primary shadow-sm"
+                          : "border-border hover:border-muted-foreground/30 text-muted-foreground"
+                      }`}
+                    >
+                      <FileText className="h-5 w-5" />
+                      <span className="font-medium">Desde Casos</span>
+                      <span className="text-[10px] opacity-70 text-center">IA analiza los casos activos</span>
+                    </button>
+                    <button
+                      onClick={() => setGenerationMode("transcript")}
+                      className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all text-xs ${
+                        generationMode === "transcript"
+                          ? "border-primary bg-primary/5 text-primary shadow-sm"
+                          : "border-border hover:border-muted-foreground/30 text-muted-foreground"
+                      }`}
+                    >
+                      <MessageSquareText className="h-5 w-5" />
+                      <span className="font-medium">Desde Transcripción</span>
+                      <span className="text-[10px] opacity-70 text-center">Pega la transcripción de la reunión</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Transcript Input */}
+                {generationMode === "transcript" && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                        <ClipboardPaste className="h-3.5 w-3.5" /> Transcripción de la reunión
+                      </p>
+                      <span className="text-[10px] text-muted-foreground">
+                        {transcript.length > 0 ? `${transcript.split(/\s+/).filter(Boolean).length} palabras` : ""}
+                      </span>
+                    </div>
+                    <Textarea
+                      placeholder="Pega aquí la transcripción de la reunión (de Teams, Zoom, Google Meet, etc.)...&#10;&#10;La IA analizará el contenido y generará automáticamente:&#10;• Resumen ejecutivo&#10;• Acuerdos tomados&#10;• Próximos pasos y acciones&#10;• Participantes identificados"
+                      value={transcript}
+                      onChange={e => setTranscript(e.target.value)}
+                      className="text-xs min-h-[160px] leading-relaxed"
+                    />
+                    {transcript.length > 0 && (
+                      <div className="flex items-center gap-2 text-[10px] text-emerald-400">
+                        <CheckSquare className="h-3 w-3" />
+                        <span>Transcripción lista • La IA extraerá resumen, acuerdos, acciones y participantes</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Participants */}
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1"><Users className="h-3 w-3" /> Participantes</p>
@@ -259,40 +365,27 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
                   )}
                 </div>
 
-                {/* Case selection - improved UX */}
+                {/* Case selection */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-xs font-medium text-muted-foreground">
-                      Casos a incluir <Badge variant="secondary" className="text-[10px] ml-1">{selectedCaseIds.length > 0 ? `${selectedCaseIds.length} seleccionados` : "todos los activos"}</Badge>
+                      {generationMode === "transcript" ? "Casos de contexto (opcional)" : "Casos a incluir"}{" "}
+                      <Badge variant="secondary" className="text-[10px] ml-1">{selectedCaseIds.length > 0 ? `${selectedCaseIds.length} seleccionados` : "todos los activos"}</Badge>
                     </p>
                   </div>
-                  {/* Quick filter buttons */}
                   <div className="flex flex-wrap gap-1.5 mb-2">
                     <Button size="sm" variant={selectedCaseIds.length === 0 ? "default" : "outline"} className="text-[10px] h-6 px-2"
-                      onClick={() => setSelectedCaseIds([])}>
-                      Todos activos
-                    </Button>
+                      onClick={() => setSelectedCaseIds([])}>Todos activos</Button>
                     <Button size="sm" variant="outline" className="text-[10px] h-6 px-2"
                       onClick={() => setSelectedCaseIds(activeTickets.filter(t => t.prioridad.includes("Critica") || t.prioridad === "Alta").map(t => t.id))}>
                       <AlertTriangle className="h-3 w-3 mr-1" /> Solo críticos ({activeTickets.filter(t => t.prioridad.includes("Critica") || t.prioridad === "Alta").length})
-                    </Button>
-                    <Button size="sm" variant="outline" className="text-[10px] h-6 px-2"
-                      onClick={() => setSelectedCaseIds(activeTickets.filter(t => t.estado === "EN ATENCIÓN").map(t => t.id))}>
-                      En atención ({activeTickets.filter(t => t.estado === "EN ATENCIÓN").length})
                     </Button>
                     <Button size="sm" variant="outline" className="text-[10px] h-6 px-2"
                       onClick={() => setSelectedCaseIds(activeTickets.map(t => t.id))}>
                       Seleccionar todos ({activeTickets.length})
                     </Button>
                   </div>
-                  {/* Search */}
-                  <Input placeholder="Buscar por ID o asunto..." className="text-xs h-7 mb-2"
-                    onChange={e => {
-                      const q = e.target.value.toLowerCase();
-                      if (!q) return;
-                      // just filter visual, don't affect selection
-                    }} />
-                  <div className="max-h-[180px] overflow-y-auto space-y-1 border border-border rounded-md p-2">
+                  <div className="max-h-[150px] overflow-y-auto space-y-1 border border-border rounded-md p-2">
                     {activeTickets.slice(0, 50).map(t => {
                       const isSelected = selectedCaseIds.includes(t.id);
                       const isCritical = t.prioridad.includes("Critica") || t.prioridad === "Alta";
@@ -356,9 +449,9 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
                 <div className="flex gap-2">
                   <Button size="sm" className="gap-1.5 text-xs" onClick={handleGenerateMinuta} disabled={generating}>
                     {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                    {generating ? "Generando..." : "Generar con IA"}
+                    {generating ? "Analizando con IA..." : generationMode === "transcript" ? "Analizar Transcripción" : "Generar con IA"}
                   </Button>
-                  <Button size="sm" variant="outline" className="text-xs" onClick={() => setShowCreate(false)}>Cancelar</Button>
+                  <Button size="sm" variant="outline" className="text-xs" onClick={() => { setShowCreate(false); resetCreateForm(); }}>Cancelar</Button>
                 </div>
               </CardContent>
             </Card>
@@ -386,7 +479,7 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
           <CardContent className="p-8 text-center">
             <Presentation className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
             <p className="text-sm text-muted-foreground">No hay minutas aún.</p>
-            <p className="text-xs text-muted-foreground mt-1">Genera una minuta con IA basada en los casos del cliente.</p>
+            <p className="text-xs text-muted-foreground mt-1">Genera una minuta con IA basada en los casos o una transcripción.</p>
           </CardContent>
         </Card>
       )}

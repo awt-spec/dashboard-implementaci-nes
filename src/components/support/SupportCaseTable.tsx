@@ -9,7 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import {
   ChevronDown, Brain, Calendar, User, Tag, FileText,
   AlertTriangle, Save, Loader2, CheckSquare, ArrowRight, Clock,
-  Package, Wrench, Search, Filter, X, Plus, Trash2
+  Package, Wrench, Search, Filter, X, Plus, Trash2, Sparkles, Zap
 } from "lucide-react";
 import type { SupportTicket } from "@/hooks/useSupportTickets";
 import { useUpdateSupportTicket } from "@/hooks/useSupportTickets";
@@ -64,6 +64,7 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
   const [editAiSummary, setEditAiSummary] = useState("");
   const [saving, setSaving] = useState(false);
   const [minutas, setMinutas] = useState<any[]>([]);
+  const [generatingAi, setGeneratingAi] = useState(false);
   const updateTicket = useUpdateSupportTicket();
 
   // Case-specific agreements/actions
@@ -127,6 +128,60 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
     );
   };
 
+  // AI-powered case analysis
+  const handleGenerateAiAnalysis = async (t: SupportTicket) => {
+    setGeneratingAi(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("summarize-transcript", {
+        body: {
+          transcript: `Analiza este caso de soporte y genera un resumen ejecutivo con recomendaciones:
+
+Caso: ${t.ticket_id}
+Asunto: ${t.asunto}
+Producto: ${t.producto}
+Tipo: ${t.tipo}
+Estado: ${t.estado}
+Prioridad: ${t.prioridad}
+Días de antigüedad: ${t.dias_antiguedad}
+Responsable: ${t.responsable || "Sin asignar"}
+Notas existentes: ${t.notas || "Ninguna"}
+
+Genera un resumen conciso del caso, clasifícalo, evalúa el nivel de riesgo y sugiere próximos pasos.`,
+          clientName: clientName(t.client_id),
+        },
+      });
+
+      if (error) throw error;
+
+      let parsed: any;
+      try {
+        parsed = typeof data === "object" && data?.summary ? data : JSON.parse(typeof data === "string" ? data : JSON.stringify(data));
+      } catch {
+        parsed = { summary: String(data) };
+      }
+
+      const summary = parsed.summary || parsed.text || String(data);
+      const classification = parsed.title || t.ai_classification || null;
+      
+      // Determine risk from content
+      let riskLevel = t.ai_risk_level;
+      if (t.prioridad.includes("Critica")) riskLevel = "critical";
+      else if (t.prioridad === "Alta") riskLevel = "high";
+      else if (t.dias_antiguedad > 180) riskLevel = "high";
+      else if (t.prioridad === "Media") riskLevel = "medium";
+      else riskLevel = "low";
+
+      updateTicket.mutate(
+        { id: t.id, updates: { ai_summary: summary, ai_classification: classification, ai_risk_level: riskLevel } },
+        { onSuccess: () => toast.success("Análisis IA generado") }
+      );
+    } catch (e: any) {
+      toast.error(e.message || "Error generando análisis");
+    } finally {
+      setGeneratingAi(false);
+    }
+  };
+
   const handleAddCaseAgreement = (t: SupportTicket) => {
     if (!newCaseAgreement.trim()) return;
     const updated = [...(t.case_agreements || []), newCaseAgreement.trim()];
@@ -179,42 +234,6 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
     setTipoFilter("all");
     setResponsableFilter("all");
     setPrioridadFilter("all");
-  };
-
-  const renderEditableText = (t: SupportTicket, field: "notas" | "ai_summary", value: string, editValue: string, setEditValue: (v: string) => void, placeholder: string) => {
-    const isEditing = editingField === field;
-    return (
-      <div>
-        <div className="flex items-center justify-between mb-1.5">
-          <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{field === "notas" ? "Notas" : "Resumen IA"}</span>
-          {isEditing ? (
-            <div className="flex gap-1">
-              <Button size="icon" variant="ghost" className="h-6 w-6" disabled={saving}
-                onClick={() => handleSaveText(t.id, field, editValue)}>
-                {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3 text-primary" />}
-              </Button>
-              <Button size="icon" variant="ghost" className="h-6 w-6"
-                onClick={() => setEditingField(null)}>
-                <X className="h-3 w-3" />
-              </Button>
-            </div>
-          ) : (
-            <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2 text-primary"
-              onClick={() => { setEditingField(field); setEditValue(value || ""); }}>
-              Editar
-            </Button>
-          )}
-        </div>
-        {isEditing ? (
-          <Textarea value={editValue} onChange={e => setEditValue(e.target.value)}
-            className="text-xs min-h-[80px]" placeholder={placeholder} />
-        ) : (
-          <p className={`text-xs rounded-lg p-3 border ${value ? "text-foreground bg-card border-border/50" : "text-muted-foreground italic bg-muted/20 border-border/30"}`}>
-            {value || placeholder}
-          </p>
-        )}
-      </div>
-    );
   };
 
   return (
@@ -313,7 +332,7 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
 
       {/* Detail Sheet/Popup */}
       <Sheet open={!!selectedTicket} onOpenChange={open => { if (!open) setSelectedTicket(null); }}>
-        <SheetContent className="w-full sm:max-w-[520px] overflow-y-auto p-0">
+        <SheetContent className="w-full sm:max-w-[560px] overflow-y-auto p-0">
           {selectedTicket && (() => {
             const t = selectedTicket;
             const relatedItems = getRelatedItems(t);
@@ -344,16 +363,6 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
                     <span className={`flex items-center gap-1 font-bold ${t.dias_antiguedad > 365 ? "text-destructive" : t.dias_antiguedad > 90 ? "text-warning" : ""}`}>
                       <Clock className="h-3 w-3" />{t.dias_antiguedad} días
                     </span>
-                    {t.ai_classification && (
-                      <Badge variant="outline" className={`text-[9px] ${aiRiskColors[t.ai_risk_level || ""] || "border-violet-500/40 text-violet-400"}`}>
-                        <Brain className="h-2.5 w-2.5 mr-0.5" />{t.ai_classification}
-                      </Badge>
-                    )}
-                    {totalItems > 0 && (
-                      <Badge variant="outline" className="text-[9px] border-emerald-500/30 text-emerald-400">
-                        <CheckSquare className="h-2.5 w-2.5 mr-0.5" />{totalItems} items
-                      </Badge>
-                    )}
                   </div>
                 </div>
 
@@ -362,7 +371,7 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
                   <Tabs defaultValue="info" className="w-full">
                     <TabsList className="w-full h-8 bg-muted/50">
                       <TabsTrigger value="info" className="text-[11px] h-6 px-3 gap-1 flex-1"><FileText className="h-3 w-3" />Gestión</TabsTrigger>
-                      <TabsTrigger value="notas" className="text-[11px] h-6 px-3 gap-1 flex-1"><Tag className="h-3 w-3" />Notas & IA</TabsTrigger>
+                      <TabsTrigger value="ai" className="text-[11px] h-6 px-3 gap-1 flex-1"><Brain className="h-3 w-3" />IA</TabsTrigger>
                       <TabsTrigger value="acuerdos" className="text-[11px] h-6 px-3 gap-1 flex-1">
                         <CheckSquare className="h-3 w-3" />Acuerdos
                         {totalItems > 0 && <Badge variant="secondary" className="text-[9px] h-4 px-1 ml-0.5">{totalItems}</Badge>}
@@ -428,82 +437,198 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
                           </div>
                         </div>
                       </div>
-                    </TabsContent>
 
-                    {/* Tab: Notas & IA */}
-                    <TabsContent value="notas" className="mt-4 space-y-4">
-                      {renderEditableText(t, "notas", t.notas || "", editNotas, setEditNotas, "Sin notas")}
-                      <div className="space-y-2">
-                        {t.ai_classification && (
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Badge variant="outline" className="text-[10px] border-violet-500/40 text-violet-400">
-                              <Brain className="h-2.5 w-2.5 mr-1" />{t.ai_classification}
-                            </Badge>
-                            <Badge variant="outline" className={`text-[10px] ${aiRiskColors[t.ai_risk_level || ""] || ""}`}>
-                              Riesgo: {aiRiskLabels[t.ai_risk_level || ""] || t.ai_risk_level || "—"}
-                            </Badge>
-                          </div>
+                      {/* Notas inline */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Notas</span>
+                          {editingField === "notas" ? (
+                            <div className="flex gap-1">
+                              <Button size="icon" variant="ghost" className="h-6 w-6" disabled={saving}
+                                onClick={() => handleSaveText(t.id, "notas", editNotas)}>
+                                {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3 text-primary" />}
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditingField(null)}><X className="h-3 w-3" /></Button>
+                            </div>
+                          ) : (
+                            <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2 text-primary"
+                              onClick={() => { setEditingField("notas"); setEditNotas(t.notas || ""); }}>Editar</Button>
+                          )}
+                        </div>
+                        {editingField === "notas" ? (
+                          <Textarea value={editNotas} onChange={e => setEditNotas(e.target.value)}
+                            className="text-xs min-h-[60px]" placeholder="Agregar notas..." />
+                        ) : (
+                          <p className={`text-xs rounded-lg p-2.5 border ${t.notas ? "text-foreground bg-card border-border/50" : "text-muted-foreground italic bg-muted/20 border-border/30"}`}>
+                            {t.notas || "Sin notas"}
+                          </p>
                         )}
-                        {renderEditableText(t, "ai_summary", t.ai_summary || "", editAiSummary, setEditAiSummary, "Sin resumen IA")}
                       </div>
                     </TabsContent>
 
-                    {/* Tab: Acuerdos y Acciones */}
-                    <TabsContent value="acuerdos" className="mt-4 space-y-4">
+                    {/* Tab: IA - Improved */}
+                    <TabsContent value="ai" className="mt-4 space-y-4">
+                      {/* AI Generate Button */}
+                      <div className="rounded-xl border-2 border-dashed border-primary/20 bg-primary/5 p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                            <Sparkles className="h-5 w-5 text-primary" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-xs font-bold text-foreground mb-1">Análisis Inteligente del Caso</p>
+                            <p className="text-[10px] text-muted-foreground mb-3">
+                              La IA analizará el caso, generará un resumen ejecutivo, clasificación de riesgo y recomendaciones.
+                            </p>
+                            <Button
+                              size="sm"
+                              className="gap-1.5 text-xs"
+                              onClick={() => handleGenerateAiAnalysis(t)}
+                              disabled={generatingAi}
+                            >
+                              {generatingAi ? (
+                                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Analizando...</>
+                              ) : (
+                                <><Zap className="h-3.5 w-3.5" /> {t.ai_summary ? "Regenerar Análisis" : "Generar Análisis IA"}</>
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* AI Classification badges */}
+                      {(t.ai_classification || t.ai_risk_level) && (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {t.ai_classification && (
+                            <Badge variant="outline" className="text-[10px] border-violet-500/40 text-violet-400 gap-1">
+                              <Brain className="h-2.5 w-2.5" />{t.ai_classification}
+                            </Badge>
+                          )}
+                          {t.ai_risk_level && (
+                            <Badge variant="outline" className={`text-[10px] gap-1 ${aiRiskColors[t.ai_risk_level] || ""}`}>
+                              <AlertTriangle className="h-2.5 w-2.5" />
+                              Riesgo: {aiRiskLabels[t.ai_risk_level] || t.ai_risk_level}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+
+                      {/* AI Summary */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                            <Brain className="h-3 w-3" /> Resumen IA
+                          </span>
+                          {editingField === "ai_summary" ? (
+                            <div className="flex gap-1">
+                              <Button size="icon" variant="ghost" className="h-6 w-6" disabled={saving}
+                                onClick={() => handleSaveText(t.id, "ai_summary", editAiSummary)}>
+                                {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3 text-primary" />}
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditingField(null)}><X className="h-3 w-3" /></Button>
+                            </div>
+                          ) : (
+                            <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2 text-primary"
+                              onClick={() => { setEditingField("ai_summary"); setEditAiSummary(t.ai_summary || ""); }}>Editar</Button>
+                          )}
+                        </div>
+                        {editingField === "ai_summary" ? (
+                          <Textarea value={editAiSummary} onChange={e => setEditAiSummary(e.target.value)}
+                            className="text-xs min-h-[100px]" placeholder="Resumen generado por IA..." />
+                        ) : t.ai_summary ? (
+                          <div className="text-xs rounded-xl p-4 bg-gradient-to-br from-violet-500/5 to-primary/5 border border-violet-500/20 text-foreground leading-relaxed whitespace-pre-wrap">
+                            {t.ai_summary}
+                          </div>
+                        ) : (
+                          <div className="text-center py-6 rounded-xl border border-dashed border-border">
+                            <Brain className="h-8 w-8 text-muted-foreground/20 mx-auto mb-2" />
+                            <p className="text-[11px] text-muted-foreground">Sin análisis IA aún</p>
+                            <p className="text-[10px] text-muted-foreground/60">Presiona "Generar Análisis IA" arriba</p>
+                          </div>
+                        )}
+                      </div>
+                    </TabsContent>
+
+                    {/* Tab: Acuerdos y Acciones - Improved UX */}
+                    <TabsContent value="acuerdos" className="mt-4 space-y-5">
                       {/* Case-specific agreements */}
                       <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                            <CheckSquare className="h-3 w-3" /> Acuerdos del Caso
-                          </span>
-                          <Badge variant="secondary" className="text-[9px]">{caseAgreements.length}</Badge>
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="h-6 w-6 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                            <CheckSquare className="h-3.5 w-3.5 text-emerald-400" />
+                          </div>
+                          <span className="text-xs font-bold text-foreground">Acuerdos del Caso</span>
+                          <Badge variant="secondary" className="text-[9px] h-4">{caseAgreements.length}</Badge>
                         </div>
-                        <div className="space-y-1.5 mb-2">
+                        <div className="space-y-2 mb-3">
                           {caseAgreements.map((a, idx) => (
-                            <div key={idx} className="flex items-start gap-2 text-xs p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/20 group">
-                              <CheckSquare className="h-3 w-3 text-emerald-400 mt-0.5 shrink-0" />
-                              <span className="flex-1 text-foreground">{a}</span>
-                              <button onClick={() => handleRemoveCaseAgreement(t, idx)} className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
+                            <motion.div
+                              key={idx}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              className="flex items-start gap-3 text-xs p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/15 group hover:border-emerald-500/30 transition-colors"
+                            >
+                              <div className="h-5 w-5 rounded-md bg-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                                <CheckSquare className="h-3 w-3 text-emerald-400" />
+                              </div>
+                              <span className="flex-1 text-foreground leading-relaxed">{a}</span>
+                              <button onClick={() => handleRemoveCaseAgreement(t, idx)} className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-1 rounded-md hover:bg-destructive/10">
                                 <Trash2 className="h-3 w-3" />
                               </button>
-                            </div>
+                            </motion.div>
                           ))}
+                          {caseAgreements.length === 0 && (
+                            <p className="text-[11px] text-muted-foreground/60 italic pl-1">Sin acuerdos aún</p>
+                          )}
                         </div>
-                        <div className="flex gap-1.5">
-                          <Input className="text-xs h-7 flex-1" placeholder="Agregar acuerdo..." value={newCaseAgreement}
+                        <div className="flex gap-2">
+                          <Input className="text-xs h-8 flex-1 rounded-lg" placeholder="Nuevo acuerdo..." value={newCaseAgreement}
                             onChange={e => setNewCaseAgreement(e.target.value)}
                             onKeyDown={e => { if (e.key === "Enter") handleAddCaseAgreement(t); }} />
-                          <Button size="sm" variant="outline" className="h-7 text-[10px] px-2 gap-1 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                          <Button size="sm" className="h-8 text-[11px] px-3 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
                             disabled={!newCaseAgreement.trim()} onClick={() => handleAddCaseAgreement(t)}>
                             <Plus className="h-3 w-3" /> Agregar
                           </Button>
                         </div>
                       </div>
 
+                      {/* Divider */}
+                      <div className="border-t border-border/50" />
+
                       {/* Case-specific actions */}
                       <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-[11px] font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
-                            <ArrowRight className="h-3 w-3" /> Acciones del Caso
-                          </span>
-                          <Badge variant="secondary" className="text-[9px]">{caseActions.length}</Badge>
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="h-6 w-6 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                            <ArrowRight className="h-3.5 w-3.5 text-blue-400" />
+                          </div>
+                          <span className="text-xs font-bold text-foreground">Acciones / Próximos Pasos</span>
+                          <Badge variant="secondary" className="text-[9px] h-4">{caseActions.length}</Badge>
                         </div>
-                        <div className="space-y-1.5 mb-2">
+                        <div className="space-y-2 mb-3">
                           {caseActions.map((a, idx) => (
-                            <div key={idx} className="flex items-start gap-2 text-xs p-2.5 rounded-lg bg-blue-500/5 border border-blue-500/20 group">
-                              <ArrowRight className="h-3 w-3 text-blue-400 mt-0.5 shrink-0" />
-                              <span className="flex-1 text-foreground">{a}</span>
-                              <button onClick={() => handleRemoveCaseAction(t, idx)} className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
+                            <motion.div
+                              key={idx}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              className="flex items-start gap-3 text-xs p-3 rounded-xl bg-blue-500/5 border border-blue-500/15 group hover:border-blue-500/30 transition-colors"
+                            >
+                              <div className="h-5 w-5 rounded-md bg-blue-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                                <ArrowRight className="h-3 w-3 text-blue-400" />
+                              </div>
+                              <span className="flex-1 text-foreground leading-relaxed">{a}</span>
+                              <button onClick={() => handleRemoveCaseAction(t, idx)} className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-1 rounded-md hover:bg-destructive/10">
                                 <Trash2 className="h-3 w-3" />
                               </button>
-                            </div>
+                            </motion.div>
                           ))}
+                          {caseActions.length === 0 && (
+                            <p className="text-[11px] text-muted-foreground/60 italic pl-1">Sin acciones aún</p>
+                          )}
                         </div>
-                        <div className="flex gap-1.5">
-                          <Input className="text-xs h-7 flex-1" placeholder="Agregar acción..." value={newCaseAction}
+                        <div className="flex gap-2">
+                          <Input className="text-xs h-8 flex-1 rounded-lg" placeholder="Nueva acción..." value={newCaseAction}
                             onChange={e => setNewCaseAction(e.target.value)}
                             onKeyDown={e => { if (e.key === "Enter") handleAddCaseAction(t); }} />
-                          <Button size="sm" variant="outline" className="h-7 text-[10px] px-2 gap-1 border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+                          <Button size="sm" className="h-8 text-[11px] px-3 gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
                             disabled={!newCaseAction.trim()} onClick={() => handleAddCaseAction(t)}>
                             <Plus className="h-3 w-3" /> Agregar
                           </Button>
@@ -512,41 +637,48 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
 
                       {/* Minutas-linked items */}
                       {relatedItems.length > 0 && (
-                        <div>
-                          <div className="flex items-center justify-between mb-2 mt-3">
-                            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                              <FileText className="h-3 w-3" /> Desde Minutas
-                            </span>
-                            <Badge variant="outline" className="text-[9px]">{relatedItems.length}</Badge>
-                          </div>
-                          <div className="space-y-1.5">
-                            {relatedItems.map((item, idx) => (
-                              <div key={idx} className="flex items-start gap-2.5 text-xs p-2.5 rounded-lg bg-card border border-border/50">
-                                <span className={`mt-0.5 shrink-0 ${item.type === "acuerdo" ? "text-emerald-400" : "text-blue-400"}`}>
-                                  {item.type === "acuerdo" ? <CheckSquare className="h-3 w-3" /> : <ArrowRight className="h-3 w-3" />}
-                                </span>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-foreground">{item.text}</p>
-                                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                    <Badge variant="outline" className={`text-[9px] ${item.type === "acuerdo" ? "border-emerald-500/30 text-emerald-400" : "border-blue-500/30 text-blue-400"}`}>
-                                      {item.type}
-                                    </Badge>
-                                    <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                      <Calendar className="h-2.5 w-2.5" />{new Date(item.date).toLocaleDateString("es")}
-                                    </span>
-                                    <span className="text-[10px] text-muted-foreground truncate">{item.minuta}</span>
+                        <>
+                          <div className="border-t border-border/50" />
+                          <div>
+                            <div className="flex items-center gap-2 mb-3">
+                              <div className="h-6 w-6 rounded-lg bg-muted/50 flex items-center justify-center">
+                                <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                              </div>
+                              <span className="text-xs font-bold text-foreground">Desde Minutas</span>
+                              <Badge variant="outline" className="text-[9px] h-4">{relatedItems.length}</Badge>
+                            </div>
+                            <div className="space-y-2">
+                              {relatedItems.map((item, idx) => (
+                                <div key={idx} className="flex items-start gap-3 text-xs p-3 rounded-xl bg-card border border-border/50">
+                                  <div className={`h-5 w-5 rounded-md flex items-center justify-center shrink-0 mt-0.5 ${item.type === "acuerdo" ? "bg-emerald-500/20" : "bg-blue-500/20"}`}>
+                                    {item.type === "acuerdo" ? <CheckSquare className="h-3 w-3 text-emerald-400" /> : <ArrowRight className="h-3 w-3 text-blue-400" />}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-foreground leading-relaxed">{item.text}</p>
+                                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                      <Badge variant="outline" className={`text-[9px] ${item.type === "acuerdo" ? "border-emerald-500/30 text-emerald-400" : "border-blue-500/30 text-blue-400"}`}>
+                                        {item.type}
+                                      </Badge>
+                                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                        <Calendar className="h-2.5 w-2.5" />{new Date(item.date).toLocaleDateString("es")}
+                                      </span>
+                                      <span className="text-[10px] text-muted-foreground truncate">{item.minuta}</span>
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            ))}
+                              ))}
+                            </div>
                           </div>
-                        </div>
+                        </>
                       )}
 
                       {totalItems === 0 && (
-                        <div className="text-center py-6">
-                          <CheckSquare className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-                          <p className="text-xs text-muted-foreground">No hay acuerdos ni acciones. Agrega uno arriba.</p>
+                        <div className="text-center py-8">
+                          <div className="h-12 w-12 rounded-2xl bg-muted/30 flex items-center justify-center mx-auto mb-3">
+                            <CheckSquare className="h-6 w-6 text-muted-foreground/30" />
+                          </div>
+                          <p className="text-xs text-muted-foreground font-medium">Sin acuerdos ni acciones</p>
+                          <p className="text-[10px] text-muted-foreground/60 mt-1">Agrega acuerdos o acciones usando los campos de arriba</p>
                         </div>
                       )}
                     </TabsContent>
