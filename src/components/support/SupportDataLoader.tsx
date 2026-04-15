@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Upload, FileSpreadsheet, FileText, ClipboardPaste, Loader2, CheckCircle2,
-  AlertTriangle, Clock, Trash2, X
+  AlertTriangle, Clock, Trash2, X, Sparkles
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -99,7 +100,9 @@ export function SupportDataLoader({ clientId }: Props) {
   const [rawText, setRawText] = useState("");
   const [parsedData, setParsedData] = useState<ParsedTicket[]>([]);
   const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState<{ success: number; errors: number } | null>(null);
+  const [classifyAfter, setClassifyAfter] = useState(true);
+  const [classifying, setClassifying] = useState(false);
+  const [importResult, setImportResult] = useState<{ success: number; errors: number; classified?: number } | null>(null);
 
   // Last update info per client
   const [lastUpdates, setLastUpdates] = useState<Record<string, { date: string; count: number; source: string }>>({});
@@ -156,7 +159,6 @@ export function SupportDataLoader({ clientId }: Props) {
     setImporting(true);
     let success = 0, errors = 0;
 
-    // Batch insert
     const batch = parsedData.map(t => ({
       client_id: selectedClient,
       ticket_id: t.ticket_id,
@@ -178,7 +180,6 @@ export function SupportDataLoader({ clientId }: Props) {
     );
 
     if (error) {
-      // Fallback: insert one by one
       for (const ticket of batch) {
         const { error: err } = await supabase.from("support_tickets").upsert([ticket] as any, { onConflict: "client_id,ticket_id" });
         if (err) errors++;
@@ -188,7 +189,6 @@ export function SupportDataLoader({ clientId }: Props) {
       success = batch.length;
     }
 
-    // Record update
     await supabase.from("support_data_updates").insert([{
       client_id: selectedClient,
       records_count: success,
@@ -197,13 +197,35 @@ export function SupportDataLoader({ clientId }: Props) {
     }] as any);
 
     setImporting(false);
-    setImportResult({ success, errors });
     qc.invalidateQueries({ queryKey: ["support-tickets"] });
     qc.invalidateQueries({ queryKey: ["support-tickets-all"] });
 
     if (success > 0) toast.success(`${success} tickets importados exitosamente`);
     if (errors > 0) toast.error(`${errors} tickets con errores`);
-  }, [selectedClient, parsedData, mode, qc]);
+
+    // Auto-classify with AI after import
+    let classified = 0;
+    if (classifyAfter && success > 0) {
+      setClassifying(true);
+      try {
+        const { data: classResult, error: classErr } = await supabase.functions.invoke("classify-tickets", {
+          body: { clientId: selectedClient },
+        });
+        if (!classErr && classResult?.classified) {
+          classified = classResult.classified;
+          toast.success(`${classified} tickets clasificados con IA`);
+          qc.invalidateQueries({ queryKey: ["support-tickets"] });
+          qc.invalidateQueries({ queryKey: ["support-tickets-all"] });
+        }
+      } catch {
+        toast.error("Error al clasificar con IA");
+      } finally {
+        setClassifying(false);
+      }
+    }
+
+    setImportResult({ success, errors, classified });
+  }, [selectedClient, parsedData, mode, qc, classifyAfter]);
 
   const selectedClientName = clients.find(c => c.id === selectedClient)?.name || "";
 
@@ -328,13 +350,18 @@ BOL-001\tError en módulo\tIncidente\tAlta\tEN ATENCIÓN\tSAP\t45`}
                       <span className="text-xs font-semibold">{parsedData.length} registros listos</span>
                       {selectedClientName && <Badge variant="secondary" className="text-[10px]">{selectedClientName}</Badge>}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-3">
+                      <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground cursor-pointer">
+                        <Checkbox checked={classifyAfter} onCheckedChange={(v) => setClassifyAfter(!!v)} className="h-3.5 w-3.5" />
+                        <Sparkles className="h-3 w-3 text-violet-400" />
+                        Clasificar con IA después
+                      </label>
                       <Button size="sm" variant="ghost" className="h-7 text-[10px] text-muted-foreground" onClick={() => { setParsedData([]); setRawText(""); }}>
                         <Trash2 className="h-3 w-3 mr-1" /> Limpiar
                       </Button>
-                      <Button size="sm" className="h-7 text-[10px] gap-1" onClick={handleImport} disabled={importing || !selectedClient}>
-                        {importing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
-                        {importing ? "Importando..." : "Importar"}
+                      <Button size="sm" className="h-7 text-[10px] gap-1" onClick={handleImport} disabled={importing || classifying || !selectedClient}>
+                        {importing ? <Loader2 className="h-3 w-3 animate-spin" /> : classifying ? <Sparkles className="h-3 w-3 animate-pulse text-violet-400" /> : <Upload className="h-3 w-3" />}
+                        {importing ? "Importando..." : classifying ? "Clasificando IA..." : "Importar"}
                       </Button>
                     </div>
                   </div>
