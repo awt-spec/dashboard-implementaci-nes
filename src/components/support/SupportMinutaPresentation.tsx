@@ -454,10 +454,10 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
             </div>
           </div>
         )}
-        {minuta.summary && localAgreements.length + caseAgreements.length < 4 && (
+        {localSummary && localAgreements.length + caseAgreements.length < 4 && (
           <div className="mt-[40px] border-t-[2px] border-[#eee] pt-[24px]">
             <p className="text-[16px] font-bold text-[#999] uppercase tracking-[2px] mb-[12px]">Resumen Ejecutivo</p>
-            <p className="text-[20px] text-[#666] leading-[1.6] line-clamp-3">{minuta.summary}</p>
+            <p className="text-[20px] text-[#666] leading-[1.6] line-clamp-3">{localSummary}</p>
           </div>
         )}
       </div>
