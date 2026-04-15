@@ -693,7 +693,7 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <SupportCaseTable tickets={tickets} clientName={clientName} />
+              <SupportCaseTable tickets={tickets} clientName={clientName} teamMembers={selectedClientObj?.team_assigned || []} />
             </CardContent>
           </Card>
         </TabsContent>
