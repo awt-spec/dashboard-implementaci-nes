@@ -655,6 +655,11 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Data Import Tab */}
+        <TabsContent value="import" className="mt-4">
+          <SupportDataLoader clientId={selectedClient !== "all" ? selectedClient : undefined} />
+        </TabsContent>
       </Tabs>
     </div>
   );
