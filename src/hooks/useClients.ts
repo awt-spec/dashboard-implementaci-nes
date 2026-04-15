@@ -168,6 +168,7 @@ async function fetchClients(): Promise<Client[]> {
       contractEnd: c.contract_end,
       status: c.status as Client["status"],
       progress: c.progress,
+      client_type: c.client_type,
       teamAssigned: c.team_assigned,
       phases: phasesData
         .filter(p => p.client_id === c.id)
