@@ -179,7 +179,7 @@ export function ExecutivePresentation({ clients, supportTickets = [], supportCli
         <p className="text-[20px] font-bold text-[#c0392b] uppercase tracking-[2px]">SINCRONIZACIÓN</p>
         <h2 className="text-[48px] font-bold text-[#333] mt-[8px] mb-[40px]">Progreso por Cliente</h2>
         <div className="space-y-[28px]">
-          {clients.map((c, i) => {
+          {implClients.map((c, i) => {
             const barColor = c.status === "en-riesgo" ? "#c0392b" : c.progress >= 80 ? "#27ae60" : c.progress >= 40 ? "#e67e22" : "#3b82f6";
             const statusLabel = c.status === "activo" ? "Activo" : c.status === "en-riesgo" ? "En Riesgo" : c.status === "completado" ? "Completado" : "Pausado";
             const statusColor = c.status === "en-riesgo" ? "#c0392b" : c.status === "activo" ? "#27ae60" : c.status === "completado" ? "#3b82f6" : "#999";
@@ -216,7 +216,7 @@ export function ExecutivePresentation({ clients, supportTickets = [], supportCli
             <div className="w-[140px] px-[16px] py-[16px] text-[18px] font-bold text-white text-center border-l border-white/10">Pendientes</div>
             <div className="w-[140px] px-[16px] py-[16px] text-[18px] font-bold text-white text-center border-l border-white/10">Bloqueadas</div>
           </div>
-          {clients.map((c, i) => {
+          {implClients.map((c, i) => {
             const comp = c.tasks.filter(t => t.status === "completada").length;
             const prog = c.tasks.filter(t => t.status === "en-progreso").length;
             const pend = c.tasks.filter(t => t.status === "pendiente").length;
@@ -262,7 +262,7 @@ export function ExecutivePresentation({ clients, supportTickets = [], supportCli
             <div className="w-[140px] px-[16px] py-[16px] text-[18px] font-bold text-white text-center border-l border-white/10">En Revisión</div>
             <div className="w-[140px] px-[16px] py-[16px] text-[18px] font-bold text-white text-center border-l border-white/10">Pendientes</div>
           </div>
-          {clients.map((c, i) => (
+          {implClients.map((c, i) => (
             <motion.div key={c.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
               className={cn("flex border-b border-[#f0f0f0]", i % 2 === 0 ? "bg-white" : "bg-[#fafafa]")}>
               <div className="flex-1 px-[24px] py-[18px] text-[20px] text-[#333] font-medium">{c.name}</div>
@@ -285,7 +285,7 @@ export function ExecutivePresentation({ clients, supportTickets = [], supportCli
         <p className="text-[20px] font-bold text-[#c0392b] uppercase tracking-[2px]">ALERTAS</p>
         <h2 className="text-[44px] font-bold text-[#333] mt-[8px] mb-[32px]">Riesgos Abiertos por Cliente</h2>
         <div className="space-y-[20px]">
-          {clients.filter(c => c.risks.some(r => r.status === "abierto")).map((c, ci) => (
+          {implClients.filter(c => c.risks.some(r => r.status === "abierto")).map((c, ci) => (
             <motion.div key={c.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: ci * 0.08 }}>
               <div className="flex items-center gap-[16px] mb-[12px]">
                 <span className="text-[24px] font-bold text-[#333]">{c.name}</span>
