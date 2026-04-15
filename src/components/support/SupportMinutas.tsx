@@ -7,11 +7,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   FileText, Plus, Calendar, Sparkles, Loader2, ChevronDown, ChevronUp, Trash2,
-  Users, CheckSquare, ArrowRight, Presentation, Edit3, Save, X, UserPlus, AlertTriangle
+  Users, CheckSquare, ArrowRight, Presentation, Edit3, Save, X, UserPlus, AlertTriangle, Share2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { SupportMinutaPresentation } from "./SupportMinutaPresentation";
+import { ShareSupportPresentationDialog } from "./ShareSupportPresentationDialog";
 import { toast } from "sonner";
 import type { SupportTicket } from "@/hooks/useSupportTickets";
 
@@ -41,6 +42,7 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
   const [generating, setGenerating] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [presentationId, setPresentationId] = useState<string | null>(null);
+  const [shareMinutaId, setShareMinutaId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [selectedCaseIds, setSelectedCaseIds] = useState<string[]>([]);
