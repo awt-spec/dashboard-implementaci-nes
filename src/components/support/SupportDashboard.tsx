@@ -18,6 +18,9 @@ import {
 import { useSupportClients, useAllSupportTickets, type SupportTicket } from "@/hooks/useSupportTickets";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { SupportChartBuilder } from "./SupportChartBuilder";
+import { SupportCaseTable } from "./SupportCaseTable";
+import { SupportClientHeatmap } from "./SupportClientHeatmap";
 
 const prioridadColors: Record<string, string> = {
   "Critica, Impacto Negocio": "bg-red-600 text-white",
