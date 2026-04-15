@@ -540,8 +540,17 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
 
   const slides = [slidePortada, slideMetricas, slideCriticos, slideDetalle, slideAcuerdos, slideAcciones, slideCierre];
 
-  const editorColor = editorType === "agreements" ? "#27ae60" : "#e67e22";
-  const editorTitle = editorType === "agreements" ? "Editar Acuerdos" : "Editar Acciones";
+  const editorColorMap: Record<string, string> = { agreements: "#27ae60", actions: "#e67e22", summary: "#3498db", title: "#8e44ad" };
+  const editorTitleMap: Record<string, string> = { agreements: "Editar Acuerdos", actions: "Editar Acciones", summary: "Editar Resumen", title: "Editar Portada" };
+  const editorColor = editorColorMap[editorType] || "#3498db";
+  const editorTitleText = editorTitleMap[editorType] || "Editar";
+
+  const getSlideEditorType = (slide: number): "title" | "summary" | "agreements" | "actions" | null => {
+    if (slide === 0) return "title";
+    if (slide === 4) return "agreements";
+    if (slide === 5) return "actions";
+    return null;
+  };
 
   return (
     <AnimatePresence>
