@@ -3,7 +3,7 @@ import { type Client } from "@/data/projectData";
 import { Button } from "@/components/ui/button";
 import {
   ChevronLeft, ChevronRight, Maximize2, Minimize2, X, Download,
-  BarChart3, AlertTriangle, FileCheck, Users, TrendingUp, CheckCircle2
+  BarChart3, AlertTriangle, FileCheck, Users, TrendingUp, CheckCircle2, Headset, Clock
 } from "lucide-react";
 import sysdeLogo from "@/assets/sysde_default_logo.png";
 import { motion, AnimatePresence } from "framer-motion";
@@ -12,27 +12,48 @@ import { toast } from "sonner";
 import {
   SlideLayout, ScaledSlide, SysdeLogo, EditDisabledContext,
 } from "@/components/clients/presentation/slideHelpers";
+import type { SupportTicket } from "@/hooks/useSupportTickets";
 
 interface ExecutivePresentationProps {
   clients: Client[];
+  supportTickets?: SupportTicket[];
+  supportClients?: { id: string; name: string }[];
   open: boolean;
   onClose: () => void;
 }
 
-export function ExecutivePresentation({ clients, open, onClose }: ExecutivePresentationProps) {
+export function ExecutivePresentation({ clients, supportTickets = [], supportClients = [], open, onClose }: ExecutivePresentationProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const slideRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const activeClients = clients.filter(c => c.status === "activo").length;
-  const atRisk = clients.filter(c => c.status === "en-riesgo").length;
-  const completed = clients.filter(c => c.status === "completado").length;
-  const avgProgress = Math.round(clients.reduce((s, c) => s + c.progress, 0) / clients.length);
-  const allTasks = clients.flatMap(c => c.tasks);
-  const totalRisks = clients.reduce((s, c) => s + c.risks.filter(r => r.status === "abierto").length, 0);
-  const allDeliverables = clients.flatMap(c => c.deliverables);
+  // Implementation metrics
+  const implClients = clients.filter(c => c.client_type === "implementacion");
+  const activeClients = implClients.filter(c => c.status === "activo").length;
+  const atRisk = implClients.filter(c => c.status === "en-riesgo").length;
+  const completed = implClients.filter(c => c.status === "completado").length;
+  const avgProgress = implClients.length > 0 ? Math.round(implClients.reduce((s, c) => s + c.progress, 0) / implClients.length) : 0;
+  const allTasks = implClients.flatMap(c => c.tasks);
+  const totalRisks = implClients.reduce((s, c) => s + c.risks.filter(r => r.status === "abierto").length, 0);
+  const allDeliverables = implClients.flatMap(c => c.deliverables);
+
+  // Support metrics
+  const activeTickets = supportTickets.filter(t => !["CERRADA", "ANULADA"].includes(t.estado));
+  const criticalTickets = supportTickets.filter(t => t.prioridad.includes("Critica") || t.prioridad === "Alta");
+  const oldTickets = supportTickets.filter(t => t.dias_antiguedad > 365);
+  const aiClassified = supportTickets.filter(t => t.ai_classification).length;
+  const ticketsByClient: Record<string, { name: string; total: number; open: number; critical: number }> = {};
+  supportTickets.forEach(t => {
+    const sc = supportClients.find(c => c.id === t.client_id);
+    const name = sc?.name || t.client_id;
+    if (!ticketsByClient[t.client_id]) ticketsByClient[t.client_id] = { name, total: 0, open: 0, critical: 0 };
+    ticketsByClient[t.client_id].total++;
+    if (!["CERRADA", "ANULADA"].includes(t.estado)) ticketsByClient[t.client_id].open++;
+    if (t.prioridad.includes("Critica") || t.prioridad === "Alta") ticketsByClient[t.client_id].critical++;
+  });
+  const hasSupportData = supportTickets.length > 0;
 
   const slideNames = ["Portada", "KPIs", "Progreso", "Tareas", "Entregables", "Riesgos", "Cierre"];
   const totalSlides = slideNames.length;
