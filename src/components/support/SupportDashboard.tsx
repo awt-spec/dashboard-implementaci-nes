@@ -481,7 +481,7 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
                       <Pie
                         data={(() => {
                           const counts: Record<string, number> = {};
-                          filteredActive.forEach(t => { if (t.producto) counts[t.producto] = (counts[t.producto] || 0) + 1; });
+                          chartTickets.forEach(t => { if (t.producto) counts[t.producto] = (counts[t.producto] || 0) + 1; });
                           return Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
                         })()}
                         innerRadius={50} outerRadius={80} dataKey="value" strokeWidth={0}
