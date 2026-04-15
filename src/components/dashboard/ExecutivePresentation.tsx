@@ -132,7 +132,7 @@ export function ExecutivePresentation({ clients, supportTickets = [], supportCli
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
             <p className="text-[20px] text-[#999] uppercase tracking-[4px] mb-[16px]">SERVICIOS Y TECNOLOGÍA QUE GENERAN VALOR A LA INDUSTRIA FINANCIERA</p>
             <h1 className="text-[64px] font-bold text-[#333] leading-[1.1] mb-[32px]">Resumen Ejecutivo Global</h1>
-            <h2 className="text-[48px] font-extrabold text-[#c0392b] mb-[40px]">{clients.length} Implementaciones</h2>
+            <h2 className="text-[48px] font-extrabold text-[#c0392b] mb-[40px]">{implClients.length} Implementaciones{hasSupportData ? ` · ${supportClients.length} Soporte` : ""}</h2>
             <div className="w-[80px] h-[4px] bg-[#c0392b] mb-[40px]" />
             <p className="text-[24px] text-[#666] mb-[8px]">{new Date().toLocaleDateString("es", { day: "2-digit", month: "long", year: "numeric" })}</p>
           </motion.div>
