@@ -34,7 +34,8 @@ interface AppSidebarProps {
 export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) {
   const { data: clientsData } = useClients();
   const { role, profile, signOut } = useAuth();
-  const clients = clientsData || [];
+  const allClients = clientsData || [];
+  const clients = allClients.filter((c: any) => !c.client_type || c.client_type === "implementacion");
 
   // Build nav items based on role
   const mainNav = [
