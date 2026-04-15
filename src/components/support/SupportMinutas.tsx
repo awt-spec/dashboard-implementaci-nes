@@ -48,6 +48,10 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
   const [newAttendee, setNewAttendee] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<Minuta>>({});
+  const [manualAgreements, setManualAgreements] = useState<string[]>([]);
+  const [manualActions, setManualActions] = useState<string[]>([]);
+  const [newAgreement, setNewAgreement] = useState("");
+  const [newAction, setNewAction] = useState("");
 
   useEffect(() => {
     setLoading(true);
@@ -102,8 +106,8 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
         date: now.split("T")[0],
         summary: parsed.summary || "",
         cases_referenced: parsed.cases_highlighted || casesToUse.map(t => t.ticket_id),
-        action_items: parsed.action_items || [],
-        agreements: parsed.agreements || [],
+        action_items: [...manualActions, ...(parsed.action_items || [])],
+        agreements: [...manualAgreements, ...(parsed.agreements || [])],
         attendees: selectedAttendees,
       };
 
@@ -116,6 +120,10 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
       setNewTitle("");
       setSelectedCaseIds([]);
       setSelectedAttendees([]);
+      setManualAgreements([]);
+      setManualActions([]);
+      setNewAgreement("");
+      setNewAction("");
       setPresentationId((inserted as any).id);
       toast.success("Minuta generada exitosamente");
     } catch (e: any) {
@@ -283,6 +291,50 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
                         </label>
                       );
                     })}
+                  </div>
+                </div>
+
+                {/* Manual Agreements */}
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1"><CheckSquare className="h-3 w-3" /> Acuerdos previos (opcional)</p>
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {manualAgreements.map((a, i) => (
+                      <Badge key={i} variant="outline" className="text-xs gap-1 pr-1 border-emerald-500/30 text-emerald-400">
+                        {a}
+                        <button onClick={() => setManualAgreements(prev => prev.filter((_, j) => j !== i))} className="ml-0.5 hover:text-destructive"><X className="h-3 w-3" /></button>
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input placeholder="Ej: Se acuerda priorizar caso X..." value={newAgreement} onChange={e => setNewAgreement(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter" && newAgreement.trim()) { e.preventDefault(); setManualAgreements(prev => [...prev, newAgreement.trim()]); setNewAgreement(""); } }}
+                      className="text-xs flex-1" />
+                    <Button size="sm" variant="outline" className="text-xs gap-1 shrink-0" disabled={!newAgreement.trim()}
+                      onClick={() => { setManualAgreements(prev => [...prev, newAgreement.trim()]); setNewAgreement(""); }}>
+                      <Plus className="h-3 w-3" /> Agregar
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Manual Actions */}
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1"><ArrowRight className="h-3 w-3" /> Acciones previas (opcional)</p>
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {manualActions.map((a, i) => (
+                      <Badge key={i} variant="outline" className="text-xs gap-1 pr-1 border-blue-500/30 text-blue-400">
+                        {a}
+                        <button onClick={() => setManualActions(prev => prev.filter((_, j) => j !== i))} className="ml-0.5 hover:text-destructive"><X className="h-3 w-3" /></button>
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input placeholder="Ej: Enviar reporte a cliente..." value={newAction} onChange={e => setNewAction(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter" && newAction.trim()) { e.preventDefault(); setManualActions(prev => [...prev, newAction.trim()]); setNewAction(""); } }}
+                      className="text-xs flex-1" />
+                    <Button size="sm" variant="outline" className="text-xs gap-1 shrink-0" disabled={!newAction.trim()}
+                      onClick={() => { setManualActions(prev => [...prev, newAction.trim()]); setNewAction(""); }}>
+                      <Plus className="h-3 w-3" /> Agregar
+                    </Button>
                   </div>
                 </div>
 

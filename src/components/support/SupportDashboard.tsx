@@ -23,6 +23,7 @@ import { SupportCaseTable } from "./SupportCaseTable";
 import { SupportClientHeatmap } from "./SupportClientHeatmap";
 import { SupportDataLoader } from "./SupportDataLoader";
 import { SupportMinutas } from "./SupportMinutas";
+import { SupportAgreementsTab } from "./SupportAgreementsTab";
 
 const prioridadColors: Record<string, string> = {
   "Critica, Impacto Negocio": "bg-red-600 text-white",
@@ -335,6 +336,7 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
           <TabsTrigger value="ai">Clasificación IA</TabsTrigger>
           <TabsTrigger value="cases">Detalle de Casos</TabsTrigger>
           <TabsTrigger value="minutas">Minutas</TabsTrigger>
+          {(isClientView || selectedClient !== "all") && <TabsTrigger value="acuerdos">Acuerdos</TabsTrigger>}
           {!isClientView && <TabsTrigger value="import">Cargar Datos</TabsTrigger>}
         </TabsList>
 
@@ -719,7 +721,19 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
           )}
         </TabsContent>
 
-        {/* Data Import Tab */}
+        {/* Acuerdos Tab */}
+        <TabsContent value="acuerdos" className="mt-4">
+          {(isClientView || selectedClient !== "all") ? (
+            <SupportAgreementsTab clientId={isClientView ? initialClientId! : selectedClient} />
+          ) : (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <FileText className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">Selecciona un cliente para ver acuerdos y acciones</p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
         <TabsContent value="import" className="mt-4">
           <SupportDataLoader clientId={isClientView ? initialClientId : (selectedClient !== "all" ? selectedClient : undefined)} />
         </TabsContent>
