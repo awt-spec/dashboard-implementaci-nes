@@ -72,7 +72,7 @@ interface SupportDashboardProps {
 export function SupportDashboard({ initialClientId, onBack }: SupportDashboardProps) {
   const { data: clients = [] } = useSupportClients();
   const { data: allTickets = [], isLoading, refetch } = useAllSupportTickets();
-  const [selectedClient, setSelectedClient] = useState<string>(initialClientId || "all");
+  const [selectedClient, setSelectedClient] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [prioridadFilter, setPrioridadFilter] = useState<string>("all");
   const [classifying, setClassifying] = useState(false);
