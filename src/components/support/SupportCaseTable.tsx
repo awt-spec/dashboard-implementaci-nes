@@ -9,7 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import {
   ChevronDown, Brain, Calendar, User, Tag, FileText,
   AlertTriangle, Save, Loader2, CheckSquare, ArrowRight, Clock,
-  Package, Wrench, Search, Filter, X
+  Package, Wrench, Search, Filter, X, Plus, Trash2
 } from "lucide-react";
 import type { SupportTicket } from "@/hooks/useSupportTickets";
 import { useUpdateSupportTicket } from "@/hooks/useSupportTickets";
@@ -66,6 +66,10 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
   const [minutas, setMinutas] = useState<any[]>([]);
   const updateTicket = useUpdateSupportTicket();
 
+  // Case-specific agreements/actions
+  const [newCaseAgreement, setNewCaseAgreement] = useState("");
+  const [newCaseAction, setNewCaseAction] = useState("");
+
   // Filters
   const [searchFilter, setSearchFilter] = useState("");
   const [estadoFilter, setEstadoFilter] = useState("all");
@@ -98,7 +102,6 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
       .then(({ data }) => { if (data) setMinutas(data); });
   }, [tickets]);
 
-  // Keep selectedTicket in sync with latest data
   useEffect(() => {
     if (selectedTicket) {
       const updated = tickets.find(t => t.id === selectedTicket.id);
@@ -121,6 +124,40 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
         onSuccess: () => { toast.success("Guardado"); setEditingField(null); setSaving(false); },
         onError: () => { toast.error("Error al guardar"); setSaving(false); },
       }
+    );
+  };
+
+  const handleAddCaseAgreement = (t: SupportTicket) => {
+    if (!newCaseAgreement.trim()) return;
+    const updated = [...(t.case_agreements || []), newCaseAgreement.trim()];
+    updateTicket.mutate(
+      { id: t.id, updates: { case_agreements: updated } },
+      { onSuccess: () => { toast.success("Acuerdo agregado"); setNewCaseAgreement(""); } }
+    );
+  };
+
+  const handleRemoveCaseAgreement = (t: SupportTicket, idx: number) => {
+    const updated = (t.case_agreements || []).filter((_, i) => i !== idx);
+    updateTicket.mutate(
+      { id: t.id, updates: { case_agreements: updated } },
+      { onSuccess: () => toast.success("Acuerdo eliminado") }
+    );
+  };
+
+  const handleAddCaseAction = (t: SupportTicket) => {
+    if (!newCaseAction.trim()) return;
+    const updated = [...(t.case_actions || []), newCaseAction.trim()];
+    updateTicket.mutate(
+      { id: t.id, updates: { case_actions: updated } },
+      { onSuccess: () => { toast.success("Acción agregada"); setNewCaseAction(""); } }
+    );
+  };
+
+  const handleRemoveCaseAction = (t: SupportTicket, idx: number) => {
+    const updated = (t.case_actions || []).filter((_, i) => i !== idx);
+    updateTicket.mutate(
+      { id: t.id, updates: { case_actions: updated } },
+      { onSuccess: () => toast.success("Acción eliminada") }
     );
   };
 
@@ -250,7 +287,7 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
                 <tr
                   key={t.id}
                   className={`border-b border-border/50 hover:bg-muted/30 cursor-pointer transition-colors ${isClosed ? "opacity-50" : ""}`}
-                  onClick={() => { setSelectedTicket(t); setEditingField(null); }}
+                  onClick={() => { setSelectedTicket(t); setEditingField(null); setNewCaseAgreement(""); setNewCaseAction(""); }}
                 >
                   <td className="p-2 font-mono font-bold whitespace-nowrap">{t.ticket_id}</td>
                   <td className="p-2 whitespace-nowrap">{clientName(t.client_id)}</td>
@@ -280,6 +317,9 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
           {selectedTicket && (() => {
             const t = selectedTicket;
             const relatedItems = getRelatedItems(t);
+            const caseAgreements = t.case_agreements || [];
+            const caseActions = t.case_actions || [];
+            const totalItems = relatedItems.length + caseAgreements.length + caseActions.length;
             return (
               <div className="flex flex-col h-full">
                 {/* Header */}
@@ -309,9 +349,9 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
                         <Brain className="h-2.5 w-2.5 mr-0.5" />{t.ai_classification}
                       </Badge>
                     )}
-                    {relatedItems.length > 0 && (
+                    {totalItems > 0 && (
                       <Badge variant="outline" className="text-[9px] border-emerald-500/30 text-emerald-400">
-                        <CheckSquare className="h-2.5 w-2.5 mr-0.5" />{relatedItems.length} acuerdos
+                        <CheckSquare className="h-2.5 w-2.5 mr-0.5" />{totalItems} items
                       </Badge>
                     )}
                   </div>
@@ -325,7 +365,7 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
                       <TabsTrigger value="notas" className="text-[11px] h-6 px-3 gap-1 flex-1"><Tag className="h-3 w-3" />Notas & IA</TabsTrigger>
                       <TabsTrigger value="acuerdos" className="text-[11px] h-6 px-3 gap-1 flex-1">
                         <CheckSquare className="h-3 w-3" />Acuerdos
-                        {relatedItems.length > 0 && <Badge variant="secondary" className="text-[9px] h-4 px-1 ml-0.5">{relatedItems.length}</Badge>}
+                        {totalItems > 0 && <Badge variant="secondary" className="text-[9px] h-4 px-1 ml-0.5">{totalItems}</Badge>}
                       </TabsTrigger>
                     </TabsList>
 
@@ -408,35 +448,105 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
                       </div>
                     </TabsContent>
 
-                    {/* Tab: Acuerdos */}
-                    <TabsContent value="acuerdos" className="mt-4">
-                      {relatedItems.length === 0 ? (
-                        <div className="text-center py-8">
-                          <CheckSquare className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-                          <p className="text-xs text-muted-foreground">No hay acuerdos ni acciones vinculados a este caso.</p>
-                          <p className="text-[10px] text-muted-foreground mt-1">Se vincularán automáticamente al incluir este caso en una minuta.</p>
+                    {/* Tab: Acuerdos y Acciones */}
+                    <TabsContent value="acuerdos" className="mt-4 space-y-4">
+                      {/* Case-specific agreements */}
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <CheckSquare className="h-3 w-3" /> Acuerdos del Caso
+                          </span>
+                          <Badge variant="secondary" className="text-[9px]">{caseAgreements.length}</Badge>
                         </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {relatedItems.map((item, idx) => (
-                            <div key={idx} className="flex items-start gap-2.5 text-xs p-3 rounded-lg bg-card border border-border/50 hover:border-primary/20 transition-colors">
-                              <span className={`mt-0.5 shrink-0 ${item.type === "acuerdo" ? "text-emerald-400" : "text-blue-400"}`}>
-                                {item.type === "acuerdo" ? <CheckSquare className="h-3.5 w-3.5" /> : <ArrowRight className="h-3.5 w-3.5" />}
-                              </span>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-foreground leading-relaxed">{item.text}</p>
-                                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                                  <Badge variant="outline" className={`text-[9px] ${item.type === "acuerdo" ? "border-emerald-500/30 text-emerald-400" : "border-blue-500/30 text-blue-400"}`}>
-                                    {item.type}
-                                  </Badge>
-                                  <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                    <Calendar className="h-2.5 w-2.5" />{new Date(item.date).toLocaleDateString("es")}
-                                  </span>
-                                  <span className="text-[10px] text-muted-foreground truncate">{item.minuta}</span>
-                                </div>
-                              </div>
+                        <div className="space-y-1.5 mb-2">
+                          {caseAgreements.map((a, idx) => (
+                            <div key={idx} className="flex items-start gap-2 text-xs p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/20 group">
+                              <CheckSquare className="h-3 w-3 text-emerald-400 mt-0.5 shrink-0" />
+                              <span className="flex-1 text-foreground">{a}</span>
+                              <button onClick={() => handleRemoveCaseAgreement(t, idx)} className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
+                                <Trash2 className="h-3 w-3" />
+                              </button>
                             </div>
                           ))}
+                        </div>
+                        <div className="flex gap-1.5">
+                          <Input className="text-xs h-7 flex-1" placeholder="Agregar acuerdo..." value={newCaseAgreement}
+                            onChange={e => setNewCaseAgreement(e.target.value)}
+                            onKeyDown={e => { if (e.key === "Enter") handleAddCaseAgreement(t); }} />
+                          <Button size="sm" variant="outline" className="h-7 text-[10px] px-2 gap-1 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                            disabled={!newCaseAgreement.trim()} onClick={() => handleAddCaseAgreement(t)}>
+                            <Plus className="h-3 w-3" /> Agregar
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Case-specific actions */}
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <ArrowRight className="h-3 w-3" /> Acciones del Caso
+                          </span>
+                          <Badge variant="secondary" className="text-[9px]">{caseActions.length}</Badge>
+                        </div>
+                        <div className="space-y-1.5 mb-2">
+                          {caseActions.map((a, idx) => (
+                            <div key={idx} className="flex items-start gap-2 text-xs p-2.5 rounded-lg bg-blue-500/5 border border-blue-500/20 group">
+                              <ArrowRight className="h-3 w-3 text-blue-400 mt-0.5 shrink-0" />
+                              <span className="flex-1 text-foreground">{a}</span>
+                              <button onClick={() => handleRemoveCaseAction(t, idx)} className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex gap-1.5">
+                          <Input className="text-xs h-7 flex-1" placeholder="Agregar acción..." value={newCaseAction}
+                            onChange={e => setNewCaseAction(e.target.value)}
+                            onKeyDown={e => { if (e.key === "Enter") handleAddCaseAction(t); }} />
+                          <Button size="sm" variant="outline" className="h-7 text-[10px] px-2 gap-1 border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+                            disabled={!newCaseAction.trim()} onClick={() => handleAddCaseAction(t)}>
+                            <Plus className="h-3 w-3" /> Agregar
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Minutas-linked items */}
+                      {relatedItems.length > 0 && (
+                        <div>
+                          <div className="flex items-center justify-between mb-2 mt-3">
+                            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                              <FileText className="h-3 w-3" /> Desde Minutas
+                            </span>
+                            <Badge variant="outline" className="text-[9px]">{relatedItems.length}</Badge>
+                          </div>
+                          <div className="space-y-1.5">
+                            {relatedItems.map((item, idx) => (
+                              <div key={idx} className="flex items-start gap-2.5 text-xs p-2.5 rounded-lg bg-card border border-border/50">
+                                <span className={`mt-0.5 shrink-0 ${item.type === "acuerdo" ? "text-emerald-400" : "text-blue-400"}`}>
+                                  {item.type === "acuerdo" ? <CheckSquare className="h-3 w-3" /> : <ArrowRight className="h-3 w-3" />}
+                                </span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-foreground">{item.text}</p>
+                                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                    <Badge variant="outline" className={`text-[9px] ${item.type === "acuerdo" ? "border-emerald-500/30 text-emerald-400" : "border-blue-500/30 text-blue-400"}`}>
+                                      {item.type}
+                                    </Badge>
+                                    <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                      <Calendar className="h-2.5 w-2.5" />{new Date(item.date).toLocaleDateString("es")}
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground truncate">{item.minuta}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {totalItems === 0 && (
+                        <div className="text-center py-6">
+                          <CheckSquare className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                          <p className="text-xs text-muted-foreground">No hay acuerdos ni acciones. Agrega uno arriba.</p>
                         </div>
                       )}
                     </TabsContent>
