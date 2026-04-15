@@ -367,10 +367,10 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
 
   // Gather case-level agreements/actions
   const caseAgreements = effectiveCases.flatMap(t =>
-    (t.case_agreements || []).map(a => ({ text: a, ticketId: t.ticket_id }))
+    (t.case_agreements || []).map(a => ({ text: a.text, responsible: a.responsible, date: a.date, priority: a.priority, ticketId: t.ticket_id }))
   );
   const caseActions = effectiveCases.flatMap(t =>
-    (t.case_actions || []).map(a => ({ text: a, ticketId: t.ticket_id }))
+    (t.case_actions || []).map(a => ({ text: a.text, responsible: a.responsible, date: a.date, priority: a.priority, ticketId: t.ticket_id }))
   );
 
   const slideAcuerdos = (
