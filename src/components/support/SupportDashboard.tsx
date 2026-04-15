@@ -79,9 +79,6 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
 
   const isClientView = !!initialClientId;
 
-  useEffect(() => {
-    if (initialClientId) setSelectedClient(initialClientId);
-  }, [initialClientId]);
 
   const tickets = useMemo(() => {
     let t = allTickets;
