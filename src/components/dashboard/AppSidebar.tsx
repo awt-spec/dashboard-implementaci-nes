@@ -35,7 +35,8 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
   const { data: clientsData } = useClients();
   const { role, profile, signOut } = useAuth();
   const allClients = clientsData || [];
-  const clients = allClients.filter((c: any) => !c.client_type || c.client_type === "implementacion");
+  const implClients = allClients.filter((c: any) => !c.client_type || c.client_type === "implementacion");
+  const supportClients = allClients.filter((c: any) => c.client_type === "soporte");
 
   // Build nav items based on role
   const mainNav = [
@@ -81,10 +82,10 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
           <>
             <Separator className="bg-sidebar-border mx-2" />
             <SidebarGroup>
-              <SidebarGroupLabel className="text-sidebar-foreground/50">Clientes</SidebarGroupLabel>
+              <SidebarGroupLabel className="text-sidebar-foreground/50">Implementación</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {clients.map(client => (
+                  {implClients.map(client => (
                     <SidebarMenuItem key={client.id}>
                       <SidebarMenuButton
                         onClick={() => onSectionChange(`client-${client.id}`)}
@@ -93,6 +94,27 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
                       >
                         <div className={`w-2 h-2 rounded-full shrink-0 ${statusDot[client.status]}`} />
                         <span className="truncate text-xs">{client.name.split(" ").slice(0, 2).join(" ")}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <Separator className="bg-sidebar-border mx-2" />
+            <SidebarGroup>
+              <SidebarGroupLabel className="text-sidebar-foreground/50">Soporte</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {supportClients.map(client => (
+                    <SidebarMenuItem key={client.id}>
+                      <SidebarMenuButton
+                        onClick={() => onSectionChange(`support-client-${client.id}`)}
+                        isActive={activeSection === `support-client-${client.id}`}
+                        tooltip={client.name}
+                      >
+                        <div className={`w-2 h-2 rounded-full shrink-0 ${statusDot[client.status]}`} />
+                        <span className="truncate text-xs">{client.name}</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}

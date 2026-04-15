@@ -61,6 +61,10 @@ const Index = () => {
     ? clientData.find(c => c.id === activeSection.replace("client-", ""))
     : null;
 
+  const selectedSupportClientId = activeSection.startsWith("support-client-")
+    ? activeSection.replace("support-client-", "")
+    : null;
+
   // For gerente: find their assigned client
   const gerenteClient = role === "gerente" && assignedClientId
     ? clientData.find(c => c.id === assignedClientId)
@@ -73,6 +77,10 @@ const Index = () => {
     if (activeSection === "soporte") return "Soporte — Dashboard de Boletas";
     if (activeSection === "tasks") return "Tareas Global";
     if (activeSection === "users") return "Gestión de Usuarios";
+    if (selectedSupportClientId) {
+      const sc = clientData.find(c => c.id === selectedSupportClientId);
+      return sc ? `Soporte — ${sc.name}` : "Soporte — Cliente";
+    }
     if (selectedClient) return selectedClient.name;
     return "Dashboard";
   };
@@ -113,6 +121,7 @@ const Index = () => {
               {activeSection === "overview" && role !== "gerente" && <ExecutiveOverview />}
               {activeSection === "tasks" && <TasksDashboard />}
               {activeSection === "soporte" && <SupportDashboard />}
+              {selectedSupportClientId && <SupportDashboard initialClientId={selectedSupportClientId} />}
               {activeSection === "users" && <AdminUsers />}
               {activeSection === "clients" && (
                 <ClientList
