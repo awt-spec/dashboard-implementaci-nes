@@ -175,6 +175,14 @@ export function SupportDashboard({ initialClientId }: SupportDashboardProps) {
 
   const clientName = (id: string) => clients.find(c => c.id === id)?.name || id;
 
+  // Tickets enriched with client name for chart builder
+  const ticketsWithClientName = useMemo(() =>
+    tickets.map(t => ({ ...t, client_name: clientName(t.client_id) })),
+    [tickets, clients]
+  );
+
+  const selectedClientName = selectedClient !== "all" ? clientName(selectedClient) : "";
+
   // AI Classification handler
   const handleClassify = useCallback(async () => {
     setClassifying(true);
