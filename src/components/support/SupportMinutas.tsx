@@ -190,6 +190,7 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
           clientName={clientName}
           open={!!presentationId}
           onClose={() => setPresentationId(null)}
+          onMinutaUpdated={fetchMinutas}
         />
       )}
     <div className="space-y-4">
