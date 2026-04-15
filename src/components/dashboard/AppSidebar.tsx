@@ -35,7 +35,8 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
   const { data: clientsData } = useClients();
   const { role, profile, signOut } = useAuth();
   const allClients = clientsData || [];
-  const clients = allClients.filter((c: any) => !c.client_type || c.client_type === "implementacion");
+  const implClients = allClients.filter((c: any) => !c.client_type || c.client_type === "implementacion");
+  const supportClients = allClients.filter((c: any) => c.client_type === "soporte");
 
   // Build nav items based on role
   const mainNav = [
