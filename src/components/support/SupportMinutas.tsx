@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -192,7 +192,7 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
           clientName={clientName}
           open={!!presentationId}
           onClose={() => setPresentationId(null)}
-          onMinutaUpdated={fetchMinutas}
+          onMinutaUpdated={loadMinutas}
         />
       )}
     <div className="space-y-4">
