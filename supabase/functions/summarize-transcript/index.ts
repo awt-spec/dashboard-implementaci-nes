@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,6 +14,13 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const model = "google/gemini-3-flash-preview";
+    const startTime = Date.now();
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -20,7 +28,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model,
         messages: [
           {
             role: "system",
@@ -82,7 +90,22 @@ Extrae los asistentes mencionados, los acuerdos tomados, los pendientes y cualqu
       }),
     });
 
+    const elapsed = Date.now() - startTime;
+
     if (!response.ok) {
+      const errorText = await response.text();
+      
+      await supabase.from("ai_usage_logs").insert({
+        function_name: "summarize-transcript",
+        model,
+        prompt_tokens: 0,
+        completion_tokens: 0,
+        total_tokens: 0,
+        status: "error",
+        error_message: `HTTP ${response.status}: ${errorText.slice(0, 200)}`,
+        metadata: { client_name: clientName, elapsed_ms: elapsed },
+      });
+
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Límite de solicitudes excedido. Intenta de nuevo en un momento." }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -93,8 +116,7 @@ Extrae los asistentes mencionados, los acuerdos tomados, los pendientes y cualqu
           status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
+      console.error("AI gateway error:", response.status, errorText);
       return new Response(JSON.stringify({ error: "Error del servicio de IA" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -102,6 +124,22 @@ Extrae los asistentes mencionados, los acuerdos tomados, los pendientes y cualqu
 
     const data = await response.json();
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+
+    const usage = data.usage || {};
+    const promptTokens = usage.prompt_tokens || 0;
+    const completionTokens = usage.completion_tokens || 0;
+    const totalTokens = usage.total_tokens || (promptTokens + completionTokens);
+
+    // Log successful AI call
+    await supabase.from("ai_usage_logs").insert({
+      function_name: "summarize-transcript",
+      model,
+      prompt_tokens: promptTokens,
+      completion_tokens: completionTokens,
+      total_tokens: totalTokens,
+      status: "success",
+      metadata: { client_name: clientName, elapsed_ms: elapsed },
+    });
     
     if (toolCall?.function?.arguments) {
       const result = JSON.parse(toolCall.function.arguments);
@@ -110,7 +148,6 @@ Extrae los asistentes mencionados, los acuerdos tomados, los pendientes y cualqu
       });
     }
 
-    // Fallback: try to parse content as JSON
     const content = data.choices?.[0]?.message?.content;
     if (content) {
       try {
