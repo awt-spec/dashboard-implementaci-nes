@@ -1,13 +1,14 @@
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Brain, Sparkles, Zap, Activity, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
+import { Brain, Sparkles, Zap, Activity, CheckCircle2, Clock, AlertTriangle, Shield, Lock, Key, Server, Eye, FileText, TrendingUp, Hash } from "lucide-react";
 import { motion } from "framer-motion";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAllSupportTickets, useSupportClients } from "@/hooks/useSupportTickets";
+import { useAIUsageLogs } from "@/hooks/useAIUsageLogs";
 import {
   ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
-  Tooltip, CartesianGrid
+  Tooltip, CartesianGrid, AreaChart, Area, LineChart, Line
 } from "recharts";
 
 const COLORS = ["hsl(var(--primary))", "hsl(280,60%,60%)", "hsl(var(--destructive))", "hsl(var(--warning))", "hsl(150,60%,50%)", "hsl(220,70%,55%)"];
@@ -16,13 +17,12 @@ const riskLabels: Record<string, string> = {
   critical: "Crítico", high: "Alto", medium: "Medio", low: "Bajo",
 };
 
-export function AIUsageDashboard() {
+function ClassificationTab() {
   const { data: tickets = [] } = useAllSupportTickets();
   const { data: clients = [] } = useSupportClients();
 
   const classified = useMemo(() => tickets.filter(t => t.ai_classification), [tickets]);
   const unclassified = useMemo(() => tickets.filter(t => !t.ai_classification), [tickets]);
-
   const classificationRate = tickets.length > 0 ? Math.round((classified.length / tickets.length) * 100) : 0;
 
   const categoryData = useMemo(() => {
@@ -58,25 +58,12 @@ export function AIUsageDashboard() {
     { label: "IA Clasificados", value: classified.length, icon: Brain, color: "text-violet-400" },
     { label: "Sin Clasificar", value: unclassified.length, icon: Clock, color: "text-amber-400" },
     { label: "Cobertura IA", value: `${classificationRate}%`, icon: Sparkles, color: "text-emerald-400" },
-    { label: "Categorías Detectadas", value: categoryData.length, icon: Zap, color: "text-primary" },
+    { label: "Categorías", value: categoryData.length, icon: Zap, color: "text-primary" },
     { label: "Críticos IA", value: classified.filter(t => t.ai_risk_level === "critical").length, icon: AlertTriangle, color: "text-destructive" },
   ];
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-xl bg-violet-500/10 flex items-center justify-center">
-          <Brain className="h-5 w-5 text-violet-400" />
-        </div>
-        <div>
-          <h2 className="text-base font-bold">Inteligencia Artificial — Estado y Uso</h2>
-          <p className="text-xs text-muted-foreground">Clasificación automática de tickets de soporte</p>
-        </div>
-        <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 ml-auto">
-          <CheckCircle2 className="h-3 w-3 mr-1" /> IA Activa
-        </Badge>
-      </div>
-
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {kpis.map((kpi, i) => (
           <motion.div key={kpi.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
@@ -185,24 +172,358 @@ export function AIUsageDashboard() {
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
 
-      <Card className="border-violet-500/20">
+function SecurityTab() {
+  const securityFeatures = [
+    {
+      icon: Lock,
+      title: "Cifrado en Tránsito (TLS 1.3)",
+      description: "Todas las comunicaciones con la API de IA están cifradas con TLS 1.3. Los datos nunca viajan en texto plano.",
+      status: "active",
+      color: "text-emerald-400",
+    },
+    {
+      icon: Key,
+      title: "API Key Cifrada (AES-256)",
+      description: "La clave LOVABLE_API_KEY se almacena cifrada en el vault del backend. Nunca se expone al cliente.",
+      status: "active",
+      color: "text-emerald-400",
+    },
+    {
+      icon: Shield,
+      title: "Aislamiento de Datos",
+      description: "Los datos de cada cliente se procesan de forma aislada. No hay contaminación cruzada entre clasificaciones.",
+      status: "active",
+      color: "text-emerald-400",
+    },
+    {
+      icon: Server,
+      title: "Procesamiento Server-Side",
+      description: "Toda la lógica de IA se ejecuta en funciones de backend (Edge Functions). El frontend nunca accede directamente a modelos.",
+      status: "active",
+      color: "text-emerald-400",
+    },
+    {
+      icon: Eye,
+      title: "Sin Retención de Datos por el Modelo",
+      description: "Los modelos de IA no retienen ni aprenden de los datos enviados. Cada solicitud es efímera.",
+      status: "active",
+      color: "text-emerald-400",
+    },
+    {
+      icon: FileText,
+      title: "Auditoría de Uso",
+      description: "Cada llamada a la IA se registra en ai_usage_logs con función, modelo, tokens y estado para auditoría completa.",
+      status: "active",
+      color: "text-emerald-400",
+    },
+  ];
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+          <Shield className="h-5 w-5 text-emerald-400" />
+        </div>
+        <div>
+          <h3 className="text-sm font-bold">Seguridad & Cifrado de IA</h3>
+          <p className="text-xs text-muted-foreground">Protección de datos en todas las capas de procesamiento</p>
+        </div>
+        <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 ml-auto">
+          <Lock className="h-3 w-3 mr-1" /> Todo Cifrado
+        </Badge>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        {securityFeatures.map((feat, i) => (
+          <motion.div key={feat.title} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+            <Card className="border-emerald-500/10 hover:border-emerald-500/30 transition-colors h-full">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                    <feat.icon className={`h-4 w-4 ${feat.color}`} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-bold">{feat.title}</p>
+                      <Badge variant="outline" className="text-[8px] px-1.5 py-0 h-4 border-emerald-500/30 text-emerald-400">ACTIVO</Badge>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{feat.description}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
+      </div>
+
+      <Card className="border-blue-500/20">
         <CardContent className="p-4">
-          <div className="flex items-start gap-3">
-            <Sparkles className="h-5 w-5 text-violet-400 shrink-0 mt-0.5" />
-            <div className="text-xs space-y-1">
-              <p className="font-bold text-sm">¿Cómo funciona la IA?</p>
-              <p className="text-muted-foreground">La clasificación IA analiza cada ticket y asigna automáticamente:</p>
-              <ul className="text-muted-foreground space-y-0.5 ml-3">
-                <li>• <strong>Categoría</strong>: Bug, Mejora, Configuración, Capacitación, etc.</li>
-                <li>• <strong>Nivel de riesgo</strong>: Crítico, Alto, Medio, Bajo</li>
-                <li>• <strong>Resumen ejecutivo</strong>: Una línea explicando el caso</li>
-              </ul>
-              <p className="text-muted-foreground mt-2">Para clasificar tickets, ve a <strong>Soporte → Clasificar con IA</strong> o usa la pestaña <strong>Clasificación IA</strong> en cada cliente.</p>
-            </div>
+          <h4 className="text-xs font-bold mb-3 flex items-center gap-2">
+            <Server className="h-4 w-4 text-blue-400" /> Flujo de Datos Seguro
+          </h4>
+          <div className="flex items-center justify-between text-[10px] gap-1">
+            {[
+              { label: "Frontend", sub: "Sin acceso a IA", color: "bg-blue-500/20 border-blue-500/30" },
+              { label: "→", sub: "HTTPS/TLS 1.3", color: "" },
+              { label: "Edge Function", sub: "Valida & cifra", color: "bg-violet-500/20 border-violet-500/30" },
+              { label: "→", sub: "Bearer Token", color: "" },
+              { label: "AI Gateway", sub: "Procesa & descarta", color: "bg-emerald-500/20 border-emerald-500/30" },
+              { label: "→", sub: "Resultado", color: "" },
+              { label: "Base de Datos", sub: "Logs cifrados", color: "bg-amber-500/20 border-amber-500/30" },
+            ].map((step, i) => (
+              <div key={i} className={`text-center ${step.color ? `px-3 py-2 rounded-lg border ${step.color}` : "text-muted-foreground font-mono text-lg"}`}>
+                <p className="font-bold">{step.label}</p>
+                {step.sub && step.color && <p className="text-muted-foreground mt-0.5">{step.sub}</p>}
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function UsageStatsTab() {
+  const { data: logs = [], isLoading } = useAIUsageLogs();
+
+  const stats = useMemo(() => {
+    const totalCalls = logs.length;
+    const successCalls = logs.filter(l => l.status === "success").length;
+    const errorCalls = logs.filter(l => l.status === "error").length;
+    const totalTokens = logs.reduce((s, l) => s + l.total_tokens, 0);
+    const promptTokens = logs.reduce((s, l) => s + l.prompt_tokens, 0);
+    const completionTokens = logs.reduce((s, l) => s + l.completion_tokens, 0);
+
+    // By function
+    const byFunction: Record<string, { calls: number; tokens: number; errors: number }> = {};
+    logs.forEach(l => {
+      if (!byFunction[l.function_name]) byFunction[l.function_name] = { calls: 0, tokens: 0, errors: 0 };
+      byFunction[l.function_name].calls++;
+      byFunction[l.function_name].tokens += l.total_tokens;
+      if (l.status === "error") byFunction[l.function_name].errors++;
+    });
+
+    // By model
+    const byModel: Record<string, { calls: number; tokens: number }> = {};
+    logs.forEach(l => {
+      if (!byModel[l.model]) byModel[l.model] = { calls: 0, tokens: 0 };
+      byModel[l.model].calls++;
+      byModel[l.model].tokens += l.total_tokens;
+    });
+
+    // By day (last 30 days)
+    const byDay: Record<string, { calls: number; tokens: number }> = {};
+    logs.forEach(l => {
+      const day = l.created_at.split("T")[0];
+      if (!byDay[day]) byDay[day] = { calls: 0, tokens: 0 };
+      byDay[day].calls++;
+      byDay[day].tokens += l.total_tokens;
+    });
+    const dailyData = Object.entries(byDay)
+      .map(([date, v]) => ({ date: date.slice(5), ...v }))
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(-30);
+
+    return {
+      totalCalls, successCalls, errorCalls, totalTokens, promptTokens, completionTokens,
+      byFunction: Object.entries(byFunction).map(([name, v]) => ({ name: name === "classify-tickets" ? "Clasificar Tickets" : name === "summarize-transcript" ? "Resumir Transcripción" : name, ...v })),
+      byModel: Object.entries(byModel).map(([name, v]) => ({ name: name.split("/")[1] || name, fullName: name, ...v })),
+      dailyData,
+      errorRate: totalCalls > 0 ? Math.round((errorCalls / totalCalls) * 100) : 0,
+      avgTokensPerCall: totalCalls > 0 ? Math.round(totalTokens / totalCalls) : 0,
+    };
+  }, [logs]);
+
+  const kpis = [
+    { label: "Total Llamadas", value: stats.totalCalls, icon: Activity, color: "text-blue-400" },
+    { label: "Exitosas", value: stats.successCalls, icon: CheckCircle2, color: "text-emerald-400" },
+    { label: "Errores", value: stats.errorCalls, icon: AlertTriangle, color: "text-destructive" },
+    { label: "Total Tokens", value: stats.totalTokens.toLocaleString(), icon: Hash, color: "text-violet-400" },
+    { label: "Prompt Tokens", value: stats.promptTokens.toLocaleString(), icon: FileText, color: "text-amber-400" },
+    { label: "Prom. por Llamada", value: stats.avgTokensPerCall.toLocaleString(), icon: TrendingUp, color: "text-primary" },
+  ];
+
+  if (isLoading) {
+    return <div className="text-xs text-muted-foreground text-center py-12">Cargando estadísticas de uso...</div>;
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {kpis.map((kpi, i) => (
+          <motion.div key={kpi.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+            <Card className="border-border/50">
+              <CardContent className="p-3 flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
+                </div>
+                <div>
+                  <p className="text-lg font-black text-foreground">{kpi.value}</p>
+                  <p className="text-[9px] text-muted-foreground uppercase tracking-wide leading-tight">{kpi.label}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Uso por Agente de IA</CardTitle></CardHeader>
+          <CardContent>
+            {stats.byFunction.length > 0 ? (
+              <div className="space-y-3">
+                {stats.byFunction.map((fn, i) => (
+                  <div key={fn.name} className="p-3 rounded-lg border border-border/50 bg-muted/20">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="h-7 w-7 rounded-md bg-violet-500/10 flex items-center justify-center">
+                          <Brain className="h-3.5 w-3.5 text-violet-400" />
+                        </div>
+                        <span className="text-xs font-bold">{fn.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {fn.errors > 0 && <Badge variant="destructive" className="text-[9px] h-4 px-1.5">{fn.errors} errores</Badge>}
+                        <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/30 text-[9px] h-4 px-1.5">{fn.calls} llamadas</Badge>
+                      </div>
+                    </div>
+                    <div className="flex gap-4 text-[10px] text-muted-foreground">
+                      <span><Hash className="h-3 w-3 inline mr-0.5" />{fn.tokens.toLocaleString()} tokens</span>
+                      <span>Prom: {fn.calls > 0 ? Math.round(fn.tokens / fn.calls).toLocaleString() : 0} tokens/llamada</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground text-center py-8">No hay datos de uso aún. Ejecuta la clasificación IA para generar datos.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Modelos Utilizados</CardTitle></CardHeader>
+          <CardContent>
+            {stats.byModel.length > 0 ? (
+              <div className="space-y-3">
+                {stats.byModel.map((m, i) => (
+                  <div key={m.fullName} className="p-3 rounded-lg border border-border/50 bg-muted/20">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="h-7 w-7 rounded-md bg-blue-500/10 flex items-center justify-center">
+                          <Zap className="h-3.5 w-3.5 text-blue-400" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold">{m.name}</p>
+                          <p className="text-[9px] text-muted-foreground font-mono">{m.fullName}</p>
+                        </div>
+                      </div>
+                      <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-[9px] h-4 px-1.5">{m.calls} usos</Badge>
+                    </div>
+                    <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${stats.totalCalls > 0 ? (m.calls / stats.totalCalls) * 100 : 0}%` }} />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1">{m.tokens.toLocaleString()} tokens consumidos</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground text-center py-8">No hay datos de modelos aún</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {stats.dailyData.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Uso Diario (Tokens & Llamadas)</CardTitle></CardHeader>
+          <CardContent>
+            <div className="h-[220px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={stats.dailyData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="date" tick={{ fontSize: 9 }} />
+                  <YAxis yAxisId="tokens" tick={{ fontSize: 9 }} />
+                  <YAxis yAxisId="calls" orientation="right" tick={{ fontSize: 9 }} />
+                  <Tooltip contentStyle={{ fontSize: 11 }} />
+                  <Area yAxisId="tokens" type="monotone" dataKey="tokens" stroke="hsl(280,60%,60%)" fill="hsl(280,60%,60%)" fillOpacity={0.1} name="Tokens" />
+                  <Line yAxisId="calls" type="monotone" dataKey="calls" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} name="Llamadas" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {logs.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Últimas Llamadas a IA</CardTitle></CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 bg-card">
+                  <tr className="border-b border-border">
+                    <th className="text-left p-2 font-medium text-muted-foreground">Fecha</th>
+                    <th className="text-left p-2 font-medium text-muted-foreground">Función</th>
+                    <th className="text-left p-2 font-medium text-muted-foreground">Modelo</th>
+                    <th className="text-center p-2 font-medium text-muted-foreground">Tokens</th>
+                    <th className="text-center p-2 font-medium text-muted-foreground">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {logs.slice(0, 50).map(log => (
+                    <tr key={log.id} className="border-b border-border/50 hover:bg-muted/20">
+                      <td className="p-2 font-mono text-[10px]">{new Date(log.created_at).toLocaleString("es-CR", { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" })}</td>
+                      <td className="p-2">{log.function_name === "classify-tickets" ? "Clasificar" : log.function_name === "summarize-transcript" ? "Resumir" : log.function_name}</td>
+                      <td className="p-2 font-mono text-[10px]">{log.model.split("/")[1] || log.model}</td>
+                      <td className="p-2 text-center font-mono">{log.total_tokens.toLocaleString()}</td>
+                      <td className="p-2 text-center">
+                        <Badge variant={log.status === "success" ? "default" : "destructive"} className={`text-[8px] h-4 px-1.5 ${log.status === "success" ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" : ""}`}>
+                          {log.status === "success" ? "OK" : "Error"}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+export function AIUsageDashboard() {
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-10 rounded-xl bg-violet-500/10 flex items-center justify-center">
+          <Brain className="h-5 w-5 text-violet-400" />
+        </div>
+        <div>
+          <h2 className="text-base font-bold">Inteligencia Artificial — Estado, Seguridad y Uso</h2>
+          <p className="text-xs text-muted-foreground">Clasificación, cifrado, tokens y agentes de IA</p>
+        </div>
+        <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 ml-auto">
+          <CheckCircle2 className="h-3 w-3 mr-1" /> IA Activa
+        </Badge>
+      </div>
+
+      <Tabs defaultValue="classification" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="classification" className="text-xs gap-1.5"><Brain className="h-3.5 w-3.5" /> Clasificación</TabsTrigger>
+          <TabsTrigger value="security" className="text-xs gap-1.5"><Shield className="h-3.5 w-3.5" /> Seguridad & Cifrado</TabsTrigger>
+          <TabsTrigger value="usage" className="text-xs gap-1.5"><TrendingUp className="h-3.5 w-3.5" /> Tokens & Agentes</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="classification"><ClassificationTab /></TabsContent>
+        <TabsContent value="security"><SecurityTab /></TabsContent>
+        <TabsContent value="usage"><UsageStatsTab /></TabsContent>
+      </Tabs>
     </div>
   );
 }

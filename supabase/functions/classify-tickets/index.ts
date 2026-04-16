@@ -19,13 +19,11 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch tickets to classify
-    let query = supabase.from("support_tickets").select("id, ticket_id, asunto, tipo, prioridad, estado, dias_antiguedad, producto, responsable, notas");
+    let query = supabase.from("support_tickets").select("id, ticket_id, asunto, tipo, prioridad, estado, dias_antiguedad, producto, responsable, notas, client_id");
     
     if (ticketIds && ticketIds.length > 0) {
       query = query.in("id", ticketIds);
     } else {
-      // Classify unclassified tickets only
       query = query.is("ai_classification", null).limit(50);
     }
 
@@ -37,10 +35,12 @@ serve(async (req) => {
       });
     }
 
-    // Build prompt for batch classification
     const ticketDescriptions = tickets.map((t: any) => 
       `ID:${t.ticket_id} | Asunto:${t.asunto} | Tipo:${t.tipo} | Prioridad:${t.prioridad} | Estado:${t.estado} | Días:${t.dias_antiguedad} | Producto:${t.producto} | Responsable:${t.responsable || 'N/A'} | Notas:${t.notas || 'N/A'}`
     ).join("\n");
+
+    const model = "google/gemini-3-flash-preview";
+    const startTime = Date.now();
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -49,7 +49,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model,
         messages: [
           {
             role: "system",
@@ -95,8 +95,24 @@ Responde SOLO con JSON válido sin markdown.`
       }),
     });
 
+    const elapsed = Date.now() - startTime;
+
     if (!response.ok) {
       const status = response.status;
+      const errorText = await response.text();
+      
+      // Log failed AI call
+      await supabase.from("ai_usage_logs").insert({
+        function_name: "classify-tickets",
+        model,
+        prompt_tokens: 0,
+        completion_tokens: 0,
+        total_tokens: 0,
+        status: "error",
+        error_message: `HTTP ${status}: ${errorText.slice(0, 200)}`,
+        metadata: { tickets_count: tickets.length, elapsed_ms: elapsed },
+      });
+
       if (status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -107,8 +123,7 @@ Responde SOLO con JSON válido sin markdown.`
           status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const text = await response.text();
-      console.error("AI error:", status, text);
+      console.error("AI error:", status, errorText);
       throw new Error(`AI gateway error: ${status}`);
     }
 
@@ -116,14 +131,22 @@ Responde SOLO con JSON válido sin markdown.`
     const toolCall = aiResult.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall) throw new Error("No tool call in AI response");
 
+    // Extract token usage
+    const usage = aiResult.usage || {};
+    const promptTokens = usage.prompt_tokens || 0;
+    const completionTokens = usage.completion_tokens || 0;
+    const totalTokens = usage.total_tokens || (promptTokens + completionTokens);
+
     const parsed = JSON.parse(toolCall.function.arguments);
     const results = parsed.results || [];
 
     // Update tickets in DB
     let classified = 0;
+    const clientIds = new Set<string>();
     for (const r of results) {
       const ticket = tickets.find((t: any) => t.ticket_id === r.ticket_id);
       if (!ticket) continue;
+      if (ticket.client_id) clientIds.add(ticket.client_id);
       
       const { error: updateError } = await supabase
         .from("support_tickets")
@@ -136,6 +159,18 @@ Responde SOLO con JSON válido sin markdown.`
       
       if (!updateError) classified++;
     }
+
+    // Log successful AI call
+    await supabase.from("ai_usage_logs").insert({
+      function_name: "classify-tickets",
+      model,
+      prompt_tokens: promptTokens,
+      completion_tokens: completionTokens,
+      total_tokens: totalTokens,
+      status: "success",
+      client_id: clientIds.size === 1 ? [...clientIds][0] : null,
+      metadata: { tickets_count: tickets.length, classified_count: classified, elapsed_ms: elapsed },
+    });
 
     return new Response(JSON.stringify({ classified, total: tickets.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
