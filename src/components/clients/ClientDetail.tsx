@@ -108,6 +108,29 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="gap-1.5 border-amber-500/30 text-amber-500 hover:bg-amber-500/10">
+                          <ArrowRightLeft className="h-3.5 w-3.5" /> A Soporte
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Transferir a Soporte</DialogTitle>
+                        </DialogHeader>
+                        <p className="text-sm text-muted-foreground">
+                          ¿Estás seguro de transferir <strong>{client.name}</strong> de Implementación a Soporte?
+                          El cliente aparecerá en el dashboard de soporte.
+                        </p>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setTransferOpen(false)}>Cancelar</Button>
+                          <Button onClick={handleTransferToSupport} disabled={transferring} className="gap-1.5">
+                            {transferring ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowRightLeft className="h-3.5 w-3.5" />}
+                            Transferir
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
                     <Button variant="outline" size="sm" onClick={() => exportClientPdf(client)} className="gap-1.5">
                       <Download className="h-3.5 w-3.5" /> Exportar PDF
                     </Button>
