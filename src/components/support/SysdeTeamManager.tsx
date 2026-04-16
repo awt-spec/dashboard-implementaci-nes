@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { UserPlus, Trash2, Users, Briefcase, Building2, Mail, CheckCircle2, XCircle, FileText, Sparkles } from "lucide-react";
+import { UserPlus, Trash2, Users, Briefcase, Building2, Mail, CheckCircle2, XCircle, FileText, Sparkles, KeyRound, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import {
@@ -17,6 +17,7 @@ import {
 } from "@/hooks/useTeamMembers";
 import { CVAnalysisDialog } from "@/components/admin/CVAnalysisDialog";
 import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const DEPARTMENTS = ["Soporte", "Desarrollo", "Consultoría", "QA", "Infraestructura", "Gerencia"];
 const ROLES = ["Consultor", "Desarrollador", "QA", "Líder Técnico", "Gerente", "Administrador"];
@@ -59,6 +60,27 @@ export function SysdeTeamManager() {
   const handleDelete = (id: string) => {
     if (!confirm("¿Eliminar este miembro?")) return;
     deleteMember.mutate(id, { onSuccess: () => toast.success("Eliminado") });
+  };
+
+  const handleCreateAccess = async (memberId: string, memberName: string, memberEmail: string) => {
+    if (!memberEmail) {
+      toast.error("Este miembro no tiene email asignado. Edítalo primero.");
+      return;
+    }
+    const password = prompt(`Crear acceso de login para ${memberName}\n\nEmail: ${memberEmail}\n\nIngresa una contraseña temporal (mín. 6 caracteres):`);
+    if (!password || password.length < 6) {
+      if (password !== null) toast.error("La contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+    const res = await supabase.functions.invoke("manage-users", {
+      body: { action: "create_team_access", team_member_id: memberId, password },
+    });
+    if (res.error || res.data?.error) {
+      toast.error(res.error?.message || res.data?.error || "Error al crear acceso");
+    } else {
+      toast.success(`Acceso creado. Comparte: ${memberEmail} / ${password}`);
+      qc.invalidateQueries({ queryKey: ["sysde-team-members"] });
+    }
   };
 
   const activeMembers = members.filter(m => m.is_active);
@@ -130,15 +152,16 @@ export function SysdeTeamManager() {
                 <TableHead>Rol</TableHead>
                 <TableHead>Departamento</TableHead>
                 <TableHead>CV / IA</TableHead>
+                <TableHead>Acceso</TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead className="w-[120px]">Acciones</TableHead>
+                <TableHead className="w-[140px]">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Cargando...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Cargando...</TableCell></TableRow>
               ) : members.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No hay miembros del equipo. Agrega el primer miembro.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No hay miembros del equipo. Agrega el primer miembro.</TableCell></TableRow>
               ) : members.map((m: any) => (
                 <TableRow key={m.id} className={!m.is_active ? "opacity-50" : ""}>
                   <TableCell className="font-medium">
@@ -168,6 +191,15 @@ export function SysdeTeamManager() {
                     )}
                   </TableCell>
                   <TableCell>
+                    {m.user_id ? (
+                      <Badge className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30 gap-1 text-[10px]">
+                        <ShieldCheck className="h-2.5 w-2.5" /> Activo
+                      </Badge>
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground">Sin acceso</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
                     <button onClick={() => handleToggleActive(m.id, m.is_active)} className="cursor-pointer">
                       {m.is_active ? (
                         <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 gap-1 text-[10px]">
@@ -182,6 +214,11 @@ export function SysdeTeamManager() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
+                      {!m.user_id && (
+                        <Button variant="ghost" size="icon" title="Crear acceso de login" onClick={() => handleCreateAccess(m.id, m.name, m.email)}>
+                          <KeyRound className="h-4 w-4 text-emerald-500" />
+                        </Button>
+                      )}
                       <Button variant="ghost" size="icon" title="Subir/Analizar CV" onClick={() => setCvMember(m)}>
                         <Sparkles className="h-4 w-4 text-primary" />
                       </Button>

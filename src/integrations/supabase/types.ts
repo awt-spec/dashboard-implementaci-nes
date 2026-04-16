@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       action_items: {
         Row: {
+          assigned_user_id: string | null
           assignee: string
           client_id: string
           created_at: string
@@ -32,6 +33,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          assigned_user_id?: string | null
           assignee: string
           client_id: string
           created_at?: string
@@ -48,6 +50,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          assigned_user_id?: string | null
           assignee?: string
           client_id?: string
           created_at?: string
@@ -1628,6 +1631,7 @@ export type Database = {
           ai_classification: string | null
           ai_risk_level: string | null
           ai_summary: string | null
+          assigned_user_id: string | null
           asunto: string
           backlog_rank: number | null
           business_value: number | null
@@ -1657,6 +1661,7 @@ export type Database = {
           ai_classification?: string | null
           ai_risk_level?: string | null
           ai_summary?: string | null
+          assigned_user_id?: string | null
           asunto?: string
           backlog_rank?: number | null
           business_value?: number | null
@@ -1686,6 +1691,7 @@ export type Database = {
           ai_classification?: string | null
           ai_risk_level?: string | null
           ai_summary?: string | null
+          assigned_user_id?: string | null
           asunto?: string
           backlog_rank?: number | null
           business_value?: number | null
@@ -1746,6 +1752,7 @@ export type Database = {
           name: string
           role: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -1764,6 +1771,7 @@ export type Database = {
           name: string
           role?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -1782,6 +1790,7 @@ export type Database = {
           name?: string
           role?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1964,6 +1973,7 @@ export type Database = {
       }
       tasks: {
         Row: {
+          assigned_user_id: string | null
           assignees: Json
           backlog_rank: number | null
           business_value: number | null
@@ -1985,6 +1995,7 @@ export type Database = {
           visibility: string
         }
         Insert: {
+          assigned_user_id?: string | null
           assignees?: Json
           backlog_rank?: number | null
           business_value?: number | null
@@ -2006,6 +2017,7 @@ export type Database = {
           visibility?: string
         }
         Update: {
+          assigned_user_id?: string | null
           assignees?: Json
           backlog_rank?: number | null
           business_value?: number | null
@@ -2117,7 +2129,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "pm" | "gerente"
+      app_role: "admin" | "pm" | "gerente" | "colaborador"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2245,7 +2257,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "pm", "gerente"],
+      app_role: ["admin", "pm", "gerente", "colaborador"],
     },
   },
 } as const

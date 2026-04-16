@@ -9,6 +9,7 @@ import TeamScrumDashboard from "@/pages/TeamScrumDashboard";
 import { SupportDashboard } from "@/components/support/SupportDashboard";
 import { AIUsageDashboard } from "@/components/support/AIUsageDashboard";
 import AdminUsers from "@/pages/AdminUsers";
+import ColaboradorDashboard from "@/pages/ColaboradorDashboard";
 import { useClients } from "@/hooks/useClients";
 import { useAuth } from "@/hooks/useAuth";
 import { projectInfo } from "@/data/projectData";
@@ -72,6 +73,7 @@ const Index = () => {
     : null;
 
   const getTitle = () => {
+    if (role === "colaborador") return "Mi Espacio de Trabajo";
     if (role === "gerente" && gerenteClient) return `Panel de Proyecto — ${gerenteClient.name}`;
     if (activeSection === "overview") return "Resumen Ejecutivo";
     if (activeSection === "clients") return "Implementación — Clientes";
@@ -111,6 +113,7 @@ const Index = () => {
 
           <main className="flex-1 overflow-auto p-4 md:p-6">
             <div className="w-full">
+              {role === "colaborador" && <ColaboradorDashboard />}
               {activeSection === "overview" && role === "gerente" && (
                 loadingAssignment ? (
                   <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
@@ -120,19 +123,19 @@ const Index = () => {
                   <p className="text-sm text-muted-foreground text-center py-12">No tiene un proyecto asignado. Contacte al administrador.</p>
                 )
               )}
-              {activeSection === "overview" && role !== "gerente" && <ExecutiveOverview />}
-              {activeSection === "team-scrum" && <TeamScrumDashboard />}
-              {activeSection === "soporte" && <SupportDashboard />}
-              {selectedSupportClientId && <SupportDashboard initialClientId={selectedSupportClientId} onBack={() => setActiveSection("soporte")} />}
-              {activeSection === "ai-usage" && <AIUsageDashboard />}
-              {activeSection === "users" && <AdminUsers />}
-              {activeSection === "clients" && (
+              {role !== "colaborador" && activeSection === "overview" && role !== "gerente" && <ExecutiveOverview />}
+              {role !== "colaborador" && activeSection === "team-scrum" && <TeamScrumDashboard />}
+              {role !== "colaborador" && activeSection === "soporte" && <SupportDashboard />}
+              {role !== "colaborador" && selectedSupportClientId && <SupportDashboard initialClientId={selectedSupportClientId} onBack={() => setActiveSection("soporte")} />}
+              {role !== "colaborador" && activeSection === "ai-usage" && <AIUsageDashboard />}
+              {role !== "colaborador" && activeSection === "users" && <AdminUsers />}
+              {role !== "colaborador" && activeSection === "clients" && (
                 <ClientList
                   onSelectClient={(id) => setActiveSection(`client-${id}`)}
                   selectedClientId={undefined}
                 />
               )}
-              {selectedClient && (
+              {role !== "colaborador" && selectedClient && (
                 <ClientDetail
                   client={selectedClient}
                   onBack={() => setActiveSection("clients")}

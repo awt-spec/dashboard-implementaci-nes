@@ -44,6 +44,14 @@ const roleConfig: Record<string, { label: string; icon: React.ReactNode; bg: str
     border: "border-amber-500/20",
     gradient: "from-amber-500/5 to-amber-500/15",
   },
+  colaborador: {
+    label: "Colaborador SYSDE",
+    icon: <User className="h-3.5 w-3.5" />,
+    bg: "bg-emerald-500/10",
+    text: "text-emerald-500",
+    border: "border-emerald-500/20",
+    gradient: "from-emerald-500/5 to-emerald-500/15",
+  },
 };
 
 function getInitials(name: string) {
@@ -206,6 +214,9 @@ export function SystemUsersTab() {
                     <SelectItem value="gerente">
                       <span className="flex items-center gap-2"><Eye className="h-3.5 w-3.5 text-amber-500" /> Gerente (Cliente)</span>
                     </SelectItem>
+                    <SelectItem value="colaborador">
+                      <span className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-emerald-500" /> Colaborador SYSDE</span>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -298,6 +309,9 @@ export function SystemUsersTab() {
                             </SelectItem>
                             <SelectItem value="gerente">
                               <span className="flex items-center gap-2"><Eye className="h-3.5 w-3.5 text-amber-500" /> Gerente (Cliente)</span>
+                            </SelectItem>
+                            <SelectItem value="colaborador">
+                              <span className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-emerald-500" /> Colaborador SYSDE</span>
                             </SelectItem>
                           </SelectContent>
                         </Select>
