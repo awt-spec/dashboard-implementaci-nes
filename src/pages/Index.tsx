@@ -5,7 +5,7 @@ import { ExecutiveOverview } from "@/components/dashboard/ExecutiveOverview";
 import { ClientDashboard } from "@/components/dashboard/ClientDashboard";
 import { ClientList } from "@/components/clients/ClientList";
 import { ClientDetail } from "@/components/clients/ClientDetail";
-import TasksDashboard from "@/pages/TasksDashboard";
+import TeamScrumDashboard from "@/pages/TeamScrumDashboard";
 import { SupportDashboard } from "@/components/support/SupportDashboard";
 import { AIUsageDashboard } from "@/components/support/AIUsageDashboard";
 import AdminUsers from "@/pages/AdminUsers";
@@ -77,7 +77,7 @@ const Index = () => {
     if (activeSection === "clients") return "Implementación — Clientes";
     if (activeSection === "soporte") return "Soporte — Dashboard de Boletas";
     if (activeSection === "ai-usage") return "IA & Clasificación";
-    if (activeSection === "tasks") return "Tareas Global";
+    if (activeSection === "team-scrum") return "Equipo Scrum";
     if (activeSection === "users") return "Gestión de Usuarios";
     if (selectedSupportClientId) {
       const sc = clientData.find(c => c.id === selectedSupportClientId);
@@ -121,7 +121,7 @@ const Index = () => {
                 )
               )}
               {activeSection === "overview" && role !== "gerente" && <ExecutiveOverview />}
-              {activeSection === "tasks" && <TasksDashboard />}
+              {activeSection === "team-scrum" && <TeamScrumDashboard />}
               {activeSection === "soporte" && <SupportDashboard />}
               {selectedSupportClientId && <SupportDashboard initialClientId={selectedSupportClientId} onBack={() => setActiveSection("soporte")} />}
               {activeSection === "ai-usage" && <AIUsageDashboard />}

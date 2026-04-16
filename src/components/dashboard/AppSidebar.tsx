@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, Users, Building2, ListTodo, Shield, LogOut, Headset, Sparkles
+  LayoutDashboard, Users, Building2, ListTodo, Shield, LogOut, Headset, Sparkles, Trophy
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
@@ -43,7 +43,7 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
     { id: "overview", title: "Resumen Ejecutivo", icon: LayoutDashboard, roles: ["admin", "pm", "gerente"] },
     { id: "clients", title: "Implementación", icon: Building2, roles: ["admin", "pm"] },
     { id: "soporte", title: "Soporte", icon: Headset, roles: ["admin", "pm"] },
-    { id: "tasks", title: "Tareas Global", icon: ListTodo, roles: ["admin", "pm"] },
+    { id: "team-scrum", title: "Equipo Scrum", icon: Trophy, roles: ["admin", "pm"] },
     { id: "ai-usage", title: "IA & Clasificación", icon: Sparkles, roles: ["admin", "pm"] },
     { id: "users", title: "Usuarios", icon: Shield, roles: ["admin"] },
   ].filter(item => role && item.roles.includes(role));
