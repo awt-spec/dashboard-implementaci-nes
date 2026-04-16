@@ -80,7 +80,6 @@ const Index = () => {
     : null;
 
   const getTitle = () => {
-    if (role === "colaborador") return "Mi Espacio de Trabajo";
     if (role === "gerente" && gerenteClient) return `Panel de Proyecto — ${gerenteClient.name}`;
     if (activeSection === "overview") return "Resumen Ejecutivo";
     if (activeSection === "clients") return "Implementación — Clientes";
