@@ -156,13 +156,15 @@ export function GerenteMobileDashboard({ client }: Props) {
   };
 
   return (
-    <div className="max-w-2xl mx-auto pb-24 md:pb-6">
+    <div className="max-w-2xl lg:max-w-7xl mx-auto pb-24 md:pb-6">
+      <div className="lg:grid lg:grid-cols-[380px_1fr] lg:gap-6 lg:items-start">
+      <div className="lg:sticky lg:top-4 space-y-4">
       {/* ─── HEADER HERO ──────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         className={cn(
-          "relative overflow-hidden rounded-2xl p-5 mb-4 text-white",
+          "relative overflow-hidden rounded-2xl p-5 lg:p-6 mb-4 lg:mb-0 text-white",
           `bg-gradient-to-br ${healthConfig.color}`
         )}
       >
