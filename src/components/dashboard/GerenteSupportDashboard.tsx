@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import {
   Headset, AlertTriangle, Clock, CheckCircle2, Activity, Send,
   MessageSquare, TrendingUp, Flame, Loader2, Search, ChevronRight,
-  Calendar, FileText, Ticket, Sparkles,
+  Calendar, FileText, Ticket, Sparkles, Bug, HelpCircle, Settings2,
+  Zap, GraduationCap, ArrowLeft, ArrowRight, X, CheckCheck,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { type Client } from "@/data/projectData";
