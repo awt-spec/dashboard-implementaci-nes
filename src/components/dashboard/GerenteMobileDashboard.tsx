@@ -27,10 +27,10 @@ interface Props {
 }
 
 const HEALTH_CONFIG = {
-  excellent: { label: "Excelente", color: "from-emerald-500 to-teal-500", textColor: "text-emerald-600", emoji: "🌟" },
-  good: { label: "Bien", color: "from-blue-500 to-cyan-500", textColor: "text-blue-600", emoji: "✅" },
-  warning: { label: "Atención", color: "from-amber-500 to-orange-500", textColor: "text-amber-600", emoji: "⚠️" },
-  critical: { label: "Crítico", color: "from-red-500 to-rose-600", textColor: "text-red-600", emoji: "🚨" },
+  excellent: { label: "Excelente", color: "from-[hsl(0_72%_45%)] via-[hsl(0_72%_51%)] to-[hsl(0_85%_60%)]", textColor: "text-primary", emoji: "🌟" },
+  good: { label: "Bien", color: "from-[hsl(0_72%_42%)] via-[hsl(0_72%_51%)] to-[hsl(15_85%_55%)]", textColor: "text-primary", emoji: "✅" },
+  warning: { label: "Atención", color: "from-[hsl(20_85%_45%)] via-[hsl(25_92%_50%)] to-[hsl(38_92%_55%)]", textColor: "text-amber-600", emoji: "⚠️" },
+  critical: { label: "Crítico", color: "from-[hsl(0_75%_35%)] via-[hsl(0_72%_45%)] to-[hsl(0_85%_55%)]", textColor: "text-destructive", emoji: "🚨" },
 };
 
 function getHealth(client: Client): keyof typeof HEALTH_CONFIG {
