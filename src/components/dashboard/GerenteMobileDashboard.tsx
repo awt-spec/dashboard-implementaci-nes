@@ -74,13 +74,13 @@ export function GerenteMobileDashboard({ client }: Props) {
   );
 
   const activeRisks = useMemo(() =>
-    client.risks?.filter(r => r.status !== "resuelto").slice(0, 5) || [],
+    client.risks?.filter(r => r.status !== "cerrado" && r.status !== "mitigado").slice(0, 5) || [],
     [client.risks]
   );
 
   const recentMinutes = useMemo(() =>
-    [...(client.minutes || [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 3),
-    [client.minutes]
+    [...(client.meetingMinutes || [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 3),
+    [client.meetingMinutes]
   );
 
   const currentPhase = client.phases.find(p => p.status === "en-progreso") || client.phases[0];
