@@ -99,6 +99,48 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Crear accesos en bloque para TODOS los miembros activos sin user_id
+    if (action === "create_bulk_team_access") {
+      const { password } = body;
+      if (!password || password.length < 6) {
+        throw new Error("password (>=6 chars) es requerido");
+      }
+
+      const { data: members, error: membersErr } = await supabaseAdmin
+        .from("sysde_team_members")
+        .select("id, name, email, user_id, is_active")
+        .eq("is_active", true);
+      if (membersErr) throw membersErr;
+
+      const results: any[] = [];
+      for (const m of members || []) {
+        if (m.user_id || !m.email) {
+          results.push({ name: m.name, email: m.email, skipped: true, reason: m.user_id ? "ya tiene acceso" : "sin email" });
+          continue;
+        }
+        try {
+          const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+            email: m.email,
+            password,
+            email_confirm: true,
+            user_metadata: { full_name: m.name },
+          });
+          if (createErr) throw createErr;
+
+          await supabaseAdmin.from("user_roles").insert({ user_id: newUser.user.id, role: "colaborador" });
+          await supabaseAdmin.from("sysde_team_members").update({ user_id: newUser.user.id }).eq("id", m.id);
+
+          results.push({ name: m.name, email: m.email, success: true });
+        } catch (err: any) {
+          results.push({ name: m.name, email: m.email, error: err.message });
+        }
+      }
+
+      return new Response(JSON.stringify({ success: true, results }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (action === "update_role") {
       const { user_id, role } = body;
       await supabaseAdmin.from("user_roles").delete().eq("user_id", user_id);
