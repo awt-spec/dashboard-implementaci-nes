@@ -386,10 +386,10 @@ export default function ColaboradorDashboard() {
                   <DetailRow label="Due date" value={selectedItem.due_date || "—"} />
                 </div>
 
-                {selectedItem.description && (
+                {(selectedItem.raw as any)?.description && (
                   <div>
                     <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider mb-2">Description</p>
-                    <p className="text-sm whitespace-pre-wrap text-foreground/80">{selectedItem.description}</p>
+                    <p className="text-sm whitespace-pre-wrap text-foreground/80">{(selectedItem.raw as any).description}</p>
                   </div>
                 )}
 
