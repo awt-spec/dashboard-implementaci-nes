@@ -10,8 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileSignature, Shield, Plus, Trash2, DollarSign, Clock, AlertTriangle, Edit2 } from "lucide-react";
+import { FileSignature, Shield, Plus, Trash2, DollarSign, Clock, AlertTriangle, Edit2, Lock } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 import {
   useClientContracts, useClientSLAs,
   useUpsertContract, useDeleteContract,
@@ -29,6 +30,8 @@ const PRIORITY_LEVELS = ["Crítica", "Alta", "Media", "Baja"];
 const CASE_TYPES = ["all", "Incidente", "Requerimiento", "Mejora", "Consulta"];
 
 export function ContractsSLATab({ clientId }: { clientId: string }) {
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
   const { data: contracts = [] } = useClientContracts(clientId);
   const { data: slas = [] } = useClientSLAs(clientId);
   const upsertContract = useUpsertContract();
@@ -44,6 +47,12 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
 
   return (
     <div className="space-y-6">
+      {!isAdmin && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/40 border border-border text-xs text-muted-foreground">
+          <Lock className="h-3.5 w-3.5" />
+          <span>Vista de solo lectura. Solo los administradores pueden editar contratos y SLAs.</span>
+        </div>
+      )}
       <Tabs defaultValue="contracts" className="space-y-4">
         <TabsList>
           <TabsTrigger value="contracts" className="gap-2"><FileSignature className="h-4 w-4" /> Contratos</TabsTrigger>
@@ -68,9 +77,11 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
 
           <div className="flex justify-between items-center">
             <h3 className="font-semibold flex items-center gap-2"><FileSignature className="h-4 w-4" /> Contratos</h3>
-            <Button size="sm" onClick={() => setContractDialog({ client_id: clientId, contract_type: "bolsa_horas", currency: "USD", is_active: true })}>
-              <Plus className="h-3.5 w-3.5 mr-1.5" /> Nuevo contrato
-            </Button>
+            {isAdmin && (
+              <Button size="sm" onClick={() => setContractDialog({ client_id: clientId, contract_type: "bolsa_horas", currency: "USD", is_active: true })}>
+                <Plus className="h-3.5 w-3.5 mr-1.5" /> Nuevo contrato
+              </Button>
+            )}
           </div>
 
           <Card>
@@ -101,12 +112,14 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
                         {c.is_active ? <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-[10px]">Activo</Badge> : <Badge variant="secondary" className="text-[10px]">Inactivo</Badge>}
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => setContractDialog(c)}><Edit2 className="h-3.5 w-3.5" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => { if (confirm("¿Eliminar contrato?")) deleteContract.mutate(c.id, { onSuccess: () => toast.success("Eliminado") }); }}>
-                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                          </Button>
-                        </div>
+                        {isAdmin ? (
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => setContractDialog(c)}><Edit2 className="h-3.5 w-3.5" /></Button>
+                            <Button variant="ghost" size="icon" onClick={() => { if (confirm("¿Eliminar contrato?")) deleteContract.mutate(c.id, { onSuccess: () => toast.success("Eliminado") }); }}>
+                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                            </Button>
+                          </div>
+                        ) : <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -136,9 +149,11 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
 
           <div className="flex justify-between items-center">
             <h3 className="font-semibold flex items-center gap-2"><Shield className="h-4 w-4" /> Acuerdos de Nivel de Servicio</h3>
-            <Button size="sm" onClick={() => setSlaDialog({ client_id: clientId, priority_level: "Alta", case_type: "all", response_time_hours: 4, resolution_time_hours: 24, business_hours_only: true, is_active: true })}>
-              <Plus className="h-3.5 w-3.5 mr-1.5" /> Nuevo SLA
-            </Button>
+            {isAdmin && (
+              <Button size="sm" onClick={() => setSlaDialog({ client_id: clientId, priority_level: "Alta", case_type: "all", response_time_hours: 4, resolution_time_hours: 24, business_hours_only: true, is_active: true })}>
+                <Plus className="h-3.5 w-3.5 mr-1.5" /> Nuevo SLA
+              </Button>
+            )}
           </div>
 
           <Card>
@@ -169,12 +184,14 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
                         {s.is_active ? <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-[10px]">Activo</Badge> : <Badge variant="secondary" className="text-[10px]">Inactivo</Badge>}
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => setSlaDialog(s)}><Edit2 className="h-3.5 w-3.5" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => { if (confirm("¿Eliminar SLA?")) deleteSLA.mutate(s.id, { onSuccess: () => toast.success("Eliminado") }); }}>
-                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                          </Button>
-                        </div>
+                        {isAdmin ? (
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => setSlaDialog(s)}><Edit2 className="h-3.5 w-3.5" /></Button>
+                            <Button variant="ghost" size="icon" onClick={() => { if (confirm("¿Eliminar SLA?")) deleteSLA.mutate(s.id, { onSuccess: () => toast.success("Eliminado") }); }}>
+                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                            </Button>
+                          </div>
+                        ) : <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
                       </TableCell>
                     </TableRow>
                   ))}
