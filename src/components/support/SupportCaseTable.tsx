@@ -226,6 +226,7 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
     setTipoFilter("all");
     setResponsableFilter("all");
     setPrioridadFilter("all");
+    setVisibilityFilter("all");
   };
 
   const renderItemCard = (item: CaseAgreementItem, idx: number, type: "agreement" | "action", t: SupportTicket) => {
