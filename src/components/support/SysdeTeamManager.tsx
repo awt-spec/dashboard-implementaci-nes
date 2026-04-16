@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { UserPlus, Trash2, Users, Briefcase, Building2, Mail, CheckCircle2, XCircle } from "lucide-react";
+import { UserPlus, Trash2, Users, Briefcase, Building2, Mail, CheckCircle2, XCircle, FileText, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import {
@@ -15,6 +15,8 @@ import {
   useDeleteSysdeTeamMember,
   useUpdateSysdeTeamMember,
 } from "@/hooks/useTeamMembers";
+import { CVAnalysisDialog } from "@/components/admin/CVAnalysisDialog";
+import { useQueryClient } from "@tanstack/react-query";
 
 const DEPARTMENTS = ["Soporte", "Desarrollo", "Consultoría", "QA", "Infraestructura", "Gerencia"];
 const ROLES = ["Consultor", "Desarrollador", "QA", "Líder Técnico", "Gerente", "Administrador"];
