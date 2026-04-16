@@ -75,6 +75,7 @@ function getInitials(name: string) {
 
 export function SystemUsersTab() {
   const [users, setUsers] = useState<UserRow[]>([]);
+  const [team, setTeam] = useState<SysdeTeamRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [newName, setNewName] = useState("");
@@ -83,12 +84,22 @@ export function SystemUsersTab() {
   const [newRole, setNewRole] = useState("pm");
   const [creating, setCreating] = useState(false);
   const [assignUserId, setAssignUserId] = useState<string | null>(null);
+  const [bulkPw, setBulkPw] = useState("");
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [accessMember, setAccessMember] = useState<SysdeTeamRow | null>(null);
+  const [accessPw, setAccessPw] = useState("");
+  const [accessLoading, setAccessLoading] = useState(false);
   const { toast } = useToast();
 
   const fetchUsers = async () => {
     setLoading(true);
-    const { data: profiles } = await supabase.from("profiles").select("user_id, full_name, email");
-    const { data: roles } = await supabase.from("user_roles").select("user_id, role");
+    const [profilesRes, rolesRes, teamRes] = await Promise.all([
+      supabase.from("profiles").select("user_id, full_name, email"),
+      supabase.from("user_roles").select("user_id, role"),
+      (supabase.from("sysde_team_members" as any).select("id, name, email, role, department, is_active, user_id").order("name") as any),
+    ]);
+    const profiles = profilesRes.data;
+    const roles = rolesRes.data;
     if (profiles && roles) {
       const rolesMap = Object.fromEntries(roles.map((r) => [r.user_id, r.role]));
       setUsers(
