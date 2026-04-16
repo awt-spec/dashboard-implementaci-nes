@@ -426,10 +426,12 @@ export type Database = {
           contact_name: string
           contract_end: string
           contract_start: string
+          core_version: string | null
           country: string
           created_at: string
           id: string
           industry: string
+          modules: Json
           name: string
           progress: number
           status: string
@@ -442,10 +444,12 @@ export type Database = {
           contact_name: string
           contract_end: string
           contract_start: string
+          core_version?: string | null
           country: string
           created_at?: string
           id: string
           industry: string
+          modules?: Json
           name: string
           progress?: number
           status: string
@@ -458,10 +462,12 @@ export type Database = {
           contact_name?: string
           contract_end?: string
           contract_start?: string
+          core_version?: string | null
           country?: string
           created_at?: string
           id?: string
           industry?: string
+          modules?: Json
           name?: string
           progress?: number
           status?: string

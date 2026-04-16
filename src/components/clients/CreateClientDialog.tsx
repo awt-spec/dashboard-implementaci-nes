@@ -17,6 +17,7 @@ export function CreateClientDialog() {
   const [contractStart, setContractStart] = useState("");
   const [contractEnd, setContractEnd] = useState("");
   const [status, setStatus] = useState<string>("activo");
+  const [coreVersion, setCoreVersion] = useState("");
   const createClient = useCreateClient();
   const { toast } = useToast();
 
@@ -39,10 +40,12 @@ export function CreateClientDialog() {
         status,
         progress: 0,
         team_assigned: [],
+        core_version: coreVersion || "",
+        modules: [],
       });
       toast({ title: "Cliente creado", description: name });
       setOpen(false);
-      setName(""); setCountry(""); setIndustry(""); setContactName(""); setContactEmail(""); setContractStart(""); setContractEnd(""); setStatus("activo");
+      setName(""); setCountry(""); setIndustry(""); setContactName(""); setContactEmail(""); setContractStart(""); setContractEnd(""); setStatus("activo"); setCoreVersion("");
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
@@ -103,6 +106,11 @@ export function CreateClientDialog() {
               <label className="text-xs font-medium text-muted-foreground">Fin contrato *</label>
               <Input type="date" value={contractEnd} onChange={e => setContractEnd(e.target.value)} />
             </div>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Versión del Core</label>
+            <Input value={coreVersion} onChange={e => setCoreVersion(e.target.value)} placeholder="ej. 2024.4.1" />
+            <p className="text-[10px] text-muted-foreground">Los módulos contratados se configuran luego desde el detalle del cliente.</p>
           </div>
           <Button onClick={handleCreate} disabled={createClient.isPending} className="w-full">
             {createClient.isPending ? "Creando..." : "Crear Cliente"}

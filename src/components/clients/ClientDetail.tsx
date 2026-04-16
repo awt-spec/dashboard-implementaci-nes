@@ -30,6 +30,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ProjectKPIs } from "@/components/dashboard/ProjectKPIs";
 import { UpcomingDeliverables } from "@/components/dashboard/UpcomingDeliverables";
+import { ClientTechStack } from "./ClientTechStack";
 import { useQueryClient } from "@tanstack/react-query";
 
 const phaseStatusConfig = {
@@ -175,6 +176,9 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
 
       {/* SPI/CPI KPIs */}
       <ProjectKPIs clients={[client]} client={client} />
+
+      {/* Tech Stack: Core version + Modules */}
+      <ClientTechStack clientId={client.id} coreVersion={client.coreVersion} modules={client.modules} />
 
       {/* Upcoming Deliverables */}
       <UpcomingDeliverables clients={[client]} client={client} />
