@@ -47,6 +47,24 @@ interface ClientDetailProps {
 
 export function ClientDetail({ client, onBack }: ClientDetailProps) {
   const queryClient = useQueryClient();
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferring, setTransferring] = useState(false);
+
+  const handleTransferToSupport = async () => {
+    setTransferring(true);
+    try {
+      const { error } = await supabase.from("clients").update({ client_type: "soporte" } as any).eq("id", client.id);
+      if (error) throw error;
+      toast.success(`${client.name} transferido a Soporte`);
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
+      setTransferOpen(false);
+      onBack();
+    } catch (e: any) {
+      toast.error(e.message || "Error al transferir");
+    } finally {
+      setTransferring(false);
+    }
+  };
 
   const statusColors: Record<string, string> = {
     activo: "bg-success text-success-foreground",
