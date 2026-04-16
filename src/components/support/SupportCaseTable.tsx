@@ -359,6 +359,14 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
             {tipos.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={visibilityFilter} onValueChange={v => setVisibilityFilter(v as any)}>
+          <SelectTrigger className="w-[110px] h-7 text-xs"><SelectValue placeholder="Visibilidad" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas</SelectItem>
+            <SelectItem value="externa">Externas</SelectItem>
+            <SelectItem value="interna">Internas</SelectItem>
+          </SelectContent>
+        </Select>
         {responsables.length > 0 && (
           <Select value={responsableFilter} onValueChange={setResponsableFilter}>
             <SelectTrigger className="w-[130px] h-7 text-xs"><SelectValue placeholder="Responsable" /></SelectTrigger>
