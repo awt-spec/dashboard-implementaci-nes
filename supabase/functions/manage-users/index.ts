@@ -15,7 +15,6 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-    // Verify caller is admin
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header");
 
@@ -28,7 +27,7 @@ Deno.serve(async (req) => {
       .select("role")
       .eq("user_id", caller.id)
       .maybeSingle();
-    
+
     if (callerRole?.role !== "admin") {
       throw new Error("Solo administradores pueden gestionar usuarios");
     }
@@ -38,7 +37,7 @@ Deno.serve(async (req) => {
 
     if (action === "create") {
       const { email, password, full_name, role } = body;
-      
+
       const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
         email,
         password,
@@ -47,7 +46,6 @@ Deno.serve(async (req) => {
       });
       if (createErr) throw createErr;
 
-      // Insert role
       const { error: roleErr } = await supabaseAdmin
         .from("user_roles")
         .insert({ user_id: newUser.user.id, role });
@@ -58,14 +56,51 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Crear acceso para un miembro existente del Equipo SYSDE
+    if (action === "create_team_access") {
+      const { team_member_id, password } = body;
+      if (!team_member_id || !password || password.length < 6) {
+        throw new Error("team_member_id y password (>=6 chars) son requeridos");
+      }
+
+      const { data: member, error: memberErr } = await supabaseAdmin
+        .from("sysde_team_members")
+        .select("id, name, email, user_id")
+        .eq("id", team_member_id)
+        .maybeSingle();
+      if (memberErr) throw memberErr;
+      if (!member) throw new Error("Miembro no encontrado");
+      if (!member.email) throw new Error("El miembro no tiene email asignado");
+      if (member.user_id) throw new Error("Este miembro ya tiene un acceso creado");
+
+      const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+        email: member.email,
+        password,
+        email_confirm: true,
+        user_metadata: { full_name: member.name },
+      });
+      if (createErr) throw createErr;
+
+      // Asignar rol colaborador
+      const { error: roleErr } = await supabaseAdmin
+        .from("user_roles")
+        .insert({ user_id: newUser.user.id, role: "colaborador" });
+      if (roleErr) throw roleErr;
+
+      // Vincular miembro <-> usuario
+      const { error: linkErr } = await supabaseAdmin
+        .from("sysde_team_members")
+        .update({ user_id: newUser.user.id })
+        .eq("id", team_member_id);
+      if (linkErr) throw linkErr;
+
+      return new Response(JSON.stringify({ success: true, user_id: newUser.user.id }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (action === "update_role") {
       const { user_id, role } = body;
-      // Upsert role
-      const { error } = await supabaseAdmin
-        .from("user_roles")
-        .upsert({ user_id, role }, { onConflict: "user_id,role" });
-      
-      // If role changed, delete old role and insert new
       await supabaseAdmin.from("user_roles").delete().eq("user_id", user_id);
       const { error: insErr } = await supabaseAdmin.from("user_roles").insert({ user_id, role });
       if (insErr) throw insErr;
@@ -77,6 +112,8 @@ Deno.serve(async (req) => {
 
     if (action === "delete") {
       const { user_id } = body;
+      // Desvincular del equipo si aplica
+      await supabaseAdmin.from("sysde_team_members").update({ user_id: null }).eq("user_id", user_id);
       const { error } = await supabaseAdmin.auth.admin.deleteUser(user_id);
       if (error) throw error;
 
@@ -100,7 +137,6 @@ Deno.serve(async (req) => {
       const { error } = await supabaseAdmin.auth.admin.updateUserById(user_id, { email, email_confirm: true });
       if (error) throw error;
 
-      // Update profile email too
       await supabaseAdmin.from("profiles").update({ email }).eq("user_id", user_id);
 
       return new Response(JSON.stringify({ success: true }), {
