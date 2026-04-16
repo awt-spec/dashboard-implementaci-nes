@@ -59,6 +59,11 @@ const Index = () => {
     setActiveSection(section);
   };
 
+  // Colaborador uses its own full-screen layout (Jira/DevOps style) — no admin sidebar
+  if (role === "colaborador") {
+    return <ColaboradorDashboard />;
+  }
+
   const clientData = clients || [];
 
   const selectedClient = activeSection.startsWith("client-")
