@@ -1,17 +1,29 @@
 import {
-  LayoutDashboard, Users, Building2, ListTodo, Shield, LogOut, Headset, Sparkles, Trophy
+  LayoutDashboard, Users, Building2, ListTodo, Shield, LogOut, Headset, Sparkles, Trophy, ChevronDown
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, SidebarGroupLabel,
 } from "@/components/ui/sidebar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { projectInfo } from "@/data/projectData";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useClients } from "@/hooks/useClients";
+import { useState, useMemo } from "react";
 // DB is the single source of truth
 import { useAuth } from "@/hooks/useAuth";
+
+const statusLabel: Record<string, string> = {
+  activo: "Activos",
+  "en-riesgo": "En Riesgo",
+  completado: "Completados",
+  pausado: "Pausados",
+};
+
+const statusOrder = ["activo", "en-riesgo", "completado", "pausado"];
 
 const statusDot: Record<string, string> = {
   activo: "bg-success",
