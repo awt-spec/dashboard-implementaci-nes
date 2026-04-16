@@ -89,6 +89,7 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
   const [tipoFilter, setTipoFilter] = useState("all");
   const [responsableFilter, setResponsableFilter] = useState("all");
   const [prioridadFilter, setPrioridadFilter] = useState("all");
+  const [visibilityFilter, setVisibilityFilter] = useState<"all" | "externa" | "interna">("all");
 
   const tipos = useMemo(() => [...new Set(tickets.map(t => t.tipo))].sort(), [tickets]);
   const responsables = useMemo(() => [...new Set(tickets.map(t => t.responsable).filter(Boolean))].sort() as string[], [tickets]);
