@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Shield, Briefcase, Eye, Trash2, KeyRound, Link2, Mail, User, Loader2 } from "lucide-react";
+import { UserPlus, Shield, Briefcase, Eye, Trash2, KeyRound, Link2, Mail, User, Loader2, Users2, KeySquare, AlertCircle } from "lucide-react";
 import { GerenteAssignmentsDialog } from "./GerenteAssignmentsDialog";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -17,6 +17,16 @@ interface UserRow {
   full_name: string;
   email: string;
   role: string;
+}
+
+interface SysdeTeamRow {
+  id: string;
+  name: string;
+  email: string | null;
+  role: string | null;
+  department: string | null;
+  is_active: boolean | null;
+  user_id: string | null;
 }
 
 const roleConfig: Record<string, { label: string; icon: React.ReactNode; bg: string; text: string; border: string; gradient: string }> = {
