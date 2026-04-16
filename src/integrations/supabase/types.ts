@@ -171,6 +171,63 @@ export type Database = {
           },
         ]
       }
+      client_contracts: {
+        Row: {
+          auto_renewal: boolean
+          client_id: string
+          contract_type: string
+          created_at: string
+          currency: string
+          end_date: string | null
+          hourly_rate: number
+          id: string
+          included_hours: number
+          is_active: boolean
+          monthly_value: number
+          notes: string | null
+          payment_terms: string | null
+          penalty_clause: string | null
+          start_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          auto_renewal?: boolean
+          client_id: string
+          contract_type?: string
+          created_at?: string
+          currency?: string
+          end_date?: string | null
+          hourly_rate?: number
+          id?: string
+          included_hours?: number
+          is_active?: boolean
+          monthly_value?: number
+          notes?: string | null
+          payment_terms?: string | null
+          penalty_clause?: string | null
+          start_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auto_renewal?: boolean
+          client_id?: string
+          contract_type?: string
+          created_at?: string
+          currency?: string
+          end_date?: string | null
+          hourly_rate?: number
+          id?: string
+          included_hours?: number
+          is_active?: boolean
+          monthly_value?: number
+          notes?: string | null
+          payment_terms?: string | null
+          penalty_clause?: string | null
+          start_date?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       client_dashboard_config: {
         Row: {
           created_at: string
@@ -272,6 +329,54 @@ export type Database = {
           message?: string
           title?: string
           type?: string
+        }
+        Relationships: []
+      }
+      client_slas: {
+        Row: {
+          business_hours_only: boolean
+          case_type: string | null
+          client_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          notes: string | null
+          penalty_amount: number | null
+          penalty_description: string | null
+          priority_level: string
+          resolution_time_hours: number
+          response_time_hours: number
+          updated_at: string
+        }
+        Insert: {
+          business_hours_only?: boolean
+          case_type?: string | null
+          client_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          penalty_amount?: number | null
+          penalty_description?: string | null
+          priority_level: string
+          resolution_time_hours?: number
+          response_time_hours?: number
+          updated_at?: string
+        }
+        Update: {
+          business_hours_only?: boolean
+          case_type?: string | null
+          client_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          penalty_amount?: number | null
+          penalty_description?: string | null
+          priority_level?: string
+          resolution_time_hours?: number
+          response_time_hours?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -891,6 +996,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pm_ai_analysis: {
+        Row: {
+          analysis_type: string
+          client_priorities: Json | null
+          created_at: string
+          duration_estimate_weeks: number | null
+          executive_summary: string | null
+          full_analysis: Json | null
+          id: string
+          metrics: Json | null
+          model: string | null
+          recommendations: Json | null
+          risks: Json | null
+          scope: string | null
+          team_health_score: number | null
+        }
+        Insert: {
+          analysis_type?: string
+          client_priorities?: Json | null
+          created_at?: string
+          duration_estimate_weeks?: number | null
+          executive_summary?: string | null
+          full_analysis?: Json | null
+          id?: string
+          metrics?: Json | null
+          model?: string | null
+          recommendations?: Json | null
+          risks?: Json | null
+          scope?: string | null
+          team_health_score?: number | null
+        }
+        Update: {
+          analysis_type?: string
+          client_priorities?: Json | null
+          created_at?: string
+          duration_estimate_weeks?: number | null
+          executive_summary?: string | null
+          full_analysis?: Json | null
+          id?: string
+          metrics?: Json | null
+          model?: string | null
+          recommendations?: Json | null
+          risks?: Json | null
+          scope?: string | null
+          team_health_score?: number | null
+        }
+        Relationships: []
       }
       presentation_data: {
         Row: {
@@ -1578,6 +1731,14 @@ export type Database = {
       sysde_team_members: {
         Row: {
           created_at: string
+          cv_analysis: Json | null
+          cv_filename: string | null
+          cv_recommended_clients: Json | null
+          cv_seniority: string | null
+          cv_skills: string[] | null
+          cv_uploaded_at: string | null
+          cv_url: string | null
+          cv_years_experience: number | null
           department: string | null
           email: string | null
           id: string
@@ -1588,6 +1749,14 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          cv_analysis?: Json | null
+          cv_filename?: string | null
+          cv_recommended_clients?: Json | null
+          cv_seniority?: string | null
+          cv_skills?: string[] | null
+          cv_uploaded_at?: string | null
+          cv_url?: string | null
+          cv_years_experience?: number | null
           department?: string | null
           email?: string | null
           id?: string
@@ -1598,6 +1767,14 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          cv_analysis?: Json | null
+          cv_filename?: string | null
+          cv_recommended_clients?: Json | null
+          cv_seniority?: string | null
+          cv_skills?: string[] | null
+          cv_uploaded_at?: string | null
+          cv_url?: string | null
+          cv_years_experience?: number | null
           department?: string | null
           email?: string | null
           id?: string

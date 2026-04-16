@@ -18,6 +18,7 @@ import {
   useAllScrumWorkItems, useAllSprints, useUpdateWorkItemScrum,
   useTeamAIAnalysis, type ScrumWorkItem,
 } from "@/hooks/useTeamScrum";
+import { PMAIPanel } from "@/components/scrum/PMAIPanel";
 
 const CHART_COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "hsl(var(--warning))", "hsl(220,70%,55%)", "hsl(150,60%,50%)", "hsl(280,60%,60%)"];
 
@@ -239,13 +240,19 @@ export default function TeamScrumDashboard() {
         </Select>
       </div>
 
-      <Tabs defaultValue="backlog" className="w-full">
+      <Tabs defaultValue="pm-ai" className="w-full">
         <TabsList>
+          <TabsTrigger value="pm-ai"><Brain className="h-3.5 w-3.5 mr-1" />PM IA</TabsTrigger>
           <TabsTrigger value="backlog"><ListOrdered className="h-3.5 w-3.5 mr-1" />Backlog (WSJF)</TabsTrigger>
           <TabsTrigger value="sprint"><Target className="h-3.5 w-3.5 mr-1" />Sprint Activo</TabsTrigger>
-          <TabsTrigger value="ai"><Brain className="h-3.5 w-3.5 mr-1" />Análisis IA</TabsTrigger>
+          <TabsTrigger value="ai"><Sparkles className="h-3.5 w-3.5 mr-1" />Análisis Equipo</TabsTrigger>
           <TabsTrigger value="reports"><BarChart3 className="h-3.5 w-3.5 mr-1" />Reportes</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="pm-ai" className="mt-3">
+          <PMAIPanel />
+        </TabsContent>
+
 
         {/* BACKLOG */}
         <TabsContent value="backlog" className="mt-3 space-y-3">

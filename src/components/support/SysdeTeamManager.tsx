@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { UserPlus, Trash2, Users, Briefcase, Building2, Mail, CheckCircle2, XCircle } from "lucide-react";
+import { UserPlus, Trash2, Users, Briefcase, Building2, Mail, CheckCircle2, XCircle, FileText, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import {
@@ -15,6 +15,8 @@ import {
   useDeleteSysdeTeamMember,
   useUpdateSysdeTeamMember,
 } from "@/hooks/useTeamMembers";
+import { CVAnalysisDialog } from "@/components/admin/CVAnalysisDialog";
+import { useQueryClient } from "@tanstack/react-query";
 
 const DEPARTMENTS = ["Soporte", "Desarrollo", "Consultoría", "QA", "Infraestructura", "Gerencia"];
 const ROLES = ["Consultor", "Desarrollador", "QA", "Líder Técnico", "Gerente", "Administrador"];
@@ -24,7 +26,9 @@ export function SysdeTeamManager() {
   const createMember = useCreateSysdeTeamMember();
   const deleteMember = useDeleteSysdeTeamMember();
   const updateMember = useUpdateSysdeTeamMember();
+  const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [cvMember, setCvMember] = useState<any | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("Consultor");
@@ -125,18 +129,22 @@ export function SysdeTeamManager() {
                 <TableHead>Email</TableHead>
                 <TableHead>Rol</TableHead>
                 <TableHead>Departamento</TableHead>
+                <TableHead>CV / IA</TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead className="w-[100px]">Acciones</TableHead>
+                <TableHead className="w-[120px]">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Cargando...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Cargando...</TableCell></TableRow>
               ) : members.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No hay miembros del equipo. Agrega el primer miembro.</TableCell></TableRow>
-              ) : members.map(m => (
+                <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No hay miembros del equipo. Agrega el primer miembro.</TableCell></TableRow>
+              ) : members.map((m: any) => (
                 <TableRow key={m.id} className={!m.is_active ? "opacity-50" : ""}>
-                  <TableCell className="font-medium">{m.name}</TableCell>
+                  <TableCell className="font-medium">
+                    {m.name}
+                    {m.cv_seniority && <div className="text-[10px] text-muted-foreground font-normal mt-0.5">{m.cv_seniority} · {m.cv_years_experience}y</div>}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{m.email || "—"}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className="text-xs gap-1">
@@ -147,6 +155,17 @@ export function SysdeTeamManager() {
                     <Badge variant="secondary" className="text-xs gap-1">
                       <Building2 className="h-2.5 w-2.5" />{m.department}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {m.cv_analysis && Object.keys(m.cv_analysis || {}).length > 0 ? (
+                      <Badge className="bg-primary/15 text-primary border-primary/30 gap-1 text-[10px]">
+                        <Sparkles className="h-2.5 w-2.5" /> Analizado
+                      </Badge>
+                    ) : m.cv_url ? (
+                      <Badge variant="outline" className="gap-1 text-[10px]"><FileText className="h-2.5 w-2.5" /> Subido</Badge>
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground">Sin CV</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <button onClick={() => handleToggleActive(m.id, m.is_active)} className="cursor-pointer">
@@ -162,9 +181,14 @@ export function SysdeTeamManager() {
                     </button>
                   </TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(m.id)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" title="Subir/Analizar CV" onClick={() => setCvMember(m)}>
+                        <Sparkles className="h-4 w-4 text-primary" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(m.id)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -172,6 +196,15 @@ export function SysdeTeamManager() {
           </Table>
         </CardContent>
       </Card>
+
+      {cvMember && (
+        <CVAnalysisDialog
+          member={cvMember}
+          open={!!cvMember}
+          onOpenChange={(v) => !v && setCvMember(null)}
+          onUpdated={() => qc.invalidateQueries({ queryKey: ["sysde-team-members"] })}
+        />
+      )}
     </div>
   );
 }
