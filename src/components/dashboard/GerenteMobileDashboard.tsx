@@ -97,15 +97,13 @@ export function GerenteMobileDashboard({ client }: Props) {
     try {
       if (actionDialog === "comment") {
         await createComment.mutateAsync({
-          clientId: client.id,
-          comment: {
-            id: `c-${Date.now()}`,
-            user: profile?.full_name || "Cliente",
-            avatar: (profile?.full_name || "?")[0].toUpperCase(),
-            date: new Date().toISOString().slice(0, 10),
-            type: "comentario",
-            message: actionText,
-          },
+          client_id: client.id,
+          original_id: `c-${Date.now()}`,
+          user: profile?.full_name || "Cliente",
+          avatar: (profile?.full_name || "?")[0].toUpperCase(),
+          date: new Date().toISOString().slice(0, 10),
+          type: "comentario",
+          message: actionText,
         });
         toast.success("Comentario enviado");
       } else if (actionDialog === "request") {
