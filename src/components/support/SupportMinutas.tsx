@@ -69,21 +69,33 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [parsingFile, setParsingFile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Multi-client (general support) mode
+  const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
 
   const loadMinutas = useCallback(() => {
     setLoading(true);
-    supabase.from("support_minutes").select("*").eq("client_id", clientId)
-      .order("created_at", { ascending: false })
+    const query = isGeneralMode
+      ? supabase.from("support_minutes").select("*")
+      : supabase.from("support_minutes").select("*")
+          .or(`client_id.eq.${clientId},referenced_clients.cs.{${clientId}}`);
+    query.order("created_at", { ascending: false })
       .then(({ data }) => {
         if (data) setMinutas(data as any);
         setLoading(false);
       });
-  }, [clientId]);
+  }, [clientId, isGeneralMode]);
 
   useEffect(() => { loadMinutas(); }, [loadMinutas]);
 
+  // In general mode, source tickets from selected clients (or all if none selected)
+  const sourceTickets = useMemo(() => {
+    if (!isGeneralMode) return tickets;
+    if (selectedClientIds.length === 0) return allTickets;
+    return allTickets.filter(t => selectedClientIds.includes(t.client_id));
+  }, [isGeneralMode, tickets, allTickets, selectedClientIds]);
+
   const activeTickets = useMemo(() =>
-    tickets.filter(t => !["CERRADA", "ANULADA"].includes(t.estado)), [tickets]);
+    sourceTickets.filter(t => !["CERRADA", "ANULADA"].includes(t.estado)), [sourceTickets]);
 
   const criticalTickets = useMemo(() =>
     activeTickets.filter(t => t.prioridad === "Critica, Impacto Negocio" || t.prioridad === "Alta")
