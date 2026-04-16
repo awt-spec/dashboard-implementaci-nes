@@ -156,13 +156,15 @@ export function GerenteMobileDashboard({ client }: Props) {
   };
 
   return (
-    <div className="max-w-2xl mx-auto pb-24 md:pb-6">
+    <div className="max-w-2xl lg:max-w-7xl mx-auto pb-24 md:pb-6">
+      <div className="lg:grid lg:grid-cols-[380px_1fr] lg:gap-6 lg:items-start">
+      <div className="lg:sticky lg:top-4 space-y-4">
       {/* ─── HEADER HERO ──────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         className={cn(
-          "relative overflow-hidden rounded-2xl p-5 mb-4 text-white",
+          "relative overflow-hidden rounded-2xl p-5 lg:p-6 mb-4 lg:mb-0 text-white",
           `bg-gradient-to-br ${healthConfig.color}`
         )}
       >
@@ -213,7 +215,7 @@ export function GerenteMobileDashboard({ client }: Props) {
       </motion.div>
 
       {/* ─── QUICK ACTIONS ─────────────────────────── */}
-      <div className="grid grid-cols-3 gap-2 mb-4">
+      <div className="grid grid-cols-3 gap-2 mb-4 lg:mb-0">
         <QuickAction
           icon={MessageSquare}
           label="Comentar"
@@ -233,6 +235,28 @@ export function GerenteMobileDashboard({ client }: Props) {
           color="text-destructive"
         />
       </div>
+
+      {/* Desktop-only: stats preview in sidebar */}
+      <div className="hidden lg:grid grid-cols-2 gap-3">
+        <StatCard
+          icon={CheckCircle2}
+          label="Actividades"
+          value={`${completedTasks}/${externalTasks.length}`}
+          progress={tasksProgress}
+          color="text-info"
+        />
+        <StatCard
+          icon={Target}
+          label="Entregables"
+          value={`${completedDeliverables}/${client.deliverables.length}`}
+          progress={deliverablesProgress}
+          color="text-success"
+        />
+      </div>
+      </div>
+
+      {/* ─── MAIN CONTENT (right column on desktop) ─── */}
+      <div className="min-w-0">
 
       {/* ─── TABS ──────────────────────────────────── */}
       <Tabs value={tab} onValueChange={setTab} className="w-full">
@@ -546,6 +570,8 @@ export function GerenteMobileDashboard({ client }: Props) {
           </div>
         </SheetContent>
       </Sheet>
+      </div>
+      </div>
     </div>
   );
 }
