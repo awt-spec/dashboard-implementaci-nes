@@ -545,6 +545,144 @@ export type Database = {
           },
         ]
       }
+      devops_connections: {
+        Row: {
+          auto_sync: boolean
+          client_id: string
+          created_at: string
+          default_work_item_type: string
+          id: string
+          is_active: boolean
+          last_sync_at: string | null
+          organization: string
+          priority_mapping: Json
+          project: string
+          state_mapping: Json
+          sync_interval_minutes: number
+          team: string | null
+          updated_at: string
+        }
+        Insert: {
+          auto_sync?: boolean
+          client_id: string
+          created_at?: string
+          default_work_item_type?: string
+          id?: string
+          is_active?: boolean
+          last_sync_at?: string | null
+          organization: string
+          priority_mapping?: Json
+          project: string
+          state_mapping?: Json
+          sync_interval_minutes?: number
+          team?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auto_sync?: boolean
+          client_id?: string
+          created_at?: string
+          default_work_item_type?: string
+          id?: string
+          is_active?: boolean
+          last_sync_at?: string | null
+          organization?: string
+          priority_mapping?: Json
+          project?: string
+          state_mapping?: Json
+          sync_interval_minutes?: number
+          team?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      devops_sync_logs: {
+        Row: {
+          client_id: string
+          created_at: string
+          details: Json | null
+          direction: string
+          duration_ms: number
+          error_message: string | null
+          id: string
+          items_failed: number
+          items_pulled: number
+          items_pushed: number
+          status: string
+          triggered_by: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          details?: Json | null
+          direction: string
+          duration_ms?: number
+          error_message?: string | null
+          id?: string
+          items_failed?: number
+          items_pulled?: number
+          items_pushed?: number
+          status?: string
+          triggered_by?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          details?: Json | null
+          direction?: string
+          duration_ms?: number
+          error_message?: string | null
+          id?: string
+          items_failed?: number
+          items_pulled?: number
+          items_pushed?: number
+          status?: string
+          triggered_by?: string | null
+        }
+        Relationships: []
+      }
+      devops_sync_mappings: {
+        Row: {
+          client_id: string
+          created_at: string
+          devops_id: string
+          devops_rev: number | null
+          devops_url: string | null
+          entity_type: string
+          id: string
+          last_direction: string | null
+          last_synced_at: string
+          local_id: string
+          metadata: Json | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          devops_id: string
+          devops_rev?: number | null
+          devops_url?: string | null
+          entity_type: string
+          id?: string
+          last_direction?: string | null
+          last_synced_at?: string
+          local_id: string
+          metadata?: Json | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          devops_id?: string
+          devops_rev?: number | null
+          devops_url?: string | null
+          entity_type?: string
+          id?: string
+          last_direction?: string | null
+          last_synced_at?: string
+          local_id?: string
+          metadata?: Json | null
+        }
+        Relationships: []
+      }
       email_notifications: {
         Row: {
           client_id: string
