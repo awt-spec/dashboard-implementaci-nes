@@ -17,9 +17,11 @@ import { Moon, Sun, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ShareReportDialog } from "@/components/dashboard/ShareReportDialog";
 import { supabase } from "@/integrations/supabase/client";
+import { useActivityTracker } from "@/hooks/useActivityTracker";
 
 const Index = () => {
   const { role, user } = useAuth();
+  useActivityTracker();
   const [activeSection, setActiveSection] = useState("overview");
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
   const { data: clients } = useClients();
