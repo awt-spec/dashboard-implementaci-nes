@@ -36,7 +36,7 @@ const PRIORITY_CONFIG: Record<string, { color: string; icon: any; label: string 
 interface MyMinute { id: string; title: string; date: string; client_id: string; summary: string; }
 
 export default function ColaboradorDashboard() {
-  const { user, profile } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const { logActivity } = useActivityTracker();
   const { start: startTimer, stop: stopTimer } = useWorkTimer();
 
