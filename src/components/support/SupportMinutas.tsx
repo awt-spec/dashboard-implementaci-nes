@@ -106,20 +106,31 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
       toast.error("Pega la transcripción de la reunión para continuar");
       return;
     }
+    if (isGeneralMode && selectedClientIds.length === 0) {
+      toast.error("Selecciona al menos un cliente para la minuta general");
+      return;
+    }
     setGenerating(true);
     try {
+      const effectiveClientName = isGeneralMode
+        ? (selectedClientIds.length === 1
+            ? (availableClients.find(c => c.id === selectedClientIds[0])?.name || "Cliente")
+            : `Soporte General (${selectedClientIds.length} clientes)`)
+        : clientName;
+
+      const ticketsPool = isGeneralMode ? sourceTickets : tickets;
       let promptContent = "";
 
       if (generationMode === "transcript") {
-        // Transcript mode: the user pasted a meeting transcript
         const casesToUse = selectedCaseIds.length > 0
-          ? tickets.filter(t => selectedCaseIds.includes(t.id))
+          ? ticketsPool.filter(t => selectedCaseIds.includes(t.id))
           : activeTickets.slice(0, 15);
-        const casesContext = casesToUse.map(t =>
-          `[${t.ticket_id}] ${t.asunto} | ${t.estado} | ${t.prioridad}`
-        ).join("\n");
+        const casesContext = casesToUse.map(t => {
+          const cn = availableClients.find(c => c.id === t.client_id)?.name;
+          return `[${t.ticket_id}]${cn && isGeneralMode ? ` (${cn})` : ""} ${t.asunto} | ${t.estado} | ${t.prioridad}`;
+        }).join("\n");
 
-        promptContent = `TRANSCRIPCIÓN DE REUNIÓN DE SOPORTE - ${clientName}
+        promptContent = `TRANSCRIPCIÓN DE REUNIÓN DE SOPORTE - ${effectiveClientName}
 Fecha: ${new Date().toLocaleDateString("es")}
 Participantes: ${selectedAttendees.join(", ") || "Por definir"}
 
@@ -131,26 +142,26 @@ ${transcript}
 
 Analiza esta transcripción y genera: título, resumen ejecutivo, acuerdos tomados, acciones a seguir y próximos pasos. Identifica los casos mencionados.`;
       } else {
-        // Cases mode: generate from case data
         const casesToUse = selectedCaseIds.length > 0
-          ? tickets.filter(t => selectedCaseIds.includes(t.id))
+          ? ticketsPool.filter(t => selectedCaseIds.includes(t.id))
           : activeTickets.slice(0, 30);
-        const casesSummary = casesToUse.map(t =>
-          `[${t.ticket_id}] ${t.asunto} | Estado: ${t.estado} | Prioridad: ${t.prioridad} | Días: ${t.dias_antiguedad} | Responsable: ${t.responsable || "N/A"} | Producto: ${t.producto} | Tipo: ${t.tipo} | Notas: ${t.notas || "N/A"} | IA: ${t.ai_summary || "N/A"}`
-        ).join("\n");
+        const casesSummary = casesToUse.map(t => {
+          const cn = availableClients.find(c => c.id === t.client_id)?.name;
+          return `[${t.ticket_id}]${cn && isGeneralMode ? ` (${cn})` : ""} ${t.asunto} | Estado: ${t.estado} | Prioridad: ${t.prioridad} | Días: ${t.dias_antiguedad} | Responsable: ${t.responsable || "N/A"} | Producto: ${t.producto} | Tipo: ${t.tipo} | Notas: ${t.notas || "N/A"} | IA: ${t.ai_summary || "N/A"}`;
+        }).join("\n");
 
-        promptContent = `MINUTA DE SOPORTE - ${clientName}
+        promptContent = `MINUTA DE SOPORTE - ${effectiveClientName}
 Fecha: ${new Date().toLocaleDateString("es")}
 Participantes: ${selectedAttendees.join(", ") || "Por definir"}
 
-Casos activos del cliente:
+Casos activos:
 ${casesSummary}
 
 Genera una minuta ejecutiva de soporte con título, resumen, acuerdos y acciones a seguir.`;
       }
 
       const { data, error } = await supabase.functions.invoke("summarize-transcript", {
-        body: { transcript: promptContent, clientName },
+        body: { transcript: promptContent, clientName: effectiveClientName },
       });
 
       if (error) throw error;
@@ -165,19 +176,24 @@ Genera una minuta ejecutiva de soporte con título, resumen, acuerdos y acciones
       }
 
       const casesToUse = selectedCaseIds.length > 0
-        ? tickets.filter(t => selectedCaseIds.includes(t.id))
+        ? ticketsPool.filter(t => selectedCaseIds.includes(t.id))
         : activeTickets.slice(0, 30);
+
+      // In general mode, primary client_id = first selected; remaining are referenced
+      const primaryClientId = isGeneralMode ? selectedClientIds[0] : clientId;
+      const referencedClients = isGeneralMode ? selectedClientIds : [];
 
       const now = new Date().toISOString();
       const minutaRow = {
-        client_id: clientId,
-        title: newTitle || parsed.title || `Minuta de Soporte - ${clientName}`,
+        client_id: primaryClientId,
+        title: newTitle || parsed.title || `Minuta de Soporte - ${effectiveClientName}`,
         date: now.split("T")[0],
         summary: parsed.summary || "",
         cases_referenced: parsed.cases_highlighted || casesToUse.map(t => t.ticket_id),
         action_items: [...manualActions, ...(parsed.actionItems || parsed.action_items || [])],
         agreements: [...manualAgreements, ...(parsed.agreements || [])],
         attendees: selectedAttendees.length > 0 ? selectedAttendees : (parsed.attendees || []),
+        referenced_clients: referencedClients,
       };
 
       const { data: inserted, error: insertErr } = await supabase
