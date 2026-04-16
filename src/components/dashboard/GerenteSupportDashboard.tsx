@@ -109,8 +109,8 @@ export function GerenteSupportDashboard({ client }: Props) {
 
   // ── Submit new request ──
   const handleSubmitRequest = async () => {
-    if (!requestText.trim()) {
-      toast.error("Describe la solicitud");
+    if (!requestText.trim() || !requestTitle.trim()) {
+      toast.error("Completa el título y la descripción");
       return;
     }
     setSubmitting(true);
@@ -120,26 +120,27 @@ export function GerenteSupportDashboard({ client }: Props) {
         client_id: client.id,
         ticket_id: ticketId,
         producto: requestProduct || "General",
-        asunto: requestText.slice(0, 120),
-        tipo: "Solicitud Cliente",
+        asunto: requestTitle.slice(0, 120),
+        tipo: requestCategory || "Solicitud Cliente",
         prioridad: requestPriority,
         estado: "PENDIENTE",
         fecha_registro: new Date().toISOString(),
         dias_antiguedad: 0,
-        notas: `Solicitud creada desde el portal por ${profile?.full_name || "cliente"}: ${requestText}`,
+        notas: `[${requestCategory || "Solicitud"}] Creada desde el portal por ${profile?.full_name || "cliente"}:\n\n${requestText}`,
         case_agreements: [],
         case_actions: [],
       });
       if (error) throw error;
       await supabase.from("client_notifications").insert({
         client_id: client.id,
-        type: "warning",
-        title: `Nueva solicitud de soporte de ${profile?.full_name || "cliente"}`,
-        message: requestText,
+        type: requestPriority.toLowerCase().includes("critica") ? "error" : "warning",
+        title: `Nueva solicitud: ${requestTitle.slice(0, 60)}`,
+        message: `${profile?.full_name || "Cliente"} · ${requestCategory || "Solicitud"} · ${requestPriority}`,
       });
-      toast.success("Solicitud enviada al equipo de Soporte Sysde");
-      setRequestText("");
-      setRequestProduct("");
+      toast.success("✓ Solicitud enviada al equipo de Soporte Sysde", {
+        description: `Ticket ${ticketId} creado. Recibirás respuesta pronto.`,
+      });
+      resetWizard();
       setRequestOpen(false);
     } catch (e: any) {
       toast.error(e.message || "Error al enviar");
