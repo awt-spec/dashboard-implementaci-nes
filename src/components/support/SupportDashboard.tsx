@@ -377,36 +377,18 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
         </Button>
       </div>
 
-      <Tabs defaultValue="overview">
+      <Tabs defaultValue="operacion">
         <TabsList className="flex-wrap">
-          <TabsTrigger value="overview">Vista General</TabsTrigger>
-          {!isClientView && <TabsTrigger value="heatmap">Mapa de Calor</TabsTrigger>}
-          <TabsTrigger value="charts">Gráficos</TabsTrigger>
-          <TabsTrigger value="ai">Clasificación IA</TabsTrigger>
-          <TabsTrigger value="cases">Detalle de Casos</TabsTrigger>
+          <TabsTrigger value="operacion">Operación</TabsTrigger>
+          <TabsTrigger value="analitica">Analítica</TabsTrigger>
+          <TabsTrigger value="ia">IA & Estrategia</TabsTrigger>
+          {(isClientView || selectedClient !== "all") && <TabsTrigger value="comercial">Comercial</TabsTrigger>}
           <TabsTrigger value="minutas">Minutas</TabsTrigger>
-          {(isClientView || selectedClient !== "all") && <TabsTrigger value="acuerdos">Acuerdos</TabsTrigger>}
-          {(isClientView || selectedClient !== "all") && <TabsTrigger value="contratos">Contrato & SLA</TabsTrigger>}
-          {(isClientView || selectedClient !== "all") && <TabsTrigger value="scrum">Estrategia Scrum</TabsTrigger>}
-          {(isClientView || selectedClient !== "all") && <TabsTrigger value="devops">Azure DevOps</TabsTrigger>}
-          {!isClientView && <TabsTrigger value="import">Cargar Datos</TabsTrigger>}
+          {!isClientView && <TabsTrigger value="datos">Datos & Sync</TabsTrigger>}
         </TabsList>
 
-        <TabsContent value="scrum" className="mt-4">
-          <SupportScrumPanel
-            clientId={isClientView ? initialClientId! : selectedClient}
-            clientName={isClientView ? selectedClientObj?.name : selectedClientName}
-          />
-        </TabsContent>
-
-        <TabsContent value="devops" className="mt-4">
-          <DevOpsPanel
-            clientId={isClientView ? initialClientId! : selectedClient}
-            clientName={isClientView ? selectedClientObj?.name : selectedClientName}
-          />
-        </TabsContent>
-
-        <TabsContent value="overview" className="space-y-4 mt-4">
+        {/* ============ 1. OPERACIÓN: KPIs visuales + tabla de casos ============ */}
+        <TabsContent value="operacion" className="space-y-4 mt-4">
           {showingAllInCharts && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-info/10 border border-info/20 text-xs text-info">
               <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
