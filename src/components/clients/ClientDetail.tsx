@@ -9,9 +9,10 @@ import { Slider } from "@/components/ui/slider";
 import {
   Building2, MapPin, Mail, User, Calendar, TrendingUp,
   CheckCircle2, Loader2, Circle, Clock, AlertTriangle,
-  ArrowLeft, Download
+  ArrowLeft, Download, ArrowRightLeft
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { exportClientPdf } from "@/lib/exportPdf";
 import { ResponsiveContainer } from "recharts";
 import { motion } from "framer-motion";
