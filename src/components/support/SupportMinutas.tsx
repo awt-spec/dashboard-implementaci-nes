@@ -344,6 +344,55 @@ Genera una minuta ejecutiva de soporte con título, resumen, acuerdos y acciones
                 <CardTitle className="text-sm flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> Generar Minuta con IA</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Multi-client selector (general support mode) */}
+                {isGeneralMode && (
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold flex items-center gap-1.5">
+                        <Users className="h-3.5 w-3.5 text-primary" /> Clientes incluidos en esta minuta
+                      </p>
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2"
+                          onClick={() => setSelectedClientIds(availableClients.map(c => c.id))}>Todos</Button>
+                        <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2"
+                          onClick={() => setSelectedClientIds([])}>Limpiar</Button>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      Selecciona uno o varios clientes. La minuta se asociará a todos los seleccionados.
+                    </p>
+                    <div className="max-h-[140px] overflow-y-auto space-y-1 border border-border rounded-md p-2 bg-background/50">
+                      {availableClients.map(c => {
+                        const isSel = selectedClientIds.includes(c.id);
+                        return (
+                          <label key={c.id} className={`flex items-center gap-2 text-xs p-1.5 rounded cursor-pointer transition-colors ${isSel ? "bg-primary/10 border border-primary/20" : "hover:bg-muted/30"}`}>
+                            <input type="checkbox" checked={isSel}
+                              onChange={() => setSelectedClientIds(prev => prev.includes(c.id) ? prev.filter(x => x !== c.id) : [...prev, c.id])}
+                              className="rounded" />
+                            <span className="flex-1 truncate">{c.name}</span>
+                            <Badge variant="outline" className="text-[9px]">
+                              {allTickets.filter(t => t.client_id === c.id && !["CERRADA","ANULADA"].includes(t.estado)).length} activos
+                            </Badge>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {selectedClientIds.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {selectedClientIds.map(id => {
+                          const c = availableClients.find(x => x.id === id);
+                          return c ? (
+                            <Badge key={id} variant="secondary" className="text-[10px] gap-1 pr-1">
+                              {c.name}
+                              <button onClick={() => setSelectedClientIds(prev => prev.filter(x => x !== id))} className="ml-0.5 hover:text-destructive"><X className="h-2.5 w-2.5" /></button>
+                            </Badge>
+                          ) : null;
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <Input placeholder="Título (opcional, IA generará uno)" value={newTitle} onChange={e => setNewTitle(e.target.value)} className="text-xs" />
 
                 {/* Generation Mode Selector */}
