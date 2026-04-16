@@ -83,6 +83,10 @@ export default function Login() {
                 { label: "Aurum", email: "gerente.aurum@sysde.com", pw: "GerenteAurum2026!" },
                 { label: "Arkfin", email: "gerente.arkfin@sysde.com", pw: "GerenteArkfin2026!" },
                 { label: "Apex", email: "gerente.apex@sysde.com", pw: "GerenteApex2026!" },
+                { label: "Fauricio Navarro", email: "navarro.fuentes@sysde.com", pw: "Sysde2026!" },
+                { label: "Olga Lucia Cuervo", email: "olga.lucia@sysde.com", pw: "Sysde2026!" },
+                { label: "Orlando Castro", email: "orlando.castro@sysde.com", pw: "Sysde2026!" },
+                { label: "Carlos Solis", email: "solis.sequeira@sysde.com", pw: "Sysde2026!" },
               ].map((acc) => (
                 <button
                   key={acc.email}
