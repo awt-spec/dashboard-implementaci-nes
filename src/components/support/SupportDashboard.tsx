@@ -275,12 +275,33 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
                     <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {selectedClientObj.contact_email}</span>
                   </div>
                 </div>
-                <Badge className={selectedClientObj.status === "activo" ? "bg-success text-success-foreground" : "bg-muted text-muted-foreground"}>
-                  {selectedClientObj.status}
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
+                <div className="flex items-center gap-2">
+                  <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-1.5 text-xs border-amber-500/30 text-amber-500 hover:bg-amber-500/10">
+                        <ArrowRightLeft className="h-3.5 w-3.5" /> A Implementación
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Transferir a Implementación</DialogTitle>
+                      </DialogHeader>
+                      <p className="text-sm text-muted-foreground">
+                        ¿Transferir <strong>{selectedClientObj.name}</strong> de Soporte a Implementación?
+                      </p>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setTransferOpen(false)}>Cancelar</Button>
+                        <Button onClick={handleTransferToImplementation} disabled={transferring} className="gap-1.5">
+                          {transferring ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowRightLeft className="h-3.5 w-3.5" />}
+                          Transferir
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                  <Badge className={selectedClientObj.status === "activo" ? "bg-success text-success-foreground" : "bg-muted text-muted-foreground"}>
+                    {selectedClientObj.status}
+                  </Badge>
+                </div>
         </motion.div>
       )}
 
