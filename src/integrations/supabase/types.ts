@@ -1111,6 +1111,45 @@ export type Database = {
           },
         ]
       }
+      support_sprints: {
+        Row: {
+          capacity_points: number
+          client_id: string
+          created_at: string
+          end_date: string | null
+          goal: string | null
+          id: string
+          name: string
+          start_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          capacity_points?: number
+          client_id: string
+          created_at?: string
+          end_date?: string | null
+          goal?: string | null
+          id?: string
+          name: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          capacity_points?: number
+          client_id?: string
+          created_at?: string
+          end_date?: string | null
+          goal?: string | null
+          id?: string
+          name?: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       support_ticket_attachments: {
         Row: {
           created_at: string
@@ -1299,11 +1338,14 @@ export type Database = {
           ai_risk_level: string | null
           ai_summary: string | null
           asunto: string
+          backlog_rank: number | null
+          business_value: number | null
           case_actions: Json
           case_agreements: Json
           client_id: string
           created_at: string
           dias_antiguedad: number
+          effort: number | null
           estado: string
           fecha_entrega: string | null
           fecha_registro: string | null
@@ -1312,6 +1354,9 @@ export type Database = {
           prioridad: string
           producto: string
           responsable: string | null
+          scrum_status: string | null
+          sprint_id: string | null
+          story_points: number | null
           ticket_id: string
           tipo: string
           updated_at: string
@@ -1322,11 +1367,14 @@ export type Database = {
           ai_risk_level?: string | null
           ai_summary?: string | null
           asunto?: string
+          backlog_rank?: number | null
+          business_value?: number | null
           case_actions?: Json
           case_agreements?: Json
           client_id: string
           created_at?: string
           dias_antiguedad?: number
+          effort?: number | null
           estado?: string
           fecha_entrega?: string | null
           fecha_registro?: string | null
@@ -1335,6 +1383,9 @@ export type Database = {
           prioridad?: string
           producto?: string
           responsable?: string | null
+          scrum_status?: string | null
+          sprint_id?: string | null
+          story_points?: number | null
           ticket_id: string
           tipo?: string
           updated_at?: string
@@ -1345,11 +1396,14 @@ export type Database = {
           ai_risk_level?: string | null
           ai_summary?: string | null
           asunto?: string
+          backlog_rank?: number | null
+          business_value?: number | null
           case_actions?: Json
           case_agreements?: Json
           client_id?: string
           created_at?: string
           dias_antiguedad?: number
+          effort?: number | null
           estado?: string
           fecha_entrega?: string | null
           fecha_registro?: string | null
@@ -1358,6 +1412,9 @@ export type Database = {
           prioridad?: string
           producto?: string
           responsable?: string | null
+          scrum_status?: string | null
+          sprint_id?: string | null
+          story_points?: number | null
           ticket_id?: string
           tipo?: string
           updated_at?: string
@@ -1369,6 +1426,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_sprint_id_fkey"
+            columns: ["sprint_id"]
+            isOneToOne: false
+            referencedRelation: "support_sprints"
             referencedColumns: ["id"]
           },
         ]
