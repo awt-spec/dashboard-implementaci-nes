@@ -570,6 +570,8 @@ export function GerenteMobileDashboard({ client }: Props) {
           </div>
         </SheetContent>
       </Sheet>
+      </div>
+      </div>
     </div>
   );
 }
