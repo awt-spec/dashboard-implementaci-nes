@@ -111,7 +111,48 @@ export function SystemUsersTab() {
         }))
       );
     }
+    setTeam(((teamRes.data as any[]) || []) as SysdeTeamRow[]);
     setLoading(false);
+  };
+
+  const handleCreateAccess = async () => {
+    if (!accessMember || accessPw.length < 6) return;
+    setAccessLoading(true);
+    const res = await supabase.functions.invoke("manage-users", {
+      body: { action: "create_team_access", team_member_id: accessMember.id, password: accessPw },
+    });
+    if (res.error || res.data?.error) {
+      toast({ title: "Error", description: res.error?.message || res.data?.error, variant: "destructive" });
+    } else {
+      toast({ title: "Acceso creado", description: `${accessMember.name} ya puede iniciar sesión` });
+      setAccessMember(null);
+      setAccessPw("");
+      fetchUsers();
+    }
+    setAccessLoading(false);
+  };
+
+  const handleBulkAccess = async () => {
+    if (bulkPw.length < 6) {
+      toast({ title: "Error", description: "Mínimo 6 caracteres", variant: "destructive" });
+      return;
+    }
+    setCreating(true);
+    const res = await supabase.functions.invoke("manage-users", {
+      body: { action: "create_bulk_team_access", password: bulkPw },
+    });
+    if (res.error || res.data?.error) {
+      toast({ title: "Error", description: res.error?.message || res.data?.error, variant: "destructive" });
+    } else {
+      const results = res.data?.results || [];
+      const ok = results.filter((r: any) => r.success).length;
+      const skipped = results.filter((r: any) => r.skipped).length;
+      toast({ title: "Accesos en bloque", description: `${ok} creados · ${skipped} omitidos` });
+      setBulkOpen(false);
+      setBulkPw("");
+      fetchUsers();
+    }
+    setCreating(false);
   };
 
   useEffect(() => { fetchUsers(); }, []);
