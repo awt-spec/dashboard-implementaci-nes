@@ -653,14 +653,12 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
               </Card>
             </>
           )}
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
-        <TabsContent value="charts" className="mt-4">
-          <SupportChartBuilder tickets={ticketsWithClientName} />
-        </TabsContent>
-
-        {/* AI Classification Tab */}
-        <TabsContent value="ai" className="mt-4 space-y-4">
+        {/* ============ 3. IA & ESTRATEGIA: clasificación + seguimiento + scrum ============ */}
+        <TabsContent value="ia" className="mt-4 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Brain className="h-5 w-5 text-violet-400" />
