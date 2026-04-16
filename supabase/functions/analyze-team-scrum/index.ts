@@ -1,0 +1,167 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const startedAt = Date.now();
+  const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+  try {
+    if (!LOVABLE_API_KEY) {
+      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY no configurado" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { items, sprints } = await req.json();
+
+    // Compress payload to keep prompt small
+    const compactItems = (items || []).slice(0, 200).map((i: any) => ({
+      id: i.id,
+      src: i.source,
+      title: (i.title || "").slice(0, 100),
+      owner: i.owner,
+      status: i.status,
+      priority: i.priority,
+      sp: i.story_points,
+      val: i.business_value,
+      eff: i.effort,
+      wsjf: i.wsjf,
+      sprint: i.sprint_id ? "yes" : "no",
+      scrum_status: i.scrum_status,
+    }));
+
+    const activeSprints = (sprints || []).filter((s: any) => s.status === "activo");
+
+    const systemPrompt = `Eres un Scrum Master experto. Analizas la carga del equipo y detectas riesgos.
+Responde SIEMPRE invocando la función analyze_team con los hallazgos.
+
+Reglas:
+- bottlenecks: detecta personas con sobrecarga (>5 items asignados o muchos high priority)
+- risks: detecta items en sprint activo sin estimación o con WSJF muy bajo pero alta prioridad
+- recommendations: 3-5 acciones concretas para mejorar el flujo
+- sprint_health: una palabra: "saludable", "en_riesgo" o "critico"`;
+
+    const userPrompt = `Analiza el siguiente equipo Scrum.
+
+Sprints activos: ${activeSprints.length}
+Items totales: ${compactItems.length}
+
+Items:
+${JSON.stringify(compactItems, null, 1)}
+
+Sprints:
+${JSON.stringify(activeSprints, null, 1)}`;
+
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        tools: [{
+          type: "function",
+          function: {
+            name: "analyze_team",
+            description: "Reporta análisis del equipo Scrum",
+            parameters: {
+              type: "object",
+              properties: {
+                bottlenecks: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      owner: { type: "string" },
+                      severity: { type: "string", enum: ["low", "medium", "high"] },
+                      reason: { type: "string" },
+                      load: { type: "number" },
+                    },
+                    required: ["owner", "severity", "reason", "load"],
+                  },
+                },
+                risks: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      item_id: { type: "string" },
+                      reason: { type: "string" },
+                      recommendation: { type: "string" },
+                    },
+                    required: ["item_id", "reason", "recommendation"],
+                  },
+                },
+                recommendations: { type: "array", items: { type: "string" } },
+                sprint_health: { type: "string", enum: ["saludable", "en_riesgo", "critico"] },
+              },
+              required: ["bottlenecks", "risks", "recommendations", "sprint_health"],
+            },
+          },
+        }],
+        tool_choice: { type: "function", function: { name: "analyze_team" } },
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      if (aiResponse.status === 429) {
+        return new Response(JSON.stringify({ error: "Límite de IA alcanzado, intenta en unos minutos" }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (aiResponse.status === 402) {
+        return new Response(JSON.stringify({ error: "Sin créditos de IA. Recarga en Configuración." }), {
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const t = await aiResponse.text();
+      throw new Error(`AI error ${aiResponse.status}: ${t.slice(0, 200)}`);
+    }
+
+    const json = await aiResponse.json();
+    const usage = json.usage || {};
+    const toolCall = json.choices?.[0]?.message?.tool_calls?.[0];
+    if (!toolCall) throw new Error("No tool call in response");
+    const result = JSON.parse(toolCall.function.arguments);
+
+    // Log AI usage
+    await sb.from("ai_usage_logs").insert({
+      function_name: "analyze-team-scrum",
+      model: "google/gemini-3-flash-preview",
+      prompt_tokens: usage.prompt_tokens || 0,
+      completion_tokens: usage.completion_tokens || 0,
+      total_tokens: usage.total_tokens || 0,
+      status: "success",
+      metadata: { duration_ms: Date.now() - startedAt, items_analyzed: compactItems.length },
+    });
+
+    return new Response(JSON.stringify(result), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (e: any) {
+    await sb.from("ai_usage_logs").insert({
+      function_name: "analyze-team-scrum",
+      model: "google/gemini-3-flash-preview",
+      status: "error",
+      error_message: e.message,
+    });
+    return new Response(JSON.stringify({ error: e.message }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
