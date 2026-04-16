@@ -18,6 +18,7 @@ import {
   useAllScrumWorkItems, useAllSprints, useUpdateWorkItemScrum,
   useTeamAIAnalysis, type ScrumWorkItem,
 } from "@/hooks/useTeamScrum";
+import { PMAIPanel } from "@/components/scrum/PMAIPanel";
 
 const CHART_COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "hsl(var(--warning))", "hsl(220,70%,55%)", "hsl(150,60%,50%)", "hsl(280,60%,60%)"];
 
