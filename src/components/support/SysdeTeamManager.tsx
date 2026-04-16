@@ -125,10 +125,14 @@ export function SysdeTeamManager() {
           </div>
           <Badge variant="outline" className="ml-2">{activeMembers.length} activos</Badge>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="gap-1.5"><UserPlus className="h-3.5 w-3.5" /> Agregar Miembro</Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={handleBulkCreateAccess}>
+            <KeyRound className="h-3.5 w-3.5" /> Crear accesos masivos
+          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="gap-1.5"><UserPlus className="h-3.5 w-3.5" /> Agregar Miembro</Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Agregar Miembro al Equipo SYSDE</DialogTitle></DialogHeader>
             <div className="space-y-4 pt-2">
