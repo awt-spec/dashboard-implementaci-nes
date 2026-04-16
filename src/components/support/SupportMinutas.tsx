@@ -60,6 +60,9 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
   // Transcript mode
   const [generationMode, setGenerationMode] = useState<GenerationMode>("cases");
   const [transcript, setTranscript] = useState("");
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [parsingFile, setParsingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadMinutas = useCallback(() => {
     setLoading(true);
