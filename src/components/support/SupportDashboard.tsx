@@ -78,6 +78,8 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
   const [search, setSearch] = useState("");
   const [prioridadFilter, setPrioridadFilter] = useState<string>("all");
   const [classifying, setClassifying] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferring, setTransferring] = useState(false);
 
   const isClientView = !!initialClientId;
 
