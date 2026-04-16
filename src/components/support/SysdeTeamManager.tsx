@@ -170,6 +170,7 @@ export function SysdeTeamManager() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <Card>
