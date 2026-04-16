@@ -50,6 +50,36 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
   const implClients = allClients.filter((c: any) => c.client_type === "implementacion");
   const supportClients = allClients.filter((c: any) => c.client_type === "soporte");
 
+  const [implOpen, setImplOpen] = useState(true);
+  const [supportOpen, setSupportOpen] = useState(true);
+  const [search, setSearch] = useState("");
+  const [openStatusGroups, setOpenStatusGroups] = useState<Record<string, boolean>>({
+    "impl-activo": true,
+    "support-activo": true,
+  });
+
+  const toggleStatusGroup = (key: string) =>
+    setOpenStatusGroups(p => ({ ...p, [key]: !p[key] }));
+
+  const filterByName = (list: any[]) =>
+    search.trim()
+      ? list.filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
+      : list;
+
+  const groupByStatus = (list: any[]) => {
+    const filtered = filterByName(list);
+    const groups: Record<string, any[]> = {};
+    statusOrder.forEach(s => { groups[s] = []; });
+    filtered.forEach(c => {
+      if (!groups[c.status]) groups[c.status] = [];
+      groups[c.status].push(c);
+    });
+    return groups;
+  };
+
+  const implGroups = useMemo(() => groupByStatus(implClients), [implClients, search]);
+  const supportGroups = useMemo(() => groupByStatus(supportClients), [supportClients, search]);
+
   // Build nav items based on role
   const mainNav = [
     { id: "overview", title: "Resumen Ejecutivo", icon: LayoutDashboard, roles: ["admin", "pm", "gerente"] },
@@ -59,6 +89,61 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
     { id: "ai-usage", title: "IA & Clasificación", icon: Sparkles, roles: ["admin", "pm"] },
     { id: "users", title: "Usuarios", icon: Shield, roles: ["admin"] },
   ].filter(item => role && item.roles.includes(role));
+
+  const renderClientGroup = (
+    type: "impl" | "support",
+    groups: Record<string, any[]>,
+  ) => {
+    const prefix = type === "impl" ? "client-" : "support-client-";
+    return statusOrder.map(status => {
+      const items = groups[status] || [];
+      if (items.length === 0) return null;
+      const key = `${type}-${status}`;
+      const isOpen = openStatusGroups[key] ?? false;
+      return (
+        <Collapsible key={key} open={isOpen} onOpenChange={() => toggleStatusGroup(key)}>
+          <CollapsibleTrigger className="w-full group-data-[collapsible=icon]:hidden">
+            <div className="flex items-center justify-between px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50 hover:text-sidebar-foreground/80 transition-colors">
+              <span className="flex items-center gap-1.5">
+                <span className={`w-1.5 h-1.5 rounded-full ${
+                  status === "activo" ? "bg-success" :
+                  status === "en-riesgo" ? "bg-destructive" :
+                  status === "completado" ? "bg-info" : "bg-muted-foreground"
+                }`} />
+                {statusLabel[status]}
+                <span className="text-sidebar-foreground/40">({items.length})</span>
+              </span>
+              <ChevronDown className={`h-3 w-3 transition-transform ${isOpen ? "" : "-rotate-90"}`} />
+            </div>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down overflow-hidden">
+            <SidebarMenu>
+              {items.map(client => {
+                const sectionId = `${prefix}${client.id}`;
+                return (
+                  <SidebarMenuItem key={client.id}>
+                    <SidebarMenuButton
+                      onClick={() => onSectionChange(sectionId)}
+                      isActive={activeSection === sectionId}
+                      tooltip={client.name}
+                      size="sm"
+                    >
+                      <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                        client.status === "activo" ? "bg-success" :
+                        client.status === "en-riesgo" ? "bg-destructive" :
+                        client.status === "completado" ? "bg-info" : "bg-muted-foreground"
+                      }`} />
+                      <span className="truncate text-xs">{client.name}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </CollapsibleContent>
+        </Collapsible>
+      );
+    });
+  };
 
   return (
     <Sidebar collapsible="icon">
@@ -94,46 +179,72 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
         {role !== "gerente" && (
           <>
             <Separator className="bg-sidebar-border mx-2" />
-            <SidebarGroup>
-              <SidebarGroupLabel className="text-sidebar-foreground/50">Implementación</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {implClients.map(client => (
-                    <SidebarMenuItem key={client.id}>
-                      <SidebarMenuButton
-                        onClick={() => onSectionChange(`client-${client.id}`)}
-                        isActive={activeSection === `client-${client.id}`}
-                        tooltip={client.name}
-                      >
-                        <div className={`w-2 h-2 rounded-full shrink-0 ${statusDot[client.status]}`} />
-                        <span className="truncate text-xs">{client.name.split(" ").slice(0, 2).join(" ")}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
 
-            <Separator className="bg-sidebar-border mx-2" />
-            <SidebarGroup>
-              <SidebarGroupLabel className="text-sidebar-foreground/50">Soporte</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {supportClients.map(client => (
-                    <SidebarMenuItem key={client.id}>
-                      <SidebarMenuButton
-                        onClick={() => onSectionChange(`support-client-${client.id}`)}
-                        isActive={activeSection === `support-client-${client.id}`}
-                        tooltip={client.name}
-                      >
-                        <div className={`w-2 h-2 rounded-full shrink-0 ${statusDot[client.status]}`} />
-                        <span className="truncate text-xs">{client.name}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+            {/* Search box */}
+            <div className="px-3 py-2 group-data-[collapsible=icon]:hidden">
+              <Input
+                placeholder="Buscar cliente..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="h-7 text-xs bg-sidebar-accent/30 border-sidebar-border text-sidebar-foreground placeholder:text-sidebar-foreground/40"
+              />
+            </div>
+
+            {/* Implementación stack */}
+            {implClients.length > 0 && (
+              <Collapsible open={implOpen} onOpenChange={setImplOpen}>
+                <SidebarGroup>
+                  <CollapsibleTrigger className="w-full group-data-[collapsible=icon]:hidden">
+                    <SidebarGroupLabel className="text-sidebar-foreground/70 hover:text-sidebar-foreground cursor-pointer flex items-center justify-between w-full">
+                      <span className="flex items-center gap-2">
+                        <Building2 className="h-3.5 w-3.5" />
+                        Implementación
+                        <span className="text-sidebar-foreground/40 text-[10px]">({filterByName(implClients).length})</span>
+                      </span>
+                      <ChevronDown className={`h-3.5 w-3.5 transition-transform ${implOpen ? "" : "-rotate-90"}`} />
+                    </SidebarGroupLabel>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down overflow-hidden">
+                    <SidebarGroupContent className="space-y-1">
+                      {renderClientGroup("impl", implGroups)}
+                      {filterByName(implClients).length === 0 && (
+                        <p className="px-3 py-2 text-[10px] text-sidebar-foreground/40 italic group-data-[collapsible=icon]:hidden">
+                          Sin resultados
+                        </p>
+                      )}
+                    </SidebarGroupContent>
+                  </CollapsibleContent>
+                </SidebarGroup>
+              </Collapsible>
+            )}
+
+            {/* Soporte stack */}
+            {supportClients.length > 0 && (
+              <Collapsible open={supportOpen} onOpenChange={setSupportOpen}>
+                <SidebarGroup>
+                  <CollapsibleTrigger className="w-full group-data-[collapsible=icon]:hidden">
+                    <SidebarGroupLabel className="text-sidebar-foreground/70 hover:text-sidebar-foreground cursor-pointer flex items-center justify-between w-full">
+                      <span className="flex items-center gap-2">
+                        <Headset className="h-3.5 w-3.5" />
+                        Soporte
+                        <span className="text-sidebar-foreground/40 text-[10px]">({filterByName(supportClients).length})</span>
+                      </span>
+                      <ChevronDown className={`h-3.5 w-3.5 transition-transform ${supportOpen ? "" : "-rotate-90"}`} />
+                    </SidebarGroupLabel>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down overflow-hidden">
+                    <SidebarGroupContent className="space-y-1">
+                      {renderClientGroup("support", supportGroups)}
+                      {filterByName(supportClients).length === 0 && (
+                        <p className="px-3 py-2 text-[10px] text-sidebar-foreground/40 italic group-data-[collapsible=icon]:hidden">
+                          Sin resultados
+                        </p>
+                      )}
+                    </SidebarGroupContent>
+                  </CollapsibleContent>
+                </SidebarGroup>
+              </Collapsible>
+            )}
           </>
         )}
       </SidebarContent>
