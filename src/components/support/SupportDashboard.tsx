@@ -302,6 +302,9 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
                     {selectedClientObj.status}
                   </Badge>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
         </motion.div>
       )}
 
