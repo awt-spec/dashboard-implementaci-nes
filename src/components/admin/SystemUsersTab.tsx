@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Shield, Briefcase, Eye, Trash2, KeyRound, Link2, Mail, User, Loader2 } from "lucide-react";
+import { UserPlus, Shield, Briefcase, Eye, Trash2, KeyRound, Link2, Mail, User, Loader2, Users2, KeySquare, AlertCircle } from "lucide-react";
 import { GerenteAssignmentsDialog } from "./GerenteAssignmentsDialog";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -17,6 +17,16 @@ interface UserRow {
   full_name: string;
   email: string;
   role: string;
+}
+
+interface SysdeTeamRow {
+  id: string;
+  name: string;
+  email: string | null;
+  role: string | null;
+  department: string | null;
+  is_active: boolean | null;
+  user_id: string | null;
 }
 
 const roleConfig: Record<string, { label: string; icon: React.ReactNode; bg: string; text: string; border: string; gradient: string }> = {
@@ -65,6 +75,7 @@ function getInitials(name: string) {
 
 export function SystemUsersTab() {
   const [users, setUsers] = useState<UserRow[]>([]);
+  const [team, setTeam] = useState<SysdeTeamRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [newName, setNewName] = useState("");
@@ -73,12 +84,22 @@ export function SystemUsersTab() {
   const [newRole, setNewRole] = useState("pm");
   const [creating, setCreating] = useState(false);
   const [assignUserId, setAssignUserId] = useState<string | null>(null);
+  const [bulkPw, setBulkPw] = useState("");
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [accessMember, setAccessMember] = useState<SysdeTeamRow | null>(null);
+  const [accessPw, setAccessPw] = useState("");
+  const [accessLoading, setAccessLoading] = useState(false);
   const { toast } = useToast();
 
   const fetchUsers = async () => {
     setLoading(true);
-    const { data: profiles } = await supabase.from("profiles").select("user_id, full_name, email");
-    const { data: roles } = await supabase.from("user_roles").select("user_id, role");
+    const [profilesRes, rolesRes, teamRes] = await Promise.all([
+      supabase.from("profiles").select("user_id, full_name, email"),
+      supabase.from("user_roles").select("user_id, role"),
+      (supabase.from("sysde_team_members" as any).select("id, name, email, role, department, is_active, user_id").order("name") as any),
+    ]);
+    const profiles = profilesRes.data;
+    const roles = rolesRes.data;
     if (profiles && roles) {
       const rolesMap = Object.fromEntries(roles.map((r) => [r.user_id, r.role]));
       setUsers(
@@ -90,7 +111,48 @@ export function SystemUsersTab() {
         }))
       );
     }
+    setTeam(((teamRes.data as any[]) || []) as SysdeTeamRow[]);
     setLoading(false);
+  };
+
+  const handleCreateAccess = async () => {
+    if (!accessMember || accessPw.length < 6) return;
+    setAccessLoading(true);
+    const res = await supabase.functions.invoke("manage-users", {
+      body: { action: "create_team_access", team_member_id: accessMember.id, password: accessPw },
+    });
+    if (res.error || res.data?.error) {
+      toast({ title: "Error", description: res.error?.message || res.data?.error, variant: "destructive" });
+    } else {
+      toast({ title: "Acceso creado", description: `${accessMember.name} ya puede iniciar sesión` });
+      setAccessMember(null);
+      setAccessPw("");
+      fetchUsers();
+    }
+    setAccessLoading(false);
+  };
+
+  const handleBulkAccess = async () => {
+    if (bulkPw.length < 6) {
+      toast({ title: "Error", description: "Mínimo 6 caracteres", variant: "destructive" });
+      return;
+    }
+    setCreating(true);
+    const res = await supabase.functions.invoke("manage-users", {
+      body: { action: "create_bulk_team_access", password: bulkPw },
+    });
+    if (res.error || res.data?.error) {
+      toast({ title: "Error", description: res.error?.message || res.data?.error, variant: "destructive" });
+    } else {
+      const results = res.data?.results || [];
+      const ok = results.filter((r: any) => r.success).length;
+      const skipped = results.filter((r: any) => r.skipped).length;
+      toast({ title: "Accesos en bloque", description: `${ok} creados · ${skipped} omitidos` });
+      setBulkOpen(false);
+      setBulkPw("");
+      fetchUsers();
+    }
+    setCreating(false);
   };
 
   useEffect(() => { fetchUsers(); }, []);
@@ -172,12 +234,37 @@ export function SystemUsersTab() {
             <p className="text-sm text-muted-foreground">Crea, edita y administra los accesos del sistema</p>
           </div>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2 shadow-lg shadow-primary/20">
-              <UserPlus className="h-4 w-4" />Nuevo Usuario
-            </Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-2">
+          <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <KeySquare className="h-4 w-4" />Acceso en bloque
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Users2 className="h-4 w-4 text-primary" /> Crear acceso para todo el equipo SYSDE
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3 pt-2">
+                <p className="text-xs text-muted-foreground">
+                  Genera credenciales de colaborador para todos los miembros activos del Equipo SYSDE que aún no tengan acceso.
+                  Todos compartirán la misma contraseña inicial (deberán cambiarla luego).
+                </p>
+                <Input type="password" placeholder="Contraseña común (min 6 chars)" value={bulkPw} onChange={(e) => setBulkPw(e.target.value)} className="h-11" />
+                <Button onClick={handleBulkAccess} disabled={creating || bulkPw.length < 6} className="w-full h-11">
+                  {creating ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Generando…</> : "Crear accesos"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2 shadow-lg shadow-primary/20">
+                <UserPlus className="h-4 w-4" />Nuevo Usuario
+              </Button>
+            </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -225,7 +312,8 @@ export function SystemUsersTab() {
               </Button>
             </div>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       {/* Stats cards */}
@@ -356,6 +444,94 @@ export function SystemUsersTab() {
           </AnimatePresence>
         )}
       </div>
+
+      {/* SYSDE Team without access */}
+      <div className="space-y-3 pt-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-base font-semibold flex items-center gap-2">
+              <Users2 className="h-4 w-4 text-primary" /> Equipo Colaborador SYSDE
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Miembros del equipo registrados. Crea accesos individuales o usa "Acceso en bloque".
+            </p>
+          </div>
+          <Badge variant="outline" className="text-[10px]">
+            {team.filter(t => !t.user_id && t.is_active).length} sin acceso · {team.filter(t => t.user_id).length} con acceso
+          </Badge>
+        </div>
+
+        {team.length === 0 ? (
+          <Card className="border-dashed">
+            <CardContent className="flex flex-col items-center justify-center py-10 text-muted-foreground">
+              <Users2 className="h-8 w-8 mb-2 opacity-30" />
+              <p className="text-xs">No hay miembros en el Equipo SYSDE</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-2">
+            {team.map((m) => {
+              const hasAccess = !!m.user_id;
+              const noEmail = !m.email;
+              return (
+                <Card key={m.id} className="border-border/40">
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                      <span className="text-xs font-bold text-emerald-500">{getInitials(m.name)}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{m.name}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {m.email || <span className="text-amber-500 inline-flex items-center gap-1"><AlertCircle className="h-3 w-3" />Sin email</span>}
+                        {m.role && <span> · {m.role}</span>}
+                        {m.department && <span> · {m.department}</span>}
+                      </p>
+                    </div>
+                    {hasAccess ? (
+                      <Badge className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30 gap-1 text-[10px]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Acceso activo
+                      </Badge>
+                    ) : !m.is_active ? (
+                      <Badge variant="outline" className="text-muted-foreground text-[10px]">Inactivo</Badge>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs gap-1.5 border-primary/30 text-primary hover:bg-primary/5"
+                        disabled={noEmail}
+                        onClick={() => { setAccessMember(m); setAccessPw(""); }}
+                      >
+                        <KeyRound className="h-3 w-3" /> Crear acceso
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Individual access dialog */}
+      <Dialog open={!!accessMember} onOpenChange={(o) => !o && setAccessMember(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-4 w-4 text-primary" /> Crear acceso para {accessMember?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
+            <div className="text-xs space-y-1 bg-muted/40 rounded-lg p-3">
+              <p><span className="text-muted-foreground">Email:</span> <span className="font-medium">{accessMember?.email}</span></p>
+              <p><span className="text-muted-foreground">Rol asignado:</span> <span className="font-medium">Colaborador SYSDE</span></p>
+            </div>
+            <Input type="password" placeholder="Contraseña inicial (min 6 chars)" value={accessPw} onChange={(e) => setAccessPw(e.target.value)} className="h-11" />
+            <Button onClick={handleCreateAccess} disabled={accessLoading || accessPw.length < 6} className="w-full h-11">
+              {accessLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Creando…</> : "Crear acceso"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {assignUserId && (
         <GerenteAssignmentsDialog
