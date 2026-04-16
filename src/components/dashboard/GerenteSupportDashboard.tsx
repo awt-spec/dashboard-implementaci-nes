@@ -496,6 +496,10 @@ export function GerenteSupportDashboard({ client }: Props) {
           side="bottom"
           className="rounded-t-3xl max-h-[92vh] overflow-y-auto p-0 border-t-2 border-primary/20 sm:max-w-2xl sm:mx-auto"
         >
+          <SheetHeader className="sr-only">
+            <SheetTitle>Nueva solicitud de soporte</SheetTitle>
+            <SheetDescription>Asistente paso a paso para crear una solicitud</SheetDescription>
+          </SheetHeader>
           {/* Header with progress */}
           <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b px-5 pt-5 pb-3">
             <div className="flex items-start justify-between mb-3">
