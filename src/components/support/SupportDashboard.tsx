@@ -224,6 +224,22 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
     }
   }, [refetch, isClientView, scopedTickets]);
 
+  const handleTransferToImplementation = useCallback(async () => {
+    if (!initialClientId) return;
+    setTransferring(true);
+    try {
+      const { error } = await supabase.from("clients").update({ client_type: "implementacion" } as any).eq("id", initialClientId);
+      if (error) throw error;
+      toast.success("Cliente transferido a Implementación");
+      setTransferOpen(false);
+      if (onBack) onBack();
+    } catch (e: any) {
+      toast.error(e.message || "Error al transferir");
+    } finally {
+      setTransferring(false);
+    }
+  }, [initialClientId, onBack]);
+
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
   }
