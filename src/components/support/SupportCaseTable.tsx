@@ -465,6 +465,9 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
                         <CheckSquare className="h-3 w-3" />Acuerdos
                         {totalItems > 0 && <Badge variant="secondary" className="text-[9px] h-4 px-1 ml-0.5">{totalItems}</Badge>}
                       </TabsTrigger>
+                      <TabsTrigger value="details" className="text-[11px] h-6 px-3 gap-1 flex-1">
+                        <Tag className="h-3 w-3" />Detalles
+                      </TabsTrigger>
                     </TabsList>
 
                     {/* Tab: Gestión */}
