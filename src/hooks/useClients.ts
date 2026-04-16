@@ -16,6 +16,8 @@ interface DbClient {
   progress: number;
   team_assigned: string[];
   client_type?: string;
+  core_version?: string;
+  modules?: string[];
 }
 
 interface DbPhase {
@@ -169,6 +171,8 @@ async function fetchClients(): Promise<Client[]> {
       status: c.status as Client["status"],
       progress: c.progress,
       client_type: c.client_type,
+      coreVersion: (c as any).core_version || "",
+      modules: Array.isArray((c as any).modules) ? (c as any).modules : [],
       teamAssigned: c.team_assigned,
       phases: phasesData
         .filter(p => p.client_id === c.id)

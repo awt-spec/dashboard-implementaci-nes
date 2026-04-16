@@ -19,6 +19,8 @@ export interface Client {
   meetingMinutes: MeetingMinute[];
   emailNotifications: EmailNotification[];
   client_type?: string;
+  coreVersion?: string;
+  modules?: string[];
 }
 
 export interface Phase {
