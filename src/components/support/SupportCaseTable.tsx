@@ -9,7 +9,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import {
   ChevronDown, Brain, Calendar, User, Tag, FileText,
   AlertTriangle, Save, Loader2, CheckSquare, ArrowRight, Clock,
-  Package, Wrench, Search, Filter, X, Plus, Trash2, Sparkles, Zap
+  Package, Wrench, Search, Filter, X, Plus, Trash2, Sparkles, Zap,
+  Globe, Lock
 } from "lucide-react";
 import type { SupportTicket, CaseAgreementItem } from "@/hooks/useSupportTickets";
 import { useUpdateSupportTicket } from "@/hooks/useSupportTickets";
