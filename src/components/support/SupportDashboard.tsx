@@ -595,7 +595,7 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Brain className="h-5 w-5 text-violet-400" />
-              <span className="text-sm font-medium">Clasificación IA de Tickets</span>
+              <span className="text-sm font-medium">Inteligencia Artificial</span>
               <Badge variant="outline" className="text-xs">{classifiedCount}/{scopedTickets.length} clasificados</Badge>
             </div>
             <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={handleClassify} disabled={classifying}>
@@ -604,96 +604,300 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
             </Button>
           </div>
 
-          {aiClassData.length > 0 && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Tabs defaultValue="clasificacion">
+            <TabsList className="h-8">
+              <TabsTrigger value="clasificacion" className="text-xs h-6 gap-1"><Brain className="h-3 w-3" /> Clasificación</TabsTrigger>
+              <TabsTrigger value="seguimiento" className="text-xs h-6 gap-1"><AlertTriangle className="h-3 w-3" /> Seguimiento IA</TabsTrigger>
+              <TabsTrigger value="agentes" className="text-xs h-6 gap-1"><Sparkles className="h-3 w-3" /> Agentes IA</TabsTrigger>
+            </TabsList>
+
+            {/* Sub-tab: Clasificación */}
+            <TabsContent value="clasificacion" className="mt-4 space-y-4">
+              {aiClassData.length > 0 && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader className="pb-2"><CardTitle className="text-sm">Categorías IA</CardTitle></CardHeader>
+                    <CardContent>
+                      <div className="h-[220px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={aiClassData} layout="vertical">
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                            <XAxis type="number" tick={{ fontSize: 10 }} />
+                            <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 9 }} />
+                            <Bar dataKey="value" fill="hsl(280,60%,60%)" radius={[0, 4, 4, 0]} />
+                            <Tooltip />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2"><CardTitle className="text-sm">Nivel de Riesgo IA</CardTitle></CardHeader>
+                    <CardContent>
+                      <div className="h-[220px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={(() => {
+                                const counts: Record<string, number> = {};
+                                filteredActive.filter(t => t.ai_risk_level).forEach(t => {
+                                  const label = aiRiskLabels[t.ai_risk_level!] || t.ai_risk_level!;
+                                  counts[label] = (counts[label] || 0) + 1;
+                                });
+                                return Object.entries(counts).map(([name, value]) => ({ name, value }));
+                              })()}
+                              innerRadius={50} outerRadius={80} dataKey="value" strokeWidth={0}
+                            >
+                              <Cell fill="rgb(239,68,68)" />
+                              <Cell fill="rgb(249,115,22)" />
+                              <Cell fill="rgb(234,179,8)" />
+                              <Cell fill="rgb(34,197,94)" />
+                            </Pie>
+                            <Tooltip formatter={(v: number) => [`${v} casos`, ""]} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
               <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-sm">Categorías IA</CardTitle></CardHeader>
+                <CardHeader className="pb-2"><CardTitle className="text-sm">Tickets con Clasificación IA</CardTitle></CardHeader>
                 <CardContent>
-                  <div className="h-[220px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={aiClassData} layout="vertical">
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis type="number" tick={{ fontSize: 10 }} />
-                        <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 9 }} />
-                        <Bar dataKey="value" fill="hsl(280,60%,60%)" radius={[0, 4, 4, 0]} />
-                        <Tooltip />
-                      </BarChart>
-                    </ResponsiveContainer>
+                  <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+                    <table className="w-full text-xs">
+                      <thead className="sticky top-0 bg-card z-10">
+                        <tr className="border-b border-border">
+                          <th className="text-left p-2 font-medium text-muted-foreground">ID</th>
+                          {!isClientView && <th className="text-left p-2 font-medium text-muted-foreground">Cliente</th>}
+                          <th className="text-left p-2 font-medium text-muted-foreground">Asunto</th>
+                          <th className="text-left p-2 font-medium text-muted-foreground">Categoría IA</th>
+                          <th className="text-left p-2 font-medium text-muted-foreground">Riesgo IA</th>
+                          <th className="text-left p-2 font-medium text-muted-foreground">Resumen IA</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tickets.filter(t => t.ai_classification).map(t => (
+                          <tr key={t.id} className="border-b border-border/50 hover:bg-muted/30">
+                            <td className="p-2 font-mono font-bold whitespace-nowrap">{t.ticket_id}</td>
+                            {!isClientView && <td className="p-2 whitespace-nowrap">{clientName(t.client_id)}</td>}
+                            <td className="p-2 max-w-[200px] truncate">{t.asunto}</td>
+                            <td className="p-2"><Badge variant="outline" className="text-[10px] border-violet-500/40 text-violet-400">{t.ai_classification}</Badge></td>
+                            <td className="p-2">
+                              <Badge variant="outline" className={`text-[10px] ${aiRiskColors[t.ai_risk_level || ""] || ""}`}>
+                                {aiRiskLabels[t.ai_risk_level || ""] || t.ai_risk_level || "—"}
+                              </Badge>
+                            </td>
+                            <td className="p-2 max-w-[300px] truncate text-muted-foreground">{t.ai_summary || "—"}</td>
+                          </tr>
+                        ))}
+                        {tickets.filter(t => t.ai_classification).length === 0 && (
+                          <tr><td colSpan={isClientView ? 5 : 6} className="p-8 text-center text-muted-foreground">
+                            No hay tickets clasificados. Presiona "Clasificar con IA" para comenzar.
+                          </td></tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
 
-              <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-sm">Nivel de Riesgo IA</CardTitle></CardHeader>
-                <CardContent>
-                  <div className="h-[220px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={(() => {
-                            const counts: Record<string, number> = {};
-                            filteredActive.filter(t => t.ai_risk_level).forEach(t => {
-                              const label = aiRiskLabels[t.ai_risk_level!] || t.ai_risk_level!;
-                              counts[label] = (counts[label] || 0) + 1;
-                            });
-                            return Object.entries(counts).map(([name, value]) => ({ name, value }));
-                          })()}
-                          innerRadius={50} outerRadius={80} dataKey="value" strokeWidth={0}
-                        >
-                          <Cell fill="rgb(239,68,68)" />
-                          <Cell fill="rgb(249,115,22)" />
-                          <Cell fill="rgb(234,179,8)" />
-                          <Cell fill="rgb(34,197,94)" />
-                        </Pie>
-                        <Tooltip formatter={(v: number) => [`${v} casos`, ""]} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+            {/* Sub-tab: Seguimiento IA — actionable recommendations */}
+            <TabsContent value="seguimiento" className="mt-4 space-y-4">
+              {/* Old cases needing attention */}
+              {(() => {
+                const oldCases = filteredActive.filter(t => t.dias_antiguedad > 180).sort((a, b) => b.dias_antiguedad - a.dias_antiguedad);
+                const stuckCases = filteredActive.filter(t => t.estado === "ENTREGADA" && t.dias_antiguedad > 30).sort((a, b) => b.dias_antiguedad - a.dias_antiguedad);
+                const unassigned = filteredActive.filter(t => !t.responsable || t.responsable.trim() === "").sort((a, b) => b.dias_antiguedad - a.dias_antiguedad);
+                const noNotes = filteredActive.filter(t => !t.notas && !t.ai_summary).sort((a, b) => b.dias_antiguedad - a.dias_antiguedad);
 
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm">Tickets con Clasificación IA</CardTitle></CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
-                <table className="w-full text-xs">
-                  <thead className="sticky top-0 bg-card z-10">
-                    <tr className="border-b border-border">
-                      <th className="text-left p-2 font-medium text-muted-foreground">ID</th>
-                      {!isClientView && <th className="text-left p-2 font-medium text-muted-foreground">Cliente</th>}
-                      <th className="text-left p-2 font-medium text-muted-foreground">Asunto</th>
-                      <th className="text-left p-2 font-medium text-muted-foreground">Categoría IA</th>
-                      <th className="text-left p-2 font-medium text-muted-foreground">Riesgo IA</th>
-                      <th className="text-left p-2 font-medium text-muted-foreground">Resumen IA</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tickets.filter(t => t.ai_classification).map(t => (
-                      <tr key={t.id} className="border-b border-border/50 hover:bg-muted/30">
-                        <td className="p-2 font-mono font-bold whitespace-nowrap">{t.ticket_id}</td>
-                        {!isClientView && <td className="p-2 whitespace-nowrap">{clientName(t.client_id)}</td>}
-                        <td className="p-2 max-w-[200px] truncate">{t.asunto}</td>
-                        <td className="p-2"><Badge variant="outline" className="text-[10px] border-violet-500/40 text-violet-400">{t.ai_classification}</Badge></td>
-                        <td className="p-2">
-                          <Badge variant="outline" className={`text-[10px] ${aiRiskColors[t.ai_risk_level || ""] || ""}`}>
-                            {aiRiskLabels[t.ai_risk_level || ""] || t.ai_risk_level || "—"}
-                          </Badge>
-                        </td>
-                        <td className="p-2 max-w-[300px] truncate text-muted-foreground">{t.ai_summary || "—"}</td>
-                      </tr>
-                    ))}
-                    {tickets.filter(t => t.ai_classification).length === 0 && (
-                      <tr><td colSpan={isClientView ? 5 : 6} className="p-8 text-center text-muted-foreground">
-                        No hay tickets clasificados. Presiona "Clasificar con IA" para comenzar.
-                      </td></tr>
+                return (
+                  <>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                      {[
+                        { label: "Casos >180 días", value: oldCases.length, color: "text-destructive", desc: "Requieren cierre o escalación" },
+                        { label: "Entregados sin cerrar", value: stuckCases.length, color: "text-amber-400", desc: "Necesitan confirmación de cierre" },
+                        { label: "Sin responsable", value: unassigned.length, color: "text-orange-400", desc: "Asignar de inmediato" },
+                        { label: "Sin notas ni IA", value: noNotes.length, color: "text-muted-foreground", desc: "Documentar estado actual" },
+                      ].map((item, i) => (
+                        <Card key={i}>
+                          <CardContent className="p-3">
+                            <p className={`text-2xl font-black ${item.color}`}>{item.value}</p>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{item.label}</p>
+                            <p className="text-[9px] text-muted-foreground/60 mt-1">{item.desc}</p>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+
+                    {/* Actionable table: old cases */}
+                    {oldCases.length > 0 && (
+                      <Card className="border-destructive/20">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-sm flex items-center gap-2 text-destructive">
+                            <AlertTriangle className="h-4 w-4" /> Casos Antiguos — Acción Requerida
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                            <table className="w-full text-xs">
+                              <thead className="sticky top-0 bg-card z-10">
+                                <tr className="border-b border-border">
+                                  <th className="text-left p-2 font-medium text-muted-foreground">ID</th>
+                                  {!isClientView && <th className="text-left p-2 font-medium text-muted-foreground">Cliente</th>}
+                                  <th className="text-left p-2 font-medium text-muted-foreground">Asunto</th>
+                                  <th className="text-left p-2 font-medium text-muted-foreground">Estado</th>
+                                  <th className="text-left p-2 font-medium text-muted-foreground">Responsable</th>
+                                  <th className="text-right p-2 font-medium text-muted-foreground">Días</th>
+                                  <th className="text-left p-2 font-medium text-muted-foreground">Acción Sugerida</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {oldCases.slice(0, 20).map(t => {
+                                  let action = "Revisar y cerrar";
+                                  if (t.estado === "ENTREGADA") action = "Confirmar cierre con cliente";
+                                  else if (t.estado === "EN ATENCIÓN") action = "Escalar a líder técnico";
+                                  else if (t.estado === "PENDIENTE") action = "Reactivar o cerrar como inactivo";
+                                  else if (t.estado === "COTIZADA") action = "Confirmar aprobación";
+                                  else if (t.dias_antiguedad > 365) action = "⚠ Cierre urgente recomendado";
+                                  return (
+                                    <tr key={t.id} className="border-b border-border/50 hover:bg-muted/30">
+                                      <td className="p-2 font-mono font-bold">{t.ticket_id}</td>
+                                      {!isClientView && <td className="p-2">{clientName(t.client_id)}</td>}
+                                      <td className="p-2 max-w-[180px] truncate">{t.asunto}</td>
+                                      <td className="p-2"><Badge variant="outline" className={`text-[10px] ${estadoColors[t.estado] || ""}`}>{t.estado}</Badge></td>
+                                      <td className="p-2">{t.responsable || <span className="text-destructive">Sin asignar</span>}</td>
+                                      <td className="p-2 text-right font-mono font-bold text-destructive">{t.dias_antiguedad}</td>
+                                      <td className="p-2 text-[10px] font-medium text-amber-400">{action}</td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </CardContent>
+                      </Card>
                     )}
-                  </tbody>
-                </table>
+
+                    {/* Stuck cases */}
+                    {stuckCases.length > 0 && (
+                      <Card className="border-amber-500/20">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-sm flex items-center gap-2 text-amber-400">
+                            <Clock className="h-4 w-4" /> Entregados sin Cierre
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-2">
+                            {stuckCases.slice(0, 10).map(t => (
+                              <div key={t.id} className="flex items-center gap-3 p-2 rounded-lg bg-amber-500/5 border border-amber-500/10 text-xs">
+                                <span className="font-mono font-bold text-amber-400">{t.ticket_id}</span>
+                                <span className="flex-1 truncate">{t.asunto}</span>
+                                <span className="text-muted-foreground">{t.responsable || "—"}</span>
+                                <span className="font-mono font-bold">{t.dias_antiguedad}d</span>
+                                <Badge variant="outline" className="text-[9px] border-amber-500/30 text-amber-400">Cerrar</Badge>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </>
+                );
+              })()}
+            </TabsContent>
+
+            {/* Sub-tab: Agentes IA */}
+            <TabsContent value="agentes" className="mt-4 space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <Card className="border-violet-500/20">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-violet-400" /> Clasificador de Tickets
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-xs text-muted-foreground">
+                      Analiza tickets automáticamente y asigna categoría, nivel de riesgo y resumen ejecutivo.
+                    </p>
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-xs"><span className="text-muted-foreground">Modelo</span><span className="font-mono">Gemini 3 Flash</span></div>
+                      <div className="flex justify-between text-xs"><span className="text-muted-foreground">Función</span><span>classify-tickets</span></div>
+                      <div className="flex justify-between text-xs"><span className="text-muted-foreground">Tickets procesados</span><span className="font-bold text-violet-400">{classifiedCount}</span></div>
+                      <div className="flex justify-between text-xs"><span className="text-muted-foreground">Estado</span>
+                        <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-[10px]">Activo</Badge>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline" className="w-full text-xs gap-1.5 border-violet-500/30 text-violet-400 hover:bg-violet-500/10"
+                      onClick={handleClassify} disabled={classifying}>
+                      {classifying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                      Ejecutar clasificación
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-primary/20">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-primary" /> Generador de Minutas
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-xs text-muted-foreground">
+                      Genera minutas ejecutivas a partir de casos activos o transcripciones de reuniones.
+                    </p>
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-xs"><span className="text-muted-foreground">Modelo</span><span className="font-mono">Gemini 3 Flash</span></div>
+                      <div className="flex justify-between text-xs"><span className="text-muted-foreground">Función</span><span>summarize-transcript</span></div>
+                      <div className="flex justify-between text-xs"><span className="text-muted-foreground">Modos</span><span>Casos / Transcripción / Archivo</span></div>
+                      <div className="flex justify-between text-xs"><span className="text-muted-foreground">Estado</span>
+                        <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-[10px]">Activo</Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-blue-500/20">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Brain className="h-4 w-4 text-blue-400" /> Análisis Individual de Caso
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-xs text-muted-foreground">
+                      Analiza un caso específico y genera resumen, clasificación de riesgo y recomendaciones.
+                    </p>
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-xs"><span className="text-muted-foreground">Modelo</span><span className="font-mono">Gemini 3 Flash</span></div>
+                      <div className="flex justify-between text-xs"><span className="text-muted-foreground">Acceso</span><span>Detalle de Caso → Tab IA</span></div>
+                      <div className="flex justify-between text-xs"><span className="text-muted-foreground">Estado</span>
+                        <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-[10px]">Activo</Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-border">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
+                      <Activity className="h-4 w-4" /> Uso de IA — Resumen
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs"><span className="text-muted-foreground">Gateway</span><span className="font-mono">Lovable AI</span></div>
+                      <div className="flex justify-between text-xs"><span className="text-muted-foreground">Modelo principal</span><span>google/gemini-3-flash-preview</span></div>
+                      <div className="flex justify-between text-xs"><span className="text-muted-foreground">Total agentes</span><span className="font-bold">3</span></div>
+                      <div className="flex justify-between text-xs"><span className="text-muted-foreground">Funciones edge</span><span>classify-tickets, summarize-transcript</span></div>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
-            </CardContent>
-          </Card>
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         {/* Cases Detail Tab */}
