@@ -124,7 +124,7 @@ const Index = () => {
                 loadingAssignment ? (
                   <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
                 ) : gerenteClient ? (
-                  <ClientDashboard client={gerenteClient} />
+                  <GerenteMobileDashboard client={gerenteClient} />
                 ) : (
                   <p className="text-sm text-muted-foreground text-center py-12">No tiene un proyecto asignado. Contacte al administrador.</p>
                 )
