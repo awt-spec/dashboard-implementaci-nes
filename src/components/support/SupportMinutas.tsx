@@ -22,6 +22,10 @@ interface Props {
   clientName: string;
   clientId: string;
   teamMembers?: string[];
+  /** When provided, enables multi-client (general support) minuta mode */
+  availableClients?: { id: string; name: string }[];
+  /** All tickets across all clients (used in general view to source cases) */
+  allTickets?: SupportTicket[];
 }
 
 interface Minuta {
@@ -34,12 +38,14 @@ interface Minuta {
   action_items: string[];
   agreements: string[];
   attendees: string[];
+  referenced_clients?: string[];
   created_at: string;
 }
 
 type GenerationMode = "cases" | "transcript";
 
-export function SupportMinutas({ tickets, clientName, clientId, teamMembers = [] }: Props) {
+export function SupportMinutas({ tickets, clientName, clientId, teamMembers = [], availableClients = [], allTickets = [] }: Props) {
+  const isGeneralMode = clientId === "all" || !clientId;
   const [minutas, setMinutas] = useState<Minuta[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
