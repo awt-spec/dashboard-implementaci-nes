@@ -397,6 +397,13 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
           />
         </TabsContent>
 
+        <TabsContent value="devops" className="mt-4">
+          <DevOpsPanel
+            clientId={isClientView ? initialClientId! : selectedClient}
+            clientName={isClientView ? selectedClientObj?.name : selectedClientName}
+          />
+        </TabsContent>
+
         <TabsContent value="overview" className="space-y-4 mt-4">
           {showingAllInCharts && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-info/10 border border-info/20 text-xs text-info">
