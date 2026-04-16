@@ -234,12 +234,37 @@ export function SystemUsersTab() {
             <p className="text-sm text-muted-foreground">Crea, edita y administra los accesos del sistema</p>
           </div>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2 shadow-lg shadow-primary/20">
-              <UserPlus className="h-4 w-4" />Nuevo Usuario
-            </Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-2">
+          <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <KeySquare className="h-4 w-4" />Acceso en bloque
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Users2 className="h-4 w-4 text-primary" /> Crear acceso para todo el equipo SYSDE
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3 pt-2">
+                <p className="text-xs text-muted-foreground">
+                  Genera credenciales de colaborador para todos los miembros activos del Equipo SYSDE que aún no tengan acceso.
+                  Todos compartirán la misma contraseña inicial (deberán cambiarla luego).
+                </p>
+                <Input type="password" placeholder="Contraseña común (min 6 chars)" value={bulkPw} onChange={(e) => setBulkPw(e.target.value)} className="h-11" />
+                <Button onClick={handleBulkAccess} disabled={creating || bulkPw.length < 6} className="w-full h-11">
+                  {creating ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Generando…</> : "Crear accesos"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2 shadow-lg shadow-primary/20">
+                <UserPlus className="h-4 w-4" />Nuevo Usuario
+              </Button>
+            </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
