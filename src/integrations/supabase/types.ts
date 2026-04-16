@@ -1788,45 +1788,63 @@ export type Database = {
       tasks: {
         Row: {
           assignees: Json
+          backlog_rank: number | null
+          business_value: number | null
           client_id: string
           created_at: string
           description: string | null
           due_date: string
+          effort: number | null
           id: string
           original_id: number
           owner: string
           priority: string
+          scrum_status: string | null
+          sprint_id: string | null
           status: string
+          story_points: number | null
           title: string
           updated_at: string
           visibility: string
         }
         Insert: {
           assignees?: Json
+          backlog_rank?: number | null
+          business_value?: number | null
           client_id: string
           created_at?: string
           description?: string | null
           due_date: string
+          effort?: number | null
           id?: string
           original_id: number
           owner: string
           priority: string
+          scrum_status?: string | null
+          sprint_id?: string | null
           status: string
+          story_points?: number | null
           title: string
           updated_at?: string
           visibility?: string
         }
         Update: {
           assignees?: Json
+          backlog_rank?: number | null
+          business_value?: number | null
           client_id?: string
           created_at?: string
           description?: string | null
           due_date?: string
+          effort?: number | null
           id?: string
           original_id?: number
           owner?: string
           priority?: string
+          scrum_status?: string | null
+          sprint_id?: string | null
           status?: string
+          story_points?: number | null
           title?: string
           updated_at?: string
           visibility?: string
@@ -1837,6 +1855,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_sprint_id_fkey"
+            columns: ["sprint_id"]
+            isOneToOne: false
+            referencedRelation: "support_sprints"
             referencedColumns: ["id"]
           },
         ]
