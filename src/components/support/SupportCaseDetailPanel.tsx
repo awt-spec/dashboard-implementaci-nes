@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   CheckSquare, ArrowRight, Plus, Trash2, X, Link2, Tag, Paperclip, MessageSquare,
-  Globe, Lock, Loader2, FileText, ExternalLink, Download
+  Globe, Lock, Loader2, FileText, ExternalLink, Download, Target
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -21,6 +21,7 @@ import {
   useTicketDependencies, useAddTicketDependency, useRemoveTicketDependency,
   useAvailableTickets,
 } from "@/hooks/useSupportTicketDetails";
+import { SupportCaseScrumSection } from "./SupportCaseScrumSection";
 
 const TAG_COLORS = ["#6366f1", "#ec4899", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6", "#06b6d4", "#f97316"];
 
@@ -118,8 +119,11 @@ export function SupportCaseDetailPanel({ ticket, teamMembers = [] }: Props) {
   };
 
   return (
-    <Tabs defaultValue="subtasks" className="w-full">
+    <Tabs defaultValue="scrum" className="w-full">
       <TabsList className="w-full h-8 bg-muted/50 flex-wrap">
+        <TabsTrigger value="scrum" className="text-[10px] h-6 px-2 gap-1 flex-1">
+          <Target className="h-3 w-3" />Scrum
+        </TabsTrigger>
         <TabsTrigger value="subtasks" className="text-[10px] h-6 px-2 gap-1 flex-1">
           <CheckSquare className="h-3 w-3" />Sub
           {subtasks.length > 0 && <Badge variant="secondary" className="text-[8px] h-3.5 px-1">{subtasks.length}</Badge>}
@@ -141,6 +145,11 @@ export function SupportCaseDetailPanel({ ticket, teamMembers = [] }: Props) {
           {notes.length > 0 && <Badge variant="secondary" className="text-[8px] h-3.5 px-1">{notes.length}</Badge>}
         </TabsTrigger>
       </TabsList>
+
+      {/* Scrum */}
+      <TabsContent value="scrum" className="mt-3">
+        <SupportCaseScrumSection ticket={ticket} />
+      </TabsContent>
 
       {/* Subtasks */}
       <TabsContent value="subtasks" className="mt-3 space-y-3">
