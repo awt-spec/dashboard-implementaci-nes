@@ -104,9 +104,9 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
       if (visibilityFilter !== "all" && ((t as any).visibility || "externa") !== visibilityFilter) return false;
       return true;
     });
-  }, [tickets, searchFilter, estadoFilter, tipoFilter, responsableFilter, prioridadFilter]);
+  }, [tickets, searchFilter, estadoFilter, tipoFilter, responsableFilter, prioridadFilter, visibilityFilter]);
 
-  const activeFilters = [estadoFilter, tipoFilter, responsableFilter, prioridadFilter].filter(f => f !== "all").length + (searchFilter ? 1 : 0);
+  const activeFilters = [estadoFilter, tipoFilter, responsableFilter, prioridadFilter, visibilityFilter].filter(f => f !== "all").length + (searchFilter ? 1 : 0);
 
   useEffect(() => {
     if (!tickets.length) return;
