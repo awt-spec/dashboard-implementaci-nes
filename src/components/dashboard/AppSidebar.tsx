@@ -23,6 +23,14 @@ const statusLabel: Record<string, string> = {
   pausado: "Pausados",
 };
 
+// Etiquetas alternas para clientes de Soporte (no aplica "completado" como fin de proyecto)
+const supportStatusLabel: Record<string, string> = {
+  activo: "Activos",
+  "en-riesgo": "En Riesgo",
+  completado: "Al día (sin tickets)",
+  pausado: "Pausados",
+};
+
 const statusOrder = ["activo", "en-riesgo", "completado", "pausado"];
 
 const statusDot: Record<string, string> = {
