@@ -965,22 +965,24 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
                 </Card>
               </div>
             </TabsContent>
-          </Tabs>
-        </TabsContent>
 
-        {/* Cases Detail Tab */}
-        <TabsContent value="cases" className="mt-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center justify-between">
-                <span>{isClientView ? "Casos del Cliente" : "Todos los Casos"} ({tickets.length})</span>
-                <Badge variant="outline">{filteredActive.length} activos</Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <SupportCaseTable tickets={tickets} clientName={clientName} teamMembers={selectedClientObj?.team_assigned || []} />
-            </CardContent>
-          </Card>
+            {/* Sub-tab: Backlog Scrum */}
+            <TabsContent value="scrum" className="mt-4">
+              {(isClientView || selectedClient !== "all") ? (
+                <SupportScrumPanel
+                  clientId={isClientView ? initialClientId! : selectedClient}
+                  clientName={isClientView ? selectedClientObj?.name : selectedClientName}
+                />
+              ) : (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <Activity className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground">Selecciona un cliente para ver su backlog Scrum</p>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         {/* Minutas Tab */}
