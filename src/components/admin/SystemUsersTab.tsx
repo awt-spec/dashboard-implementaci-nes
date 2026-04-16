@@ -444,6 +444,94 @@ export function SystemUsersTab() {
         )}
       </div>
 
+      {/* SYSDE Team without access */}
+      <div className="space-y-3 pt-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-base font-semibold flex items-center gap-2">
+              <Users2 className="h-4 w-4 text-primary" /> Equipo Colaborador SYSDE
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Miembros del equipo registrados. Crea accesos individuales o usa "Acceso en bloque".
+            </p>
+          </div>
+          <Badge variant="outline" className="text-[10px]">
+            {team.filter(t => !t.user_id && t.is_active).length} sin acceso · {team.filter(t => t.user_id).length} con acceso
+          </Badge>
+        </div>
+
+        {team.length === 0 ? (
+          <Card className="border-dashed">
+            <CardContent className="flex flex-col items-center justify-center py-10 text-muted-foreground">
+              <Users2 className="h-8 w-8 mb-2 opacity-30" />
+              <p className="text-xs">No hay miembros en el Equipo SYSDE</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-2">
+            {team.map((m) => {
+              const hasAccess = !!m.user_id;
+              const noEmail = !m.email;
+              return (
+                <Card key={m.id} className="border-border/40">
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                      <span className="text-xs font-bold text-emerald-500">{getInitials(m.name)}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{m.name}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {m.email || <span className="text-amber-500 inline-flex items-center gap-1"><AlertCircle className="h-3 w-3" />Sin email</span>}
+                        {m.role && <span> · {m.role}</span>}
+                        {m.department && <span> · {m.department}</span>}
+                      </p>
+                    </div>
+                    {hasAccess ? (
+                      <Badge className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30 gap-1 text-[10px]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Acceso activo
+                      </Badge>
+                    ) : !m.is_active ? (
+                      <Badge variant="outline" className="text-muted-foreground text-[10px]">Inactivo</Badge>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs gap-1.5 border-primary/30 text-primary hover:bg-primary/5"
+                        disabled={noEmail}
+                        onClick={() => { setAccessMember(m); setAccessPw(""); }}
+                      >
+                        <KeyRound className="h-3 w-3" /> Crear acceso
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Individual access dialog */}
+      <Dialog open={!!accessMember} onOpenChange={(o) => !o && setAccessMember(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-4 w-4 text-primary" /> Crear acceso para {accessMember?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
+            <div className="text-xs space-y-1 bg-muted/40 rounded-lg p-3">
+              <p><span className="text-muted-foreground">Email:</span> <span className="font-medium">{accessMember?.email}</span></p>
+              <p><span className="text-muted-foreground">Rol asignado:</span> <span className="font-medium">Colaborador SYSDE</span></p>
+            </div>
+            <Input type="password" placeholder="Contraseña inicial (min 6 chars)" value={accessPw} onChange={(e) => setAccessPw(e.target.value)} className="h-11" />
+            <Button onClick={handleCreateAccess} disabled={accessLoading || accessPw.length < 6} className="w-full h-11">
+              {accessLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Creando…</> : "Crear acceso"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {assignUserId && (
         <GerenteAssignmentsDialog
           userId={assignUserId}
