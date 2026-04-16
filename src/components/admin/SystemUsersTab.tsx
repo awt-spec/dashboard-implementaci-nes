@@ -19,9 +19,9 @@ interface UserRow {
 }
 
 const roleBadge: Record<string, { label: string; icon: React.ReactNode; className: string }> = {
-  admin: { label: "Admin", icon: <Shield className="h-3 w-3" />, className: "bg-destructive text-destructive-foreground" },
-  pm: { label: "Project Manager", icon: <Briefcase className="h-3 w-3" />, className: "bg-primary text-primary-foreground" },
-  gerente: { label: "Gerente (Cliente)", icon: <Eye className="h-3 w-3" />, className: "bg-amber-500/20 text-amber-400 border-amber-500/30" },
+  admin: { label: "Admin", icon: <Shield className="h-3 w-3" />, className: "bg-destructive/15 text-destructive border border-destructive/20" },
+  pm: { label: "Project Manager", icon: <Briefcase className="h-3 w-3" />, className: "bg-primary/15 text-primary border border-primary/20" },
+  gerente: { label: "Gerente (Cliente)", icon: <Eye className="h-3 w-3" />, className: "bg-amber-500/15 text-amber-500 border border-amber-500/20" },
 };
 
 export function SystemUsersTab() {
