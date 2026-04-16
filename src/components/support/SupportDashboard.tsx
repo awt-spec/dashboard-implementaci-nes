@@ -1004,34 +1004,51 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
           )}
         </TabsContent>
 
-        {/* Acuerdos Tab */}
-        <TabsContent value="acuerdos" className="mt-4">
+        {/* ============ 4. COMERCIAL: contrato + SLA + acuerdos ============ */}
+        <TabsContent value="comercial" className="mt-4">
           {(isClientView || selectedClient !== "all") ? (
-            <SupportAgreementsTab clientId={isClientView ? initialClientId! : selectedClient} />
+            <Tabs defaultValue="contrato">
+              <TabsList className="h-8">
+                <TabsTrigger value="contrato" className="text-xs h-6">Contrato & SLA</TabsTrigger>
+                <TabsTrigger value="acuerdos" className="text-xs h-6">Acuerdos</TabsTrigger>
+              </TabsList>
+              <TabsContent value="contrato" className="mt-4">
+                <ContractsSLATab clientId={isClientView ? initialClientId! : selectedClient} />
+              </TabsContent>
+              <TabsContent value="acuerdos" className="mt-4">
+                <SupportAgreementsTab clientId={isClientView ? initialClientId! : selectedClient} />
+              </TabsContent>
+            </Tabs>
           ) : (
             <Card>
               <CardContent className="p-8 text-center">
                 <FileText className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground">Selecciona un cliente para ver acuerdos y acciones</p>
+                <p className="text-sm text-muted-foreground">Selecciona un cliente para ver contrato, SLA y acuerdos</p>
               </CardContent>
             </Card>
           )}
         </TabsContent>
-        <TabsContent value="contratos" className="mt-4">
-          {(isClientView || selectedClient !== "all") ? (
-            <ContractsSLATab clientId={isClientView ? initialClientId! : selectedClient} />
-          ) : (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <FileText className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground">Selecciona un cliente para ver contrato y SLAs</p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-        <TabsContent value="import" className="mt-4">
-          <SupportDataLoader clientId={isClientView ? initialClientId : (selectedClient !== "all" ? selectedClient : undefined)} />
-        </TabsContent>
+
+        {/* ============ 6. DATOS & SYNC: importar + Azure DevOps ============ */}
+        {!isClientView && (
+          <TabsContent value="datos" className="mt-4">
+            <Tabs defaultValue="importar">
+              <TabsList className="h-8">
+                <TabsTrigger value="importar" className="text-xs h-6">Importar CSV/Excel</TabsTrigger>
+                {selectedClient !== "all" && <TabsTrigger value="devops" className="text-xs h-6">Azure DevOps</TabsTrigger>}
+              </TabsList>
+              <TabsContent value="importar" className="mt-4">
+                <SupportDataLoader clientId={selectedClient !== "all" ? selectedClient : undefined} />
+              </TabsContent>
+              {selectedClient !== "all" && (
+                <TabsContent value="devops" className="mt-4">
+                  <DevOpsPanel clientId={selectedClient} clientName={selectedClientName} />
+                </TabsContent>
+              )}
+            </Tabs>
+          </TabsContent>
+        )}
+
       </Tabs>
     </div>
   );
