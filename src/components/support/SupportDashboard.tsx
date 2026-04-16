@@ -386,6 +386,7 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
           <TabsTrigger value="minutas">Minutas</TabsTrigger>
           {(isClientView || selectedClient !== "all") && <TabsTrigger value="acuerdos">Acuerdos</TabsTrigger>}
           {(isClientView || selectedClient !== "all") && <TabsTrigger value="scrum">Estrategia Scrum</TabsTrigger>}
+          {(isClientView || selectedClient !== "all") && <TabsTrigger value="devops">Azure DevOps</TabsTrigger>}
           {!isClientView && <TabsTrigger value="import">Cargar Datos</TabsTrigger>}
         </TabsList>
 
