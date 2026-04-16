@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   FileText, Plus, Calendar, Sparkles, Loader2, ChevronDown, ChevronUp, Trash2,
   Users, CheckSquare, ArrowRight, Presentation, Edit3, Save, X, UserPlus, AlertTriangle, Share2,
-  Mic, ClipboardPaste, MessageSquareText
+  Mic, ClipboardPaste, MessageSquareText, Upload, File
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -60,6 +60,9 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
   // Transcript mode
   const [generationMode, setGenerationMode] = useState<GenerationMode>("cases");
   const [transcript, setTranscript] = useState("");
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [parsingFile, setParsingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadMinutas = useCallback(() => {
     setLoading(true);
@@ -185,6 +188,33 @@ Genera una minuta ejecutiva de soporte con título, resumen, acuerdos y acciones
     setNewAction("");
     setTranscript("");
     setGenerationMode("cases");
+    setUploadedFile(null);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadedFile(file);
+    setParsingFile(true);
+    try {
+      if (file.type.startsWith("text/") || file.name.endsWith(".txt") || file.name.endsWith(".md") || file.name.endsWith(".vtt") || file.name.endsWith(".srt")) {
+        const text = await file.text();
+        setTranscript(text);
+        toast.success(`Archivo cargado: ${file.name}`);
+      } else if (file.name.endsWith(".docx") || file.name.endsWith(".doc")) {
+        const text = await file.text();
+        setTranscript(text);
+        toast.success(`Archivo cargado: ${file.name} (texto extraído)`);
+      } else {
+        const text = await file.text();
+        setTranscript(text);
+        toast.success(`Archivo cargado: ${file.name}`);
+      }
+    } catch {
+      toast.error("Error leyendo el archivo");
+    } finally {
+      setParsingFile(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -312,7 +342,7 @@ Genera una minuta ejecutiva de soporte con título, resumen, acuerdos y acciones
 
                 {/* Transcript Input */}
                 {generationMode === "transcript" && (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                         <ClipboardPaste className="h-3.5 w-3.5" /> Transcripción de la reunión
@@ -321,11 +351,49 @@ Genera una minuta ejecutiva de soporte con título, resumen, acuerdos y acciones
                         {transcript.length > 0 ? `${transcript.split(/\s+/).filter(Boolean).length} palabras` : ""}
                       </span>
                     </div>
+
+                    {/* File Upload Area */}
+                    <div
+                      className="border-2 border-dashed border-border rounded-xl p-4 text-center cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-all"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <input ref={fileInputRef} type="file" className="hidden"
+                        accept=".txt,.md,.vtt,.srt,.doc,.docx,.csv"
+                        onChange={handleFileUpload} />
+                      {parsingFile ? (
+                        <div className="flex items-center justify-center gap-2 py-2">
+                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                          <span className="text-xs text-muted-foreground">Procesando archivo...</span>
+                        </div>
+                      ) : uploadedFile ? (
+                        <div className="flex items-center justify-center gap-2 py-1">
+                          <File className="h-4 w-4 text-primary" />
+                          <span className="text-xs font-medium text-foreground">{uploadedFile.name}</span>
+                          <Button variant="ghost" size="icon" className="h-5 w-5" onClick={e => { e.stopPropagation(); setUploadedFile(null); setTranscript(""); }}>
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-1 py-2">
+                          <Upload className="h-6 w-6 text-muted-foreground mx-auto" />
+                          <p className="text-xs text-muted-foreground">Sube un archivo de transcripción</p>
+                          <p className="text-[10px] text-muted-foreground/60">.txt, .md, .vtt, .srt, .doc, .docx</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="relative">
+                      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-px bg-border" />
+                      <div className="relative flex justify-center">
+                        <span className="bg-card px-2 text-[10px] text-muted-foreground">o pegar texto directamente</span>
+                      </div>
+                    </div>
+
                     <Textarea
-                      placeholder="Pega aquí la transcripción de la reunión (de Teams, Zoom, Google Meet, etc.)...&#10;&#10;La IA analizará el contenido y generará automáticamente:&#10;• Resumen ejecutivo&#10;• Acuerdos tomados&#10;• Próximos pasos y acciones&#10;• Participantes identificados"
+                      placeholder="Pega aquí la transcripción de la reunión (de Teams, Zoom, Google Meet, etc.)..."
                       value={transcript}
                       onChange={e => setTranscript(e.target.value)}
-                      className="text-xs min-h-[160px] leading-relaxed"
+                      className="text-xs min-h-[120px] leading-relaxed"
                     />
                     {transcript.length > 0 && (
                       <div className="flex items-center gap-2 text-[10px] text-emerald-400">

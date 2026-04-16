@@ -233,6 +233,42 @@ export type Database = {
         }
         Relationships: []
       }
+      client_team_members: {
+        Row: {
+          client_id: string
+          created_at: string
+          department: string | null
+          email: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          role: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          department?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          role?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          department?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          role?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           client_type: string
@@ -1109,6 +1145,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sysde_team_members: {
+        Row: {
+          created_at: string
+          department: string | null
+          email: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          role: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          department?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          role?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          department?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          role?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       task_attachments: {
         Row: {

@@ -8,8 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Shield, Briefcase, Eye, Trash2 } from "lucide-react";
+import { UserPlus, Shield, Briefcase, Eye, Trash2, Users } from "lucide-react";
+import { SysdeTeamManager } from "@/components/support/SysdeTeamManager";
 
 interface UserRow {
   user_id: string;
@@ -104,93 +106,106 @@ export default function AdminUsers() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-foreground">Gestión de Usuarios</h2>
-          <p className="text-sm text-muted-foreground">Administra usuarios y sus roles en el sistema</p>
-        </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button><UserPlus className="h-4 w-4 mr-2" />Nuevo Usuario</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Crear Nuevo Usuario</DialogTitle></DialogHeader>
-            <div className="space-y-4 pt-2">
-              <div className="space-y-1">
-                <label className="text-sm font-medium">Nombre completo</label>
-                <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Juan Pérez" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium">Correo electrónico</label>
-                <Input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="juan@empresa.com" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium">Contraseña</label>
-                <Input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Min. 6 caracteres" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium">Rol</label>
-                <Select value={newRole} onValueChange={setNewRole}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="pm">Project Manager</SelectItem>
-                    <SelectItem value="gerente">Gerente</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button onClick={handleCreate} disabled={creating} className="w-full">
-                {creating ? "Creando..." : "Crear Usuario"}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+      <Tabs defaultValue="users">
+        <TabsList>
+          <TabsTrigger value="users" className="gap-1.5"><Shield className="h-3.5 w-3.5" /> Usuarios del Sistema</TabsTrigger>
+          <TabsTrigger value="team" className="gap-1.5"><Users className="h-3.5 w-3.5" /> Equipo SYSDE</TabsTrigger>
+        </TabsList>
 
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Rol</TableHead>
-                <TableHead className="w-[100px]">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Cargando...</TableCell></TableRow>
-              ) : users.map(u => {
-                const rb = roleBadge[u.role] || { label: u.role, icon: null, className: "bg-muted text-muted-foreground" };
-                return (
-                  <TableRow key={u.user_id}>
-                    <TableCell className="font-medium">{u.full_name || "—"}</TableCell>
-                    <TableCell className="text-muted-foreground">{u.email}</TableCell>
-                    <TableCell>
-                      <Select value={u.role} onValueChange={val => handleUpdateRole(u.user_id, val)}>
-                        <SelectTrigger className="w-[160px] h-8">
-                          <Badge className={`${rb.className} gap-1`}>{rb.icon}{rb.label}</Badge>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="pm">Project Manager</SelectItem>
-                          <SelectItem value="gerente">Gerente</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(u.user_id)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </TableCell>
+        <TabsContent value="users" className="mt-4 space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-foreground">Gestión de Usuarios</h2>
+              <p className="text-sm text-muted-foreground">Administra usuarios y sus roles en el sistema</p>
+            </div>
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button><UserPlus className="h-4 w-4 mr-2" />Nuevo Usuario</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Crear Nuevo Usuario</DialogTitle></DialogHeader>
+                <div className="space-y-4 pt-2">
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">Nombre completo</label>
+                    <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Juan Pérez" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">Correo electrónico</label>
+                    <Input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="juan@empresa.com" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">Contraseña</label>
+                    <Input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Min. 6 caracteres" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">Rol</label>
+                    <Select value={newRole} onValueChange={setNewRole}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="pm">Project Manager</SelectItem>
+                        <SelectItem value="gerente">Gerente</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button onClick={handleCreate} disabled={creating} className="w-full">
+                    {creating ? "Creando..." : "Crear Usuario"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Rol</TableHead>
+                    <TableHead className="w-[100px]">Acciones</TableHead>
                   </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Cargando...</TableCell></TableRow>
+                  ) : users.map(u => {
+                    const rb = roleBadge[u.role] || { label: u.role, icon: null, className: "bg-muted text-muted-foreground" };
+                    return (
+                      <TableRow key={u.user_id}>
+                        <TableCell className="font-medium">{u.full_name || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{u.email}</TableCell>
+                        <TableCell>
+                          <Select value={u.role} onValueChange={val => handleUpdateRole(u.user_id, val)}>
+                            <SelectTrigger className="w-[160px] h-8">
+                              <Badge className={`${rb.className} gap-1`}>{rb.icon}{rb.label}</Badge>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="admin">Admin</SelectItem>
+                              <SelectItem value="pm">Project Manager</SelectItem>
+                              <SelectItem value="gerente">Gerente</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(u.user_id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="team" className="mt-4">
+          <SysdeTeamManager />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
