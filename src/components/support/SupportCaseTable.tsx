@@ -715,6 +715,10 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
                           <p className="text-[10px] text-muted-foreground/60 mt-1">Agrega acuerdos o acciones usando los botones de arriba</p>
                         </div>
                       )}
+
+                    {/* Tab: Detalles (subtasks, deps, tags, files, notes) */}
+                    <TabsContent value="details" className="mt-4">
+                      <SupportCaseDetailPanel ticket={t} teamMembers={teamMembers} />
                     </TabsContent>
                   </Tabs>
                 </div>
