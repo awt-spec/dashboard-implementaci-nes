@@ -16,6 +16,7 @@ import { useUpdateSupportTicket } from "@/hooks/useSupportTickets";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { SupportCaseDetailPanel } from "./SupportCaseDetailPanel";
 
 const prioridadColors: Record<string, string> = {
   "Critica, Impacto Negocio": "bg-red-600 text-white",
