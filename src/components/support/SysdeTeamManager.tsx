@@ -26,7 +26,9 @@ export function SysdeTeamManager() {
   const createMember = useCreateSysdeTeamMember();
   const deleteMember = useDeleteSysdeTeamMember();
   const updateMember = useUpdateSysdeTeamMember();
+  const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [cvMember, setCvMember] = useState<any | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("Consultor");
