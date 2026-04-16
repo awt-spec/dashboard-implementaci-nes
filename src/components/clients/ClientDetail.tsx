@@ -25,6 +25,7 @@ import { CollaborationTab } from "./tabs/CollaborationTab";
 import { TaskViewSwitcher } from "@/components/tasks/TaskViewSwitcher";
 import { ContactsTab } from "./tabs/ContactsTab";
 import { FunnelTab } from "./tabs/FunnelTab";
+import { ContractsSLATab } from "./ContractsSLATab";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ProjectKPIs } from "@/components/dashboard/ProjectKPIs";
@@ -250,6 +251,7 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
           <TabsTrigger value="minutas">Minutas</TabsTrigger>
           <TabsTrigger value="riesgos">Riesgos</TabsTrigger>
           <TabsTrigger value="colaboracion">Colaboración</TabsTrigger>
+          <TabsTrigger value="contratos">Contratos & SLA</TabsTrigger>
         </TabsList>
 
         <TabsContent value="tareas">
@@ -282,6 +284,10 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
 
         <TabsContent value="colaboracion">
           <CollaborationTab comments={client.comments} clientId={client.id} />
+        </TabsContent>
+
+        <TabsContent value="contratos">
+          <ContractsSLATab clientId={client.id} />
         </TabsContent>
       </Tabs>
     </div>
