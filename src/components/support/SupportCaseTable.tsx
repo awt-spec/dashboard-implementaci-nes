@@ -101,6 +101,7 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
       if (tipoFilter !== "all" && t.tipo !== tipoFilter) return false;
       if (responsableFilter !== "all" && (t.responsable || "") !== responsableFilter) return false;
       if (prioridadFilter !== "all" && t.prioridad !== prioridadFilter) return false;
+      if (visibilityFilter !== "all" && ((t as any).visibility || "externa") !== visibilityFilter) return false;
       return true;
     });
   }, [tickets, searchFilter, estadoFilter, tipoFilter, responsableFilter, prioridadFilter]);
