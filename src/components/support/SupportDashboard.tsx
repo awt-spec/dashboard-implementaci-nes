@@ -676,6 +676,7 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
               <TabsTrigger value="clasificacion" className="text-xs h-6 gap-1"><Brain className="h-3 w-3" /> Clasificación</TabsTrigger>
               <TabsTrigger value="seguimiento" className="text-xs h-6 gap-1"><AlertTriangle className="h-3 w-3" /> Seguimiento IA</TabsTrigger>
               <TabsTrigger value="agentes" className="text-xs h-6 gap-1"><Sparkles className="h-3 w-3" /> Agentes IA</TabsTrigger>
+              {(isClientView || selectedClient !== "all") && <TabsTrigger value="scrum" className="text-xs h-6 gap-1"><Activity className="h-3 w-3" /> Backlog Scrum</TabsTrigger>}
             </TabsList>
 
             {/* Sub-tab: Clasificación */}
