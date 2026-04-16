@@ -180,13 +180,23 @@ export function SystemUsersTab() {
                     <TableCell className="text-muted-foreground">{u.email}</TableCell>
                     <TableCell>
                       <Select value={u.role} onValueChange={val => handleUpdateRole(u.user_id, val)}>
-                        <SelectTrigger className="w-[170px] h-8">
-                          <Badge className={`${rb.className} gap-1`}>{rb.icon}{rb.label}</Badge>
+                        <SelectTrigger className="w-[180px] h-9 border-border/50">
+                          <div className="flex items-center gap-2">
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium ${rb.className}`}>
+                              {rb.icon}{rb.label}
+                            </span>
+                          </div>
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="pm">Project Manager</SelectItem>
-                          <SelectItem value="gerente">Gerente (Cliente)</SelectItem>
+                          <SelectItem value="admin">
+                            <span className="flex items-center gap-2"><Shield className="h-3 w-3 text-destructive" /> Admin</span>
+                          </SelectItem>
+                          <SelectItem value="pm">
+                            <span className="flex items-center gap-2"><Briefcase className="h-3 w-3 text-primary" /> Project Manager</span>
+                          </SelectItem>
+                          <SelectItem value="gerente">
+                            <span className="flex items-center gap-2"><Eye className="h-3 w-3 text-amber-400" /> Gerente (Cliente)</span>
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </TableCell>
