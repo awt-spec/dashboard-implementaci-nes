@@ -179,10 +179,16 @@ export default function ColaboradorDashboard() {
             <Avatar className="h-9 w-9 border border-border">
               <AvatarFallback className="bg-primary/15 text-primary text-xs font-bold">{initials || "?"}</AvatarFallback>
             </Avatar>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold truncate">{fullName.split(" ").slice(0, 2).join(" ") || "Colaborador"}</p>
-              <p className="text-[10px] text-muted-foreground">My Workspace</p>
+              <p className="text-[10px] text-muted-foreground truncate flex items-center gap-1">
+                <Mail className="h-2.5 w-2.5" /> {profile?.email || user?.email}
+              </p>
             </div>
+          </div>
+          <div className="mt-2 flex items-center gap-1.5">
+            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <p className="text-[9px] font-medium text-muted-foreground uppercase tracking-wider">Sysde Support</p>
           </div>
         </div>
 
@@ -213,6 +219,18 @@ export default function ColaboradorDashboard() {
               </div>
             </>
           )}
+        </div>
+
+        <div className="p-2 border-t border-border">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-destructive/10 hover:text-destructive h-8"
+            onClick={signOut}
+          >
+            <LogOut className="h-3.5 w-3.5 mr-2" />
+            <span className="text-xs">Cerrar sesión</span>
+          </Button>
         </div>
       </aside>
 
