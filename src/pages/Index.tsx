@@ -3,6 +3,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/dashboard/AppSidebar";
 import { ExecutiveOverview } from "@/components/dashboard/ExecutiveOverview";
 import { ClientDashboard } from "@/components/dashboard/ClientDashboard";
+import { GerenteMobileDashboard } from "@/components/dashboard/GerenteMobileDashboard";
 import { ClientList } from "@/components/clients/ClientList";
 import { ClientDetail } from "@/components/clients/ClientDetail";
 import TeamScrumDashboard from "@/pages/TeamScrumDashboard";
