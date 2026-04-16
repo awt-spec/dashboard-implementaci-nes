@@ -223,6 +223,7 @@ Genera una minuta ejecutiva de soporte con título, resumen, acuerdos y acciones
     setTranscript("");
     setGenerationMode("cases");
     setUploadedFile(null);
+    setSelectedClientIds([]);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
