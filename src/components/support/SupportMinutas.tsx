@@ -188,6 +188,33 @@ Genera una minuta ejecutiva de soporte con título, resumen, acuerdos y acciones
     setNewAction("");
     setTranscript("");
     setGenerationMode("cases");
+    setUploadedFile(null);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadedFile(file);
+    setParsingFile(true);
+    try {
+      if (file.type.startsWith("text/") || file.name.endsWith(".txt") || file.name.endsWith(".md") || file.name.endsWith(".vtt") || file.name.endsWith(".srt")) {
+        const text = await file.text();
+        setTranscript(text);
+        toast.success(`Archivo cargado: ${file.name}`);
+      } else if (file.name.endsWith(".docx") || file.name.endsWith(".doc")) {
+        const text = await file.text();
+        setTranscript(text);
+        toast.success(`Archivo cargado: ${file.name} (texto extraído)`);
+      } else {
+        const text = await file.text();
+        setTranscript(text);
+        toast.success(`Archivo cargado: ${file.name}`);
+      }
+    } catch {
+      toast.error("Error leyendo el archivo");
+    } finally {
+      setParsingFile(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
