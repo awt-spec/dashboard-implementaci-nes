@@ -3,9 +3,51 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { LogIn, Eye, EyeOff } from "lucide-react";
+import { LogIn, Eye, EyeOff, Shield, Briefcase, Headphones } from "lucide-react";
 import sysdelogo from "@/assets/logo-sysde.png";
+
+type DemoAccount = { label: string; email: string; pw: string };
+
+const SYSDE_USERS: DemoAccount[] = [
+  { label: "Admin", email: "admin@sysde.com", pw: "AdminSysde2026!" },
+  { label: "PM", email: "pm@sysde.com", pw: "PmFernando2026!" },
+  { label: "Soporte (Hellen)", email: "hellen.calvo@sysde.com", pw: "HellenCalvo2026!" },
+  { label: "Fauricio Navarro", email: "navarro.fuentes@sysde.com", pw: "Sysde2026!" },
+  { label: "Olga Lucia Cuervo", email: "olga.lucia@sysde.com", pw: "Sysde2026!" },
+  { label: "Orlando Castro", email: "orlando.castro@sysde.com", pw: "Sysde2026!" },
+  { label: "Carlos Solis", email: "solis.sequeira@sysde.com", pw: "Sysde2026!" },
+];
+
+const IMPLEMENTATION_CLIENTS: DemoAccount[] = [
+  { label: "Aurum", email: "gerente.aurum@sysde.com", pw: "GerenteAurum2026!" },
+  { label: "Arkfin", email: "gerente.arkfin@sysde.com", pw: "GerenteArkfin2026!" },
+  { label: "Apex", email: "gerente.apex@sysde.com", pw: "GerenteApex2026!" },
+];
+
+const SUPPORT_CLIENTS: DemoAccount[] = [
+  { label: "AFP Atlántico", email: "cliente.atlantico@sysde.com", pw: "ClienteAtlantico2026!" },
+  { label: "AFP Atlántida", email: "cliente.atlantida@sysde.com", pw: "ClienteAtlantida2026!" },
+  { label: "AFPC Occidente", email: "cliente.occidente@sysde.com", pw: "ClienteOccidente2026!" },
+  { label: "Banco de Bogotá", email: "cliente.bogota@sysde.com", pw: "ClienteBogota2026!" },
+  { label: "CFE Panamá", email: "cliente.cfe@sysde.com", pw: "ClienteCfe2026!" },
+  { label: "CMI", email: "cliente.cmi@sysde.com", pw: "ClienteCmi2026!" },
+  { label: "Coopecar", email: "cliente.coopecar@sysde.com", pw: "ClienteCoopecar2026!" },
+  { label: "Credicefi", email: "cliente.credicefi@sysde.com", pw: "ClienteCredicefi2026!" },
+  { label: "CRG Credit Rural", email: "cliente.crg@sysde.com", pw: "ClienteCrg2026!" },
+  { label: "Factor y Valor", email: "cliente.factor@sysde.com", pw: "ClienteFactor2026!" },
+  { label: "Fafidess", email: "cliente.fafidess@sysde.com", pw: "ClienteFafidess2026!" },
+  { label: "FIACG", email: "cliente.fiacg@sysde.com", pw: "ClienteFiacg2026!" },
+  { label: "Fundap", email: "cliente.fundap@sysde.com", pw: "ClienteFundap2026!" },
+  { label: "INS Filemaster", email: "cliente.ins@sysde.com", pw: "ClienteIns2026!" },
+  { label: "Kafo Jiginew", email: "cliente.kafo@sysde.com", pw: "ClienteKafo2026!" },
+  { label: "MECZY", email: "cliente.meczy@sysde.com", pw: "ClienteMeczy2026!" },
+  { label: "Micitt", email: "cliente.micitt@sysde.com", pw: "ClienteMicitt2026!" },
+  { label: "Municipalidad de Escazú", email: "cliente.escazu@sysde.com", pw: "ClienteEscazu2026!" },
+  { label: "Quiero Confianza", email: "cliente.ion@sysde.com", pw: "ClienteIon2026!" },
+  { label: "SOFIMSA", email: "cliente.sofimsa@sysde.com", pw: "ClienteSofimsa2026!" },
+];
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -23,6 +65,21 @@ export default function Login() {
     }
     setLoading(false);
   };
+
+  const renderAccountList = (accounts: DemoAccount[]) => (
+    <div className="space-y-1 text-xs text-muted-foreground max-h-64 overflow-y-auto pr-1">
+      {accounts.map((acc) => (
+        <button
+          key={acc.email}
+          type="button"
+          className="w-full text-left px-2 py-1.5 rounded-md hover:bg-accent/60 transition-colors cursor-pointer"
+          onClick={() => { setEmail(acc.email); setPassword(acc.pw); }}
+        >
+          <strong className="text-foreground">{acc.label}:</strong> {acc.email}
+        </button>
+      ))}
+    </div>
+  );
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -74,30 +131,25 @@ export default function Login() {
           </form>
 
           <div className="mt-6 p-3 rounded-lg bg-muted/50 border border-border">
-            <p className="text-xs font-medium text-muted-foreground mb-2">Cuentas demo <span className="italic">(clic para autocompletar)</span>:</p>
-            <div className="space-y-1 text-xs text-muted-foreground">
-              {[
-                { label: "Admin", email: "admin@sysde.com", pw: "AdminSysde2026!" },
-                { label: "PM", email: "pm@sysde.com", pw: "PmFernando2026!" },
-                { label: "Soporte (Hellen)", email: "hellen.calvo@sysde.com", pw: "HellenCalvo2026!" },
-                { label: "Aurum", email: "gerente.aurum@sysde.com", pw: "GerenteAurum2026!" },
-                { label: "Arkfin", email: "gerente.arkfin@sysde.com", pw: "GerenteArkfin2026!" },
-                { label: "Apex", email: "gerente.apex@sysde.com", pw: "GerenteApex2026!" },
-                { label: "Fauricio Navarro", email: "navarro.fuentes@sysde.com", pw: "Sysde2026!" },
-                { label: "Olga Lucia Cuervo", email: "olga.lucia@sysde.com", pw: "Sysde2026!" },
-                { label: "Orlando Castro", email: "orlando.castro@sysde.com", pw: "Sysde2026!" },
-                { label: "Carlos Solis", email: "solis.sequeira@sysde.com", pw: "Sysde2026!" },
-              ].map((acc) => (
-                <button
-                  key={acc.email}
-                  type="button"
-                  className="w-full text-left px-2 py-1.5 rounded-md hover:bg-accent/60 transition-colors cursor-pointer"
-                  onClick={() => { setEmail(acc.email); setPassword(acc.pw); }}
-                >
-                  <strong className="text-foreground">{acc.label}:</strong> {acc.email}
-                </button>
-              ))}
-            </div>
+            <p className="text-xs font-medium text-muted-foreground mb-2">
+              Cuentas demo <span className="italic">(clic para autocompletar)</span>:
+            </p>
+            <Tabs defaultValue="sysde" className="w-full">
+              <TabsList className="grid w-full grid-cols-3 h-auto">
+                <TabsTrigger value="sysde" className="text-[10px] gap-1 px-1 py-1.5">
+                  <Shield className="h-3 w-3" /> Sysde
+                </TabsTrigger>
+                <TabsTrigger value="impl" className="text-[10px] gap-1 px-1 py-1.5">
+                  <Briefcase className="h-3 w-3" /> Implem.
+                </TabsTrigger>
+                <TabsTrigger value="support" className="text-[10px] gap-1 px-1 py-1.5">
+                  <Headphones className="h-3 w-3" /> Soporte
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="sysde" className="mt-2">{renderAccountList(SYSDE_USERS)}</TabsContent>
+              <TabsContent value="impl" className="mt-2">{renderAccountList(IMPLEMENTATION_CLIENTS)}</TabsContent>
+              <TabsContent value="support" className="mt-2">{renderAccountList(SUPPORT_CLIENTS)}</TabsContent>
+            </Tabs>
           </div>
         </CardContent>
       </Card>

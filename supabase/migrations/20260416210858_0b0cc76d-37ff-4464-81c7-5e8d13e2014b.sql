@@ -1,0 +1,22 @@
+INSERT INTO public.gerente_client_assignments (user_id, client_id) VALUES
+  ('2193f0f2-1256-4d23-ba17-daea0a25ea69', 'afp-atlantico'),
+  ('1e04393d-f8d4-4d57-8794-527f0c34e6fd', 'afp-atlantida'),
+  ('4ff1d28a-e2d3-4c59-81f0-45a7f345abba', 'afpc-occidente'),
+  ('c61df015-fd61-471d-9b22-ee70ffabd777', 'banco-bogota'),
+  ('fb522506-d845-4525-93e1-75b605ba6068', 'cfe-panama'),
+  ('afb9513d-5380-4e70-b168-caeb7bafc06c', 'cmi-soporte'),
+  ('534a8ecc-bf06-470d-aec2-a45132e65eb8', 'coopecar-soporte'),
+  ('676c2746-9fd5-4217-a485-2072895c5e43', 'credicefi-soporte'),
+  ('67ce097a-94f4-49d2-8f54-c6c17ef46b35', 'crg-credit-rural'),
+  ('f22027cc-d589-49e7-bdb8-7f2afdf7bd44', 'factor-y-valor'),
+  ('31492de2-1657-4501-be5f-07750bdc79aa', 'fafidess-soporte'),
+  ('6491e0c1-c8ec-4741-8fdf-0eca7d90b0fa', 'fiacg'),
+  ('c79a8870-780a-459f-9a7e-6bdcfab4f7bc', 'fundap'),
+  ('75739927-11b6-4872-87be-0158fae5d64e', 'ins-filemaster'),
+  ('62b4a834-42b0-467e-8fc0-5a6461c0c263', 'kafo-jiginew'),
+  ('02f7331f-73dc-4c7c-8aeb-655a2b82ddd3', 'meczy'),
+  ('b7a0c20d-7539-48ab-a3c9-75a38acc0f66', 'micitt'),
+  ('0c5b7597-b540-4d4f-bef1-88834419536b', 'muni-escazu'),
+  ('7f56e586-b6a7-45ec-b727-ed98c7b6db97', 'quiero-confianza'),
+  ('28c5b593-16e6-40ac-976f-f3b69700c630', 'sofimsa')
+ON CONFLICT DO NOTHING;
