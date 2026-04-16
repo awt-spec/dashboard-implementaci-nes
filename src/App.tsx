@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import Report from "./pages/Report";
 import SharedPresentation from "./pages/SharedPresentation";
+import SharedSupportPresentation from "./pages/SharedSupportPresentation";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/" element={<AuthGate />} />
             <Route path="/report" element={<Report />} />
             <Route path="/shared/:token" element={<SharedPresentation />} />
+            <Route path="/shared-support/:token" element={<SharedSupportPresentation />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

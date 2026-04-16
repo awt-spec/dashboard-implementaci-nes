@@ -20,6 +20,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { SharedMinutasPanel } from "./SharedMinutasPanel";
 
 interface Props {
   client: Client;
@@ -328,6 +329,17 @@ export function GerenteSupportDashboard({ client }: Props) {
                       </button>
                     ))}
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* Shared presentations from Sysde */}
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <FileText className="h-4 w-4 text-primary" />
+                    <h3 className="text-sm font-bold">Minutas compartidas</h3>
+                  </div>
+                  <SharedMinutasPanel clientId={client.id} compact />
                 </CardContent>
               </Card>
             </TabsContent>

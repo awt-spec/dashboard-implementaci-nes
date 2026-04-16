@@ -21,6 +21,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { SharedMinutasPanel } from "./SharedMinutasPanel";
 
 interface Props {
   client: Client;
@@ -477,42 +478,58 @@ export function GerenteMobileDashboard({ client }: Props) {
         </TabsContent>
 
         {/* ─── MINUTAS ────────────────────────────── */}
-        <TabsContent value="minutas" className="mt-4 space-y-2">
-          {recentMinutes.length === 0 ? (
-            <EmptyState icon={Calendar} message="No hay minutas recientes" />
-          ) : (
-            recentMinutes.map((m, idx) => (
-              <motion.div
-                key={m.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.04 }}
-              >
-                <Card className="hover:border-primary/40 transition-colors">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-3 mb-2">
-                      <p className="text-sm font-semibold leading-snug">{m.title}</p>
-                      <Badge variant="outline" className="text-[10px] gap-1 shrink-0">
-                        <Calendar className="h-2.5 w-2.5" />
-                        {new Date(m.date).toLocaleDateString("es", { day: "2-digit", month: "short" })}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground line-clamp-3 mb-3">{m.summary}</p>
-                    {m.agreements && m.agreements.length > 0 && (
-                      <div className="space-y-1">
-                        <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Acuerdos</p>
-                        {m.agreements.slice(0, 3).map((a, i) => (
-                          <div key={i} className="flex items-start gap-1.5 text-[11px]">
-                            <CheckCircle2 className="h-3 w-3 text-success mt-0.5 shrink-0" />
-                            <span className="line-clamp-1">{a}</span>
+        <TabsContent value="minutas" className="mt-4 space-y-4">
+          {/* Shared presentations from Sysde */}
+          <div>
+            <div className="flex items-center gap-2 mb-2 px-1">
+              <FileText className="h-3.5 w-3.5 text-primary" />
+              <h3 className="text-xs font-bold uppercase tracking-wider">Presentaciones de Sysde</h3>
+            </div>
+            <SharedMinutasPanel clientId={client.id} compact />
+          </div>
+
+          {/* Internal minutes from project */}
+          {recentMinutes.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <Calendar className="h-3.5 w-3.5 text-info" />
+                <h3 className="text-xs font-bold uppercase tracking-wider">Minutas del proyecto</h3>
+              </div>
+              <div className="space-y-2">
+                {recentMinutes.map((m, idx) => (
+                  <motion.div
+                    key={m.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.04 }}
+                  >
+                    <Card className="hover:border-primary/40 transition-colors">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <p className="text-sm font-semibold leading-snug">{m.title}</p>
+                          <Badge variant="outline" className="text-[10px] gap-1 shrink-0">
+                            <Calendar className="h-2.5 w-2.5" />
+                            {new Date(m.date).toLocaleDateString("es", { day: "2-digit", month: "short" })}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground line-clamp-3 mb-3">{m.summary}</p>
+                        {m.agreements && m.agreements.length > 0 && (
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Acuerdos</p>
+                            {m.agreements.slice(0, 3).map((a, i) => (
+                              <div key={i} className="flex items-start gap-1.5 text-[11px]">
+                                <CheckCircle2 className="h-3 w-3 text-success mt-0.5 shrink-0" />
+                                <span className="line-clamp-1">{a}</span>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))
+                        )}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
           )}
         </TabsContent>
       </Tabs>
