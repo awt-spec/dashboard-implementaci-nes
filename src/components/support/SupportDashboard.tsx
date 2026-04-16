@@ -540,10 +540,34 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
               </CardContent>
             </Card>
           </div>
+
+          {/* Cases table inside Operación */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center justify-between">
+                <span>{isClientView ? "Casos del Cliente" : "Todos los Casos"} ({tickets.length})</span>
+                <Badge variant="outline">{filteredActive.length} activos</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SupportCaseTable tickets={tickets} clientName={clientName} teamMembers={selectedClientObj?.team_assigned || []} />
+            </CardContent>
+          </Card>
         </TabsContent>
 
-        {/* HEATMAP TAB */}
-        <TabsContent value="heatmap" className="mt-4 space-y-4">
+        {/* ============ 2. ANALÍTICA: distribuciones + mapa de calor ============ */}
+        <TabsContent value="analitica" className="mt-4">
+          <Tabs defaultValue="distribuciones">
+            <TabsList className="h-8">
+              <TabsTrigger value="distribuciones" className="text-xs h-6">Distribuciones</TabsTrigger>
+              {!isClientView && <TabsTrigger value="cliente" className="text-xs h-6">Por Cliente</TabsTrigger>}
+            </TabsList>
+
+            <TabsContent value="distribuciones" className="mt-4">
+              <SupportChartBuilder tickets={ticketsWithClientName} />
+            </TabsContent>
+
+            <TabsContent value="cliente" className="mt-4 space-y-4">
           {isClientView || selectedClient !== "all" ? (
             <SupportClientHeatmap tickets={isClientView ? scopedTickets : tickets} clientName={isClientView ? (selectedClientObj?.name || "") : selectedClientName} />
           ) : (
