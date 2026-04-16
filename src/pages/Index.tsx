@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/dashboard/AppSidebar";
 import { ExecutiveOverview } from "@/components/dashboard/ExecutiveOverview";
 import { ClientDashboard } from "@/components/dashboard/ClientDashboard";
 import { GerenteMobileDashboard } from "@/components/dashboard/GerenteMobileDashboard";
+import { GerenteSupportDashboard } from "@/components/dashboard/GerenteSupportDashboard";
 import { ClientList } from "@/components/clients/ClientList";
 import { ClientDetail } from "@/components/clients/ClientDetail";
 import TeamScrumDashboard from "@/pages/TeamScrumDashboard";
@@ -81,7 +82,10 @@ const Index = () => {
     : null;
 
   const getTitle = () => {
-    if (role === "gerente" && gerenteClient) return `Panel de Proyecto — ${gerenteClient.name}`;
+    if (role === "gerente" && gerenteClient) {
+      const isSupport = (gerenteClient as any).client_type === "soporte";
+      return `${isSupport ? "Portal Soporte" : "Panel de Proyecto"} — ${gerenteClient.name}`;
+    }
     if (activeSection === "overview") return "Resumen Ejecutivo";
     if (activeSection === "clients") return "Implementación — Clientes";
     if (activeSection === "soporte") return "Soporte — Dashboard de Boletas";
@@ -124,7 +128,9 @@ const Index = () => {
                 loadingAssignment ? (
                   <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
                 ) : gerenteClient ? (
-                  <GerenteMobileDashboard client={gerenteClient} />
+                  (gerenteClient as any).client_type === "soporte"
+                    ? <GerenteSupportDashboard client={gerenteClient} />
+                    : <GerenteMobileDashboard client={gerenteClient} />
                 ) : (
                   <p className="text-sm text-muted-foreground text-center py-12">No tiene un proyecto asignado. Contacte al administrador.</p>
                 )
