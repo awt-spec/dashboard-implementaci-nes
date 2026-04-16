@@ -543,12 +543,14 @@ Genera una minuta ejecutiva de soporte con título, resumen, acuerdos y acciones
                     {activeTickets.slice(0, 50).map(t => {
                       const isSelected = selectedCaseIds.includes(t.id);
                       const isCritical = t.prioridad.includes("Critica") || t.prioridad === "Alta";
+                      const tClient = isGeneralMode ? availableClients.find(c => c.id === t.client_id)?.name : null;
                       return (
                         <label key={t.id} className={`flex items-center gap-2 text-xs p-1.5 rounded cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border border-primary/20" : "hover:bg-muted/30"}`}>
                           <input type="checkbox" checked={isSelected} onChange={() => toggleCase(t.id)} className="rounded" />
                           <span className="font-mono font-bold shrink-0 text-[10px]">{t.ticket_id}</span>
                           {isCritical && <AlertTriangle className="h-3 w-3 text-destructive shrink-0" />}
                           <span className="truncate flex-1">{t.asunto}</span>
+                          {tClient && <Badge variant="outline" className="text-[9px] shrink-0 border-primary/30 text-primary">{tClient}</Badge>}
                           <Badge variant="outline" className={`text-[9px] shrink-0 ${isCritical ? "border-destructive/30 text-destructive" : ""}`}>{t.estado}</Badge>
                         </label>
                       );
