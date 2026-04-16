@@ -312,7 +312,8 @@ export function SystemUsersTab() {
               </Button>
             </div>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       {/* Stats cards */}
