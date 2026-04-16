@@ -61,12 +61,24 @@ export function GerenteSupportDashboard({ client }: Props) {
   const [filterPriority, setFilterPriority] = useState<string>("all");
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
 
-  // New request dialog
+  // New request wizard
   const [requestOpen, setRequestOpen] = useState(false);
+  const [wizardStep, setWizardStep] = useState(1);
+  const [requestCategory, setRequestCategory] = useState<string>("");
   const [requestText, setRequestText] = useState("");
+  const [requestTitle, setRequestTitle] = useState("");
   const [requestPriority, setRequestPriority] = useState("Media");
   const [requestProduct, setRequestProduct] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  const resetWizard = () => {
+    setWizardStep(1);
+    setRequestCategory("");
+    setRequestText("");
+    setRequestTitle("");
+    setRequestPriority("Media");
+    setRequestProduct("");
+  };
 
   // ── Metrics ──
   const openTickets = useMemo(() => tickets.filter(t => OPEN_STATES.includes(t.estado)), [tickets]);
