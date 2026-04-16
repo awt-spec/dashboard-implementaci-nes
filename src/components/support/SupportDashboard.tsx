@@ -987,21 +987,14 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
 
         {/* Minutas Tab */}
         <TabsContent value="minutas" className="mt-4">
-          {(isClientView || selectedClient !== "all") ? (
-            <SupportMinutas
-              tickets={scopedTickets}
-              clientName={isClientView ? (selectedClientObj?.name || "") : selectedClientName}
-              clientId={isClientView ? initialClientId! : selectedClient}
-              teamMembers={isClientView ? (selectedClientObj?.team_assigned || []) : (clients.find(c => c.id === selectedClient)?.team_assigned || [])}
-            />
-          ) : (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <FileText className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground">Selecciona un cliente para ver sus minutas</p>
-              </CardContent>
-            </Card>
-          )}
+          <SupportMinutas
+            tickets={scopedTickets}
+            clientName={isClientView ? (selectedClientObj?.name || "") : (selectedClient !== "all" ? selectedClientName : "Soporte General")}
+            clientId={isClientView ? initialClientId! : selectedClient}
+            teamMembers={isClientView ? (selectedClientObj?.team_assigned || []) : (clients.find(c => c.id === selectedClient)?.team_assigned || [])}
+            availableClients={clients.map(c => ({ id: c.id, name: c.name }))}
+            allTickets={allTickets}
+          />
         </TabsContent>
 
         {/* ============ 4. COMERCIAL: contrato + SLA + acuerdos ============ */}

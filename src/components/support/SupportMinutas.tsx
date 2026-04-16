@@ -22,6 +22,10 @@ interface Props {
   clientName: string;
   clientId: string;
   teamMembers?: string[];
+  /** When provided, enables multi-client (general support) minuta mode */
+  availableClients?: { id: string; name: string }[];
+  /** All tickets across all clients (used in general view to source cases) */
+  allTickets?: SupportTicket[];
 }
 
 interface Minuta {
@@ -34,12 +38,14 @@ interface Minuta {
   action_items: string[];
   agreements: string[];
   attendees: string[];
+  referenced_clients?: string[];
   created_at: string;
 }
 
 type GenerationMode = "cases" | "transcript";
 
-export function SupportMinutas({ tickets, clientName, clientId, teamMembers = [] }: Props) {
+export function SupportMinutas({ tickets, clientName, clientId, teamMembers = [], availableClients = [], allTickets = [] }: Props) {
+  const isGeneralMode = clientId === "all" || !clientId;
   const [minutas, setMinutas] = useState<Minuta[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -63,21 +69,33 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [parsingFile, setParsingFile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Multi-client (general support) mode
+  const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
 
   const loadMinutas = useCallback(() => {
     setLoading(true);
-    supabase.from("support_minutes").select("*").eq("client_id", clientId)
-      .order("created_at", { ascending: false })
+    const query = isGeneralMode
+      ? supabase.from("support_minutes").select("*")
+      : supabase.from("support_minutes").select("*")
+          .or(`client_id.eq.${clientId},referenced_clients.cs.{${clientId}}`);
+    query.order("created_at", { ascending: false })
       .then(({ data }) => {
         if (data) setMinutas(data as any);
         setLoading(false);
       });
-  }, [clientId]);
+  }, [clientId, isGeneralMode]);
 
   useEffect(() => { loadMinutas(); }, [loadMinutas]);
 
+  // In general mode, source tickets from selected clients (or all if none selected)
+  const sourceTickets = useMemo(() => {
+    if (!isGeneralMode) return tickets;
+    if (selectedClientIds.length === 0) return allTickets;
+    return allTickets.filter(t => selectedClientIds.includes(t.client_id));
+  }, [isGeneralMode, tickets, allTickets, selectedClientIds]);
+
   const activeTickets = useMemo(() =>
-    tickets.filter(t => !["CERRADA", "ANULADA"].includes(t.estado)), [tickets]);
+    sourceTickets.filter(t => !["CERRADA", "ANULADA"].includes(t.estado)), [sourceTickets]);
 
   const criticalTickets = useMemo(() =>
     activeTickets.filter(t => t.prioridad === "Critica, Impacto Negocio" || t.prioridad === "Alta")
@@ -88,20 +106,31 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
       toast.error("Pega la transcripción de la reunión para continuar");
       return;
     }
+    if (isGeneralMode && selectedClientIds.length === 0) {
+      toast.error("Selecciona al menos un cliente para la minuta general");
+      return;
+    }
     setGenerating(true);
     try {
+      const effectiveClientName = isGeneralMode
+        ? (selectedClientIds.length === 1
+            ? (availableClients.find(c => c.id === selectedClientIds[0])?.name || "Cliente")
+            : `Soporte General (${selectedClientIds.length} clientes)`)
+        : clientName;
+
+      const ticketsPool = isGeneralMode ? sourceTickets : tickets;
       let promptContent = "";
 
       if (generationMode === "transcript") {
-        // Transcript mode: the user pasted a meeting transcript
         const casesToUse = selectedCaseIds.length > 0
-          ? tickets.filter(t => selectedCaseIds.includes(t.id))
+          ? ticketsPool.filter(t => selectedCaseIds.includes(t.id))
           : activeTickets.slice(0, 15);
-        const casesContext = casesToUse.map(t =>
-          `[${t.ticket_id}] ${t.asunto} | ${t.estado} | ${t.prioridad}`
-        ).join("\n");
+        const casesContext = casesToUse.map(t => {
+          const cn = availableClients.find(c => c.id === t.client_id)?.name;
+          return `[${t.ticket_id}]${cn && isGeneralMode ? ` (${cn})` : ""} ${t.asunto} | ${t.estado} | ${t.prioridad}`;
+        }).join("\n");
 
-        promptContent = `TRANSCRIPCIÓN DE REUNIÓN DE SOPORTE - ${clientName}
+        promptContent = `TRANSCRIPCIÓN DE REUNIÓN DE SOPORTE - ${effectiveClientName}
 Fecha: ${new Date().toLocaleDateString("es")}
 Participantes: ${selectedAttendees.join(", ") || "Por definir"}
 
@@ -113,26 +142,26 @@ ${transcript}
 
 Analiza esta transcripción y genera: título, resumen ejecutivo, acuerdos tomados, acciones a seguir y próximos pasos. Identifica los casos mencionados.`;
       } else {
-        // Cases mode: generate from case data
         const casesToUse = selectedCaseIds.length > 0
-          ? tickets.filter(t => selectedCaseIds.includes(t.id))
+          ? ticketsPool.filter(t => selectedCaseIds.includes(t.id))
           : activeTickets.slice(0, 30);
-        const casesSummary = casesToUse.map(t =>
-          `[${t.ticket_id}] ${t.asunto} | Estado: ${t.estado} | Prioridad: ${t.prioridad} | Días: ${t.dias_antiguedad} | Responsable: ${t.responsable || "N/A"} | Producto: ${t.producto} | Tipo: ${t.tipo} | Notas: ${t.notas || "N/A"} | IA: ${t.ai_summary || "N/A"}`
-        ).join("\n");
+        const casesSummary = casesToUse.map(t => {
+          const cn = availableClients.find(c => c.id === t.client_id)?.name;
+          return `[${t.ticket_id}]${cn && isGeneralMode ? ` (${cn})` : ""} ${t.asunto} | Estado: ${t.estado} | Prioridad: ${t.prioridad} | Días: ${t.dias_antiguedad} | Responsable: ${t.responsable || "N/A"} | Producto: ${t.producto} | Tipo: ${t.tipo} | Notas: ${t.notas || "N/A"} | IA: ${t.ai_summary || "N/A"}`;
+        }).join("\n");
 
-        promptContent = `MINUTA DE SOPORTE - ${clientName}
+        promptContent = `MINUTA DE SOPORTE - ${effectiveClientName}
 Fecha: ${new Date().toLocaleDateString("es")}
 Participantes: ${selectedAttendees.join(", ") || "Por definir"}
 
-Casos activos del cliente:
+Casos activos:
 ${casesSummary}
 
 Genera una minuta ejecutiva de soporte con título, resumen, acuerdos y acciones a seguir.`;
       }
 
       const { data, error } = await supabase.functions.invoke("summarize-transcript", {
-        body: { transcript: promptContent, clientName },
+        body: { transcript: promptContent, clientName: effectiveClientName },
       });
 
       if (error) throw error;
@@ -147,19 +176,24 @@ Genera una minuta ejecutiva de soporte con título, resumen, acuerdos y acciones
       }
 
       const casesToUse = selectedCaseIds.length > 0
-        ? tickets.filter(t => selectedCaseIds.includes(t.id))
+        ? ticketsPool.filter(t => selectedCaseIds.includes(t.id))
         : activeTickets.slice(0, 30);
+
+      // In general mode, primary client_id = first selected; remaining are referenced
+      const primaryClientId = isGeneralMode ? selectedClientIds[0] : clientId;
+      const referencedClients = isGeneralMode ? selectedClientIds : [];
 
       const now = new Date().toISOString();
       const minutaRow = {
-        client_id: clientId,
-        title: newTitle || parsed.title || `Minuta de Soporte - ${clientName}`,
+        client_id: primaryClientId,
+        title: newTitle || parsed.title || `Minuta de Soporte - ${effectiveClientName}`,
         date: now.split("T")[0],
         summary: parsed.summary || "",
         cases_referenced: parsed.cases_highlighted || casesToUse.map(t => t.ticket_id),
         action_items: [...manualActions, ...(parsed.actionItems || parsed.action_items || [])],
         agreements: [...manualAgreements, ...(parsed.agreements || [])],
         attendees: selectedAttendees.length > 0 ? selectedAttendees : (parsed.attendees || []),
+        referenced_clients: referencedClients,
       };
 
       const { data: inserted, error: insertErr } = await supabase
@@ -189,6 +223,7 @@ Genera una minuta ejecutiva de soporte con título, resumen, acuerdos y acciones
     setTranscript("");
     setGenerationMode("cases");
     setUploadedFile(null);
+    setSelectedClientIds([]);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -290,7 +325,9 @@ Genera una minuta ejecutiva de soporte con título, resumen, acuerdos y acciones
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <FileText className="h-5 w-5 text-primary" />
-          <h3 className="text-sm font-bold">Minutas de Soporte — {clientName}</h3>
+          <h3 className="text-sm font-bold">
+            {isGeneralMode ? "Minutas Generales de Soporte" : `Minutas de Soporte — ${clientName}`}
+          </h3>
           <Badge variant="outline" className="text-xs">{minutas.length}</Badge>
         </div>
         <Button size="sm" className="gap-1.5 text-xs" onClick={() => setShowCreate(!showCreate)}>
@@ -307,6 +344,55 @@ Genera una minuta ejecutiva de soporte con título, resumen, acuerdos y acciones
                 <CardTitle className="text-sm flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> Generar Minuta con IA</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Multi-client selector (general support mode) */}
+                {isGeneralMode && (
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold flex items-center gap-1.5">
+                        <Users className="h-3.5 w-3.5 text-primary" /> Clientes incluidos en esta minuta
+                      </p>
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2"
+                          onClick={() => setSelectedClientIds(availableClients.map(c => c.id))}>Todos</Button>
+                        <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2"
+                          onClick={() => setSelectedClientIds([])}>Limpiar</Button>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      Selecciona uno o varios clientes. La minuta se asociará a todos los seleccionados.
+                    </p>
+                    <div className="max-h-[140px] overflow-y-auto space-y-1 border border-border rounded-md p-2 bg-background/50">
+                      {availableClients.map(c => {
+                        const isSel = selectedClientIds.includes(c.id);
+                        return (
+                          <label key={c.id} className={`flex items-center gap-2 text-xs p-1.5 rounded cursor-pointer transition-colors ${isSel ? "bg-primary/10 border border-primary/20" : "hover:bg-muted/30"}`}>
+                            <input type="checkbox" checked={isSel}
+                              onChange={() => setSelectedClientIds(prev => prev.includes(c.id) ? prev.filter(x => x !== c.id) : [...prev, c.id])}
+                              className="rounded" />
+                            <span className="flex-1 truncate">{c.name}</span>
+                            <Badge variant="outline" className="text-[9px]">
+                              {allTickets.filter(t => t.client_id === c.id && !["CERRADA","ANULADA"].includes(t.estado)).length} activos
+                            </Badge>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {selectedClientIds.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {selectedClientIds.map(id => {
+                          const c = availableClients.find(x => x.id === id);
+                          return c ? (
+                            <Badge key={id} variant="secondary" className="text-[10px] gap-1 pr-1">
+                              {c.name}
+                              <button onClick={() => setSelectedClientIds(prev => prev.filter(x => x !== id))} className="ml-0.5 hover:text-destructive"><X className="h-2.5 w-2.5" /></button>
+                            </Badge>
+                          ) : null;
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <Input placeholder="Título (opcional, IA generará uno)" value={newTitle} onChange={e => setNewTitle(e.target.value)} className="text-xs" />
 
                 {/* Generation Mode Selector */}
@@ -457,12 +543,14 @@ Genera una minuta ejecutiva de soporte con título, resumen, acuerdos y acciones
                     {activeTickets.slice(0, 50).map(t => {
                       const isSelected = selectedCaseIds.includes(t.id);
                       const isCritical = t.prioridad.includes("Critica") || t.prioridad === "Alta";
+                      const tClient = isGeneralMode ? availableClients.find(c => c.id === t.client_id)?.name : null;
                       return (
                         <label key={t.id} className={`flex items-center gap-2 text-xs p-1.5 rounded cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border border-primary/20" : "hover:bg-muted/30"}`}>
                           <input type="checkbox" checked={isSelected} onChange={() => toggleCase(t.id)} className="rounded" />
                           <span className="font-mono font-bold shrink-0 text-[10px]">{t.ticket_id}</span>
                           {isCritical && <AlertTriangle className="h-3 w-3 text-destructive shrink-0" />}
                           <span className="truncate flex-1">{t.asunto}</span>
+                          {tClient && <Badge variant="outline" className="text-[9px] shrink-0 border-primary/30 text-primary">{tClient}</Badge>}
                           <Badge variant="outline" className={`text-[9px] shrink-0 ${isCritical ? "border-destructive/30 text-destructive" : ""}`}>{t.estado}</Badge>
                         </label>
                       );
