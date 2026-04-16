@@ -73,6 +73,48 @@ export type Database = {
           },
         ]
       }
+      ai_usage_logs: {
+        Row: {
+          client_id: string | null
+          completion_tokens: number
+          created_at: string
+          error_message: string | null
+          function_name: string
+          id: string
+          metadata: Json | null
+          model: string
+          prompt_tokens: number
+          status: string
+          total_tokens: number
+        }
+        Insert: {
+          client_id?: string | null
+          completion_tokens?: number
+          created_at?: string
+          error_message?: string | null
+          function_name: string
+          id?: string
+          metadata?: Json | null
+          model: string
+          prompt_tokens?: number
+          status?: string
+          total_tokens?: number
+        }
+        Update: {
+          client_id?: string | null
+          completion_tokens?: number
+          created_at?: string
+          error_message?: string | null
+          function_name?: string
+          id?: string
+          metadata?: Json | null
+          model?: string
+          prompt_tokens?: number
+          status?: string
+          total_tokens?: number
+        }
+        Relationships: []
+      }
       client_contacts: {
         Row: {
           client_id: string
