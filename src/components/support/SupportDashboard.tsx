@@ -25,6 +25,7 @@ import { SupportClientHeatmap } from "./SupportClientHeatmap";
 import { SupportDataLoader } from "./SupportDataLoader";
 import { SupportMinutas } from "./SupportMinutas";
 import { SupportAgreementsTab } from "./SupportAgreementsTab";
+import { SupportScrumPanel } from "./SupportScrumPanel";
 
 const prioridadColors: Record<string, string> = {
   "Critica, Impacto Negocio": "bg-red-600 text-white",
@@ -383,8 +384,16 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
           <TabsTrigger value="cases">Detalle de Casos</TabsTrigger>
           <TabsTrigger value="minutas">Minutas</TabsTrigger>
           {(isClientView || selectedClient !== "all") && <TabsTrigger value="acuerdos">Acuerdos</TabsTrigger>}
+          {(isClientView || selectedClient !== "all") && <TabsTrigger value="scrum">Estrategia Scrum</TabsTrigger>}
           {!isClientView && <TabsTrigger value="import">Cargar Datos</TabsTrigger>}
         </TabsList>
+
+        <TabsContent value="scrum" className="mt-4">
+          <SupportScrumPanel
+            clientId={isClientView ? initialClientId! : selectedClient}
+            clientName={isClientView ? selectedClientObj?.name : selectedClientName}
+          />
+        </TabsContent>
 
         <TabsContent value="overview" className="space-y-4 mt-4">
           {showingAllInCharts && (
