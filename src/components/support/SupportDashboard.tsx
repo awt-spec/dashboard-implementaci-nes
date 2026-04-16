@@ -377,36 +377,18 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
         </Button>
       </div>
 
-      <Tabs defaultValue="overview">
+      <Tabs defaultValue="operacion">
         <TabsList className="flex-wrap">
-          <TabsTrigger value="overview">Vista General</TabsTrigger>
-          {!isClientView && <TabsTrigger value="heatmap">Mapa de Calor</TabsTrigger>}
-          <TabsTrigger value="charts">Gráficos</TabsTrigger>
-          <TabsTrigger value="ai">Clasificación IA</TabsTrigger>
-          <TabsTrigger value="cases">Detalle de Casos</TabsTrigger>
+          <TabsTrigger value="operacion">Operación</TabsTrigger>
+          <TabsTrigger value="analitica">Analítica</TabsTrigger>
+          <TabsTrigger value="ia">IA & Estrategia</TabsTrigger>
+          {(isClientView || selectedClient !== "all") && <TabsTrigger value="comercial">Comercial</TabsTrigger>}
           <TabsTrigger value="minutas">Minutas</TabsTrigger>
-          {(isClientView || selectedClient !== "all") && <TabsTrigger value="acuerdos">Acuerdos</TabsTrigger>}
-          {(isClientView || selectedClient !== "all") && <TabsTrigger value="contratos">Contrato & SLA</TabsTrigger>}
-          {(isClientView || selectedClient !== "all") && <TabsTrigger value="scrum">Estrategia Scrum</TabsTrigger>}
-          {(isClientView || selectedClient !== "all") && <TabsTrigger value="devops">Azure DevOps</TabsTrigger>}
-          {!isClientView && <TabsTrigger value="import">Cargar Datos</TabsTrigger>}
+          {!isClientView && <TabsTrigger value="datos">Datos & Sync</TabsTrigger>}
         </TabsList>
 
-        <TabsContent value="scrum" className="mt-4">
-          <SupportScrumPanel
-            clientId={isClientView ? initialClientId! : selectedClient}
-            clientName={isClientView ? selectedClientObj?.name : selectedClientName}
-          />
-        </TabsContent>
-
-        <TabsContent value="devops" className="mt-4">
-          <DevOpsPanel
-            clientId={isClientView ? initialClientId! : selectedClient}
-            clientName={isClientView ? selectedClientObj?.name : selectedClientName}
-          />
-        </TabsContent>
-
-        <TabsContent value="overview" className="space-y-4 mt-4">
+        {/* ============ 1. OPERACIÓN: KPIs visuales + tabla de casos ============ */}
+        <TabsContent value="operacion" className="space-y-4 mt-4">
           {showingAllInCharts && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-info/10 border border-info/20 text-xs text-info">
               <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
@@ -558,10 +540,34 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
               </CardContent>
             </Card>
           </div>
+
+          {/* Cases table inside Operación */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center justify-between">
+                <span>{isClientView ? "Casos del Cliente" : "Todos los Casos"} ({tickets.length})</span>
+                <Badge variant="outline">{filteredActive.length} activos</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SupportCaseTable tickets={tickets} clientName={clientName} teamMembers={selectedClientObj?.team_assigned || []} />
+            </CardContent>
+          </Card>
         </TabsContent>
 
-        {/* HEATMAP TAB */}
-        <TabsContent value="heatmap" className="mt-4 space-y-4">
+        {/* ============ 2. ANALÍTICA: distribuciones + mapa de calor ============ */}
+        <TabsContent value="analitica" className="mt-4">
+          <Tabs defaultValue="distribuciones">
+            <TabsList className="h-8">
+              <TabsTrigger value="distribuciones" className="text-xs h-6">Distribuciones</TabsTrigger>
+              {!isClientView && <TabsTrigger value="cliente" className="text-xs h-6">Por Cliente</TabsTrigger>}
+            </TabsList>
+
+            <TabsContent value="distribuciones" className="mt-4">
+              <SupportChartBuilder tickets={ticketsWithClientName} />
+            </TabsContent>
+
+            <TabsContent value="cliente" className="mt-4 space-y-4">
           {isClientView || selectedClient !== "all" ? (
             <SupportClientHeatmap tickets={isClientView ? scopedTickets : tickets} clientName={isClientView ? (selectedClientObj?.name || "") : selectedClientName} />
           ) : (
@@ -647,14 +653,12 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
               </Card>
             </>
           )}
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
-        <TabsContent value="charts" className="mt-4">
-          <SupportChartBuilder tickets={ticketsWithClientName} />
-        </TabsContent>
-
-        {/* AI Classification Tab */}
-        <TabsContent value="ai" className="mt-4 space-y-4">
+        {/* ============ 3. IA & ESTRATEGIA: clasificación + seguimiento + scrum ============ */}
+        <TabsContent value="ia" className="mt-4 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Brain className="h-5 w-5 text-violet-400" />
@@ -672,6 +676,7 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
               <TabsTrigger value="clasificacion" className="text-xs h-6 gap-1"><Brain className="h-3 w-3" /> Clasificación</TabsTrigger>
               <TabsTrigger value="seguimiento" className="text-xs h-6 gap-1"><AlertTriangle className="h-3 w-3" /> Seguimiento IA</TabsTrigger>
               <TabsTrigger value="agentes" className="text-xs h-6 gap-1"><Sparkles className="h-3 w-3" /> Agentes IA</TabsTrigger>
+              {(isClientView || selectedClient !== "all") && <TabsTrigger value="scrum" className="text-xs h-6 gap-1"><Activity className="h-3 w-3" /> Backlog Scrum</TabsTrigger>}
             </TabsList>
 
             {/* Sub-tab: Clasificación */}
@@ -960,22 +965,24 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
                 </Card>
               </div>
             </TabsContent>
-          </Tabs>
-        </TabsContent>
 
-        {/* Cases Detail Tab */}
-        <TabsContent value="cases" className="mt-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center justify-between">
-                <span>{isClientView ? "Casos del Cliente" : "Todos los Casos"} ({tickets.length})</span>
-                <Badge variant="outline">{filteredActive.length} activos</Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <SupportCaseTable tickets={tickets} clientName={clientName} teamMembers={selectedClientObj?.team_assigned || []} />
-            </CardContent>
-          </Card>
+            {/* Sub-tab: Backlog Scrum */}
+            <TabsContent value="scrum" className="mt-4">
+              {(isClientView || selectedClient !== "all") ? (
+                <SupportScrumPanel
+                  clientId={isClientView ? initialClientId! : selectedClient}
+                  clientName={isClientView ? selectedClientObj?.name : selectedClientName}
+                />
+              ) : (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <Activity className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground">Selecciona un cliente para ver su backlog Scrum</p>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         {/* Minutas Tab */}
@@ -997,34 +1004,51 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
           )}
         </TabsContent>
 
-        {/* Acuerdos Tab */}
-        <TabsContent value="acuerdos" className="mt-4">
+        {/* ============ 4. COMERCIAL: contrato + SLA + acuerdos ============ */}
+        <TabsContent value="comercial" className="mt-4">
           {(isClientView || selectedClient !== "all") ? (
-            <SupportAgreementsTab clientId={isClientView ? initialClientId! : selectedClient} />
+            <Tabs defaultValue="contrato">
+              <TabsList className="h-8">
+                <TabsTrigger value="contrato" className="text-xs h-6">Contrato & SLA</TabsTrigger>
+                <TabsTrigger value="acuerdos" className="text-xs h-6">Acuerdos</TabsTrigger>
+              </TabsList>
+              <TabsContent value="contrato" className="mt-4">
+                <ContractsSLATab clientId={isClientView ? initialClientId! : selectedClient} />
+              </TabsContent>
+              <TabsContent value="acuerdos" className="mt-4">
+                <SupportAgreementsTab clientId={isClientView ? initialClientId! : selectedClient} />
+              </TabsContent>
+            </Tabs>
           ) : (
             <Card>
               <CardContent className="p-8 text-center">
                 <FileText className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground">Selecciona un cliente para ver acuerdos y acciones</p>
+                <p className="text-sm text-muted-foreground">Selecciona un cliente para ver contrato, SLA y acuerdos</p>
               </CardContent>
             </Card>
           )}
         </TabsContent>
-        <TabsContent value="contratos" className="mt-4">
-          {(isClientView || selectedClient !== "all") ? (
-            <ContractsSLATab clientId={isClientView ? initialClientId! : selectedClient} />
-          ) : (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <FileText className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground">Selecciona un cliente para ver contrato y SLAs</p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-        <TabsContent value="import" className="mt-4">
-          <SupportDataLoader clientId={isClientView ? initialClientId : (selectedClient !== "all" ? selectedClient : undefined)} />
-        </TabsContent>
+
+        {/* ============ 6. DATOS & SYNC: importar + Azure DevOps ============ */}
+        {!isClientView && (
+          <TabsContent value="datos" className="mt-4">
+            <Tabs defaultValue="importar">
+              <TabsList className="h-8">
+                <TabsTrigger value="importar" className="text-xs h-6">Importar CSV/Excel</TabsTrigger>
+                {selectedClient !== "all" && <TabsTrigger value="devops" className="text-xs h-6">Azure DevOps</TabsTrigger>}
+              </TabsList>
+              <TabsContent value="importar" className="mt-4">
+                <SupportDataLoader clientId={selectedClient !== "all" ? selectedClient : undefined} />
+              </TabsContent>
+              {selectedClient !== "all" && (
+                <TabsContent value="devops" className="mt-4">
+                  <DevOpsPanel clientId={selectedClient} clientName={selectedClientName} />
+                </TabsContent>
+              )}
+            </Tabs>
+          </TabsContent>
+        )}
+
       </Tabs>
     </div>
   );
