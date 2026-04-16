@@ -26,6 +26,7 @@ import { SupportDataLoader } from "./SupportDataLoader";
 import { SupportMinutas } from "./SupportMinutas";
 import { SupportAgreementsTab } from "./SupportAgreementsTab";
 import { SupportScrumPanel } from "./SupportScrumPanel";
+import { DevOpsPanel } from "./DevOpsPanel";
 
 const prioridadColors: Record<string, string> = {
   "Critica, Impacto Negocio": "bg-red-600 text-white",
