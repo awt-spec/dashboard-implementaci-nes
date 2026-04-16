@@ -325,7 +325,9 @@ Genera una minuta ejecutiva de soporte con título, resumen, acuerdos y acciones
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <FileText className="h-5 w-5 text-primary" />
-          <h3 className="text-sm font-bold">Minutas de Soporte — {clientName}</h3>
+          <h3 className="text-sm font-bold">
+            {isGeneralMode ? "Minutas Generales de Soporte" : `Minutas de Soporte — ${clientName}`}
+          </h3>
           <Badge variant="outline" className="text-xs">{minutas.length}</Badge>
         </div>
         <Button size="sm" className="gap-1.5 text-xs" onClick={() => setShowCreate(!showCreate)}>
