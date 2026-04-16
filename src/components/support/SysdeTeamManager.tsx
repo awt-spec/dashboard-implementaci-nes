@@ -83,6 +83,32 @@ export function SysdeTeamManager() {
     }
   };
 
+  const handleBulkCreateAccess = async () => {
+    const password = prompt(
+      "Crear acceso de login para TODOS los miembros activos sin acceso.\n\n" +
+      "Se usará esta contraseña base para todos (mín. 8 caracteres).\n" +
+      "Cada miembro deberá cambiarla en su primer login."
+    );
+    if (!password) return;
+    if (password.length < 8) { toast.error("Mínimo 8 caracteres"); return; }
+
+    toast.loading("Creando accesos...", { id: "bulk-access" });
+    const res = await supabase.functions.invoke("manage-users", {
+      body: { action: "create_bulk_team_access", password },
+    });
+    toast.dismiss("bulk-access");
+    if (res.error || res.data?.error) {
+      toast.error(res.error?.message || res.data?.error || "Error al crear accesos");
+      return;
+    }
+    const results = res.data?.results || [];
+    const created = results.filter((r: any) => r.success).length;
+    const skipped = results.filter((r: any) => r.skipped).length;
+    const failed = results.filter((r: any) => r.error).length;
+    toast.success(`${created} accesos creados • ${skipped} omitidos • ${failed} errores`);
+    qc.invalidateQueries({ queryKey: ["sysde-team-members"] });
+  };
+
   const activeMembers = members.filter(m => m.is_active);
   const inactiveMembers = members.filter(m => !m.is_active);
 
@@ -99,10 +125,14 @@ export function SysdeTeamManager() {
           </div>
           <Badge variant="outline" className="ml-2">{activeMembers.length} activos</Badge>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="gap-1.5"><UserPlus className="h-3.5 w-3.5" /> Agregar Miembro</Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={handleBulkCreateAccess}>
+            <KeyRound className="h-3.5 w-3.5" /> Crear accesos masivos
+          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="gap-1.5"><UserPlus className="h-3.5 w-3.5" /> Agregar Miembro</Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Agregar Miembro al Equipo SYSDE</DialogTitle></DialogHeader>
             <div className="space-y-4 pt-2">
@@ -140,6 +170,7 @@ export function SysdeTeamManager() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <Card>
