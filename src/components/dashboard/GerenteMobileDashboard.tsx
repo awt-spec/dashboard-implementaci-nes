@@ -215,7 +215,7 @@ export function GerenteMobileDashboard({ client }: Props) {
       </motion.div>
 
       {/* ─── QUICK ACTIONS ─────────────────────────── */}
-      <div className="grid grid-cols-3 gap-2 mb-4">
+      <div className="grid grid-cols-3 gap-2 mb-4 lg:mb-0">
         <QuickAction
           icon={MessageSquare}
           label="Comentar"
@@ -235,6 +235,28 @@ export function GerenteMobileDashboard({ client }: Props) {
           color="text-destructive"
         />
       </div>
+
+      {/* Desktop-only: stats preview in sidebar */}
+      <div className="hidden lg:grid grid-cols-2 gap-3">
+        <StatCard
+          icon={CheckCircle2}
+          label="Actividades"
+          value={`${completedTasks}/${externalTasks.length}`}
+          progress={tasksProgress}
+          color="text-info"
+        />
+        <StatCard
+          icon={Target}
+          label="Entregables"
+          value={`${completedDeliverables}/${client.deliverables.length}`}
+          progress={deliverablesProgress}
+          color="text-success"
+        />
+      </div>
+      </div>
+
+      {/* ─── MAIN CONTENT (right column on desktop) ─── */}
+      <div className="min-w-0">
 
       {/* ─── TABS ──────────────────────────────────── */}
       <Tabs value={tab} onValueChange={setTab} className="w-full">
