@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -8,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   AlertTriangle, Search, Ticket, Clock, CheckCircle2,
   Flame, Activity, Filter, Brain, Loader2, Sparkles, RefreshCw,
-  ArrowLeft, Building2, MapPin, Mail, User, FileText
+  ArrowLeft, Building2, MapPin, Mail, User, FileText, ArrowRightLeft
 } from "lucide-react";
 import { motion } from "framer-motion";
 import {
@@ -77,6 +78,8 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
   const [search, setSearch] = useState("");
   const [prioridadFilter, setPrioridadFilter] = useState<string>("all");
   const [classifying, setClassifying] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferring, setTransferring] = useState(false);
 
   const isClientView = !!initialClientId;
 
@@ -221,6 +224,22 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
     }
   }, [refetch, isClientView, scopedTickets]);
 
+  const handleTransferToImplementation = useCallback(async () => {
+    if (!initialClientId) return;
+    setTransferring(true);
+    try {
+      const { error } = await supabase.from("clients").update({ client_type: "implementacion" } as any).eq("id", initialClientId);
+      if (error) throw error;
+      toast.success("Cliente transferido a Implementación");
+      setTransferOpen(false);
+      if (onBack) onBack();
+    } catch (e: any) {
+      toast.error(e.message || "Error al transferir");
+    } finally {
+      setTransferring(false);
+    }
+  }, [initialClientId, onBack]);
+
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
   }
@@ -256,9 +275,33 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
                     <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {selectedClientObj.contact_email}</span>
                   </div>
                 </div>
-                <Badge className={selectedClientObj.status === "activo" ? "bg-success text-success-foreground" : "bg-muted text-muted-foreground"}>
-                  {selectedClientObj.status}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-1.5 text-xs border-amber-500/30 text-amber-500 hover:bg-amber-500/10">
+                        <ArrowRightLeft className="h-3.5 w-3.5" /> A Implementación
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Transferir a Implementación</DialogTitle>
+                      </DialogHeader>
+                      <p className="text-sm text-muted-foreground">
+                        ¿Transferir <strong>{selectedClientObj.name}</strong> de Soporte a Implementación?
+                      </p>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setTransferOpen(false)}>Cancelar</Button>
+                        <Button onClick={handleTransferToImplementation} disabled={transferring} className="gap-1.5">
+                          {transferring ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowRightLeft className="h-3.5 w-3.5" />}
+                          Transferir
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                  <Badge className={selectedClientObj.status === "activo" ? "bg-success text-success-foreground" : "bg-muted text-muted-foreground"}>
+                    {selectedClientObj.status}
+                  </Badge>
+                </div>
               </div>
             </CardContent>
           </Card>

@@ -9,13 +9,15 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import {
   ChevronDown, Brain, Calendar, User, Tag, FileText,
   AlertTriangle, Save, Loader2, CheckSquare, ArrowRight, Clock,
-  Package, Wrench, Search, Filter, X, Plus, Trash2, Sparkles, Zap
+  Package, Wrench, Search, Filter, X, Plus, Trash2, Sparkles, Zap,
+  Globe, Lock
 } from "lucide-react";
 import type { SupportTicket, CaseAgreementItem } from "@/hooks/useSupportTickets";
 import { useUpdateSupportTicket } from "@/hooks/useSupportTickets";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { SupportCaseDetailPanel } from "./SupportCaseDetailPanel";
 
 const prioridadColors: Record<string, string> = {
   "Critica, Impacto Negocio": "bg-red-600 text-white",
@@ -87,6 +89,7 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
   const [tipoFilter, setTipoFilter] = useState("all");
   const [responsableFilter, setResponsableFilter] = useState("all");
   const [prioridadFilter, setPrioridadFilter] = useState("all");
+  const [visibilityFilter, setVisibilityFilter] = useState<"all" | "externa" | "interna">("all");
 
   const tipos = useMemo(() => [...new Set(tickets.map(t => t.tipo))].sort(), [tickets]);
   const responsables = useMemo(() => [...new Set(tickets.map(t => t.responsable).filter(Boolean))].sort() as string[], [tickets]);
@@ -98,11 +101,12 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
       if (tipoFilter !== "all" && t.tipo !== tipoFilter) return false;
       if (responsableFilter !== "all" && (t.responsable || "") !== responsableFilter) return false;
       if (prioridadFilter !== "all" && t.prioridad !== prioridadFilter) return false;
+      if (visibilityFilter !== "all" && ((t as any).visibility || "externa") !== visibilityFilter) return false;
       return true;
     });
-  }, [tickets, searchFilter, estadoFilter, tipoFilter, responsableFilter, prioridadFilter]);
+  }, [tickets, searchFilter, estadoFilter, tipoFilter, responsableFilter, prioridadFilter, visibilityFilter]);
 
-  const activeFilters = [estadoFilter, tipoFilter, responsableFilter, prioridadFilter].filter(f => f !== "all").length + (searchFilter ? 1 : 0);
+  const activeFilters = [estadoFilter, tipoFilter, responsableFilter, prioridadFilter, visibilityFilter].filter(f => f !== "all").length + (searchFilter ? 1 : 0);
 
   useEffect(() => {
     if (!tickets.length) return;
@@ -222,6 +226,7 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
     setTipoFilter("all");
     setResponsableFilter("all");
     setPrioridadFilter("all");
+    setVisibilityFilter("all");
   };
 
   const renderItemCard = (item: CaseAgreementItem, idx: number, type: "agreement" | "action", t: SupportTicket) => {
@@ -354,6 +359,14 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
             {tipos.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={visibilityFilter} onValueChange={v => setVisibilityFilter(v as any)}>
+          <SelectTrigger className="w-[110px] h-7 text-xs"><SelectValue placeholder="Visibilidad" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas</SelectItem>
+            <SelectItem value="externa">Externas</SelectItem>
+            <SelectItem value="interna">Internas</SelectItem>
+          </SelectContent>
+        </Select>
         {responsables.length > 0 && (
           <Select value={responsableFilter} onValueChange={setResponsableFilter}>
             <SelectTrigger className="w-[130px] h-7 text-xs"><SelectValue placeholder="Responsable" /></SelectTrigger>
@@ -463,6 +476,9 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
                       <TabsTrigger value="acuerdos" className="text-[11px] h-6 px-3 gap-1 flex-1">
                         <CheckSquare className="h-3 w-3" />Acuerdos
                         {totalItems > 0 && <Badge variant="secondary" className="text-[9px] h-4 px-1 ml-0.5">{totalItems}</Badge>}
+                      </TabsTrigger>
+                      <TabsTrigger value="details" className="text-[11px] h-6 px-3 gap-1 flex-1">
+                        <Tag className="h-3 w-3" />Detalles
                       </TabsTrigger>
                     </TabsList>
 
@@ -711,6 +727,11 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
                           <p className="text-[10px] text-muted-foreground/60 mt-1">Agrega acuerdos o acciones usando los botones de arriba</p>
                         </div>
                       )}
+                    </TabsContent>
+
+                    {/* Tab: Detalles (subtasks, deps, tags, files, notes) */}
+                    <TabsContent value="details" className="mt-4">
+                      <SupportCaseDetailPanel ticket={t} teamMembers={teamMembers} />
                     </TabsContent>
                   </Tabs>
                 </div>
