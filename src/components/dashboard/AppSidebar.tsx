@@ -23,6 +23,14 @@ const statusLabel: Record<string, string> = {
   pausado: "Pausados",
 };
 
+// Etiquetas alternas para clientes de Soporte (no aplica "completado" como fin de proyecto)
+const supportStatusLabel: Record<string, string> = {
+  activo: "Activos",
+  "en-riesgo": "En Riesgo",
+  completado: "Al día (sin tickets)",
+  pausado: "Pausados",
+};
+
 const statusOrder = ["activo", "en-riesgo", "completado", "pausado"];
 
 const statusDot: Record<string, string> = {
@@ -110,7 +118,7 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
                   status === "en-riesgo" ? "bg-destructive" :
                   status === "completado" ? "bg-info" : "bg-muted-foreground"
                 }`} />
-                {statusLabel[status]}
+                {(type === "support" ? supportStatusLabel : statusLabel)[status]}
                 <span className="text-sidebar-foreground/40">({items.length})</span>
               </span>
               <ChevronDown className={`h-3 w-3 transition-transform ${isOpen ? "" : "-rotate-90"}`} />
