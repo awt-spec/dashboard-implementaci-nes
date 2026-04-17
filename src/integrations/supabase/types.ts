@@ -2184,6 +2184,141 @@ export type Database = {
           },
         ]
       }
+      team_career_paths: {
+        Row: {
+          ai_summary: string | null
+          current_role_name: string | null
+          generated_at: string
+          id: string
+          member_id: string
+          mentoring_suggestions: Json
+          model: string | null
+          recommended_certifications: Json
+          roadmap: Json
+          skills_gap: Json
+          target_role_name: string | null
+        }
+        Insert: {
+          ai_summary?: string | null
+          current_role_name?: string | null
+          generated_at?: string
+          id?: string
+          member_id: string
+          mentoring_suggestions?: Json
+          model?: string | null
+          recommended_certifications?: Json
+          roadmap?: Json
+          skills_gap?: Json
+          target_role_name?: string | null
+        }
+        Update: {
+          ai_summary?: string | null
+          current_role_name?: string | null
+          generated_at?: string
+          id?: string
+          member_id?: string
+          mentoring_suggestions?: Json
+          model?: string | null
+          recommended_certifications?: Json
+          roadmap?: Json
+          skills_gap?: Json
+          target_role_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_career_paths_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "sysde_team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_member_capacity: {
+        Row: {
+          created_at: string
+          current_allocation_pct: number | null
+          id: string
+          member_id: string
+          notes: string | null
+          ooo_periods: Json
+          timezone: string | null
+          updated_at: string
+          weekly_hours: number
+        }
+        Insert: {
+          created_at?: string
+          current_allocation_pct?: number | null
+          id?: string
+          member_id: string
+          notes?: string | null
+          ooo_periods?: Json
+          timezone?: string | null
+          updated_at?: string
+          weekly_hours?: number
+        }
+        Update: {
+          created_at?: string
+          current_allocation_pct?: number | null
+          id?: string
+          member_id?: string
+          notes?: string | null
+          ooo_periods?: Json
+          timezone?: string | null
+          updated_at?: string
+          weekly_hours?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_member_capacity_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: true
+            referencedRelation: "sysde_team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_member_certifications: {
+        Row: {
+          created_at: string
+          credential_url: string | null
+          expires_date: string | null
+          id: string
+          issued_date: string | null
+          issuer: string | null
+          member_id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          credential_url?: string | null
+          expires_date?: string | null
+          id?: string
+          issued_date?: string | null
+          issuer?: string | null
+          member_id: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          credential_url?: string | null
+          expires_date?: string | null
+          id?: string
+          issued_date?: string | null
+          issuer?: string | null
+          member_id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_member_certifications_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "sysde_team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       thread_messages: {
         Row: {
           created_at: string

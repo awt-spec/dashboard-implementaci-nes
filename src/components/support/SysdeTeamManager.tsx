@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { UserPlus, Trash2, Users, Briefcase, Building2, Mail, CheckCircle2, XCircle, FileText, Sparkles, KeyRound, ShieldCheck } from "lucide-react";
+import { UserPlus, Trash2, Users, Briefcase, Building2, Mail, CheckCircle2, XCircle, FileText, Sparkles, KeyRound, ShieldCheck, ExternalLink } from "lucide-react";
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import {
   useSysdeTeamMembers,
@@ -196,7 +197,10 @@ export function SysdeTeamManager() {
               ) : members.map((m: any) => (
                 <TableRow key={m.id} className={!m.is_active ? "opacity-50" : ""}>
                   <TableCell className="font-medium">
-                    {m.name}
+                    <Link to={`/team/${m.id}`} className="hover:text-primary hover:underline inline-flex items-center gap-1">
+                      {m.name}
+                      <ExternalLink className="h-3 w-3 opacity-50" />
+                    </Link>
                     {m.cv_seniority && <div className="text-[10px] text-muted-foreground font-normal mt-0.5">{m.cv_seniority} · {m.cv_years_experience}y</div>}
                   </TableCell>
                   <TableCell className="text-muted-foreground">{m.email || "—"}</TableCell>
