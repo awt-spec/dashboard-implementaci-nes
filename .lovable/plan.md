@@ -1,19 +1,21 @@
 
-The user wants to improve the SYSDE collaborators section. Phases 1-4 are done. Let me check what currently exists and identify gaps to propose meaningful improvements.
+The user wants to improve team dashboards, especially focused on time tracking ("registrar horas"). Let me explore current state of team dashboards and time tracking.
 
-Key existing pieces:
-- `MemberProfile.tsx` (/team/:memberId) — 360° profile with overview, performance, career, capacity
-- `TeamHub.tsx` — Directory, Skill Matrix, Onboarding, Recognition, Time-off, Learning
-- `TeamDirectoryCards.tsx` — visual cards
-- `SysdeTeamManager.tsx` — admin CRUD
+Already exists:
+- `useActivityTracker.tsx` with `useWorkTimer` hook (start/stop timers, work_time_entries table)
+- `TeamScrumDashboard` with Auditoría tab
+- `TeamAnalytics.tsx` (Phase 4 - team health)
+- `ColaboradorDashboard.tsx` (personal view with sprint+timer)
+- `MemberProfile.tsx` (360° profile)
 
-Likely improvement areas (without re-asking too much):
-- Profile page can feel scattered, lacking visual identity (cover, avatar upload, bio, social links)
-- No comparison view between collaborators
-- No "my profile" quick access for the logged-in user
-- Directory cards lack workload/availability indicators (we have capacity data!)
-- No quick actions from directory (kudos, message, assign)
-- Missing collaborator analytics overview (team-wide health, top performers, at-risk)
-- Profile lacks activity timeline (recent kudos received, courses completed, sprints participated)
+Gaps for "mejorar dashboards + registrar horas":
+1. No dedicated **Time Tracking** dashboard with weekly timesheet view
+2. No way to **manually log hours** (only auto-timer)
+3. No **billable vs non-billable** classification
+4. No **per-client / per-project hours** breakdown
+5. Personal dashboard lacks weekly summary, goals, today's focus
+6. Team dashboard lacks consolidated time view (who's logging, who's not)
+7. No timesheet approval workflow
+8. No export of hours for billing
 
-Let me check current state quickly to be precise.
+Plan focused on time tracking + dashboard overhaul.
