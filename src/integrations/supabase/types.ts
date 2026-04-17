@@ -2319,6 +2319,113 @@ export type Database = {
           },
         ]
       }
+      team_member_skills: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          is_certified: boolean | null
+          level: number
+          member_id: string
+          notes: string | null
+          skill_name: string
+          updated_at: string
+          years_experience: number | null
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          id?: string
+          is_certified?: boolean | null
+          level?: number
+          member_id: string
+          notes?: string | null
+          skill_name: string
+          updated_at?: string
+          years_experience?: number | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          is_certified?: boolean | null
+          level?: number
+          member_id?: string
+          notes?: string | null
+          skill_name?: string
+          updated_at?: string
+          years_experience?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_member_skills_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "sysde_team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_onboarding: {
+        Row: {
+          buddy_member_id: string | null
+          checklist: Json
+          completed_date: string | null
+          created_at: string
+          expected_end_date: string | null
+          id: string
+          member_id: string
+          notes: string | null
+          progress_pct: number
+          start_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          buddy_member_id?: string | null
+          checklist?: Json
+          completed_date?: string | null
+          created_at?: string
+          expected_end_date?: string | null
+          id?: string
+          member_id: string
+          notes?: string | null
+          progress_pct?: number
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          buddy_member_id?: string | null
+          checklist?: Json
+          completed_date?: string | null
+          created_at?: string
+          expected_end_date?: string | null
+          id?: string
+          member_id?: string
+          notes?: string | null
+          progress_pct?: number
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_onboarding_buddy_member_id_fkey"
+            columns: ["buddy_member_id"]
+            isOneToOne: false
+            referencedRelation: "sysde_team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_onboarding_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: true
+            referencedRelation: "sysde_team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       thread_messages: {
         Row: {
           created_at: string

@@ -2,7 +2,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Shield, Users, Lock, Activity } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { SystemUsersTab } from "@/components/admin/SystemUsersTab";
-import { SysdeTeamManager } from "@/components/support/SysdeTeamManager";
+import { TeamHub } from "@/components/team/TeamHub";
 import { RBACPermissionsTab } from "@/components/admin/RBACPermissionsTab";
 import { TeamActivityPanel } from "@/components/admin/TeamActivityPanel";
 
@@ -36,7 +36,7 @@ export default function AdminUsers() {
         </TabsContent>
 
         <TabsContent value="team" className="mt-6">
-          <SysdeTeamManager />
+          <TeamHub />
         </TabsContent>
 
         <TabsContent value="activity" className="mt-6">
