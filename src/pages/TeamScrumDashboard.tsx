@@ -532,18 +532,73 @@ export default function TeamScrumDashboard() {
 
         {/* REPORTS */}
         <TabsContent value="reports" className="mt-3 space-y-3">
+          {/* Resumen de Carga del Equipo */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Users className="h-4 w-4" />Carga del Equipo — Resumen
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+                {[
+                  { label: "🔥 Sobrecargados", value: workloadStats.sobrecargados, color: "border-destructive/40 bg-destructive/10 text-destructive" },
+                  { label: "✅ Saludables", value: workloadStats.saludables, color: "border-success/40 bg-success/10 text-success" },
+                  { label: "⚠️ Subutilizados", value: workloadStats.subutilizados, color: "border-warning/40 bg-warning/10 text-warning" },
+                  { label: "💤 Sin Carga", value: workloadStats.sin_carga, color: "border-muted-foreground/30 bg-muted/40 text-muted-foreground" },
+                ].map(s => (
+                  <div key={s.label} className={`p-3 rounded border ${s.color}`}>
+                    <p className="text-2xl font-bold">{s.value}</p>
+                    <p className="text-[10px] uppercase font-semibold">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+              {ownersWithoutLoad.length > 0 && (
+                <div className="p-2 rounded border border-border/40 bg-muted/30">
+                  <p className="text-[10px] font-bold uppercase text-muted-foreground mb-1">Sin items activos asignados ({ownersWithoutLoad.length}):</p>
+                  <div className="flex flex-wrap gap-1">
+                    {ownersWithoutLoad.map(o => (
+                      <Badge key={o} variant="outline" className="text-[10px] bg-muted/40">{o}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Users className="h-4 w-4" />Carga por Persona</CardTitle></CardHeader>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Users className="h-4 w-4" />Carga por Persona
+                  <span className="ml-auto text-[10px] text-muted-foreground font-normal">
+                    🔥 &gt;7 · ✅ 3-7 · ⚠️ 1-2
+                  </span>
+                </CardTitle>
+              </CardHeader>
               <CardContent>
-                <div className="h-[280px]">
+                <div className="h-[320px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={ownerLoad} layout="vertical" margin={{ left: 20 }}>
+                    <BarChart data={ownerLoad.slice(0, 12)} layout="vertical" margin={{ left: 20 }}>
                       <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
                       <XAxis type="number" tick={{ fontSize: 10 }} />
                       <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={90} />
-                      <Tooltip />
-                      <Bar dataKey="value" fill="hsl(var(--primary))" />
+                      <Tooltip
+                        formatter={(v: any, _n, p: any) => [`${v} items (${p?.payload?.level})`, "Carga"]}
+                        labelFormatter={(l) => `${l}`}
+                      />
+                      <Bar dataKey="value">
+                        {ownerLoad.slice(0, 12).map((d, i) => (
+                          <Cell
+                            key={i}
+                            fill={
+                              d.level === "sobrecargado" ? "hsl(var(--destructive))" :
+                              d.level === "saludable" ? "hsl(var(--success))" :
+                              "hsl(var(--warning))"
+                            }
+                          />
+                        ))}
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
