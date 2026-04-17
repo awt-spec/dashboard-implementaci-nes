@@ -58,6 +58,10 @@ export default function MemberProfile() {
 
   const [tab, setTab] = useState("overview");
   const [cvOpen, setCvOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const { profile } = useAuth();
+  const isMe = !!(profile?.email && member?.email && profile.email.toLowerCase() === member.email.toLowerCase());
+  const social = (member?.social_links as any) || {};
 
   // Capacity form
   const [weeklyHours, setWeeklyHours] = useState<number>(capacity?.weekly_hours ?? 40);
