@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Trophy, Send, Sparkles, Award } from "lucide-react";
-import { useTeamMembers } from "@/hooks/useTeamMembers";
+import { useSysdeTeamMembers } from "@/hooks/useTeamMembers";
 import { useKudos, useGiveKudo, useBadges, useMemberBadges, useAwardBadge } from "@/hooks/useTeamEngagement";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
@@ -22,7 +22,7 @@ const CATEGORIES = [
 const EMOJIS = ["👏", "🚀", "🔥", "💪", "🎉", "⭐", "🏆", "❤️"];
 
 export function RecognitionWall() {
-  const { data: members = [] } = useTeamMembers();
+  const { data: members = [] } = useSysdeTeamMembers();
   const { data: kudos = [] } = useKudos();
   const { data: badges = [] } = useBadges();
   const { data: memberBadges = [] } = useMemberBadges();

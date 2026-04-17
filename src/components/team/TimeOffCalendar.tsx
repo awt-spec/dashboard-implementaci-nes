@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { CalendarPlus, Plane, Check, X, AlertTriangle, Calendar as CalendarIcon } from "lucide-react";
-import { useTeamMembers } from "@/hooks/useTeamMembers";
+import { useSysdeTeamMembers } from "@/hooks/useTeamMembers";
 import { useTimeOff, useRequestTimeOff, useUpdateTimeOff } from "@/hooks/useTeamEngagement";
 import { format, eachDayOfInterval, isWithinInterval, parseISO, addDays } from "date-fns";
 import { es } from "date-fns/locale";
@@ -20,7 +20,7 @@ const TYPES = [
 ];
 
 export function TimeOffCalendar() {
-  const { data: members = [] } = useTeamMembers();
+  const { data: members = [] } = useSysdeTeamMembers();
   const { data: requests = [] } = useTimeOff();
   const create = useRequestTimeOff();
   const update = useUpdateTimeOff();

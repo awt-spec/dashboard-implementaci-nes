@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { GraduationCap, BookOpen, Plus, Sparkles, Send, Bot, User, ExternalLink, Clock, Star } from "lucide-react";
 import { useCourses, useEnrollments, useUpsertCourse, useEnroll, useUpdateEnrollment } from "@/hooks/useTeamEngagement";
-import { useTeamMembers } from "@/hooks/useTeamMembers";
+import { useSysdeTeamMembers } from "@/hooks/useTeamMembers";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -20,7 +20,7 @@ const CATEGORIES = ["technical", "soft-skills", "leadership", "compliance", "pro
 export function LearningHub() {
   const { data: courses = [] } = useCourses();
   const { data: enrollments = [] } = useEnrollments();
-  const { data: members = [] } = useTeamMembers();
+  const { data: members = [] } = useSysdeTeamMembers();
   const upsert = useUpsertCourse();
   const enroll = useEnroll();
   const updateEnr = useUpdateEnrollment();

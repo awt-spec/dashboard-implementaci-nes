@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LayoutGrid, Users, Grid3x3, Rocket, Settings } from "lucide-react";
+import { LayoutGrid, Users, Grid3x3, Rocket, Settings, Trophy, Plane, GraduationCap } from "lucide-react";
 import { TeamDirectoryCards } from "@/components/team/TeamDirectoryCards";
 import { SkillMatrix } from "@/components/team/SkillMatrix";
 import { OnboardingTracker } from "@/components/team/OnboardingTracker";
 import { TeamRecommenderDialog } from "@/components/team/TeamRecommenderDialog";
 import { SysdeTeamManager } from "@/components/support/SysdeTeamManager";
+import { RecognitionWall } from "@/components/team/RecognitionWall";
+import { TimeOffCalendar } from "@/components/team/TimeOffCalendar";
+import { LearningHub } from "@/components/team/LearningHub";
 
 export function TeamHub() {
   const [recommenderOpen, setRecommenderOpen] = useState(false);
@@ -33,6 +36,15 @@ export function TeamHub() {
           <TabsTrigger value="onboarding" className="gap-2 data-[state=active]:shadow-sm py-2 px-3">
             <Rocket className="h-3.5 w-3.5" /> Onboarding
           </TabsTrigger>
+          <TabsTrigger value="recognition" className="gap-2 data-[state=active]:shadow-sm py-2 px-3">
+            <Trophy className="h-3.5 w-3.5" /> Reconocimientos
+          </TabsTrigger>
+          <TabsTrigger value="timeoff" className="gap-2 data-[state=active]:shadow-sm py-2 px-3">
+            <Plane className="h-3.5 w-3.5" /> Time-off
+          </TabsTrigger>
+          <TabsTrigger value="learning" className="gap-2 data-[state=active]:shadow-sm py-2 px-3">
+            <GraduationCap className="h-3.5 w-3.5" /> Learning
+          </TabsTrigger>
           <TabsTrigger value="manage" className="gap-2 data-[state=active]:shadow-sm py-2 px-3">
             <Settings className="h-3.5 w-3.5" /> Administrar
           </TabsTrigger>
@@ -46,6 +58,15 @@ export function TeamHub() {
         </TabsContent>
         <TabsContent value="onboarding" className="mt-4">
           <OnboardingTracker />
+        </TabsContent>
+        <TabsContent value="recognition" className="mt-4">
+          <RecognitionWall />
+        </TabsContent>
+        <TabsContent value="timeoff" className="mt-4">
+          <TimeOffCalendar />
+        </TabsContent>
+        <TabsContent value="learning" className="mt-4">
+          <LearningHub />
         </TabsContent>
         <TabsContent value="manage" className="mt-4">
           <SysdeTeamManager />
