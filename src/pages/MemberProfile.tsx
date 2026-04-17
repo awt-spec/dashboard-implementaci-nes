@@ -298,6 +298,16 @@ export default function MemberProfile() {
           <TabsTrigger value="certs"><Award className="h-3.5 w-3.5 mr-1.5" />Certificaciones</TabsTrigger>
         </TabsList>
 
+        {/* ACTIVITY TIMELINE */}
+        <TabsContent value="activity" className="space-y-4">
+          <Card>
+            <CardHeader><CardTitle className="text-base flex items-center gap-2"><ActivityIcon className="h-4 w-4 text-primary" /> Línea de tiempo</CardTitle></CardHeader>
+            <CardContent>
+              <MemberActivityTimeline memberId={member.id} memberName={member.name} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* OVERVIEW */}
         <TabsContent value="overview" className="space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
