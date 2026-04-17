@@ -1287,6 +1287,120 @@ export type Database = {
         }
         Relationships: []
       }
+      sprint_dailies: {
+        Row: {
+          blockers: string | null
+          created_at: string
+          date: string
+          id: string
+          member_name: string
+          mood: number | null
+          sprint_id: string
+          today: string | null
+          updated_at: string
+          yesterday: string | null
+        }
+        Insert: {
+          blockers?: string | null
+          created_at?: string
+          date?: string
+          id?: string
+          member_name: string
+          mood?: number | null
+          sprint_id: string
+          today?: string | null
+          updated_at?: string
+          yesterday?: string | null
+        }
+        Update: {
+          blockers?: string | null
+          created_at?: string
+          date?: string
+          id?: string
+          member_name?: string
+          mood?: number | null
+          sprint_id?: string
+          today?: string | null
+          updated_at?: string
+          yesterday?: string | null
+        }
+        Relationships: []
+      }
+      sprint_retrospectives: {
+        Row: {
+          action_items: Json
+          created_at: string
+          facilitator: string | null
+          id: string
+          sprint_id: string
+          team_mood: number | null
+          updated_at: string
+          what_to_improve: Json
+          what_went_well: Json
+        }
+        Insert: {
+          action_items?: Json
+          created_at?: string
+          facilitator?: string | null
+          id?: string
+          sprint_id: string
+          team_mood?: number | null
+          updated_at?: string
+          what_to_improve?: Json
+          what_went_well?: Json
+        }
+        Update: {
+          action_items?: Json
+          created_at?: string
+          facilitator?: string | null
+          id?: string
+          sprint_id?: string
+          team_mood?: number | null
+          updated_at?: string
+          what_to_improve?: Json
+          what_went_well?: Json
+        }
+        Relationships: []
+      }
+      sprint_reviews: {
+        Row: {
+          carry_over: Json
+          completed_items: Json
+          created_at: string
+          demo_notes: string | null
+          id: string
+          sprint_id: string
+          stakeholder_feedback: string | null
+          updated_at: string
+          velocity_completed: number | null
+          velocity_planned: number | null
+        }
+        Insert: {
+          carry_over?: Json
+          completed_items?: Json
+          created_at?: string
+          demo_notes?: string | null
+          id?: string
+          sprint_id: string
+          stakeholder_feedback?: string | null
+          updated_at?: string
+          velocity_completed?: number | null
+          velocity_planned?: number | null
+        }
+        Update: {
+          carry_over?: Json
+          completed_items?: Json
+          created_at?: string
+          demo_notes?: string | null
+          id?: string
+          sprint_id?: string
+          stakeholder_feedback?: string | null
+          updated_at?: string
+          velocity_completed?: number | null
+          velocity_planned?: number | null
+        }
+        Relationships: []
+      }
       support_data_updates: {
         Row: {
           client_id: string
@@ -1417,36 +1531,42 @@ export type Database = {
       support_sprints: {
         Row: {
           capacity_points: number
+          ceremony_dates: Json
           client_id: string
           created_at: string
           end_date: string | null
           goal: string | null
           id: string
           name: string
+          notes: string | null
           start_date: string | null
           status: string
           updated_at: string
         }
         Insert: {
           capacity_points?: number
+          ceremony_dates?: Json
           client_id: string
           created_at?: string
           end_date?: string | null
           goal?: string | null
           id?: string
           name: string
+          notes?: string | null
           start_date?: string | null
           status?: string
           updated_at?: string
         }
         Update: {
           capacity_points?: number
+          ceremony_dates?: Json
           client_id?: string
           created_at?: string
           end_date?: string | null
           goal?: string | null
           id?: string
           name?: string
+          notes?: string | null
           start_date?: string | null
           status?: string
           updated_at?: string
