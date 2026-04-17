@@ -13,8 +13,10 @@ import { Separator } from "@/components/ui/separator";
 import {
   ArrowLeft, Sparkles, Loader2, Award, Target, Calendar, Briefcase,
   TrendingUp, Clock, AlertCircle, CheckCircle2, Plus, Trash2, ExternalLink,
-  Brain, Trophy, GitBranch, Users,
+  Brain, Trophy, GitBranch, Users, Pencil, MapPin, Linkedin, Github, Globe, Twitter,
+  Mail, Phone, Activity as ActivityIcon,
 } from "lucide-react";
+import { Avatar as AvatarUI, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -26,6 +28,9 @@ import {
   useCareerPath, useGenerateCareerPath, useMemberPerformance,
 } from "@/hooks/useMemberProfile";
 import { CVAnalysisDialog } from "@/components/admin/CVAnalysisDialog";
+import { ProfileEditDialog } from "@/components/team/ProfileEditDialog";
+import { MemberActivityTimeline } from "@/components/team/MemberActivityTimeline";
+import { useAuth } from "@/hooks/useAuth";
 
 const initials = (name: string) =>
   name.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase();
@@ -53,6 +58,10 @@ export default function MemberProfile() {
 
   const [tab, setTab] = useState("overview");
   const [cvOpen, setCvOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const { profile } = useAuth();
+  const isMe = !!(profile?.email && member?.email && profile.email.toLowerCase() === member.email.toLowerCase());
+  const social = (member?.social_links as any) || {};
 
   // Capacity form
   const [weeklyHours, setWeeklyHours] = useState<number>(capacity?.weekly_hours ?? 40);
@@ -192,16 +201,35 @@ export default function MemberProfile() {
       </div>
 
       <Card className="overflow-hidden">
-        <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-6">
-          <div className="flex flex-col md:flex-row md:items-center gap-6">
-            <Avatar className="h-24 w-24 border-4 border-background shadow-lg">
+        {/* Cover */}
+        <div
+          className="h-36 md:h-44 bg-gradient-to-br from-primary/30 via-primary/10 to-muted bg-cover bg-center relative"
+          style={member.cover_url ? { backgroundImage: `url(${member.cover_url})` } : undefined}
+        >
+          {(isMe || profile) && (
+            <Button
+              size="sm"
+              variant="secondary"
+              className="absolute top-3 right-3 gap-1.5 backdrop-blur-sm bg-background/80"
+              onClick={() => setEditOpen(true)}
+            >
+              <Pencil className="h-3.5 w-3.5" /> Editar perfil
+            </Button>
+          )}
+        </div>
+
+        <div className="px-6 pb-6 -mt-12 md:-mt-14">
+          <div className="flex flex-col md:flex-row md:items-end gap-4">
+            <AvatarUI className="h-24 w-24 md:h-28 md:w-28 border-4 border-background shadow-lg">
+              {member.avatar_url && <AvatarImage src={member.avatar_url} alt={member.name} />}
               <AvatarFallback className="text-2xl bg-primary/20 text-primary font-bold">
                 {initials(member.name)}
               </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
+            </AvatarUI>
+            <div className="flex-1 min-w-0 md:pb-2">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-2xl md:text-3xl font-bold">{member.name}</h1>
+                {member.pronouns && <span className="text-xs text-muted-foreground">({member.pronouns})</span>}
                 {member.cv_seniority && (
                   <Badge variant="outline" className={seniorityColors[member.cv_seniority] || ""}>
                     {member.cv_seniority}
@@ -210,16 +238,28 @@ export default function MemberProfile() {
                 <Badge variant={member.is_active ? "default" : "secondary"}>
                   {member.is_active ? "Activo" : "Inactivo"}
                 </Badge>
+                {isMe && <Badge className="bg-primary/20 text-primary border-primary/30" variant="outline">Tú</Badge>}
               </div>
               <p className="text-muted-foreground mt-1">{member.role || "—"} · {member.department || "—"}</p>
-              <p className="text-xs text-muted-foreground mt-1">{member.email}</p>
-              {member.cv_years_experience != null && (
-                <p className="text-sm mt-2">
-                  <span className="font-semibold">{member.cv_years_experience}</span> años de experiencia
-                </p>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1.5">
+                {member.email && <span className="inline-flex items-center gap-1"><Mail className="h-3 w-3" />{member.email}</span>}
+                {member.phone && <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" />{member.phone}</span>}
+                {member.location && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{member.location}</span>}
+                {member.cv_years_experience != null && member.cv_years_experience > 0 && (
+                  <span><span className="font-semibold text-foreground">{member.cv_years_experience}</span> años exp.</span>
+                )}
+              </div>
+              {/* Social links */}
+              {(social.linkedin || social.github || social.website || social.twitter) && (
+                <div className="flex gap-1 mt-2">
+                  {social.linkedin && <Button asChild size="icon" variant="ghost" className="h-7 w-7"><a href={social.linkedin} target="_blank" rel="noreferrer"><Linkedin className="h-3.5 w-3.5" /></a></Button>}
+                  {social.github && <Button asChild size="icon" variant="ghost" className="h-7 w-7"><a href={social.github} target="_blank" rel="noreferrer"><Github className="h-3.5 w-3.5" /></a></Button>}
+                  {social.website && <Button asChild size="icon" variant="ghost" className="h-7 w-7"><a href={social.website} target="_blank" rel="noreferrer"><Globe className="h-3.5 w-3.5" /></a></Button>}
+                  {social.twitter && <Button asChild size="icon" variant="ghost" className="h-7 w-7"><a href={social.twitter} target="_blank" rel="noreferrer"><Twitter className="h-3.5 w-3.5" /></a></Button>}
+                </div>
               )}
             </div>
-            <div className="flex flex-col gap-2 md:items-end">
+            <div className="flex flex-col gap-2 md:items-end md:pb-2">
               <Button variant="outline" size="sm" onClick={() => setCvOpen(true)}>
                 <Brain className="h-4 w-4 mr-2" /> {member.cv_url ? "Ver CV / re-analizar" : "Subir CV"}
               </Button>
@@ -229,6 +269,10 @@ export default function MemberProfile() {
               </div>
             </div>
           </div>
+
+          {member.bio && (
+            <p className="text-sm text-muted-foreground mt-4 max-w-3xl leading-relaxed">{member.bio}</p>
+          )}
 
           {skills.length > 0 && (
             <>
@@ -247,11 +291,22 @@ export default function MemberProfile() {
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="flex flex-wrap h-auto">
           <TabsTrigger value="overview"><Trophy className="h-3.5 w-3.5 mr-1.5" />Overview</TabsTrigger>
+          <TabsTrigger value="activity"><ActivityIcon className="h-3.5 w-3.5 mr-1.5" />Actividad</TabsTrigger>
           <TabsTrigger value="performance"><TrendingUp className="h-3.5 w-3.5 mr-1.5" />Performance</TabsTrigger>
           <TabsTrigger value="career"><GitBranch className="h-3.5 w-3.5 mr-1.5" />Plan de carrera</TabsTrigger>
           <TabsTrigger value="capacity"><Calendar className="h-3.5 w-3.5 mr-1.5" />Capacidad</TabsTrigger>
           <TabsTrigger value="certs"><Award className="h-3.5 w-3.5 mr-1.5" />Certificaciones</TabsTrigger>
         </TabsList>
+
+        {/* ACTIVITY TIMELINE */}
+        <TabsContent value="activity" className="space-y-4">
+          <Card>
+            <CardHeader><CardTitle className="text-base flex items-center gap-2"><ActivityIcon className="h-4 w-4 text-primary" /> Línea de tiempo</CardTitle></CardHeader>
+            <CardContent>
+              <MemberActivityTimeline memberId={member.id} memberName={member.name} />
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         {/* OVERVIEW */}
         <TabsContent value="overview" className="space-y-4">
@@ -631,6 +686,9 @@ export default function MemberProfile() {
           open={cvOpen}
           onOpenChange={setCvOpen}
         />
+      )}
+      {editOpen && (
+        <ProfileEditDialog member={member} open={editOpen} onOpenChange={setEditOpen} />
       )}
     </div>
   );
