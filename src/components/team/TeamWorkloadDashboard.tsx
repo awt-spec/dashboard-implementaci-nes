@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useAllTimeEntries, entryHours, startOfWeek } from "@/hooks/useTimeTracking";
-import { useSysdeTeamMembers } from "@/hooks/useSysdeTeamMembers";
+import { useSysdeTeamMembers } from "@/hooks/useTeamMembers";
 import { AlertTriangle, TrendingDown, CheckCircle2, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 

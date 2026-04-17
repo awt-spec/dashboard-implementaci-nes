@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAllTimeEntries, useUpdateTimeEntry, entryHours, startOfWeek } from "@/hooks/useTimeTracking";
-import { useSysdeTeamMembers } from "@/hooks/useSysdeTeamMembers";
+import { useSysdeTeamMembers } from "@/hooks/useTeamMembers";
 import { Clock, DollarSign, Users, Download, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell } from "recharts";
 import { toast } from "sonner";
