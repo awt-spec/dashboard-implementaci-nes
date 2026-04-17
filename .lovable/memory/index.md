@@ -27,3 +27,4 @@ Activity tracking auto-mounted in Index.tsx via useActivityTracker (sessions+hea
 - [Team Scrum](mem://features/team-scrum) — Unified backlog (tasks+tickets), WSJF, Kanban, IA bottlenecks, burndown/velocity
 - [Team Tracking](mem://features/team-tracking) — Colaborador dashboard scrum + sessions/timer/activity tracking + admin panels
 - [Team Hub](mem://features/team-hub) — Sprints (ceremonies+forecast), 360 profiles (career path), directory cards + skill matrix heatmap + AI recommender + onboarding
+- [Team Engagement](mem://features/team-engagement) — Phase 4: kudos+badges+leaderboard, time-off calendar+coverage alerts, learning hub+enrollments+Mentor IA
