@@ -395,7 +395,59 @@ export default function TeamScrumDashboard() {
                     }>
                       {aiResult.sprint_health.toUpperCase()}
                     </Badge>
+                    {typeof aiResult.team_balance_score === "number" && (
+                      <>
+                        <span className="text-sm font-medium ml-4">Balance del Equipo:</span>
+                        <Badge className={
+                          aiResult.team_balance_score >= 75 ? "bg-success/20 text-success border-success/30" :
+                          aiResult.team_balance_score >= 50 ? "bg-warning/20 text-warning border-warning/30" :
+                          "bg-destructive/20 text-destructive border-destructive/30"
+                        }>{aiResult.team_balance_score}/100</Badge>
+                      </>
+                    )}
                   </div>
+
+                  {/* Carga del Equipo */}
+                  {Array.isArray(aiResult.workload) && aiResult.workload.length > 0 && (
+                    <Card>
+                      <CardHeader className="pb-2"><CardTitle className="text-xs flex items-center gap-2"><Users className="h-3.5 w-3.5" />Carga del Equipo ({aiResult.workload.length})</CardTitle></CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+                          {(["sobrecargado", "saludable", "subutilizado", "sin_carga"] as const).map(level => {
+                            const group = aiResult.workload.filter((w: any) => w.level === level);
+                            const colors: Record<string, string> = {
+                              sobrecargado: "border-destructive/40 bg-destructive/5",
+                              saludable: "border-success/40 bg-success/5",
+                              subutilizado: "border-warning/40 bg-warning/5",
+                              sin_carga: "border-muted-foreground/30 bg-muted/30",
+                            };
+                            const labels: Record<string, string> = {
+                              sobrecargado: "🔥 Sobrecargados",
+                              saludable: "✅ Saludables",
+                              subutilizado: "⚠️ Subutilizados",
+                              sin_carga: "💤 Sin Carga",
+                            };
+                            return (
+                              <div key={level} className={`p-2 rounded border ${colors[level]} space-y-1.5`}>
+                                <p className="text-[10px] font-bold uppercase">{labels[level]} ({group.length})</p>
+                                {group.map((w: any, i: number) => (
+                                  <div key={i} className="text-[10px] space-y-0.5">
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-medium truncate">{w.owner}</span>
+                                      <Badge variant="outline" className="text-[9px] h-4">{w.items} it</Badge>
+                                    </div>
+                                    <p className="text-muted-foreground line-clamp-2">{w.reason}</p>
+                                  </div>
+                                ))}
+                                {group.length === 0 && <p className="text-[10px] text-muted-foreground italic">—</p>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <Card>
