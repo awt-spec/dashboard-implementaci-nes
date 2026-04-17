@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAllTimeEntries, useUpdateTimeEntry, entryHours, startOfWeek } from "@/hooks/useTimeTracking";
-import { useTeamMembers } from "@/hooks/useTeamMembers";
+import { useSysdeTeamMembers } from "@/hooks/useSysdeTeamMembers";
 import { Clock, DollarSign, Users, Download, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell } from "recharts";
 import { toast } from "sonner";
@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 export function TimeTrackingDashboard() {
   const { data: entries = [], isLoading } = useAllTimeEntries(30);
-  const { data: members = [] } = useTeamMembers();
+  const { data: members = [] } = useSysdeTeamMembers();
   const update = useUpdateTimeEntry();
   const [range, setRange] = useState<"week" | "month">("week");
   const [statusFilter, setStatusFilter] = useState<string>("all");

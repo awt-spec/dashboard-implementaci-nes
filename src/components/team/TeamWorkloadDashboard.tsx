@@ -3,13 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useAllTimeEntries, entryHours, startOfWeek } from "@/hooks/useTimeTracking";
-import { useTeamMembers } from "@/hooks/useTeamMembers";
+import { useSysdeTeamMembers } from "@/hooks/useSysdeTeamMembers";
 import { AlertTriangle, TrendingDown, CheckCircle2, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function TeamWorkloadDashboard() {
   const { data: entries = [] } = useAllTimeEntries(30);
-  const { data: members = [] } = useTeamMembers();
+  const { data: members = [] } = useSysdeTeamMembers();
 
   const workload = useMemo(() => {
     const ws = startOfWeek();
