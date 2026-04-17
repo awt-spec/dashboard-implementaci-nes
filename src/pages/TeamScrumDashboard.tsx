@@ -246,17 +246,17 @@ export default function TeamScrumDashboard() {
           <TabsTrigger value="pm-ai"><Brain className="h-3.5 w-3.5 mr-1" />PM IA</TabsTrigger>
           <TabsTrigger value="backlog"><ListOrdered className="h-3.5 w-3.5 mr-1" />Backlog (WSJF)</TabsTrigger>
           <TabsTrigger value="sprint"><Target className="h-3.5 w-3.5 mr-1" />Sprint Activo</TabsTrigger>
-          <TabsTrigger value="team"><Users className="h-3.5 w-3.5 mr-1" />Equipo</TabsTrigger>
           <TabsTrigger value="ai"><Sparkles className="h-3.5 w-3.5 mr-1" />Análisis Equipo</TabsTrigger>
           <TabsTrigger value="reports"><BarChart3 className="h-3.5 w-3.5 mr-1" />Reportes</TabsTrigger>
+          <TabsTrigger value="audit"><Users className="h-3.5 w-3.5 mr-1" />Auditoría</TabsTrigger>
         </TabsList>
 
         <TabsContent value="pm-ai" className="mt-3">
           <PMAIPanel />
         </TabsContent>
 
-        <TabsContent value="team" className="mt-3">
-          <TeamActivityPanel compact />
+        <TabsContent value="audit" className="mt-3">
+          <TeamActivityPanel />
         </TabsContent>
 
 
