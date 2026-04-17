@@ -17,6 +17,7 @@ import {
 import { motion } from "framer-motion";
 import { useAllScrumWorkItems, useAllSprints, useUpdateWorkItemScrum, type ScrumWorkItem } from "@/hooks/useTeamScrum";
 import { useWorkTimer, useActivityTracker } from "@/hooks/useActivityTracker";
+import { ManualTimeEntryDialog } from "@/components/team/ManualTimeEntryDialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -52,6 +53,7 @@ export default function ColaboradorDashboard() {
   const [search, setSearch] = useState("");
   const [clientFilter, setClientFilter] = useState<string>("all");
   const [selectedItem, setSelectedItem] = useState<ScrumWorkItem | null>(null);
+  const [logHoursOpen, setLogHoursOpen] = useState(false);
 
   const fullName = profile?.full_name || "";
   const initials = fullName.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase();
@@ -221,7 +223,16 @@ export default function ColaboradorDashboard() {
           )}
         </div>
 
-        <div className="p-2 border-t border-border">
+        <div className="p-2 border-t border-border space-y-1">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full justify-start h-8"
+            onClick={() => setLogHoursOpen(true)}
+          >
+            <Clock className="h-3.5 w-3.5 mr-2" />
+            <span className="text-xs">Registrar horas</span>
+          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -371,6 +382,8 @@ export default function ColaboradorDashboard() {
           )}
         </div>
       </main>
+
+      <ManualTimeEntryDialog open={logHoursOpen} onOpenChange={setLogHoursOpen} />
 
       {/* DETAIL PANEL — Jira-style right sheet */}
       <Sheet open={!!selectedItem} onOpenChange={(o) => !o && setSelectedItem(null)}>

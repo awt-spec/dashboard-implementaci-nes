@@ -30,6 +30,7 @@ import {
 import { CVAnalysisDialog } from "@/components/admin/CVAnalysisDialog";
 import { ProfileEditDialog } from "@/components/team/ProfileEditDialog";
 import { MemberActivityTimeline } from "@/components/team/MemberActivityTimeline";
+import { MyProductivityDashboard } from "@/components/team/MyProductivityDashboard";
 import { useAuth } from "@/hooks/useAuth";
 
 const initials = (name: string) =>
@@ -296,7 +297,14 @@ export default function MemberProfile() {
           <TabsTrigger value="career"><GitBranch className="h-3.5 w-3.5 mr-1.5" />Plan de carrera</TabsTrigger>
           <TabsTrigger value="capacity"><Calendar className="h-3.5 w-3.5 mr-1.5" />Capacidad</TabsTrigger>
           <TabsTrigger value="certs"><Award className="h-3.5 w-3.5 mr-1.5" />Certificaciones</TabsTrigger>
+          {isMe && <TabsTrigger value="timesheet"><Clock className="h-3.5 w-3.5 mr-1.5" />Mis horas</TabsTrigger>}
         </TabsList>
+
+        {isMe && (
+          <TabsContent value="timesheet" className="mt-4">
+            <MyProductivityDashboard />
+          </TabsContent>
+        )}
 
         {/* ACTIVITY TIMELINE */}
         <TabsContent value="activity" className="space-y-4">
