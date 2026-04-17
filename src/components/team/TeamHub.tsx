@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LayoutGrid, Users, Grid3x3, Rocket, Settings, Trophy, Plane, GraduationCap, Activity } from "lucide-react";
+import { LayoutGrid, Users, Grid3x3, Rocket, Settings, Trophy, Plane, GraduationCap, Activity, Clock, Gauge } from "lucide-react";
 import { TeamDirectoryCards } from "@/components/team/TeamDirectoryCards";
+import { TimeTrackingDashboard } from "@/components/team/TimeTrackingDashboard";
+import { TeamWorkloadDashboard } from "@/components/team/TeamWorkloadDashboard";
 import { SkillMatrix } from "@/components/team/SkillMatrix";
 import { OnboardingTracker } from "@/components/team/OnboardingTracker";
 import { TeamRecommenderDialog } from "@/components/team/TeamRecommenderDialog";
@@ -51,6 +53,12 @@ export function TeamHub() {
           <TabsTrigger value="learning" className="gap-2 data-[state=active]:shadow-sm py-2 px-3">
             <GraduationCap className="h-3.5 w-3.5" /> Learning
           </TabsTrigger>
+          <TabsTrigger value="hours" className="gap-2 data-[state=active]:shadow-sm py-2 px-3">
+            <Clock className="h-3.5 w-3.5" /> Horas Equipo
+          </TabsTrigger>
+          <TabsTrigger value="workload" className="gap-2 data-[state=active]:shadow-sm py-2 px-3">
+            <Gauge className="h-3.5 w-3.5" /> Carga
+          </TabsTrigger>
           <TabsTrigger value="manage" className="gap-2 data-[state=active]:shadow-sm py-2 px-3">
             <Settings className="h-3.5 w-3.5" /> Administrar
           </TabsTrigger>
@@ -76,6 +84,12 @@ export function TeamHub() {
         </TabsContent>
         <TabsContent value="learning" className="mt-4">
           <LearningHub />
+        </TabsContent>
+        <TabsContent value="hours" className="mt-4">
+          <TimeTrackingDashboard />
+        </TabsContent>
+        <TabsContent value="workload" className="mt-4">
+          <TeamWorkloadDashboard />
         </TabsContent>
         <TabsContent value="manage" className="mt-4">
           <SysdeTeamManager />
