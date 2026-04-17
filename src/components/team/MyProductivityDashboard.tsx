@@ -4,15 +4,18 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useMyTimeEntries, useMyTimeGoal, startOfWeek, entryHours } from "@/hooks/useTimeTracking";
-import { Clock, Target, TrendingUp, DollarSign, Plus, Calendar } from "lucide-react";
+import { Clock, Target, TrendingUp, DollarSign, Plus, Calendar, Settings2 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { ManualTimeEntryDialog } from "./ManualTimeEntryDialog";
 import { TimesheetView } from "./TimesheetView";
+import { QuickLogItems } from "./QuickLogItems";
+import { TimeGoalDialog } from "./TimeGoalDialog";
 
 export function MyProductivityDashboard() {
   const { data: entries = [] } = useMyTimeEntries(30);
   const { data: goal } = useMyTimeGoal();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [goalOpen, setGoalOpen] = useState(false);
 
   const target = goal?.weekly_target_hours ?? 40;
   const billableTarget = goal?.billable_target_pct ?? 80;
