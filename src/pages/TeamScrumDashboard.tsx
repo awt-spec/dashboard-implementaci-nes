@@ -101,10 +101,33 @@ export default function TeamScrumDashboard() {
       }
     });
     return Array.from(map.entries())
-      .map(([name, value]) => ({ name: name.length > 15 ? name.slice(0, 13) + "…" : name, value }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 10);
+      .map(([name, value]) => ({
+        name: name.length > 15 ? name.slice(0, 13) + "…" : name,
+        fullName: name,
+        value,
+        level: value > 7 ? "sobrecargado" : value >= 3 ? "saludable" : value >= 1 ? "subutilizado" : "sin_carga",
+      }))
+      .sort((a, b) => b.value - a.value);
   }, [items]);
+
+  // Miembros que aparecen en tickets/tasks (incluso done) pero sin carga activa
+  const allOwnersEver = useMemo(() => {
+    const set = new Set<string>();
+    items.forEach(i => i.owner && i.owner !== "—" && set.add(i.owner));
+    return Array.from(set);
+  }, [items]);
+
+  const ownersWithoutLoad = useMemo(() => {
+    const withLoad = new Set(ownerLoad.map(o => o.fullName));
+    return allOwnersEver.filter(o => !withLoad.has(o));
+  }, [allOwnersEver, ownerLoad]);
+
+  const workloadStats = useMemo(() => ({
+    sobrecargados: ownerLoad.filter(o => o.level === "sobrecargado").length,
+    saludables: ownerLoad.filter(o => o.level === "saludable").length,
+    subutilizados: ownerLoad.filter(o => o.level === "subutilizado").length,
+    sin_carga: ownersWithoutLoad.length,
+  }), [ownerLoad, ownersWithoutLoad]);
 
   const sourceDist = useMemo(() => {
     const tasks = items.filter(i => i.source === "task").length;
