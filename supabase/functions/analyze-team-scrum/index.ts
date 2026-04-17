@@ -42,24 +42,46 @@ Deno.serve(async (req) => {
 
     const activeSprints = (sprints || []).filter((s: any) => s.status === "activo");
 
-    const systemPrompt = `Eres un Scrum Master experto. Analizas la carga del equipo y detectas riesgos.
+    // Pre-compute load per owner to feed AI
+    const loadByOwner: Record<string, { total: number; in_progress: number; high_priority: number; unestimated: number; story_points: number }> = {};
+    compactItems.forEach((i: any) => {
+      const owner = (i.owner || "").trim();
+      if (!owner || owner === "—") return;
+      if (i.scrum_status === "done") return;
+      const r = loadByOwner[owner] ||= { total: 0, in_progress: 0, high_priority: 0, unestimated: 0, story_points: 0 };
+      r.total++;
+      if (i.scrum_status === "in_progress") r.in_progress++;
+      if (i.priority === "alta" || i.priority === "high" || i.priority === "critica") r.high_priority++;
+      if (!i.sp && !i.eff) r.unestimated++;
+      r.story_points += i.sp || 0;
+    });
+    const loadSummary = Object.entries(loadByOwner).map(([owner, l]) => ({ owner, ...l }));
+
+    const systemPrompt = `Eres un Scrum Master experto. Analizas la carga del equipo y detectas riesgos y desbalances.
 Responde SIEMPRE invocando la función analyze_team con los hallazgos.
 
 Reglas:
-- bottlenecks: detecta personas con sobrecarga (>5 items asignados o muchos high priority)
-- risks: detecta items en sprint activo sin estimación o con WSJF muy bajo pero alta prioridad
-- recommendations: 3-5 acciones concretas para mejorar el flujo
-- sprint_health: una palabra: "saludable", "en_riesgo" o "critico"`;
+- workload: clasifica a CADA persona como "sobrecargado" (>7 items o >3 high_priority), "saludable" (3-7 items), "subutilizado" (1-2 items o 0 in_progress) o "sin_carga" (0 items activos). Incluye a TODOS los owners listados.
+- bottlenecks: SOLO sobrecargados con severity high/medium
+- underutilized: personas con poca o ninguna carga (oportunidad de rebalanceo)
+- risks: items en sprint activo sin estimación o con alta prioridad mal priorizados
+- recommendations: 3-5 acciones concretas de rebalanceo (mencionar nombres concretos: "Reasignar X items de Juan a María")
+- sprint_health: "saludable", "en_riesgo" o "critico"
+- team_balance_score: 0-100 (100=perfectamente balanceado, 0=muy desbalanceado)`;
 
     const userPrompt = `Analiza el siguiente equipo Scrum.
 
 Sprints activos: ${activeSprints.length}
 Items totales: ${compactItems.length}
+Personas con asignaciones: ${loadSummary.length}
 
-Items:
-${JSON.stringify(compactItems, null, 1)}
+CARGA POR PERSONA (precalculada):
+${JSON.stringify(loadSummary, null, 1)}
 
-Sprints:
+Items (sample):
+${JSON.stringify(compactItems.slice(0, 100), null, 1)}
+
+Sprints activos:
 ${JSON.stringify(activeSprints, null, 1)}`;
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
