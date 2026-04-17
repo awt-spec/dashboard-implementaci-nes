@@ -2011,6 +2011,9 @@ export type Database = {
       }
       sysde_team_members: {
         Row: {
+          avatar_url: string | null
+          bio: string | null
+          cover_url: string | null
           created_at: string
           cv_analysis: Json | null
           cv_filename: string | null
@@ -2022,14 +2025,22 @@ export type Database = {
           cv_years_experience: number | null
           department: string | null
           email: string | null
+          hire_date: string | null
           id: string
           is_active: boolean | null
+          location: string | null
           name: string
+          phone: string | null
+          pronouns: string | null
           role: string | null
+          social_links: Json
           updated_at: string
           user_id: string | null
         }
         Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          cover_url?: string | null
           created_at?: string
           cv_analysis?: Json | null
           cv_filename?: string | null
@@ -2041,14 +2052,22 @@ export type Database = {
           cv_years_experience?: number | null
           department?: string | null
           email?: string | null
+          hire_date?: string | null
           id?: string
           is_active?: boolean | null
+          location?: string | null
           name: string
+          phone?: string | null
+          pronouns?: string | null
           role?: string | null
+          social_links?: Json
           updated_at?: string
           user_id?: string | null
         }
         Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          cover_url?: string | null
           created_at?: string
           cv_analysis?: Json | null
           cv_filename?: string | null
@@ -2060,10 +2079,15 @@ export type Database = {
           cv_years_experience?: number | null
           department?: string | null
           email?: string | null
+          hire_date?: string | null
           id?: string
           is_active?: boolean | null
+          location?: string | null
           name?: string
+          phone?: string | null
+          pronouns?: string | null
           role?: string | null
+          social_links?: Json
           updated_at?: string
           user_id?: string | null
         }
