@@ -121,9 +121,17 @@ export function MyProductivityDashboard() {
         </Card>
       </div>
 
-      <TimesheetView />
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <div className="lg:col-span-1">
+          <QuickLogItems />
+        </div>
+        <div className="lg:col-span-3">
+          <TimesheetView />
+        </div>
+      </div>
 
       <ManualTimeEntryDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      <TimeGoalDialog open={goalOpen} onOpenChange={setGoalOpen} />
     </div>
   );
 }
