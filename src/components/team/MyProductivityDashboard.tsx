@@ -64,7 +64,18 @@ export function MyProductivityDashboard() {
         <KPI icon={Clock} label="Hoy" value={`${stats.todayHours.toFixed(1)}h`} sub="registradas" color="text-primary" />
         <KPI icon={Calendar} label="Esta semana" value={`${stats.weekHours.toFixed(1)}h`} sub={`Meta ${target}h`} color="text-info" progress={(stats.weekHours / target) * 100} />
         <KPI icon={DollarSign} label="Facturable" value={`${stats.weekBillable.toFixed(1)}h`} sub={`${stats.billablePct.toFixed(0)}% del total`} color="text-success" />
-        <KPI icon={Target} label="Meta facturable" value={`${billableTarget}%`} sub={stats.billablePct >= billableTarget ? "✓ Alcanzada" : `Faltan ${(billableTarget - stats.billablePct).toFixed(0)}%`} color={stats.billablePct >= billableTarget ? "text-success" : "text-warning"} />
+        <Card className="cursor-pointer hover:border-primary/50 transition-colors group" onClick={() => setGoalOpen(true)}>
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <Target className={`h-4 w-4 ${stats.billablePct >= billableTarget ? "text-success" : "text-warning"}`} />
+              <span className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider flex-1">Meta facturable</span>
+              <Settings2 className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+            <p className="text-xl font-bold">{billableTarget}%</p>
+            <p className="text-[10px] text-muted-foreground">{stats.billablePct >= billableTarget ? "✓ Alcanzada" : `Faltan ${(billableTarget - stats.billablePct).toFixed(0)}%`}</p>
+            <Progress value={Math.min(100, (stats.billablePct / billableTarget) * 100)} className="h-1 mt-1.5" />
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
