@@ -871,6 +871,117 @@ export type Database = {
         }
         Relationships: []
       }
+      learning_courses: {
+        Row: {
+          category: string | null
+          cost: number | null
+          created_at: string
+          currency: string | null
+          description: string | null
+          duration_hours: number | null
+          id: string
+          is_internal: boolean | null
+          level: string | null
+          provider: string | null
+          related_skills: string[] | null
+          title: string
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          category?: string | null
+          cost?: number | null
+          created_at?: string
+          currency?: string | null
+          description?: string | null
+          duration_hours?: number | null
+          id?: string
+          is_internal?: boolean | null
+          level?: string | null
+          provider?: string | null
+          related_skills?: string[] | null
+          title: string
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          category?: string | null
+          cost?: number | null
+          created_at?: string
+          currency?: string | null
+          description?: string | null
+          duration_hours?: number | null
+          id?: string
+          is_internal?: boolean | null
+          level?: string | null
+          provider?: string | null
+          related_skills?: string[] | null
+          title?: string
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: []
+      }
+      learning_enrollments: {
+        Row: {
+          completed_at: string | null
+          course_id: string
+          created_at: string
+          hours_logged: number
+          id: string
+          member_id: string
+          notes: string | null
+          progress_pct: number
+          rating: number | null
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          course_id: string
+          created_at?: string
+          hours_logged?: number
+          id?: string
+          member_id: string
+          notes?: string | null
+          progress_pct?: number
+          rating?: number | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          course_id?: string
+          created_at?: string
+          hours_logged?: number
+          id?: string
+          member_id?: string
+          notes?: string | null
+          progress_pct?: number
+          rating?: number | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_enrollments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "learning_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_enrollments_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "sysde_team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meeting_minutes: {
         Row: {
           action_items: string[]
@@ -926,6 +1037,41 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mentor_conversations: {
+        Row: {
+          created_at: string
+          id: string
+          member_id: string | null
+          messages: Json
+          topic: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          member_id?: string | null
+          messages?: Json
+          topic?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          member_id?: string | null
+          messages?: Json
+          topic?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentor_conversations_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "sysde_team_members"
             referencedColumns: ["id"]
           },
         ]
@@ -2184,6 +2330,42 @@ export type Database = {
           },
         ]
       }
+      team_badges: {
+        Row: {
+          category: string | null
+          code: string
+          color: string | null
+          created_at: string
+          criteria: Json | null
+          description: string | null
+          icon: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          category?: string | null
+          code: string
+          color?: string | null
+          created_at?: string
+          criteria?: Json | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          category?: string | null
+          code?: string
+          color?: string | null
+          created_at?: string
+          criteria?: Json | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       team_career_paths: {
         Row: {
           ai_summary: string | null
@@ -2227,6 +2409,96 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "team_career_paths_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "sysde_team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_kudos: {
+        Row: {
+          category: string
+          created_at: string
+          emoji: string | null
+          from_member_id: string
+          id: string
+          is_public: boolean
+          message: string
+          to_member_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          emoji?: string | null
+          from_member_id: string
+          id?: string
+          is_public?: boolean
+          message: string
+          to_member_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          emoji?: string | null
+          from_member_id?: string
+          id?: string
+          is_public?: boolean
+          message?: string
+          to_member_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_kudos_from_member_id_fkey"
+            columns: ["from_member_id"]
+            isOneToOne: false
+            referencedRelation: "sysde_team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_kudos_to_member_id_fkey"
+            columns: ["to_member_id"]
+            isOneToOne: false
+            referencedRelation: "sysde_team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_member_badges: {
+        Row: {
+          awarded_at: string
+          awarded_by: string | null
+          badge_id: string
+          id: string
+          member_id: string
+          reason: string | null
+        }
+        Insert: {
+          awarded_at?: string
+          awarded_by?: string | null
+          badge_id: string
+          id?: string
+          member_id: string
+          reason?: string | null
+        }
+        Update: {
+          awarded_at?: string
+          awarded_by?: string | null
+          badge_id?: string
+          id?: string
+          member_id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_member_badges_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "team_badges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_member_badges_member_id_fkey"
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "sysde_team_members"
@@ -2421,6 +2693,59 @@ export type Database = {
             foreignKeyName: "team_onboarding_member_id_fkey"
             columns: ["member_id"]
             isOneToOne: true
+            referencedRelation: "sysde_team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_time_off: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          end_date: string
+          id: string
+          member_id: string
+          reason: string | null
+          rejection_reason: string | null
+          start_date: string
+          status: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          end_date: string
+          id?: string
+          member_id: string
+          reason?: string | null
+          rejection_reason?: string | null
+          start_date: string
+          status?: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          end_date?: string
+          id?: string
+          member_id?: string
+          reason?: string | null
+          rejection_reason?: string | null
+          start_date?: string
+          status?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_time_off_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
             referencedRelation: "sysde_team_members"
             referencedColumns: ["id"]
           },
