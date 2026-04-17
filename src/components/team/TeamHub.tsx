@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LayoutGrid, Users, Grid3x3, Rocket, Settings, Trophy, Plane, GraduationCap } from "lucide-react";
+import { LayoutGrid, Users, Grid3x3, Rocket, Settings, Trophy, Plane, GraduationCap, Activity } from "lucide-react";
 import { TeamDirectoryCards } from "@/components/team/TeamDirectoryCards";
 import { SkillMatrix } from "@/components/team/SkillMatrix";
 import { OnboardingTracker } from "@/components/team/OnboardingTracker";
@@ -9,9 +9,12 @@ import { SysdeTeamManager } from "@/components/support/SysdeTeamManager";
 import { RecognitionWall } from "@/components/team/RecognitionWall";
 import { TimeOffCalendar } from "@/components/team/TimeOffCalendar";
 import { LearningHub } from "@/components/team/LearningHub";
+import { TeamAnalytics } from "@/components/team/TeamAnalytics";
+import { CompareCollaboratorsDialog } from "@/components/team/CompareCollaboratorsDialog";
 
 export function TeamHub() {
   const [recommenderOpen, setRecommenderOpen] = useState(false);
+  const [compareOpen, setCompareOpen] = useState(false);
 
   return (
     <div className="space-y-4">
@@ -21,12 +24,15 @@ export function TeamHub() {
         </div>
         <div>
           <h2 className="text-lg font-bold">Equipo SYSDE</h2>
-          <p className="text-xs text-muted-foreground">Directorio, habilidades, onboarding y administración del talento</p>
+          <p className="text-xs text-muted-foreground">Directorio, métricas, habilidades, onboarding y desarrollo del talento</p>
         </div>
       </div>
 
-      <Tabs defaultValue="directory">
+      <Tabs defaultValue="overview">
         <TabsList className="bg-muted/50 p-1 h-auto flex-wrap">
+          <TabsTrigger value="overview" className="gap-2 data-[state=active]:shadow-sm py-2 px-3">
+            <Activity className="h-3.5 w-3.5" /> Overview
+          </TabsTrigger>
           <TabsTrigger value="directory" className="gap-2 data-[state=active]:shadow-sm py-2 px-3">
             <LayoutGrid className="h-3.5 w-3.5" /> Directorio
           </TabsTrigger>
@@ -50,8 +56,11 @@ export function TeamHub() {
           </TabsTrigger>
         </TabsList>
 
+        <TabsContent value="overview" className="mt-4">
+          <TeamAnalytics />
+        </TabsContent>
         <TabsContent value="directory" className="mt-4">
-          <TeamDirectoryCards onCompare={() => setRecommenderOpen(true)} />
+          <TeamDirectoryCards onCompare={() => setRecommenderOpen(true)} onCompareMulti={() => setCompareOpen(true)} />
         </TabsContent>
         <TabsContent value="skills" className="mt-4">
           <SkillMatrix />
@@ -74,6 +83,7 @@ export function TeamHub() {
       </Tabs>
 
       <TeamRecommenderDialog open={recommenderOpen} onOpenChange={setRecommenderOpen} />
+      <CompareCollaboratorsDialog open={compareOpen} onOpenChange={setCompareOpen} />
     </div>
   );
 }
