@@ -161,10 +161,14 @@ export function useTeamAIAnalysis() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       return data as {
+        workload: Array<{ owner: string; level: "sobrecargado" | "saludable" | "subutilizado" | "sin_carga"; items: number; story_points?: number; reason: string }>;
         bottlenecks: Array<{ owner: string; severity: string; reason: string; load: number }>;
+        underutilized: Array<{ owner: string; load: number; suggestion: string }>;
         risks: Array<{ item_id: string; reason: string; recommendation: string }>;
         recommendations: string[];
         sprint_health: string;
+        team_balance_score: number;
+        load_summary: Array<{ owner: string; total: number; in_progress: number; high_priority: number; unestimated: number; story_points: number }>;
       };
     },
   });

@@ -101,10 +101,33 @@ export default function TeamScrumDashboard() {
       }
     });
     return Array.from(map.entries())
-      .map(([name, value]) => ({ name: name.length > 15 ? name.slice(0, 13) + "…" : name, value }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 10);
+      .map(([name, value]) => ({
+        name: name.length > 15 ? name.slice(0, 13) + "…" : name,
+        fullName: name,
+        value,
+        level: value > 7 ? "sobrecargado" : value >= 3 ? "saludable" : value >= 1 ? "subutilizado" : "sin_carga",
+      }))
+      .sort((a, b) => b.value - a.value);
   }, [items]);
+
+  // Miembros que aparecen en tickets/tasks (incluso done) pero sin carga activa
+  const allOwnersEver = useMemo(() => {
+    const set = new Set<string>();
+    items.forEach(i => i.owner && i.owner !== "—" && set.add(i.owner));
+    return Array.from(set);
+  }, [items]);
+
+  const ownersWithoutLoad = useMemo(() => {
+    const withLoad = new Set(ownerLoad.map(o => o.fullName));
+    return allOwnersEver.filter(o => !withLoad.has(o));
+  }, [allOwnersEver, ownerLoad]);
+
+  const workloadStats = useMemo(() => ({
+    sobrecargados: ownerLoad.filter(o => o.level === "sobrecargado").length,
+    saludables: ownerLoad.filter(o => o.level === "saludable").length,
+    subutilizados: ownerLoad.filter(o => o.level === "subutilizado").length,
+    sin_carga: ownersWithoutLoad.length,
+  }), [ownerLoad, ownersWithoutLoad]);
 
   const sourceDist = useMemo(() => {
     const tasks = items.filter(i => i.source === "task").length;
@@ -246,17 +269,17 @@ export default function TeamScrumDashboard() {
           <TabsTrigger value="pm-ai"><Brain className="h-3.5 w-3.5 mr-1" />PM IA</TabsTrigger>
           <TabsTrigger value="backlog"><ListOrdered className="h-3.5 w-3.5 mr-1" />Backlog (WSJF)</TabsTrigger>
           <TabsTrigger value="sprint"><Target className="h-3.5 w-3.5 mr-1" />Sprint Activo</TabsTrigger>
-          <TabsTrigger value="team"><Users className="h-3.5 w-3.5 mr-1" />Equipo</TabsTrigger>
           <TabsTrigger value="ai"><Sparkles className="h-3.5 w-3.5 mr-1" />Análisis Equipo</TabsTrigger>
           <TabsTrigger value="reports"><BarChart3 className="h-3.5 w-3.5 mr-1" />Reportes</TabsTrigger>
+          <TabsTrigger value="audit"><Users className="h-3.5 w-3.5 mr-1" />Auditoría</TabsTrigger>
         </TabsList>
 
         <TabsContent value="pm-ai" className="mt-3">
           <PMAIPanel />
         </TabsContent>
 
-        <TabsContent value="team" className="mt-3">
-          <TeamActivityPanel compact />
+        <TabsContent value="audit" className="mt-3">
+          <TeamActivityPanel />
         </TabsContent>
 
 
@@ -395,7 +418,59 @@ export default function TeamScrumDashboard() {
                     }>
                       {aiResult.sprint_health.toUpperCase()}
                     </Badge>
+                    {typeof aiResult.team_balance_score === "number" && (
+                      <>
+                        <span className="text-sm font-medium ml-4">Balance del Equipo:</span>
+                        <Badge className={
+                          aiResult.team_balance_score >= 75 ? "bg-success/20 text-success border-success/30" :
+                          aiResult.team_balance_score >= 50 ? "bg-warning/20 text-warning border-warning/30" :
+                          "bg-destructive/20 text-destructive border-destructive/30"
+                        }>{aiResult.team_balance_score}/100</Badge>
+                      </>
+                    )}
                   </div>
+
+                  {/* Carga del Equipo */}
+                  {Array.isArray(aiResult.workload) && aiResult.workload.length > 0 && (
+                    <Card>
+                      <CardHeader className="pb-2"><CardTitle className="text-xs flex items-center gap-2"><Users className="h-3.5 w-3.5" />Carga del Equipo ({aiResult.workload.length})</CardTitle></CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+                          {(["sobrecargado", "saludable", "subutilizado", "sin_carga"] as const).map(level => {
+                            const group = aiResult.workload.filter((w: any) => w.level === level);
+                            const colors: Record<string, string> = {
+                              sobrecargado: "border-destructive/40 bg-destructive/5",
+                              saludable: "border-success/40 bg-success/5",
+                              subutilizado: "border-warning/40 bg-warning/5",
+                              sin_carga: "border-muted-foreground/30 bg-muted/30",
+                            };
+                            const labels: Record<string, string> = {
+                              sobrecargado: "🔥 Sobrecargados",
+                              saludable: "✅ Saludables",
+                              subutilizado: "⚠️ Subutilizados",
+                              sin_carga: "💤 Sin Carga",
+                            };
+                            return (
+                              <div key={level} className={`p-2 rounded border ${colors[level]} space-y-1.5`}>
+                                <p className="text-[10px] font-bold uppercase">{labels[level]} ({group.length})</p>
+                                {group.map((w: any, i: number) => (
+                                  <div key={i} className="text-[10px] space-y-0.5">
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-medium truncate">{w.owner}</span>
+                                      <Badge variant="outline" className="text-[9px] h-4">{w.items} it</Badge>
+                                    </div>
+                                    <p className="text-muted-foreground line-clamp-2">{w.reason}</p>
+                                  </div>
+                                ))}
+                                {group.length === 0 && <p className="text-[10px] text-muted-foreground italic">—</p>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <Card>
@@ -457,18 +532,73 @@ export default function TeamScrumDashboard() {
 
         {/* REPORTS */}
         <TabsContent value="reports" className="mt-3 space-y-3">
+          {/* Resumen de Carga del Equipo */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Users className="h-4 w-4" />Carga del Equipo — Resumen
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+                {[
+                  { label: "🔥 Sobrecargados", value: workloadStats.sobrecargados, color: "border-destructive/40 bg-destructive/10 text-destructive" },
+                  { label: "✅ Saludables", value: workloadStats.saludables, color: "border-success/40 bg-success/10 text-success" },
+                  { label: "⚠️ Subutilizados", value: workloadStats.subutilizados, color: "border-warning/40 bg-warning/10 text-warning" },
+                  { label: "💤 Sin Carga", value: workloadStats.sin_carga, color: "border-muted-foreground/30 bg-muted/40 text-muted-foreground" },
+                ].map(s => (
+                  <div key={s.label} className={`p-3 rounded border ${s.color}`}>
+                    <p className="text-2xl font-bold">{s.value}</p>
+                    <p className="text-[10px] uppercase font-semibold">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+              {ownersWithoutLoad.length > 0 && (
+                <div className="p-2 rounded border border-border/40 bg-muted/30">
+                  <p className="text-[10px] font-bold uppercase text-muted-foreground mb-1">Sin items activos asignados ({ownersWithoutLoad.length}):</p>
+                  <div className="flex flex-wrap gap-1">
+                    {ownersWithoutLoad.map(o => (
+                      <Badge key={o} variant="outline" className="text-[10px] bg-muted/40">{o}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Users className="h-4 w-4" />Carga por Persona</CardTitle></CardHeader>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Users className="h-4 w-4" />Carga por Persona
+                  <span className="ml-auto text-[10px] text-muted-foreground font-normal">
+                    🔥 &gt;7 · ✅ 3-7 · ⚠️ 1-2
+                  </span>
+                </CardTitle>
+              </CardHeader>
               <CardContent>
-                <div className="h-[280px]">
+                <div className="h-[320px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={ownerLoad} layout="vertical" margin={{ left: 20 }}>
+                    <BarChart data={ownerLoad.slice(0, 12)} layout="vertical" margin={{ left: 20 }}>
                       <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
                       <XAxis type="number" tick={{ fontSize: 10 }} />
                       <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={90} />
-                      <Tooltip />
-                      <Bar dataKey="value" fill="hsl(var(--primary))" />
+                      <Tooltip
+                        formatter={(v: any, _n, p: any) => [`${v} items (${p?.payload?.level})`, "Carga"]}
+                        labelFormatter={(l) => `${l}`}
+                      />
+                      <Bar dataKey="value">
+                        {ownerLoad.slice(0, 12).map((d, i) => (
+                          <Cell
+                            key={i}
+                            fill={
+                              d.level === "sobrecargado" ? "hsl(var(--destructive))" :
+                              d.level === "saludable" ? "hsl(var(--success))" :
+                              "hsl(var(--warning))"
+                            }
+                          />
+                        ))}
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
