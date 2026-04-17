@@ -31,6 +31,8 @@ export interface UnifiedSprint {
   end_date: string | null;
   status: string;
   capacity_points: number;
+  notes?: string;
+  ceremony_dates?: any;
 }
 
 function calcWsjf(value: number | null, effort: number | null): number {
