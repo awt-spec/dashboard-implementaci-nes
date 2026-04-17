@@ -104,6 +104,21 @@ ${JSON.stringify(activeSprints, null, 1)}`;
             parameters: {
               type: "object",
               properties: {
+                workload: {
+                  type: "array",
+                  description: "Carga clasificada por persona",
+                  items: {
+                    type: "object",
+                    properties: {
+                      owner: { type: "string" },
+                      level: { type: "string", enum: ["sobrecargado", "saludable", "subutilizado", "sin_carga"] },
+                      items: { type: "number" },
+                      story_points: { type: "number" },
+                      reason: { type: "string" },
+                    },
+                    required: ["owner", "level", "items", "reason"],
+                  },
+                },
                 bottlenecks: {
                   type: "array",
                   items: {
@@ -115,6 +130,19 @@ ${JSON.stringify(activeSprints, null, 1)}`;
                       load: { type: "number" },
                     },
                     required: ["owner", "severity", "reason", "load"],
+                  },
+                },
+                underutilized: {
+                  type: "array",
+                  description: "Personas con poca o ninguna carga",
+                  items: {
+                    type: "object",
+                    properties: {
+                      owner: { type: "string" },
+                      load: { type: "number" },
+                      suggestion: { type: "string" },
+                    },
+                    required: ["owner", "load", "suggestion"],
                   },
                 },
                 risks: {
@@ -131,8 +159,9 @@ ${JSON.stringify(activeSprints, null, 1)}`;
                 },
                 recommendations: { type: "array", items: { type: "string" } },
                 sprint_health: { type: "string", enum: ["saludable", "en_riesgo", "critico"] },
+                team_balance_score: { type: "number", description: "0-100, 100=balanceado" },
               },
-              required: ["bottlenecks", "risks", "recommendations", "sprint_health"],
+              required: ["workload", "bottlenecks", "underutilized", "risks", "recommendations", "sprint_health", "team_balance_score"],
             },
           },
         }],
@@ -160,6 +189,9 @@ ${JSON.stringify(activeSprints, null, 1)}`;
     const toolCall = json.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall) throw new Error("No tool call in response");
     const result = JSON.parse(toolCall.function.arguments);
+
+    // Augment with raw load summary for charts
+    result.load_summary = loadSummary;
 
     // Log AI usage
     await sb.from("ai_usage_logs").insert({
