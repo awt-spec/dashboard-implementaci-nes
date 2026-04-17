@@ -2813,6 +2813,33 @@ export type Database = {
           },
         ]
       }
+      time_tracking_goals: {
+        Row: {
+          billable_target_pct: number
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+          weekly_target_hours: number
+        }
+        Insert: {
+          billable_target_pct?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+          weekly_target_hours?: number
+        }
+        Update: {
+          billable_target_pct?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+          weekly_target_hours?: number
+        }
+        Relationships: []
+      }
       user_activity_log: {
         Row: {
           action: string
@@ -2899,40 +2926,58 @@ export type Database = {
       }
       work_time_entries: {
         Row: {
+          approval_status: string
           client_id: string | null
           created_at: string
+          description: string | null
           duration_seconds: number | null
           ended_at: string | null
           id: string
+          is_billable: boolean
+          is_manual: boolean
           item_id: string
           note: string | null
           source: string
           started_at: string
+          tags: string[]
           user_id: string
+          work_date: string | null
         }
         Insert: {
+          approval_status?: string
           client_id?: string | null
           created_at?: string
+          description?: string | null
           duration_seconds?: number | null
           ended_at?: string | null
           id?: string
+          is_billable?: boolean
+          is_manual?: boolean
           item_id: string
           note?: string | null
           source: string
           started_at?: string
+          tags?: string[]
           user_id: string
+          work_date?: string | null
         }
         Update: {
+          approval_status?: string
           client_id?: string | null
           created_at?: string
+          description?: string | null
           duration_seconds?: number | null
           ended_at?: string | null
           id?: string
+          is_billable?: boolean
+          is_manual?: boolean
           item_id?: string
           note?: string | null
           source?: string
           started_at?: string
+          tags?: string[]
           user_id?: string
+          work_date?: string | null
         }
         Relationships: []
       }
