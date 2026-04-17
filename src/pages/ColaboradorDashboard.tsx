@@ -383,6 +383,8 @@ export default function ColaboradorDashboard() {
         </div>
       </main>
 
+      <ManualTimeEntryDialog open={logHoursOpen} onOpenChange={setLogHoursOpen} />
+
       {/* DETAIL PANEL — Jira-style right sheet */}
       <Sheet open={!!selectedItem} onOpenChange={(o) => !o && setSelectedItem(null)}>
         <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
