@@ -687,6 +687,9 @@ export default function MemberProfile() {
           onOpenChange={setCvOpen}
         />
       )}
+      {editOpen && (
+        <ProfileEditDialog member={member} open={editOpen} onOpenChange={setEditOpen} />
+      )}
     </div>
   );
 }
