@@ -13,8 +13,10 @@ import { Separator } from "@/components/ui/separator";
 import {
   ArrowLeft, Sparkles, Loader2, Award, Target, Calendar, Briefcase,
   TrendingUp, Clock, AlertCircle, CheckCircle2, Plus, Trash2, ExternalLink,
-  Brain, Trophy, GitBranch, Users,
+  Brain, Trophy, GitBranch, Users, Pencil, MapPin, Linkedin, Github, Globe, Twitter,
+  Mail, Phone, Activity as ActivityIcon,
 } from "lucide-react";
+import { Avatar as AvatarUI, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -26,6 +28,9 @@ import {
   useCareerPath, useGenerateCareerPath, useMemberPerformance,
 } from "@/hooks/useMemberProfile";
 import { CVAnalysisDialog } from "@/components/admin/CVAnalysisDialog";
+import { ProfileEditDialog } from "@/components/team/ProfileEditDialog";
+import { MemberActivityTimeline } from "@/components/team/MemberActivityTimeline";
+import { useAuth } from "@/hooks/useAuth";
 
 const initials = (name: string) =>
   name.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase();
