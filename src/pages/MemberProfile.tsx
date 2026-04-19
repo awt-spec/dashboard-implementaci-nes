@@ -744,8 +744,8 @@ function KpiCard({ label, value, sub, icon: Icon, color }: any) {
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs text-muted-foreground">{label}</span>
-          <div className={`h-7 w-7 rounded ${colorMap[color]} flex items-center justify-center`}>
-            <Icon className="h-3.5 w-3.5" />
+          <div className={`h-8 w-8 rounded-lg ring-1 ${colorMap[color]} flex items-center justify-center`}>
+            <Icon className="h-4 w-4" />
           </div>
         </div>
         <p className="text-2xl font-bold">{value}</p>
