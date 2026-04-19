@@ -28,3 +28,4 @@ Activity tracking auto-mounted in Index.tsx via useActivityTracker (sessions+hea
 - [Team Tracking](mem://features/team-tracking) — Colaborador dashboard scrum + sessions/timer/activity tracking + admin panels
 - [Team Hub](mem://features/team-hub) — Sprints (ceremonies+forecast), 360 profiles (career path), directory cards + skill matrix heatmap + AI recommender + onboarding
 - [Team Engagement](mem://features/team-engagement) — Phase 4: kudos+badges+leaderboard, time-off calendar+coverage alerts, learning hub+enrollments+Mentor IA
+- [AI Agents](mem://features/ai-agents) — Personal role-based AI agent per member, weekly digest, FAB, profile tab, edge functions member-agent-chat/weekly-digest
