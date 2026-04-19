@@ -18,6 +18,10 @@ export interface TimeEntry {
   approval_status: "pending" | "approved" | "rejected";
   tags: string[];
   work_date: string;
+  category?: string;
+  mood?: number | null;
+  productivity_score?: number | null;
+  is_locked?: boolean;
 }
 
 export interface TimeGoal {
