@@ -18,6 +18,8 @@ import { motion } from "framer-motion";
 import { useAllScrumWorkItems, useAllSprints, useUpdateWorkItemScrum, type ScrumWorkItem } from "@/hooks/useTeamScrum";
 import { useWorkTimer, useActivityTracker } from "@/hooks/useActivityTracker";
 import { ManualTimeEntryDialog } from "@/components/team/ManualTimeEntryDialog";
+import { FloatingAgentButton } from "@/components/team/FloatingAgentButton";
+import { useMyTeamMember } from "@/hooks/useMyTeamMember";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -40,6 +42,7 @@ export default function ColaboradorDashboard() {
   const { user, profile, signOut } = useAuth();
   const { logActivity } = useActivityTracker();
   const { start: startTimer, stop: stopTimer } = useWorkTimer();
+  const { data: myMember } = useMyTeamMember();
 
   const { data: allItems = [], isLoading: loadingItems, refetch } = useAllScrumWorkItems();
   const { data: allSprints = [], isLoading: loadingSprints } = useAllSprints();
@@ -384,6 +387,8 @@ export default function ColaboradorDashboard() {
       </main>
 
       <ManualTimeEntryDialog open={logHoursOpen} onOpenChange={setLogHoursOpen} />
+
+      <FloatingAgentButton memberId={myMember?.id} memberName={myMember?.name || profile?.full_name} />
 
       {/* DETAIL PANEL — Jira-style right sheet */}
       <Sheet open={!!selectedItem} onOpenChange={(o) => !o && setSelectedItem(null)}>

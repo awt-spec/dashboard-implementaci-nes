@@ -14,7 +14,7 @@ import {
   ArrowLeft, Sparkles, Loader2, Award, Target, Calendar, Briefcase,
   TrendingUp, Clock, AlertCircle, CheckCircle2, Plus, Trash2, ExternalLink,
   Brain, Trophy, GitBranch, Users, Pencil, MapPin, Linkedin, Github, Globe, Twitter,
-  Mail, Phone, Activity as ActivityIcon,
+  Mail, Phone, Activity as ActivityIcon, Bot,
 } from "lucide-react";
 import { Avatar as AvatarUI, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
@@ -31,6 +31,7 @@ import { CVAnalysisDialog } from "@/components/admin/CVAnalysisDialog";
 import { ProfileEditDialog } from "@/components/team/ProfileEditDialog";
 import { MemberActivityTimeline } from "@/components/team/MemberActivityTimeline";
 import { MyProductivityDashboard } from "@/components/team/MyProductivityDashboard";
+import { MemberAIAgentPanel } from "@/components/team/MemberAIAgentPanel";
 import { useAuth } from "@/hooks/useAuth";
 
 const initials = (name: string) =>
@@ -298,11 +299,18 @@ export default function MemberProfile() {
           <TabsTrigger value="capacity"><Calendar className="h-3.5 w-3.5 mr-1.5" />Capacidad</TabsTrigger>
           <TabsTrigger value="certs"><Award className="h-3.5 w-3.5 mr-1.5" />Certificaciones</TabsTrigger>
           {isMe && <TabsTrigger value="timesheet"><Clock className="h-3.5 w-3.5 mr-1.5" />Mis horas</TabsTrigger>}
+          {isMe && <TabsTrigger value="agent"><Bot className="h-3.5 w-3.5 mr-1.5" />Mi Agente IA</TabsTrigger>}
         </TabsList>
 
         {isMe && (
           <TabsContent value="timesheet" className="mt-4">
             <MyProductivityDashboard />
+          </TabsContent>
+        )}
+
+        {isMe && (
+          <TabsContent value="agent" className="mt-4">
+            <MemberAIAgentPanel memberId={member.id} memberName={member.name} />
           </TabsContent>
         )}
 
