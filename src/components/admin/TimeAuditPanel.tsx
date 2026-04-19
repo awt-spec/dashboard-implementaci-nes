@@ -12,7 +12,7 @@ import {
 import { useAllTimeEntries, useUpdateTimeEntry, entryHours, startOfWeek } from "@/hooks/useTimeTracking";
 import { useTimeAuditLog, useWeeklyLocks } from "@/hooks/useTimeAudit";
 import { useSysdeTeamMembers } from "@/hooks/useTeamMembers";
-import { TimeTrackingDashboard } from "./TimeTrackingDashboard";
+import { TimeTrackingDashboard } from "@/components/team/TimeTrackingDashboard";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
