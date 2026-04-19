@@ -268,8 +268,11 @@ export default function TeamScrumDashboard() {
         </Select>
       </div>
 
-      <Tabs defaultValue="sprints" className="w-full">
+      <Tabs defaultValue="active" className="w-full">
         <TabsList className="flex-wrap h-auto">
+          <TabsTrigger value="active" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <Flame className="h-3.5 w-3.5 mr-1" />Sprint Activo
+          </TabsTrigger>
           <TabsTrigger value="sprints"><Target className="h-3.5 w-3.5 mr-1" />Sprints</TabsTrigger>
           <TabsTrigger value="daily">☀️ Daily</TabsTrigger>
           <TabsTrigger value="sprint"><Zap className="h-3.5 w-3.5 mr-1" />Kanban Sprint</TabsTrigger>
@@ -280,6 +283,10 @@ export default function TeamScrumDashboard() {
           <TabsTrigger value="reports"><BarChart3 className="h-3.5 w-3.5 mr-1" />Reportes</TabsTrigger>
           <TabsTrigger value="audit"><Users className="h-3.5 w-3.5 mr-1" />Auditoría</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="active" className="mt-3">
+          <ActiveSprintHub />
+        </TabsContent>
 
         <TabsContent value="sprints" className="mt-3">
           <SprintManager />
