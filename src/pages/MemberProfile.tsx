@@ -197,34 +197,50 @@ export default function MemberProfile() {
     <div className="space-y-6 p-4 md:p-6 max-w-[1600px] mx-auto">
       {/* Header */}
       <div className="flex items-start gap-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="hover:bg-primary/10 hover:text-primary">
           <ArrowLeft className="h-4 w-4 mr-1" /> Volver
         </Button>
       </div>
 
-      <Card className="overflow-hidden">
-        {/* Cover */}
+      <Card className="overflow-hidden border-primary/10 shadow-md">
+        {/* Cover — Sysde branded */}
         <div
-          className="h-36 md:h-44 bg-gradient-to-br from-primary/30 via-primary/10 to-muted bg-cover bg-center relative"
-          style={member.cover_url ? { backgroundImage: `url(${member.cover_url})` } : undefined}
+          className="h-36 md:h-48 bg-cover bg-center relative"
+          style={
+            member.cover_url
+              ? { backgroundImage: `url(${member.cover_url})` }
+              : {
+                  backgroundImage:
+                    "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.85) 40%, hsl(var(--sidebar-background)) 100%)",
+                }
+          }
         >
+          {/* subtle pattern overlay */}
+          <div
+            className="absolute inset-0 opacity-20 mix-blend-overlay"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle at 20% 30%, hsl(var(--primary-foreground) / 0.4) 0%, transparent 50%), radial-gradient(circle at 80% 70%, hsl(var(--primary-foreground) / 0.25) 0%, transparent 45%)",
+            }}
+          />
+          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-card to-transparent" />
           {(isMe || profile) && (
             <Button
               size="sm"
               variant="secondary"
-              className="absolute top-3 right-3 gap-1.5 backdrop-blur-sm bg-background/80"
+              className="absolute top-3 right-3 gap-1.5 backdrop-blur-md bg-background/70 hover:bg-background border border-primary/20 shadow-sm"
               onClick={() => setEditOpen(true)}
             >
-              <Pencil className="h-3.5 w-3.5" /> Editar perfil
+              <Pencil className="h-3.5 w-3.5 text-primary" /> Editar perfil
             </Button>
           )}
         </div>
 
-        <div className="px-6 pb-6 -mt-12 md:-mt-14">
+        <div className="px-6 pb-6 -mt-14 md:-mt-16">
           <div className="flex flex-col md:flex-row md:items-end gap-4">
-            <AvatarUI className="h-24 w-24 md:h-28 md:w-28 border-4 border-background shadow-lg">
+            <AvatarUI className="h-24 w-24 md:h-32 md:w-32 border-4 border-background shadow-xl ring-2 ring-primary/30">
               {member.avatar_url && <AvatarImage src={member.avatar_url} alt={member.name} />}
-              <AvatarFallback className="text-2xl bg-primary/20 text-primary font-bold">
+              <AvatarFallback className="text-2xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground font-bold">
                 {initials(member.name)}
               </AvatarFallback>
             </AvatarUI>
@@ -262,12 +278,12 @@ export default function MemberProfile() {
               )}
             </div>
             <div className="flex flex-col gap-2 md:items-end md:pb-2">
-              <Button variant="outline" size="sm" onClick={() => setCvOpen(true)}>
-                <Brain className="h-4 w-4 mr-2" /> {member.cv_url ? "Ver CV / re-analizar" : "Subir CV"}
+              <Button variant="outline" size="sm" onClick={() => setCvOpen(true)} className="border-primary/30 hover:bg-primary/10 hover:text-primary hover:border-primary/50">
+                <Brain className="h-4 w-4 mr-2 text-primary" /> {member.cv_url ? "Ver CV / re-analizar" : "Subir CV"}
               </Button>
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">Tasa de completitud</p>
-                <p className="text-2xl font-bold text-success">{stats.completionRate}%</p>
+              <div className="text-right rounded-lg border border-primary/15 bg-primary/5 px-3 py-1.5">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Completitud</p>
+                <p className="text-2xl font-bold text-primary">{stats.completionRate}%</p>
               </div>
             </div>
           </div>
@@ -291,15 +307,15 @@ export default function MemberProfile() {
       </Card>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="flex flex-wrap h-auto">
-          <TabsTrigger value="overview"><Trophy className="h-3.5 w-3.5 mr-1.5" />Overview</TabsTrigger>
-          <TabsTrigger value="activity"><ActivityIcon className="h-3.5 w-3.5 mr-1.5" />Actividad</TabsTrigger>
-          <TabsTrigger value="performance"><TrendingUp className="h-3.5 w-3.5 mr-1.5" />Performance</TabsTrigger>
-          <TabsTrigger value="career"><GitBranch className="h-3.5 w-3.5 mr-1.5" />Plan de carrera</TabsTrigger>
-          <TabsTrigger value="capacity"><Calendar className="h-3.5 w-3.5 mr-1.5" />Capacidad</TabsTrigger>
-          <TabsTrigger value="certs"><Award className="h-3.5 w-3.5 mr-1.5" />Certificaciones</TabsTrigger>
-          {isMe && <TabsTrigger value="timesheet"><Clock className="h-3.5 w-3.5 mr-1.5" />Mis horas</TabsTrigger>}
-          {isMe && <TabsTrigger value="agent"><Bot className="h-3.5 w-3.5 mr-1.5" />Mi Agente IA</TabsTrigger>}
+        <TabsList className="flex flex-wrap h-auto bg-muted/60 border border-primary/10 p-1 gap-0.5">
+          <TabsTrigger value="overview" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"><Trophy className="h-3.5 w-3.5 mr-1.5" />Overview</TabsTrigger>
+          <TabsTrigger value="activity" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"><ActivityIcon className="h-3.5 w-3.5 mr-1.5" />Actividad</TabsTrigger>
+          <TabsTrigger value="performance" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"><TrendingUp className="h-3.5 w-3.5 mr-1.5" />Performance</TabsTrigger>
+          <TabsTrigger value="career" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"><GitBranch className="h-3.5 w-3.5 mr-1.5" />Plan de carrera</TabsTrigger>
+          <TabsTrigger value="capacity" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"><Calendar className="h-3.5 w-3.5 mr-1.5" />Capacidad</TabsTrigger>
+          <TabsTrigger value="certs" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"><Award className="h-3.5 w-3.5 mr-1.5" />Certificaciones</TabsTrigger>
+          {isMe && <TabsTrigger value="timesheet" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"><Clock className="h-3.5 w-3.5 mr-1.5" />Mis horas</TabsTrigger>}
+          {isMe && <TabsTrigger value="agent" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"><Bot className="h-3.5 w-3.5 mr-1.5" />Mi Agente IA</TabsTrigger>}
         </TabsList>
 
         {isMe && (
@@ -712,18 +728,24 @@ export default function MemberProfile() {
 
 function KpiCard({ label, value, sub, icon: Icon, color }: any) {
   const colorMap: Record<string, string> = {
-    success: "text-success bg-success/10",
-    warning: "text-warning bg-warning/10",
-    info: "text-info bg-info/10",
-    primary: "text-primary bg-primary/10",
+    success: "text-success bg-success/10 ring-success/20",
+    warning: "text-warning bg-warning/10 ring-warning/20",
+    info: "text-info bg-info/10 ring-info/20",
+    primary: "text-primary bg-primary/10 ring-primary/20",
+  };
+  const borderMap: Record<string, string> = {
+    success: "border-l-success",
+    warning: "border-l-warning",
+    info: "border-l-info",
+    primary: "border-l-primary",
   };
   return (
-    <Card>
+    <Card className={`border-l-4 ${borderMap[color] || "border-l-primary"} hover:shadow-md transition-shadow`}>
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs text-muted-foreground">{label}</span>
-          <div className={`h-7 w-7 rounded ${colorMap[color]} flex items-center justify-center`}>
-            <Icon className="h-3.5 w-3.5" />
+          <div className={`h-8 w-8 rounded-lg ring-1 ${colorMap[color]} flex items-center justify-center`}>
+            <Icon className="h-4 w-4" />
           </div>
         </div>
         <p className="text-2xl font-bold">{value}</p>
