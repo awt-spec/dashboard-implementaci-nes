@@ -1,31 +1,41 @@
 
-User wants to add GPT-5.2 (and likely GPT-5) as model options in the agent selector. Currently `AgentConfigDialog.tsx` has only 3 models: Gemini Flash, Gemini Pro, GPT-5 mini. I'll add GPT-5.2 as the premium option, plus GPT-5, and reorder for clarity.
+## Plan: rediseñar "Sprint Activo" con un hub dedicado
 
-## Plan: Add GPT-5.2 (Premium) to AI Agent model selector
+Hoy el sprint activo está fragmentado: una barra de capacidad en `SprintManager`, un Kanban básico en otra pestaña, y el burndown enterrado en "Reportes". Voy a unificar todo en un nuevo panel inmersivo.
 
-### Changes
+### Cambios
 
-**1. `src/components/team/AgentConfigDialog.tsx`**
+**1. Nueva pestaña destacada "🔥 Sprint Activo"** (primera pestaña, default) en `TeamScrumDashboard.tsx`. Si no hay sprint activo, muestra un CTA grande "Iniciar un sprint" que lleva a la pestaña Sprints.
 
-Update the `MODELS` array to include the new options with clear labels and a "Premium" hint for the most powerful ones:
+**2. Nuevo componente `src/components/scrum/ActiveSprintHub.tsx`** con secciones:
 
-```ts
-const MODELS = [
-  { value: "google/gemini-3-flash-preview", label: "Gemini 3 Flash (rápido, recomendado)" },
-  { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-  { value: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro (razonamiento)" },
-  { value: "openai/gpt-5-mini", label: "GPT-5 mini" },
-  { value: "openai/gpt-5", label: "GPT-5 ⭐ Premium" },
-  { value: "openai/gpt-5.2", label: "GPT-5.2 ⭐ Premium (último)" },
-];
-```
+- **Header inmersivo** con gradiente Sysde:
+  - Nombre + meta del sprint, cliente
+  - Días restantes / total (badge prominente con color: verde >50%, ámbar 20-50%, rojo <20% o vencido)
+  - Botones rápidos: Daily, Retro, Cerrar Sprint
 
-**2. `supabase/functions/member-agent-chat/index.ts`** — no code change needed; it already passes `model` dynamically from `member_ai_agents.preferred_model`. GPT-5.2 will work out of the box via Lovable AI Gateway.
+- **Strip de KPIs (4 cards)**: SP completados/planeados, % avance, items en progreso, items bloqueados/sin owner
 
-**3. Memory** — append to `mem://features/ai-agents.md` that GPT-5.2 is the premium model option.
+- **Capacidad + Burndown lado a lado**:
+  - Barra de capacidad con marcador de "ideal a hoy" vs "real"
+  - Gráfico burndown en grande con anotación "vas X SP arriba/abajo del ideal"
 
-### Notes
-- No DB migration needed (the `preferred_model` column already accepts any string).
-- No new secrets — `LOVABLE_API_KEY` covers all OpenAI/Gemini models.
-- Existing collaborators keep their currently selected model; only those who pick GPT-5.2 in the dialog will use it.
-- GPT-5.2 may be slower and consume more credits per message — that's expected for a premium reasoning model.
+- **Mini Kanban embebido** (5 columnas compactas) con drag & drop entre estados, sin tener que ir a otra pestaña
+
+- **Carga del equipo en el sprint** (chips por persona con SP asignados/completados, semáforo visual)
+
+- **Items en riesgo** (panel lateral): sin owner, sin estimación, en progreso >3 días, vencidos
+
+**3. Selector si hay múltiples sprints activos**: tabs internos por sprint.
+
+**4. Polish**: animaciones framer-motion al cambiar estado, contador de días vivo (actualiza al cargar), confetti sutil cuando 100% completado.
+
+### Archivos
+- **Nuevo**: `src/components/scrum/ActiveSprintHub.tsx`
+- **Modificado**: `src/pages/TeamScrumDashboard.tsx` (agrega tab "active" como default, importa ActiveSprintHub)
+
+### Notas técnicas
+- Reutiliza `useAllScrumWorkItems`, `useAllSprints`, `useUpdateWorkItemScrum` ya existentes
+- Cálculo de burndown e ideal-vs-real se mueve dentro del nuevo componente (hoy está en TeamScrumDashboard)
+- DnD usa el mismo patrón nativo HTML5 que SprintManager
+- Sin migración DB ni nuevos endpoints
