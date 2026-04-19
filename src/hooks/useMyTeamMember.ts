@@ -8,6 +8,9 @@ export interface MyMember {
   email: string | null;
   role: string | null;
   department: string | null;
+  employment_type?: "hourly" | "salaried";
+  hourly_rate?: number;
+  rate_currency?: string;
 }
 
 export function useMyTeamMember() {
@@ -19,7 +22,7 @@ export function useMyTeamMember() {
     queryFn: async () => {
       const { data, error } = await (supabase
         .from("sysde_team_members" as any)
-        .select("id, name, email, role, department")
+        .select("id, name, email, role, department, employment_type, hourly_rate, rate_currency")
         .ilike("email", email!)
         .maybeSingle() as any);
       if (error) throw error;

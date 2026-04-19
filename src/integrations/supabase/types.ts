@@ -2145,13 +2145,16 @@ export type Database = {
           cv_years_experience: number | null
           department: string | null
           email: string | null
+          employment_type: string
           hire_date: string | null
+          hourly_rate: number
           id: string
           is_active: boolean | null
           location: string | null
           name: string
           phone: string | null
           pronouns: string | null
+          rate_currency: string
           role: string | null
           social_links: Json
           updated_at: string
@@ -2172,13 +2175,16 @@ export type Database = {
           cv_years_experience?: number | null
           department?: string | null
           email?: string | null
+          employment_type?: string
           hire_date?: string | null
+          hourly_rate?: number
           id?: string
           is_active?: boolean | null
           location?: string | null
           name: string
           phone?: string | null
           pronouns?: string | null
+          rate_currency?: string
           role?: string | null
           social_links?: Json
           updated_at?: string
@@ -2199,13 +2205,16 @@ export type Database = {
           cv_years_experience?: number | null
           department?: string | null
           email?: string | null
+          employment_type?: string
           hire_date?: string | null
+          hourly_rate?: number
           id?: string
           is_active?: boolean | null
           location?: string | null
           name?: string
           phone?: string | null
           pronouns?: string | null
+          rate_currency?: string
           role?: string | null
           social_links?: Json
           updated_at?: string
