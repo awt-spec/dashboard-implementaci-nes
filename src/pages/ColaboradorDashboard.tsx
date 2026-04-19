@@ -12,13 +12,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   ListTodo, Loader2, Calendar, Building2, AlertCircle, Search, Filter,
   Target, Play, Square, Clock, Zap, TrendingUp, Trophy, ArrowRight,
-  CheckCircle2, Circle, GitBranch, MoreHorizontal, FileText, Flame, Bug, Wrench, LogOut, Mail,
+  CheckCircle2, Circle, GitBranch, MoreHorizontal, FileText, Flame, Bug, Wrench, LogOut, Mail, Bot, Sparkles,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAllScrumWorkItems, useAllSprints, useUpdateWorkItemScrum, type ScrumWorkItem } from "@/hooks/useTeamScrum";
 import { useWorkTimer, useActivityTracker } from "@/hooks/useActivityTracker";
 import { ManualTimeEntryDialog } from "@/components/team/ManualTimeEntryDialog";
-import { FloatingAgentButton } from "@/components/team/FloatingAgentButton";
+import { AgentSidePanel } from "@/components/team/AgentSidePanel";
+import { MemberAIAgentPanel } from "@/components/team/MemberAIAgentPanel";
 import { useMyTeamMember } from "@/hooks/useMyTeamMember";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -52,7 +53,7 @@ export default function ColaboradorDashboard() {
   const [clientNames, setClientNames] = useState<Record<string, string>>({});
   const [todayMinutes, setTodayMinutes] = useState(0);
   const [activeTimer, setActiveTimer] = useState<string | null>(null);
-  const [view, setView] = useState<"board" | "backlog" | "minutes">("board");
+  const [view, setView] = useState<"board" | "backlog" | "minutes" | "agent">("board");
   const [search, setSearch] = useState("");
   const [clientFilter, setClientFilter] = useState<string>("all");
   const [selectedItem, setSelectedItem] = useState<ScrumWorkItem | null>(null);
@@ -198,16 +199,33 @@ export default function ColaboradorDashboard() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
-          <p className="text-[10px] font-bold uppercase text-muted-foreground px-2 py-2 tracking-wider">Boards</p>
-          <NavBtn icon={Target} label="Active Sprint" count={sprintItems.length} active={view === "board"} onClick={() => setView("board")} />
-          <NavBtn icon={ListTodo} label="My Backlog" count={backlogItems.length} active={view === "backlog"} onClick={() => setView("backlog")} />
-          <NavBtn icon={FileText} label="Meeting Notes" count={minutes.length} active={view === "minutes"} onClick={() => setView("minutes")} />
+          <p className="text-[10px] font-bold uppercase text-muted-foreground px-2 py-2 tracking-wider">Mi trabajo</p>
+          <NavBtn icon={Target} label="Sprint activo" count={sprintItems.length} active={view === "board"} onClick={() => setView("board")} />
+          <NavBtn icon={ListTodo} label="Mi backlog" count={backlogItems.length} active={view === "backlog"} onClick={() => setView("backlog")} />
+          <NavBtn icon={FileText} label="Minutas" count={minutes.length} active={view === "minutes"} onClick={() => setView("minutes")} />
 
-          <p className="text-[10px] font-bold uppercase text-muted-foreground px-2 pt-4 pb-2 tracking-wider">My Stats</p>
+          <p className="text-[10px] font-bold uppercase text-muted-foreground px-2 pt-4 pb-2 tracking-wider flex items-center gap-1">
+            <Sparkles className="h-2.5 w-2.5" /> Inteligencia
+          </p>
+          <button
+            onClick={() => setView("agent")}
+            className={cn(
+              "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors group",
+              view === "agent"
+                ? "bg-gradient-to-r from-primary to-primary/80 text-primary-foreground font-semibold shadow-sm"
+                : "bg-primary/5 text-primary hover:bg-primary/10 font-medium border border-primary/15"
+            )}
+          >
+            <Bot className="h-3.5 w-3.5" />
+            <span className="flex-1 text-left">Mi Agente IA</span>
+            <Sparkles className={cn("h-3 w-3", view === "agent" ? "animate-pulse" : "text-primary/70")} />
+          </button>
+
+          <p className="text-[10px] font-bold uppercase text-muted-foreground px-2 pt-4 pb-2 tracking-wider">Métricas hoy</p>
           <div className="px-2 space-y-2">
-            <StatRow icon={Clock} label="Today" value={`${todayMinutes}m`} />
-            <StatRow icon={Zap} label="In progress" value={sprintItems.filter(i => i.scrum_status === "in_progress").length} />
-            <StatRow icon={CheckCircle2} label="Done" value={sprintItems.filter(i => i.scrum_status === "done").length} />
+            <StatRow icon={Clock} label="Horas registradas" value={`${todayMinutes}m`} />
+            <StatRow icon={Zap} label="En progreso" value={sprintItems.filter(i => i.scrum_status === "in_progress").length} />
+            <StatRow icon={CheckCircle2} label="Completadas" value={sprintItems.filter(i => i.scrum_status === "done").length} />
           </div>
 
           {myClients.length > 0 && (
@@ -253,16 +271,17 @@ export default function ColaboradorDashboard() {
         {/* Top toolbar */}
         <div className="border-b border-border px-6 py-3 flex items-center justify-between gap-4 bg-background">
           <div className="flex items-center gap-3 min-w-0">
-            <h1 className="text-lg font-bold truncate">
-              {view === "board" && (activeSprint?.name || "Active Sprint")}
-              {view === "backlog" && "My Backlog"}
-              {view === "minutes" && "Meeting Notes"}
+            <h1 className="text-lg font-bold truncate flex items-center gap-2">
+              {view === "board" && (<><Target className="h-4 w-4 text-primary" /> {activeSprint?.name || "Sprint activo"}</>)}
+              {view === "backlog" && (<><ListTodo className="h-4 w-4 text-primary" /> Mi backlog</>)}
+              {view === "minutes" && (<><FileText className="h-4 w-4 text-primary" /> Minutas</>)}
+              {view === "agent" && (<><Bot className="h-4 w-4 text-primary" /> Mi Agente IA <Sparkles className="h-3.5 w-3.5 text-warning animate-pulse" /></>)}
             </h1>
             {view === "board" && activeSprint && (
               <div className="hidden md:flex items-center gap-3 text-xs">
                 {daysLeft !== null && (
                   <Badge variant="outline" className="gap-1 font-mono">
-                    <Calendar className="h-3 w-3" /> {daysLeft}d left
+                    <Calendar className="h-3 w-3" /> {daysLeft}d restantes
                   </Badge>
                 )}
                 <Badge variant="outline" className="gap-1 font-mono">
@@ -271,19 +290,21 @@ export default function ColaboradorDashboard() {
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search items..." className="h-8 pl-8 w-48 text-xs" />
+          {view !== "agent" && (
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar..." className="h-8 pl-8 w-48 text-xs" />
+              </div>
+              <Select value={clientFilter} onValueChange={setClientFilter}>
+                <SelectTrigger className="h-8 w-36 text-xs"><Filter className="h-3 w-3 mr-1" /><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los clientes</SelectItem>
+                  {myClients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={clientFilter} onValueChange={setClientFilter}>
-              <SelectTrigger className="h-8 w-36 text-xs"><Filter className="h-3 w-3 mr-1" /><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All projects</SelectItem>
-                {myClients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
+          )}
         </div>
 
         {view === "board" && activeSprint && (
@@ -383,12 +404,32 @@ export default function ColaboradorDashboard() {
               ))}
             </div>
           )}
+
+          {/* AGENT VIEW — full immersive */}
+          {view === "agent" && myMember?.id && (
+            <div className="max-w-6xl mx-auto h-full">
+              <MemberAIAgentPanel
+                memberId={myMember.id}
+                memberName={myMember.name || profile?.full_name || "Colaborador"}
+              />
+            </div>
+          )}
+          {view === "agent" && !myMember?.id && (
+            <EmptyState message="Tu perfil de colaborador aún no está vinculado. Contacta a un admin." />
+          )}
         </div>
       </main>
 
       <ManualTimeEntryDialog open={logHoursOpen} onOpenChange={setLogHoursOpen} />
 
-      <FloatingAgentButton memberId={myMember?.id} memberName={myMember?.name || profile?.full_name} />
+      {/* Persistent immersive agent panel — Cursor-style */}
+      {view !== "agent" && (
+        <AgentSidePanel
+          memberId={myMember?.id}
+          memberName={myMember?.name || profile?.full_name}
+          contextLabel={selectedItem?.title || (activeSprint?.name ? `Sprint ${activeSprint.name}` : null)}
+        />
+      )}
 
       {/* DETAIL PANEL — Jira-style right sheet */}
       <Sheet open={!!selectedItem} onOpenChange={(o) => !o && setSelectedItem(null)}>

@@ -50,7 +50,15 @@ const COMMON_PROMPTS = [
   { icon: "📚", label: "¿Qué aprendo?", prompt: "Basado en mis skills y tareas, ¿qué debería aprender o reforzar esta semana?" },
 ];
 
-export function MemberAIAgentPanel({ memberId, memberName }: { memberId: string; memberName: string }) {
+export function MemberAIAgentPanel({
+  memberId,
+  memberName,
+  layout = "split",
+}: {
+  memberId: string;
+  memberName: string;
+  layout?: "split" | "stacked";
+}) {
   const { data: cfg } = useAgentConfig(memberId);
   const { data: conversations = [] } = useAgentConversations(memberId);
   const chat = useChatWithAgent();
@@ -124,10 +132,12 @@ export function MemberAIAgentPanel({ memberId, memberName }: { memberId: string;
     setInput("");
   };
 
+  const stacked = layout === "stacked";
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+    <div className={stacked ? "flex flex-col gap-3 h-full" : "grid grid-cols-1 lg:grid-cols-4 gap-3"}>
       {/* Conversations sidebar */}
-      <Card className="lg:col-span-1 h-[600px] flex flex-col">
+      <Card className={stacked ? "shrink-0 max-h-32 flex flex-col" : "lg:col-span-1 h-[600px] flex flex-col"}>
         <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
           <CardTitle className="text-sm flex items-center gap-2"><MessageSquare className="h-4 w-4" /> Historial</CardTitle>
           <Button size="sm" variant="ghost" className="h-7" onClick={newChat}>
@@ -167,7 +177,7 @@ export function MemberAIAgentPanel({ memberId, memberName }: { memberId: string;
       </Card>
 
       {/* Chat area */}
-      <Card className="lg:col-span-3 h-[600px] flex flex-col">
+      <Card className={stacked ? "flex-1 min-h-0 flex flex-col" : "lg:col-span-3 h-[600px] flex flex-col"}>
         <CardHeader className="pb-2 flex-row items-center justify-between space-y-0 border-b">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
