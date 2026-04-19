@@ -12,13 +12,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   ListTodo, Loader2, Calendar, Building2, AlertCircle, Search, Filter,
   Target, Play, Square, Clock, Zap, TrendingUp, Trophy, ArrowRight,
-  CheckCircle2, Circle, GitBranch, MoreHorizontal, FileText, Flame, Bug, Wrench, LogOut, Mail,
+  CheckCircle2, Circle, GitBranch, MoreHorizontal, FileText, Flame, Bug, Wrench, LogOut, Mail, Bot, Sparkles,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAllScrumWorkItems, useAllSprints, useUpdateWorkItemScrum, type ScrumWorkItem } from "@/hooks/useTeamScrum";
 import { useWorkTimer, useActivityTracker } from "@/hooks/useActivityTracker";
 import { ManualTimeEntryDialog } from "@/components/team/ManualTimeEntryDialog";
-import { FloatingAgentButton } from "@/components/team/FloatingAgentButton";
+import { AgentSidePanel } from "@/components/team/AgentSidePanel";
+import { MemberAIAgentPanel } from "@/components/team/MemberAIAgentPanel";
 import { useMyTeamMember } from "@/hooks/useMyTeamMember";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -52,7 +53,7 @@ export default function ColaboradorDashboard() {
   const [clientNames, setClientNames] = useState<Record<string, string>>({});
   const [todayMinutes, setTodayMinutes] = useState(0);
   const [activeTimer, setActiveTimer] = useState<string | null>(null);
-  const [view, setView] = useState<"board" | "backlog" | "minutes">("board");
+  const [view, setView] = useState<"board" | "backlog" | "minutes" | "agent">("board");
   const [search, setSearch] = useState("");
   const [clientFilter, setClientFilter] = useState<string>("all");
   const [selectedItem, setSelectedItem] = useState<ScrumWorkItem | null>(null);
