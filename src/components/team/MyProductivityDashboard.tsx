@@ -81,6 +81,10 @@ export function MyProductivityDashboard() {
         </Card>
       </div>
 
+      {myMember?.id && (
+        <WeeklyDigestCard memberId={myMember.id} />
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">
           <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
