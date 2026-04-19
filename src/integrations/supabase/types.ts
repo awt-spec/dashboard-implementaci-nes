@@ -2933,6 +2933,45 @@ export type Database = {
           },
         ]
       }
+      time_entry_audit_log: {
+        Row: {
+          action: string
+          changed_by: string
+          changed_by_email: string | null
+          created_at: string
+          entry_id: string
+          field_changed: string | null
+          id: string
+          metadata: Json | null
+          new_value: string | null
+          old_value: string | null
+        }
+        Insert: {
+          action: string
+          changed_by: string
+          changed_by_email?: string | null
+          created_at?: string
+          entry_id: string
+          field_changed?: string | null
+          id?: string
+          metadata?: Json | null
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Update: {
+          action?: string
+          changed_by?: string
+          changed_by_email?: string | null
+          created_at?: string
+          entry_id?: string
+          field_changed?: string | null
+          id?: string
+          metadata?: Json | null
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Relationships: []
+      }
       time_tracking_goals: {
         Row: {
           billable_target_pct: number
@@ -2957,6 +2996,30 @@ export type Database = {
           updated_at?: string
           user_id?: string
           weekly_target_hours?: number
+        }
+        Relationships: []
+      }
+      time_weekly_locks: {
+        Row: {
+          id: string
+          locked_at: string
+          locked_by: string
+          notes: string | null
+          week_start: string
+        }
+        Insert: {
+          id?: string
+          locked_at?: string
+          locked_by: string
+          notes?: string | null
+          week_start: string
+        }
+        Update: {
+          id?: string
+          locked_at?: string
+          locked_by?: string
+          notes?: string | null
+          week_start?: string
         }
         Relationships: []
       }
@@ -3047,6 +3110,7 @@ export type Database = {
       work_time_entries: {
         Row: {
           approval_status: string
+          category: string | null
           client_id: string | null
           created_at: string
           description: string | null
@@ -3054,9 +3118,12 @@ export type Database = {
           ended_at: string | null
           id: string
           is_billable: boolean
+          is_locked: boolean
           is_manual: boolean
           item_id: string
+          mood: number | null
           note: string | null
+          productivity_score: number | null
           source: string
           started_at: string
           tags: string[]
@@ -3065,6 +3132,7 @@ export type Database = {
         }
         Insert: {
           approval_status?: string
+          category?: string | null
           client_id?: string | null
           created_at?: string
           description?: string | null
@@ -3072,9 +3140,12 @@ export type Database = {
           ended_at?: string | null
           id?: string
           is_billable?: boolean
+          is_locked?: boolean
           is_manual?: boolean
           item_id: string
+          mood?: number | null
           note?: string | null
+          productivity_score?: number | null
           source: string
           started_at?: string
           tags?: string[]
@@ -3083,6 +3154,7 @@ export type Database = {
         }
         Update: {
           approval_status?: string
+          category?: string | null
           client_id?: string | null
           created_at?: string
           description?: string | null
@@ -3090,9 +3162,12 @@ export type Database = {
           ended_at?: string | null
           id?: string
           is_billable?: boolean
+          is_locked?: boolean
           is_manual?: boolean
           item_id?: string
+          mood?: number | null
           note?: string | null
+          productivity_score?: number | null
           source?: string
           started_at?: string
           tags?: string[]
