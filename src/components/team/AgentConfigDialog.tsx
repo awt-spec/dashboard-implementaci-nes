@@ -27,9 +27,12 @@ const TONES = [
 ];
 
 const MODELS = [
-  { value: "google/gemini-2.5-flash", label: "Gemini Flash (rápido)" },
-  { value: "google/gemini-2.5-pro", label: "Gemini Pro (razonamiento)" },
+  { value: "google/gemini-3-flash-preview", label: "Gemini 3 Flash (rápido, recomendado)" },
+  { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+  { value: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro (razonamiento)" },
   { value: "openai/gpt-5-mini", label: "GPT-5 mini" },
+  { value: "openai/gpt-5", label: "GPT-5 ⭐ Premium" },
+  { value: "openai/gpt-5.2", label: "GPT-5.2 ⭐ Premium (último)" },
 ];
 
 export function AgentConfigDialog({
