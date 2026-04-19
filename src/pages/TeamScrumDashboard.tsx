@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Trophy, ListOrdered, Brain, BarChart3, Loader2, Sparkles,
-  AlertTriangle, TrendingUp, Users, Target, Calendar, Filter, Zap,
+  AlertTriangle, TrendingUp, Users, Target, Calendar, Filter, Zap, Flame,
 } from "lucide-react";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
