@@ -26,3 +26,11 @@ UI:
 Hook: `useMyTeamMember` resolves the member record from auth profile email.
 
 RLS: owner + admin/pm can read; admin can delete. Uses `LOVABLE_API_KEY` (no new secrets).
+
+Model selector options (in `AgentConfigDialog`):
+- `google/gemini-3-flash-preview` (default recommended, fast)
+- `google/gemini-2.5-flash`, `google/gemini-2.5-pro`
+- `openai/gpt-5-mini`
+- `openai/gpt-5` ⭐ Premium
+- `openai/gpt-5.2` ⭐ Premium (latest, best reasoning — slower & more credits per message)
+Claude/Anthropic models are NOT supported by Lovable AI Gateway.
