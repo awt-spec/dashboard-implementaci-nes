@@ -86,7 +86,7 @@ export function useAgentConversations(memberId?: string) {
         .order("updated_at", { ascending: false })
         .limit(20);
       if (error) throw error;
-      return (data || []) as AgentConversation[];
+      return (data || []) as unknown as AgentConversation[];
     },
   });
 }
