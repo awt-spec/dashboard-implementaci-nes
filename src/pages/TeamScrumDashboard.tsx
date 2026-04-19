@@ -23,6 +23,7 @@ import { TeamActivityPanel } from "@/components/admin/TeamActivityPanel";
 import { SprintManager } from "@/components/scrum/SprintManager";
 import { DailyStandupPanel } from "@/components/scrum/DailyStandupPanel";
 import { SprintAnalytics } from "@/components/scrum/SprintAnalytics";
+import { ActiveSprintHub } from "@/components/scrum/ActiveSprintHub";
 
 const CHART_COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "hsl(var(--warning))", "hsl(220,70%,55%)", "hsl(150,60%,50%)", "hsl(280,60%,60%)"];
 
