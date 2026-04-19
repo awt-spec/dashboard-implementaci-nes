@@ -271,16 +271,17 @@ export default function ColaboradorDashboard() {
         {/* Top toolbar */}
         <div className="border-b border-border px-6 py-3 flex items-center justify-between gap-4 bg-background">
           <div className="flex items-center gap-3 min-w-0">
-            <h1 className="text-lg font-bold truncate">
-              {view === "board" && (activeSprint?.name || "Active Sprint")}
-              {view === "backlog" && "My Backlog"}
-              {view === "minutes" && "Meeting Notes"}
+            <h1 className="text-lg font-bold truncate flex items-center gap-2">
+              {view === "board" && (<><Target className="h-4 w-4 text-primary" /> {activeSprint?.name || "Sprint activo"}</>)}
+              {view === "backlog" && (<><ListTodo className="h-4 w-4 text-primary" /> Mi backlog</>)}
+              {view === "minutes" && (<><FileText className="h-4 w-4 text-primary" /> Minutas</>)}
+              {view === "agent" && (<><Bot className="h-4 w-4 text-primary" /> Mi Agente IA <Sparkles className="h-3.5 w-3.5 text-warning animate-pulse" /></>)}
             </h1>
             {view === "board" && activeSprint && (
               <div className="hidden md:flex items-center gap-3 text-xs">
                 {daysLeft !== null && (
                   <Badge variant="outline" className="gap-1 font-mono">
-                    <Calendar className="h-3 w-3" /> {daysLeft}d left
+                    <Calendar className="h-3 w-3" /> {daysLeft}d restantes
                   </Badge>
                 )}
                 <Badge variant="outline" className="gap-1 font-mono">
@@ -289,19 +290,21 @@ export default function ColaboradorDashboard() {
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search items..." className="h-8 pl-8 w-48 text-xs" />
+          {view !== "agent" && (
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar..." className="h-8 pl-8 w-48 text-xs" />
+              </div>
+              <Select value={clientFilter} onValueChange={setClientFilter}>
+                <SelectTrigger className="h-8 w-36 text-xs"><Filter className="h-3 w-3 mr-1" /><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los clientes</SelectItem>
+                  {myClients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={clientFilter} onValueChange={setClientFilter}>
-              <SelectTrigger className="h-8 w-36 text-xs"><Filter className="h-3 w-3 mr-1" /><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All projects</SelectItem>
-                {myClients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
+          )}
         </div>
 
         {view === "board" && activeSprint && (
