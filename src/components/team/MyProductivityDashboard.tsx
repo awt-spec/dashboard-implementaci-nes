@@ -10,10 +10,13 @@ import { ManualTimeEntryDialog } from "./ManualTimeEntryDialog";
 import { TimesheetView } from "./TimesheetView";
 import { QuickLogItems } from "./QuickLogItems";
 import { TimeGoalDialog } from "./TimeGoalDialog";
+import { WeeklyDigestCard } from "./WeeklyDigestCard";
+import { useMyTeamMember } from "@/hooks/useMyTeamMember";
 
 export function MyProductivityDashboard() {
   const { data: entries = [] } = useMyTimeEntries(30);
   const { data: goal } = useMyTimeGoal();
+  const { data: myMember } = useMyTeamMember();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [goalOpen, setGoalOpen] = useState(false);
 
