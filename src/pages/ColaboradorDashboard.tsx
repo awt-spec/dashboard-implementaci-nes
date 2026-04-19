@@ -404,12 +404,32 @@ export default function ColaboradorDashboard() {
               ))}
             </div>
           )}
+
+          {/* AGENT VIEW — full immersive */}
+          {view === "agent" && myMember?.id && (
+            <div className="max-w-6xl mx-auto h-full">
+              <MemberAIAgentPanel
+                memberId={myMember.id}
+                memberName={myMember.name || profile?.full_name || "Colaborador"}
+              />
+            </div>
+          )}
+          {view === "agent" && !myMember?.id && (
+            <EmptyState message="Tu perfil de colaborador aún no está vinculado. Contacta a un admin." />
+          )}
         </div>
       </main>
 
       <ManualTimeEntryDialog open={logHoursOpen} onOpenChange={setLogHoursOpen} />
 
-      <FloatingAgentButton memberId={myMember?.id} memberName={myMember?.name || profile?.full_name} />
+      {/* Persistent immersive agent panel — Cursor-style */}
+      {view !== "agent" && (
+        <AgentSidePanel
+          memberId={myMember?.id}
+          memberName={myMember?.name || profile?.full_name}
+          contextLabel={selectedItem?.title || (activeSprint?.name ? `Sprint ${activeSprint.name}` : null)}
+        />
+      )}
 
       {/* DETAIL PANEL — Jira-style right sheet */}
       <Sheet open={!!selectedItem} onOpenChange={(o) => !o && setSelectedItem(null)}>
