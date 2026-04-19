@@ -1041,6 +1041,126 @@ export type Database = {
           },
         ]
       }
+      member_ai_agents: {
+        Row: {
+          created_at: string
+          custom_instructions: string | null
+          enabled: boolean
+          id: string
+          member_id: string
+          preferred_model: string
+          role_template: string
+          tone: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          custom_instructions?: string | null
+          enabled?: boolean
+          id?: string
+          member_id: string
+          preferred_model?: string
+          role_template?: string
+          tone?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          custom_instructions?: string | null
+          enabled?: boolean
+          id?: string
+          member_id?: string
+          preferred_model?: string
+          role_template?: string
+          tone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_ai_agents_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: true
+            referencedRelation: "sysde_team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      member_ai_conversations: {
+        Row: {
+          context_snapshot: Json | null
+          created_at: string
+          id: string
+          member_id: string
+          messages: Json
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          context_snapshot?: Json | null
+          created_at?: string
+          id?: string
+          member_id: string
+          messages?: Json
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          context_snapshot?: Json | null
+          created_at?: string
+          id?: string
+          member_id?: string
+          messages?: Json
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_ai_conversations_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "sysde_team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      member_ai_digests: {
+        Row: {
+          created_at: string
+          id: string
+          member_id: string
+          metrics: Json | null
+          suggestions: Json
+          summary: string
+          week_start: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          member_id: string
+          metrics?: Json | null
+          suggestions?: Json
+          summary: string
+          week_start: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          member_id?: string
+          metrics?: Json | null
+          suggestions?: Json
+          summary?: string
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_ai_digests_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "sysde_team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mentor_conversations: {
         Row: {
           created_at: string
