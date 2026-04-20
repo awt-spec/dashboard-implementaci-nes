@@ -13,6 +13,7 @@ import {
   ListTodo, Loader2, Calendar, Building2, AlertCircle, Search, Filter,
   Target, Play, Square, Clock, Zap, TrendingUp, Trophy, ArrowRight,
   CheckCircle2, Circle, GitBranch, MoreHorizontal, FileText, Flame, Bug, Wrench, LogOut, Mail, Bot, Sparkles,
+  PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAllScrumWorkItems, useAllSprints, useUpdateWorkItemScrum, type ScrumWorkItem } from "@/hooks/useTeamScrum";
