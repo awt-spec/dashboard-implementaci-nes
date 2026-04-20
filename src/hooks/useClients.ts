@@ -119,10 +119,21 @@ interface DbRisk {
   category: string;
 }
 
-// Fetch all clients with related data
+// Fetch all clients with related data — only ACTIVE clients + specific columns for performance
 async function fetchClients(): Promise<Client[]> {
+  // 1) First fetch active client IDs (status != 'completado' — keep risk/active/paused visible)
+  const { data: clients, error: clientsError } = await supabase
+    .from("clients")
+    .select("id,name,country,industry,contact_name,contact_email,contract_start,contract_end,status,progress,team_assigned,client_type,core_version,modules")
+    .neq("status", "completado");
+
+  if (clientsError) throw clientsError;
+  if (!clients || clients.length === 0) return [] as Client[];
+
+  const activeIds = clients.map((c) => c.id);
+
+  // 2) Fetch related rows scoped to active clients only + minimal column projection
   const [
-    { data: clients, error: clientsError },
     { data: phases },
     { data: deliverables },
     { data: tasks },
@@ -132,21 +143,15 @@ async function fetchClients(): Promise<Client[]> {
     { data: comments },
     { data: risks },
   ] = await Promise.all([
-    supabase.from("clients").select("*"),
-    supabase.from("phases").select("*"),
-    supabase.from("deliverables").select("*"),
-    supabase.from("tasks").select("*"),
-    supabase.from("action_items").select("*"),
-    supabase.from("meeting_minutes").select("*"),
-    supabase.from("email_notifications").select("*"),
-    supabase.from("comments").select("*"),
-    supabase.from("risks").select("*"),
+    supabase.from("phases").select("id,client_id,name,status,progress,start_date,end_date").in("client_id", activeIds),
+    supabase.from("deliverables").select("id,client_id,original_id,name,type,status,due_date,delivered_date,approved_by,version,detail,responsible_party,responsible_team,linked_task_id").in("client_id", activeIds),
+    supabase.from("tasks").select("id,client_id,original_id,title,status,owner,due_date,priority,assignees,description,visibility").in("client_id", activeIds),
+    supabase.from("action_items").select("id,client_id,original_id,title,assignee,due_date,status,source,priority,responsible_party,responsible_team,linked_task_id").in("client_id", activeIds),
+    supabase.from("meeting_minutes").select("id,client_id,original_id,title,date,attendees,summary,agreements,action_items,next_meeting,visible_to_client,presentation_snapshot").in("client_id", activeIds),
+    supabase.from("email_notifications").select("id,client_id,original_id,subject,to,from,date,status,type,preview").in("client_id", activeIds),
+    supabase.from("comments").select("id,client_id,original_id,user,avatar,message,date,type").in("client_id", activeIds),
+    supabase.from("risks").select("id,client_id,original_id,description,impact,status,mitigation,category").in("client_id", activeIds),
   ]);
-
-  if (clientsError) throw clientsError;
-
-  // If DB has no clients, return empty to trigger static fallback via ?? operator
-  if (!clients || clients.length === 0) return [] as Client[];
 
   const clientsData = clients as unknown as DbClient[];
   const phasesData = (phases || []) as unknown as DbPhase[];
@@ -280,6 +285,8 @@ export function useClients() {
   return useQuery({
     queryKey: ["clients"],
     queryFn: fetchClients,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 }
 

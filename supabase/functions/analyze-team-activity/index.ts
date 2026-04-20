@@ -142,6 +142,7 @@ Devuelve un análisis con:
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
+      signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [

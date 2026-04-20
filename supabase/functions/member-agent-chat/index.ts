@@ -176,6 +176,7 @@ Responde SIEMPRE en español, con markdown bien estructurado y escaneable. Sigue
     const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
         model,
         messages: [

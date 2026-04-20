@@ -12,7 +12,16 @@ import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import MemberProfile from "./pages/MemberProfile";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 min — data considered fresh, no refetch
+      gcTime: 10 * 60 * 1000,   // 10 min — keep in cache after unmount
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 function AuthGate() {
   const { user, loading } = useAuth();

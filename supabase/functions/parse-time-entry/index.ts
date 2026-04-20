@@ -99,6 +99,7 @@ Devuelve SOLO un JSON con este formato exacto:
         Authorization: `Bearer ${Deno.env.get("LOVABLE_API_KEY")}`,
         "Content-Type": "application/json",
       },
+      signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
