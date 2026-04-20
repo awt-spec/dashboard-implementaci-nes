@@ -2405,6 +2405,7 @@ export type Database = {
           assignees: Json
           backlog_rank: number | null
           business_value: number | null
+          checklist: Json
           client_id: string
           created_at: string
           description: string | null
@@ -2427,6 +2428,7 @@ export type Database = {
           assignees?: Json
           backlog_rank?: number | null
           business_value?: number | null
+          checklist?: Json
           client_id: string
           created_at?: string
           description?: string | null
@@ -2449,6 +2451,7 @@ export type Database = {
           assignees?: Json
           backlog_rank?: number | null
           business_value?: number | null
+          checklist?: Json
           client_id?: string
           created_at?: string
           description?: string | null
