@@ -19,6 +19,7 @@ import {
 import { useClients } from "@/hooks/useClients";
 import { SprintReviewDialog } from "./SprintReviewDialog";
 import { SprintRetroDialog } from "./SprintRetroDialog";
+import { SprintInsightsPanel } from "./SprintInsightsPanel";
 
 const STATUS_COLORS: Record<string, string> = {
   planificado: "bg-muted text-muted-foreground border-border",
@@ -251,6 +252,9 @@ export function SprintManager() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Burndown + Capacity per person */}
+              <SprintInsightsPanel sprint={selected} items={sprintItems} />
 
               {/* Two columns: backlog ↔ sprint items */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
