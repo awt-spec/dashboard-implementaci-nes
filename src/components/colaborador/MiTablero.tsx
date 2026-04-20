@@ -97,6 +97,8 @@ export function MiTablero({ items, clientNames, sprintName, daysLeft, onSelect, 
                       initial={{ opacity: 0, y: 4 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: idx * 0.02 }}
+                    >
+                    <div
                       draggable
                       onDragStart={(e) => handleDragStart(e, item)}
                       onClick={() => onSelect(item)}
