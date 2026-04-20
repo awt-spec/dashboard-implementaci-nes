@@ -1,18 +1,16 @@
-# Memory: index.md
-Updated: now
-
 # Project Memory
 
 ## Core
 Platform is "Sysde Support" (formerly Sysde PMO). Focus on Implementations Management.
-RBAC: admin, pm, gerente (client portal), colaborador (sysde team member).
+RBAC: admin, pm, gerente (client portal).
 Supabase SSOT. Scoped by client ID. Use `.maybeSingle()`. Mutations use `null` (not `undefined`).
 "Progreso" (not "En Progreso"). Strict commercial terminology in Client Portal.
 Direct slide interaction blocked; use side panel to edit.
 Task state/priority editable only via dialog, not directly on table.
 Unified Scrum: tasks + support_tickets share sprint_id, story_points, business_value, effort, scrum_status. WSJF = value/effort.
 Sidebar item "Tareas Global" replaced by "Equipo Scrum" (TeamScrumDashboard).
-Activity tracking auto-mounted in Index.tsx via useActivityTracker (sessions+heartbeat+activity log).
+TanStack Query global defaults: staleTime 5min, gcTime 10min — set in App.tsx, do not duplicate per-hook.
+AI edge functions use AbortSignal.timeout(30000) on Gemini fetch.
 
 ## Memories
 - [Auth & Sessions](mem://features/auth) — RBAC, session persistence rules, resilient login, demo accounts
@@ -24,8 +22,6 @@ Activity tracking auto-mounted in Index.tsx via useActivityTracker (sessions+hea
 - [Minutes](mem://features/minutes) — AI wizard for creation, admin-controlled client visibility
 - [Design & UI](mem://design/ui) — Full-width dashboard, Sysde branding, charts (Recharts)
 - [Technical Setup](mem://technical/architecture) — Supabase database specifics, admin user management
+- [Performance](mem://technical/performance) — Query cache defaults, useClients active-only filter, AI fetch 30s timeout
 - [Team Scrum](mem://features/team-scrum) — Unified backlog (tasks+tickets), WSJF, Kanban, IA bottlenecks, burndown/velocity
-- [Team Tracking](mem://features/team-tracking) — Colaborador dashboard scrum + sessions/timer/activity tracking + admin panels
-- [Team Hub](mem://features/team-hub) — Sprints (ceremonies+forecast), 360 profiles (career path), directory cards + skill matrix heatmap + AI recommender + onboarding
-- [Team Engagement](mem://features/team-engagement) — Phase 4: kudos+badges+leaderboard, time-off calendar+coverage alerts, learning hub+enrollments+Mentor IA
-- [AI Agents](mem://features/ai-agents) — Personal role-based AI agent per member, weekly digest, FAB, profile tab, edge functions member-agent-chat/weekly-digest
+- [Time Tracking](mem://features/time-tracking) — Hours registration, weekly timesheet, billable, approvals, workload bands
