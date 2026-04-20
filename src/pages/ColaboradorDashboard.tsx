@@ -18,7 +18,6 @@ import { MiSprintCard } from "@/components/colaborador/MiSprintCard";
 import { AgenteIACompactCard } from "@/components/colaborador/AgenteIACompactCard";
 import { MiTablero } from "@/components/colaborador/MiTablero";
 import { EstaSemanaCalendar } from "@/components/colaborador/EstaSemanaCalendar";
-import { MiActividadFeed } from "@/components/colaborador/MiActividadFeed";
 import { TaskDetailSheet } from "@/components/colaborador/TaskDetailSheet";
 
 export default function ColaboradorDashboard() {
@@ -273,10 +272,7 @@ export default function ColaboradorDashboard() {
           onMove={handleMoveItem}
         />
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5">
-          <EstaSemanaCalendar items={sprintItems} />
-          <MiActividadFeed limit={6} />
-        </div>
+        <EstaSemanaCalendar items={sprintItems} />
 
         <div className="flex items-center justify-end gap-2 pb-6">
           <Button variant="outline" size="sm" onClick={() => setLogHoursOpen(true)}>Registrar horas</Button>
