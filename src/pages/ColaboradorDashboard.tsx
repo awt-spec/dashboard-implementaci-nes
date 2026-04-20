@@ -546,18 +546,24 @@ export default function ColaboradorDashboard() {
   );
 }
 
-function NavBtn({ icon: Icon, label, count, active, onClick }: any) {
+function NavBtn({ icon: Icon, label, count, active, onClick, collapsed }: any) {
   return (
     <button
       onClick={onClick}
+      title={collapsed ? `${label} (${count})` : undefined}
       className={cn(
-        "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors",
+        "w-full flex items-center gap-2 rounded-md text-xs transition-colors",
+        collapsed ? "justify-center px-1 py-2" : "px-2 py-1.5",
         active ? "bg-primary/15 text-primary font-semibold" : "text-foreground/70 hover:bg-muted/60"
       )}
     >
-      <Icon className="h-3.5 w-3.5" />
-      <span className="flex-1 text-left">{label}</span>
-      <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">{count}</Badge>
+      <Icon className="h-3.5 w-3.5 shrink-0" />
+      {!collapsed && (
+        <>
+          <span className="flex-1 text-left">{label}</span>
+          <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">{count}</Badge>
+        </>
+      )}
     </button>
   );
 }
