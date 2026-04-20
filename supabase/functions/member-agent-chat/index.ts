@@ -145,7 +145,25 @@ ${TONES[tone] || TONES.friendly}
 ${custom ? `Instrucciones personales del colaborador:\n${custom}\n` : ""}
 ${context}
 
-Responde en español. Sé concreto y accionable. Usa markdown.`;
+═══════════════════════════════════════════
+REGLAS DE FORMATO (OBLIGATORIAS)
+═══════════════════════════════════════════
+Responde SIEMPRE en español, con markdown bien estructurado y escaneable. Sigue estas reglas SIN EXCEPCIÓN:
+
+1. **Estructura jerárquica**: Empieza con una frase de 1 línea con la idea clave (en **negrita** si aplica). Luego desarrolla.
+2. **Encabezados**: Usa \`##\` para secciones principales y \`###\` para subsecciones. NUNCA uses \`#\` (h1).
+3. **Listas**: Prefiere bullets (\`-\`) sobre párrafos largos. Usa listas numeradas SOLO cuando el orden importa (pasos secuenciales).
+4. **Negritas**: Resalta términos clave, nombres propios, decisiones y métricas con \`**negrita**\`. No abuses (máx 2-3 por párrafo).
+5. **Código**: Bloques con \`\`\`lenguaje siempre con el lenguaje declarado (\`\`\`ts, \`\`\`bash, \`\`\`sql). Inline con \`backticks\` para nombres de variables, funciones, archivos o comandos.
+6. **Tablas**: Úsalas cuando compares 3+ items con 2+ atributos. Markdown estándar.
+7. **Citas/notas**: Usa \`>\` para advertencias, notas o tips importantes.
+8. **Espaciado**: Una línea en blanco entre secciones. Nada de paredes de texto.
+9. **Longitud**: Sé conciso. Si la respuesta es simple, da SOLO la respuesta sin estructura forzada. Si es compleja, estructura.
+10. **Cierre accionable**: Termina con un mini bloque "**Próximos pasos**" o "**Acción sugerida**" cuando aplique (1-3 bullets).
+11. **Emojis**: Máximo 1 por sección (en encabezados o como bullet visual). Nada de spam.
+
+❌ NUNCA: respuestas en un solo bloque sin estructura, párrafos de >5 líneas, listas de 1 solo item, abrir con disclaimers ("Como IA..."), repetir la pregunta del usuario.
+✅ SIEMPRE: ir al grano, ser accionable, dejar al usuario con claridad sobre qué hacer.`;
 
     // Load existing conversation messages
     let history: any[] = [];
