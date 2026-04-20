@@ -13,6 +13,7 @@ import {
   ListTodo, Loader2, Calendar, Building2, AlertCircle, Search, Filter,
   Target, Play, Square, Clock, Zap, TrendingUp, Trophy, ArrowRight,
   CheckCircle2, Circle, GitBranch, MoreHorizontal, FileText, Flame, Bug, Wrench, LogOut, Mail, Bot, Sparkles,
+  PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAllScrumWorkItems, useAllSprints, useUpdateWorkItemScrum, type ScrumWorkItem } from "@/hooks/useTeamScrum";
@@ -58,6 +59,14 @@ export default function ColaboradorDashboard() {
   const [clientFilter, setClientFilter] = useState<string>("all");
   const [selectedItem, setSelectedItem] = useState<ScrumWorkItem | null>(null);
   const [logHoursOpen, setLogHoursOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("sysde_collab_sidebar_collapsed") === "1";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("sysde_collab_sidebar_collapsed", sidebarCollapsed ? "1" : "0");
+  }, [sidebarCollapsed]);
 
   const fullName = profile?.full_name || "";
   const initials = fullName.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase();
@@ -178,57 +187,78 @@ export default function ColaboradorDashboard() {
 
   return (
     <div className="flex h-[calc(100vh-4rem)] bg-background">
-      {/* LEFT SIDEBAR — Jira-style navigation */}
-      <aside className="w-60 border-r border-border bg-muted/20 flex flex-col shrink-0">
-        <div className="p-4 border-b border-border">
-          <div className="flex items-center gap-2.5">
-            <Avatar className="h-9 w-9 border border-border">
+      {/* LEFT SIDEBAR — Jira-style navigation, collapsible */}
+      <aside className={cn(
+        "border-r border-border bg-muted/20 flex flex-col shrink-0 transition-[width] duration-200",
+        sidebarCollapsed ? "w-14" : "w-60"
+      )}>
+        <div className={cn("border-b border-border", sidebarCollapsed ? "p-2" : "p-4")}>
+          <div className={cn("flex items-center gap-2.5", sidebarCollapsed && "justify-center")}>
+            <Avatar className="h-9 w-9 border border-border shrink-0">
               <AvatarFallback className="bg-primary/15 text-primary text-xs font-bold">{initials || "?"}</AvatarFallback>
             </Avatar>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold truncate">{fullName.split(" ").slice(0, 2).join(" ") || "Colaborador"}</p>
-              <p className="text-[10px] text-muted-foreground truncate flex items-center gap-1">
-                <Mail className="h-2.5 w-2.5" /> {profile?.email || user?.email}
-              </p>
+            {!sidebarCollapsed && (
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold truncate">{fullName.split(" ").slice(0, 2).join(" ") || "Colaborador"}</p>
+                <p className="text-[10px] text-muted-foreground truncate flex items-center gap-1">
+                  <Mail className="h-2.5 w-2.5" /> {profile?.email || user?.email}
+                </p>
+              </div>
+            )}
+          </div>
+          {!sidebarCollapsed && (
+            <div className="mt-2 flex items-center gap-1.5">
+              <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <p className="text-[9px] font-medium text-muted-foreground uppercase tracking-wider">Sysde Support</p>
             </div>
-          </div>
-          <div className="mt-2 flex items-center gap-1.5">
-            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <p className="text-[9px] font-medium text-muted-foreground uppercase tracking-wider">Sysde Support</p>
-          </div>
+          )}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
-          <p className="text-[10px] font-bold uppercase text-muted-foreground px-2 py-2 tracking-wider">Mi trabajo</p>
-          <NavBtn icon={Target} label="Sprint activo" count={sprintItems.length} active={view === "board"} onClick={() => setView("board")} />
-          <NavBtn icon={ListTodo} label="Mi backlog" count={backlogItems.length} active={view === "backlog"} onClick={() => setView("backlog")} />
-          <NavBtn icon={FileText} label="Minutas" count={minutes.length} active={view === "minutes"} onClick={() => setView("minutes")} />
+        <div className={cn("flex-1 overflow-y-auto space-y-0.5", sidebarCollapsed ? "p-1" : "p-2")}>
+          {!sidebarCollapsed && (
+            <p className="text-[10px] font-bold uppercase text-muted-foreground px-2 py-2 tracking-wider">Mi trabajo</p>
+          )}
+          <NavBtn icon={Target} label="Sprint activo" count={sprintItems.length} active={view === "board"} onClick={() => setView("board")} collapsed={sidebarCollapsed} />
+          <NavBtn icon={ListTodo} label="Mi backlog" count={backlogItems.length} active={view === "backlog"} onClick={() => setView("backlog")} collapsed={sidebarCollapsed} />
+          <NavBtn icon={FileText} label="Minutas" count={minutes.length} active={view === "minutes"} onClick={() => setView("minutes")} collapsed={sidebarCollapsed} />
 
-          <p className="text-[10px] font-bold uppercase text-muted-foreground px-2 pt-4 pb-2 tracking-wider flex items-center gap-1">
-            <Sparkles className="h-2.5 w-2.5" /> Inteligencia
-          </p>
+          {!sidebarCollapsed && (
+            <p className="text-[10px] font-bold uppercase text-muted-foreground px-2 pt-4 pb-2 tracking-wider flex items-center gap-1">
+              <Sparkles className="h-2.5 w-2.5" /> Inteligencia
+            </p>
+          )}
           <button
             onClick={() => setView("agent")}
+            title={sidebarCollapsed ? "Mi Agente IA" : undefined}
             className={cn(
-              "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors group",
+              "w-full flex items-center gap-2 rounded-md text-xs transition-colors group",
+              sidebarCollapsed ? "justify-center px-1 py-2" : "px-2 py-1.5",
               view === "agent"
                 ? "bg-gradient-to-r from-primary to-primary/80 text-primary-foreground font-semibold shadow-sm"
                 : "bg-primary/5 text-primary hover:bg-primary/10 font-medium border border-primary/15"
             )}
           >
             <Bot className="h-3.5 w-3.5" />
-            <span className="flex-1 text-left">Mi Agente IA</span>
-            <Sparkles className={cn("h-3 w-3", view === "agent" ? "animate-pulse" : "text-primary/70")} />
+            {!sidebarCollapsed && (
+              <>
+                <span className="flex-1 text-left">Mi Agente IA</span>
+                <Sparkles className={cn("h-3 w-3", view === "agent" ? "animate-pulse" : "text-primary/70")} />
+              </>
+            )}
           </button>
 
-          <p className="text-[10px] font-bold uppercase text-muted-foreground px-2 pt-4 pb-2 tracking-wider">Métricas hoy</p>
-          <div className="px-2 space-y-2">
-            <StatRow icon={Clock} label="Horas registradas" value={`${todayMinutes}m`} />
-            <StatRow icon={Zap} label="En progreso" value={sprintItems.filter(i => i.scrum_status === "in_progress").length} />
-            <StatRow icon={CheckCircle2} label="Completadas" value={sprintItems.filter(i => i.scrum_status === "done").length} />
-          </div>
+          {!sidebarCollapsed && (
+            <>
+              <p className="text-[10px] font-bold uppercase text-muted-foreground px-2 pt-4 pb-2 tracking-wider">Métricas hoy</p>
+              <div className="px-2 space-y-2">
+                <StatRow icon={Clock} label="Horas registradas" value={`${todayMinutes}m`} />
+                <StatRow icon={Zap} label="En progreso" value={sprintItems.filter(i => i.scrum_status === "in_progress").length} />
+                <StatRow icon={CheckCircle2} label="Completadas" value={sprintItems.filter(i => i.scrum_status === "done").length} />
+              </div>
+            </>
+          )}
 
-          {myClients.length > 0 && (
+          {!sidebarCollapsed && myClients.length > 0 && (
             <>
               <p className="text-[10px] font-bold uppercase text-muted-foreground px-2 pt-4 pb-2 tracking-wider">Projects</p>
               <div className="px-2 space-y-0.5">
@@ -244,24 +274,38 @@ export default function ColaboradorDashboard() {
           )}
         </div>
 
-        <div className="p-2 border-t border-border space-y-1">
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full justify-start h-8"
-            onClick={() => setLogHoursOpen(true)}
-          >
-            <Clock className="h-3.5 w-3.5 mr-2" />
-            <span className="text-xs">Registrar horas</span>
-          </Button>
+        <div className={cn("border-t border-border space-y-1", sidebarCollapsed ? "p-1" : "p-2")}>
           <Button
             variant="ghost"
             size="sm"
-            className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-destructive/10 hover:text-destructive h-8"
-            onClick={signOut}
+            className={cn("w-full h-8", sidebarCollapsed ? "px-0 justify-center" : "justify-start text-muted-foreground hover:text-foreground")}
+            onClick={() => setSidebarCollapsed(c => !c)}
+            title={sidebarCollapsed ? "Expandir menú" : "Contraer menú"}
           >
-            <LogOut className="h-3.5 w-3.5 mr-2" />
-            <span className="text-xs">Cerrar sesión</span>
+            {sidebarCollapsed ? <PanelLeftOpen className="h-3.5 w-3.5" /> : <><PanelLeftClose className="h-3.5 w-3.5 mr-2" /><span className="text-xs">Contraer menú</span></>}
+          </Button>
+          {!sidebarCollapsed && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-start h-8"
+              onClick={() => setLogHoursOpen(true)}
+            >
+              <Clock className="h-3.5 w-3.5 mr-2" />
+              <span className="text-xs">Registrar horas</span>
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn(
+              "w-full h-8 hover:bg-destructive/10 hover:text-destructive",
+              sidebarCollapsed ? "px-0 justify-center" : "justify-start text-muted-foreground hover:text-foreground"
+            )}
+            onClick={signOut}
+            title={sidebarCollapsed ? "Cerrar sesión" : undefined}
+          >
+            {sidebarCollapsed ? <LogOut className="h-3.5 w-3.5" /> : <><LogOut className="h-3.5 w-3.5 mr-2" /><span className="text-xs">Cerrar sesión</span></>}
           </Button>
         </div>
       </aside>
@@ -502,18 +546,24 @@ export default function ColaboradorDashboard() {
   );
 }
 
-function NavBtn({ icon: Icon, label, count, active, onClick }: any) {
+function NavBtn({ icon: Icon, label, count, active, onClick, collapsed }: any) {
   return (
     <button
       onClick={onClick}
+      title={collapsed ? `${label} (${count})` : undefined}
       className={cn(
-        "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors",
+        "w-full flex items-center gap-2 rounded-md text-xs transition-colors",
+        collapsed ? "justify-center px-1 py-2" : "px-2 py-1.5",
         active ? "bg-primary/15 text-primary font-semibold" : "text-foreground/70 hover:bg-muted/60"
       )}
     >
-      <Icon className="h-3.5 w-3.5" />
-      <span className="flex-1 text-left">{label}</span>
-      <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">{count}</Badge>
+      <Icon className="h-3.5 w-3.5 shrink-0" />
+      {!collapsed && (
+        <>
+          <span className="flex-1 text-left">{label}</span>
+          <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">{count}</Badge>
+        </>
+      )}
     </button>
   );
 }
