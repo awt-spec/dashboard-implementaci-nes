@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Trophy, ListOrdered, Brain, BarChart3, Loader2, Sparkles,
-  AlertTriangle, TrendingUp, Users, Target, Calendar, Filter, Zap, Flame,
+  AlertTriangle, TrendingUp, Users, Target, Calendar, Filter, Zap, Flame, Factory,
 } from "lucide-react";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -276,6 +276,7 @@ export default function TeamScrumDashboard() {
           </TabsTrigger>
           <TabsTrigger value="sprints"><Target className="h-3.5 w-3.5 mr-1" />Sprints</TabsTrigger>
           <TabsTrigger value="daily">☀️ Daily</TabsTrigger>
+          <TabsTrigger value="ford"><Factory className="h-3.5 w-3.5 mr-1" />Línea Ford</TabsTrigger>
           <TabsTrigger value="sprint"><Zap className="h-3.5 w-3.5 mr-1" />Kanban Sprint</TabsTrigger>
           <TabsTrigger value="backlog"><ListOrdered className="h-3.5 w-3.5 mr-1" />Backlog (WSJF)</TabsTrigger>
           <TabsTrigger value="analytics"><TrendingUp className="h-3.5 w-3.5 mr-1" />Analytics Sprint</TabsTrigger>
@@ -295,6 +296,14 @@ export default function TeamScrumDashboard() {
 
         <TabsContent value="daily" className="mt-3">
           <DailyStandupPanel />
+        </TabsContent>
+
+        <TabsContent value="ford" className="mt-3">
+          <FordLineView
+            items={filteredItems}
+            onMove={(item, status) => handleScrumStatusChange(item, status)}
+            title="Línea de trabajo del equipo"
+          />
         </TabsContent>
 
         <TabsContent value="analytics" className="mt-3">

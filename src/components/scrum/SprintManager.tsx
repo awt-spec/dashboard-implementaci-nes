@@ -20,6 +20,7 @@ import { useClients } from "@/hooks/useClients";
 import { SprintReviewDialog } from "./SprintReviewDialog";
 import { SprintRetroDialog } from "./SprintRetroDialog";
 import { SprintInsightsPanel } from "./SprintInsightsPanel";
+import { FordLineView } from "./FordLineView";
 
 const STATUS_COLORS: Record<string, string> = {
   planificado: "bg-muted text-muted-foreground border-border",
@@ -255,6 +256,13 @@ export function SprintManager() {
 
               {/* Burndown + Capacity per person */}
               <SprintInsightsPanel sprint={selected} items={sprintItems} />
+
+              {/* Ford assembly-line view */}
+              <FordLineView
+                items={sprintItems}
+                onMove={(item, status) => updateItem.mutate({ id: item.id, source: item.source, updates: { scrum_status: status } })}
+                title={`Línea de trabajo · ${selected.name}`}
+              />
 
               {/* Two columns: backlog ↔ sprint items */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
