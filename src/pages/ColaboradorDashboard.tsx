@@ -3,9 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Bell, Search, LogOut, Moon, Sun } from "lucide-react";
-import { Loader2 } from "lucide-react";
+import { Bell, Search, LogOut, Moon, Sun, Loader2, Factory } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAllScrumWorkItems, useAllSprints, useUpdateWorkItemScrum, type ScrumWorkItem } from "@/hooks/useTeamScrum";
 import { useWorkTimer, useActivityTracker } from "@/hooks/useActivityTracker";
 import { ManualTimeEntryDialog } from "@/components/team/ManualTimeEntryDialog";
@@ -19,6 +19,9 @@ import { AgenteIACompactCard } from "@/components/colaborador/AgenteIACompactCar
 import { MiTablero } from "@/components/colaborador/MiTablero";
 import { EstaSemanaCalendar } from "@/components/colaborador/EstaSemanaCalendar";
 import { TaskDetailSheet } from "@/components/colaborador/TaskDetailSheet";
+import { MondayGridDashboard } from "@/components/colaborador/MondayGridDashboard";
+import { OverdueTasksWidget, TopClientsWidget, PersonalKpiWidget } from "@/components/colaborador/widgets/ExtraWidgets";
+import { FordLineView } from "@/components/scrum/FordLineView";
 
 export default function ColaboradorDashboard() {
   const { user, profile, signOut } = useAuth();
@@ -41,6 +44,7 @@ export default function ColaboradorDashboard() {
   const [isDark, setIsDark] = useState<boolean>(() =>
     typeof window !== "undefined" && document.documentElement.classList.contains("dark")
   );
+  const [view, setView] = useState<"mi-trabajo" | "linea-ford">("mi-trabajo");
 
   const fullName = profile?.full_name || "";
   const initials = fullName.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase();
@@ -63,11 +67,9 @@ export default function ColaboradorDashboard() {
     [myItems, activeSprint]
   );
 
-  // Today tasks
   const today = new Date().toISOString().slice(0, 10);
   const todayTasks = sprintItems.filter(i => i.due_date === today || i.scrum_status === "in_progress");
 
-  // KPI: streak (días consecutivos con actividad), velocidad
   const [streakDays, setStreakDays] = useState(0);
   const [todayMeetingsCount, setTodayMeetingsCount] = useState(0);
   const [velocityChange, setVelocityChange] = useState(0);
@@ -91,7 +93,6 @@ export default function ColaboradorDashboard() {
       setTodayMinutes(Math.round(totalSec / 60));
       setTodayMeetingsCount((minutesRes.data || []).length);
 
-      // Calculate streak
       const dates = new Set<string>(((sessionsRes.data as any[]) || []).map((s: any) => s.started_at?.slice(0, 10)));
       let streak = 0;
       for (let d = 0; d < 30; d++) {
@@ -101,14 +102,9 @@ export default function ColaboradorDashboard() {
       }
       setStreakDays(streak);
 
-      // Velocity: completed pts last 7 days vs prev 7
-      const last7Start = Date.now() - 7 * 86400000;
-      const prev7Start = Date.now() - 14 * 86400000;
       const recent = sprintItems.filter(i => i.scrum_status === "done").reduce((s, i) => s + (i.story_points || 0), 0);
-      // Simple proxy: % of completed pts vs total
       const pct = sprintItems.length > 0 ? Math.round((recent / Math.max(1, sprintItems.reduce((s, i) => s + (i.story_points || 0), 0))) * 100) - 50 : 0;
       setVelocityChange(pct);
-      void last7Start; void prev7Start;
     })();
   }, [user, today, sprintItems.length]);
 
@@ -137,18 +133,14 @@ export default function ColaboradorDashboard() {
   const handleTimerToggle = async (item: ScrumWorkItem) => {
     if (activeTimer === item.id) {
       await stopTimer();
-      setActiveTimer(null);
-      setActiveTimerStartedAt(null);
-      setActiveTimerLabel(null);
+      setActiveTimer(null); setActiveTimerStartedAt(null); setActiveTimerLabel(null);
       await logActivity("timer_stop", { entity_type: item.source, entity_id: item.id, client_id: item.client_id, metadata: { title: item.title } });
       toast.success("Timer detenido");
     } else {
       if (activeTimer) await stopTimer();
       await startTimer({ source: item.source, id: item.id, client_id: item.client_id });
       const startedAt = Date.now();
-      setActiveTimer(item.id);
-      setActiveTimerStartedAt(startedAt);
-      setActiveTimerLabel(item.title);
+      setActiveTimer(item.id); setActiveTimerStartedAt(startedAt); setActiveTimerLabel(item.title);
       sessionStorage.setItem("sysde_active_timer", JSON.stringify({ item, startedAt, label: item.title }));
       await logActivity("timer_start", { entity_type: item.source, entity_id: item.id, client_id: item.client_id, metadata: { title: item.title } });
       toast.success("Timer iniciado");
@@ -171,11 +163,6 @@ export default function ColaboradorDashboard() {
     setIsDark(document.documentElement.classList.contains("dark"));
   };
 
-  if (loadingItems || loadingSprints) {
-    return <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
-  }
-
-  // Computed for cards
   const totalPoints = sprintItems.reduce((s, i) => s + (i.story_points || 0), 0);
   const donePoints = sprintItems.filter(i => i.scrum_status === "done").reduce((s, i) => s + (i.story_points || 0), 0);
   const daysLeft = activeSprint?.end_date
@@ -185,7 +172,6 @@ export default function ColaboradorDashboard() {
     ? Math.max(1, Math.ceil((new Date(activeSprint.end_date).getTime() - new Date(activeSprint.start_date).getTime()) / 86400000))
     : null;
 
-  // Insights agent (heurísticos)
   const blockedCount = sprintItems.filter(i => i.scrum_status === "blocked").length;
   const overdueCount = sprintItems.filter(i => i.due_date && i.due_date < today && i.scrum_status !== "done").length;
   const insights: { id: string; type: "warning" | "trend" | "meeting" | "info"; text: string }[] = [];
@@ -194,9 +180,92 @@ export default function ColaboradorDashboard() {
   if (todayMeetingsCount > 0) insights.push({ id: "meet", type: "meeting", text: `Tenés ${todayMeetingsCount} reunión${todayMeetingsCount > 1 ? "es" : ""} programada${todayMeetingsCount > 1 ? "s" : ""} hoy.` });
   if (overdueCount > 0) insights.push({ id: "over", type: "warning", text: `${overdueCount} tarea${overdueCount > 1 ? "s" : ""} vencida${overdueCount > 1 ? "s" : ""} sin completar.` });
 
+  // Widget registry
+  const widgetRegistry = useMemo(() => ({
+    hero: {
+      type: "hero", label: "Saludo y resumen", description: "Buenos días + KPIs y timer activo", icon: "👋",
+      defaultSize: { w: 12, h: 4, minW: 6, minH: 3 },
+      render: () => (
+        <HeroBuenosDias
+          name={fullName} todayTasksCount={todayTasks.length} todayMeetingsCount={todayMeetingsCount}
+          streakDays={streakDays} sprintPoints={donePoints} todayMinutes={todayMinutes}
+          activeTimerLabel={activeTimerLabel} activeTimerStartedAt={activeTimerStartedAt}
+          onStartFocus={handleStartFocusTimer} onStopTimer={handleStopTimerFromHero}
+          focusTaskTitle={todayTasks[0]?.title || sprintItems[0]?.title || null}
+        />
+      ),
+    },
+    focus: {
+      type: "focus", label: "Foco del día", description: "Top 3 tareas con timer", icon: "🎯",
+      defaultSize: { w: 4, h: 6, minW: 3, minH: 4 },
+      render: () => (
+        <FocusCard items={sprintItems} clientNames={clientNames} activeTimer={activeTimer}
+          onTimer={handleTimerToggle} onSelect={setSelectedItem} onSeeAll={() => setLogHoursOpen(false)} />
+      ),
+    },
+    sprint: {
+      type: "sprint", label: "Mi sprint", description: "Donut con avance del sprint", icon: "🏃",
+      defaultSize: { w: 4, h: 6, minW: 3, minH: 4 },
+      render: () => (
+        <MiSprintCard pointsDone={donePoints} pointsTotal={totalPoints}
+          daysLeft={daysLeft} daysTotal={daysTotal} velocityChange={velocityChange} />
+      ),
+    },
+    agent: {
+      type: "agent", label: "Agente IA", description: "Insights y consultas rápidas", icon: "🤖",
+      defaultSize: { w: 4, h: 6, minW: 3, minH: 4 },
+      render: () => (
+        <AgenteIACompactCard insights={insights}
+          onAsk={() => setAgentOpenSignal(s => s + 1)} onOpenFull={() => setAgentOpenSignal(s => s + 1)} />
+      ),
+    },
+    board: {
+      type: "board", label: "Mi tablero", description: "Kanban 4 columnas con drag", icon: "📋",
+      defaultSize: { w: 12, h: 10, minW: 6, minH: 6 },
+      render: () => (
+        <MiTablero items={sprintItems} clientNames={clientNames}
+          sprintName={activeSprint?.name} daysLeft={daysLeft}
+          onSelect={setSelectedItem} onMove={handleMoveItem} />
+      ),
+    },
+    calendar: {
+      type: "calendar", label: "Esta semana", description: "Distribución semanal de tareas", icon: "📅",
+      defaultSize: { w: 12, h: 6, minW: 6, minH: 4 },
+      render: () => <EstaSemanaCalendar items={sprintItems} />,
+    },
+    overdue: {
+      type: "overdue", label: "Vencidas", description: "Tareas atrasadas", icon: "⚠️",
+      defaultSize: { w: 4, h: 6, minW: 3, minH: 4 },
+      render: () => <OverdueTasksWidget items={myItems} />,
+    },
+    topClients: {
+      type: "topClients", label: "Top clientes", description: "Clientes con más carga activa", icon: "🏢",
+      defaultSize: { w: 4, h: 6, minW: 3, minH: 4 },
+      render: () => <TopClientsWidget items={myItems} clientNames={clientNames} />,
+    },
+    kpi: {
+      type: "kpi", label: "KPI personal", description: "Horas, racha y avance", icon: "📊",
+      defaultSize: { w: 4, h: 6, minW: 3, minH: 4 },
+      render: () => <PersonalKpiWidget todayMinutes={todayMinutes} streakDays={streakDays}
+        donePoints={donePoints} totalPoints={totalPoints} />,
+    },
+    fordMini: {
+      type: "fordMini", label: "Línea de trabajo (mini)", description: "Pipeline Ford de mis tareas", icon: "🏭",
+      defaultSize: { w: 12, h: 8, minW: 8, minH: 6 },
+      render: () => <div className="p-2"><FordLineView items={myItems} onSelect={setSelectedItem} onMove={handleMoveItem} title="Mi línea de trabajo" /></div>,
+    },
+  }), [
+    fullName, todayTasks.length, todayMeetingsCount, streakDays, donePoints, todayMinutes,
+    activeTimerLabel, activeTimerStartedAt, sprintItems, clientNames, activeTimer, totalPoints,
+    daysLeft, daysTotal, velocityChange, insights, activeSprint?.name, myItems,
+  ]);
+
+  if (loadingItems || loadingSprints) {
+    return <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Top bar */}
       <header className="sticky top-0 z-20 bg-background/95 backdrop-blur border-b border-border">
         <div className="px-6 h-14 flex items-center gap-4">
           <h1 className="text-base font-bold tracking-tight">Mi trabajo</h1>
@@ -206,7 +275,6 @@ export default function ColaboradorDashboard() {
             <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono text-muted-foreground bg-background px-1.5 py-0.5 rounded border border-border">⌘K</kbd>
           </div>
           <div className="flex items-center gap-1">
-            <span className="text-[10px] text-muted-foreground mr-2">Admin · Gerente · <strong className="text-foreground">Colaborador</strong></span>
             <Button variant="ghost" size="icon" className="h-9 w-9 relative" title="Notificaciones">
               <Bell className="h-4 w-4" />
               <span className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-destructive" />
@@ -224,57 +292,23 @@ export default function ColaboradorDashboard() {
         </div>
       </header>
 
-      {/* Main grid */}
-      <main className="px-6 py-5 space-y-5 max-w-[1600px] mx-auto">
-        <HeroBuenosDias
-          name={fullName}
-          todayTasksCount={todayTasks.length}
-          todayMeetingsCount={todayMeetingsCount}
-          streakDays={streakDays}
-          sprintPoints={donePoints}
-          todayMinutes={todayMinutes}
-          activeTimerLabel={activeTimerLabel}
-          activeTimerStartedAt={activeTimerStartedAt}
-          onStartFocus={handleStartFocusTimer}
-          onStopTimer={handleStopTimerFromHero}
-          focusTaskTitle={todayTasks[0]?.title || sprintItems[0]?.title || null}
-        />
+      <main className="px-6 py-4 max-w-[1600px] mx-auto">
+        <Tabs value={view} onValueChange={(v) => setView(v as any)} className="w-full">
+          <TabsList className="mb-3">
+            <TabsTrigger value="mi-trabajo">📋 Mi trabajo</TabsTrigger>
+            <TabsTrigger value="linea-ford"><Factory className="h-3.5 w-3.5 mr-1" />Línea de trabajo</TabsTrigger>
+          </TabsList>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <FocusCard
-            items={sprintItems}
-            clientNames={clientNames}
-            activeTimer={activeTimer}
-            onTimer={handleTimerToggle}
-            onSelect={setSelectedItem}
-            onSeeAll={() => setLogHoursOpen(false)}
-          />
-          <MiSprintCard
-            pointsDone={donePoints}
-            pointsTotal={totalPoints}
-            daysLeft={daysLeft}
-            daysTotal={daysTotal}
-            velocityChange={velocityChange}
-          />
-          <AgenteIACompactCard
-            insights={insights}
-            onAsk={() => setAgentOpenSignal(s => s + 1)}
-            onOpenFull={() => setAgentOpenSignal(s => s + 1)}
-          />
-        </div>
+          <TabsContent value="mi-trabajo">
+            <MondayGridDashboard registry={widgetRegistry} />
+          </TabsContent>
 
-        <MiTablero
-          items={sprintItems}
-          clientNames={clientNames}
-          sprintName={activeSprint?.name}
-          daysLeft={daysLeft}
-          onSelect={setSelectedItem}
-          onMove={handleMoveItem}
-        />
+          <TabsContent value="linea-ford">
+            <FordLineView items={myItems} onSelect={setSelectedItem} onMove={handleMoveItem} title="Mi línea de trabajo" />
+          </TabsContent>
+        </Tabs>
 
-        <EstaSemanaCalendar items={sprintItems} />
-
-        <div className="flex items-center justify-end gap-2 pb-6">
+        <div className="flex items-center justify-end gap-2 pb-6 pt-3">
           <Button variant="outline" size="sm" onClick={() => setLogHoursOpen(true)}>Registrar horas</Button>
         </div>
       </main>
