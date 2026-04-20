@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Responsive, WidthProvider, type Layout } from "react-grid-layout";
+// @ts-ignore - mixed default/named exports
+import RGL from "react-grid-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,10 @@ import { useColaboradorLayout, type WidgetConfig, type WidgetLayoutItem } from "
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 
-const ResponsiveGridLayout = WidthProvider(Responsive);
+const RGLAny: any = RGL;
+const Responsive: any = RGLAny.Responsive;
+const WidthProvider: any = RGLAny.WidthProvider;
+const ResponsiveGridLayout: any = WidthProvider(Responsive);
 
 export interface WidgetRegistryEntry {
   type: string;
@@ -48,11 +52,11 @@ export function MondayGridDashboard({ registry, onEditingChange }: Props) {
     [layout, enabledWidgets]
   );
 
-  const handleLayoutChange = (next: Layout[]) => {
+  const handleLayoutChange = (next: any[]) => {
     if (!editing) return;
     setLayout(prev => {
       const map = new Map(prev.map(l => [l.i, l]));
-      next.forEach(l => map.set(l.i, { i: l.i, x: l.x, y: l.y, w: l.w, h: l.h, minW: l.minW, minH: l.minH }));
+      next.forEach((l: any) => map.set(l.i, { i: l.i, x: l.x, y: l.y, w: l.w, h: l.h, minW: l.minW, minH: l.minH }));
       return Array.from(map.values());
     });
   };
