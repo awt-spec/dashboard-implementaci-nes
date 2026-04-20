@@ -55,7 +55,7 @@ export function MiTablero({ items, clientNames, sprintName, daysLeft, onSelect, 
           </div>
           {sprintName && (
             <p className="text-xs text-muted-foreground">
-              {sprintName} {daysLeft !== null && <>· <span className="font-semibold text-foreground">{daysLeft}d</span> restantes</>}
+              {sprintName} {daysLeft !== null && daysLeft !== undefined && <>· <span className="font-semibold text-foreground">{daysLeft}d</span> restantes</>}
             </p>
           )}
         </div>
@@ -76,12 +76,8 @@ export function MiTablero({ items, clientNames, sprintName, daysLeft, onSelect, 
                     <Badge variant="secondary" className="h-4 px-1.5 text-[10px] font-bold">{colItems.length}</Badge>
                   </div>
                   <button
-                    onClick={() => {
-                      const it = colItems[0];
-                      if (it) onSelect(it);
-                    }}
                     className="text-muted-foreground hover:text-foreground"
-                    title="Nueva (próximamente)"
+                    title="Próximamente"
                   >
                     <Plus className="h-3.5 w-3.5" />
                   </button>
@@ -98,40 +94,41 @@ export function MiTablero({ items, clientNames, sprintName, daysLeft, onSelect, 
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: idx * 0.02 }}
                     >
-                    <div
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, item)}
-                      onClick={() => onSelect(item)}
-                      className="rounded-md bg-background border border-border/50 p-2.5 cursor-pointer hover:border-primary/40 hover:shadow-sm space-y-1.5 active:cursor-grabbing"
-                    >
-                      <div className="flex items-start gap-1.5">
-                        <GitBranch className="h-3 w-3 text-muted-foreground mt-0.5 shrink-0" />
-                        <p className="text-xs font-semibold leading-snug line-clamp-2 flex-1">{item.title}</p>
-                      </div>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {item.priority && (
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "h-4 text-[9px] px-1.5 capitalize",
-                              PRIORITY_BADGE[item.priority?.toLowerCase()] || PRIORITY_BADGE.media
-                            )}
-                          >
-                            {item.priority}
-                          </Badge>
-                        )}
-                        {item.story_points != null && (
-                          <Badge variant="outline" className="h-4 text-[9px] px-1.5 font-mono">{item.story_points}pts</Badge>
-                        )}
-                        <span className="text-[9px] text-muted-foreground flex items-center gap-0.5 truncate flex-1 min-w-0">
-                          <Building2 className="h-2.5 w-2.5" />
-                          <span className="truncate">{clientNames[item.client_id]?.split(" ").slice(0, 2).join(" ") || item.client_id}</span>
-                        </span>
-                        {item.owner && (
-                          <span className="ml-auto h-5 w-5 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[8px] font-bold border border-primary/20">
-                            {initials(item.owner)}
+                      <div
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, item)}
+                        onClick={() => onSelect(item)}
+                        className="rounded-md bg-background border border-border/50 p-2.5 cursor-pointer hover:border-primary/40 hover:shadow-sm space-y-1.5 active:cursor-grabbing"
+                      >
+                        <div className="flex items-start gap-1.5">
+                          <GitBranch className="h-3 w-3 text-muted-foreground mt-0.5 shrink-0" />
+                          <p className="text-xs font-semibold leading-snug line-clamp-2 flex-1">{item.title}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {item.priority && (
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "h-4 text-[9px] px-1.5 capitalize",
+                                PRIORITY_BADGE[item.priority?.toLowerCase()] || PRIORITY_BADGE.media
+                              )}
+                            >
+                              {item.priority}
+                            </Badge>
+                          )}
+                          {item.story_points != null && (
+                            <Badge variant="outline" className="h-4 text-[9px] px-1.5 font-mono">{item.story_points}pts</Badge>
+                          )}
+                          <span className="text-[9px] text-muted-foreground flex items-center gap-0.5 truncate flex-1 min-w-0">
+                            <Building2 className="h-2.5 w-2.5" />
+                            <span className="truncate">{clientNames[item.client_id]?.split(" ").slice(0, 2).join(" ") || item.client_id}</span>
                           </span>
-                        )}
+                          {item.owner && (
+                            <span className="ml-auto h-5 w-5 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[8px] font-bold border border-primary/20">
+                              {initials(item.owner)}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </motion.div>
                   ))}
