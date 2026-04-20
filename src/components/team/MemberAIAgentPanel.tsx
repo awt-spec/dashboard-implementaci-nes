@@ -14,6 +14,7 @@ import {
   Bot, Send, Settings2, Sparkles, Loader2, Plus, Trash2, MessageSquare, Wand2,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const QUICK_PROMPTS_BY_TEMPLATE: Record<string, Array<{ icon: string; label: string; prompt: string }>> = {
   developer: [
