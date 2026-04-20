@@ -1,61 +1,76 @@
 
 
-The user wants a detailed architecture and application structure document. This is a documentation/artifact task, not a code change. I'll generate a comprehensive Mermaid diagram + a detailed Markdown document covering:
+El usuario quiere un documento de arquitectura nivel "arquitecto experto" — más profundo que el anterior. Debe incluir patrones, decisiones técnicas, trade-offs, capas, flujos secuenciales, modelo de datos completo con relaciones, seguridad, observabilidad, escalabilidad, y diagramas múltiples.
 
-1. **High-level architecture** (frontend, Lovable Cloud/Supabase, edge functions, AI Gateway)
-2. **RBAC & roles** (admin, pm, gerente, colaborador)
-3. **Module map** (Implementación, Soporte, Equipo Scrum, Team Hub, Time Tracking, AI Agents)
-4. **Data model** (key tables grouped by domain)
-5. **Edge functions catalog** (15+ functions with purpose)
-6. **AI integration** (Lovable AI Gateway, models in use, agents)
-7. **Routing & pages**
-8. **Key flows** (auth, sprint lifecycle, AI agent chat, time tracking)
+## Plan: Arquitectura Empresarial Detallada de Sysde Support
 
-## Plan: documentación completa de arquitectura
+Voy a generar **4 artefactos** en `/mnt/documents/` con nivel de arquitecto de software senior.
 
-Voy a generar **dos artefactos descargables** en `/mnt/documents/`:
+### 1. `Sysde_Architecture_v2.md` — Documento técnico ejecutivo (~25-30 páginas)
 
-### 1. Diagrama Mermaid (`Sysde_Architecture.mmd`)
-Diagrama de capas mostrando:
-- **Cliente** (React 18 + Vite + Tailwind + shadcn) con sus rutas y dashboards por rol
-- **Lovable Cloud** (Supabase: Auth + Postgres + Storage + Realtime + Edge Functions)
-- **AI Gateway** (Gemini 2.5/3 + GPT-5/5.2) consumido por edge functions
-- Flujo de datos entre componentes y hooks → Supabase client → DB/Functions
+**Capítulo 1 — Visión y contexto (C4 nivel 1)**
+- Propósito de la plataforma, stakeholders, dominios de negocio (Implementación, Soporte, Equipo Interno)
+- Diagrama de contexto: usuarios externos (gerentes cliente vía link público) + internos (admin/pm/colaborador) + sistemas externos (Azure DevOps, Lovable AI Gateway)
 
-### 2. Documento Markdown (`Sysde_Architecture.md`) — ~8 secciones:
+**Capítulo 2 — Arquitectura lógica (C4 nivel 2: Containers)**
+- SPA React (Vite) → Supabase JS Client → PostgREST/Auth/Realtime/Storage
+- Edge Functions Deno (BFF para IA + integraciones)
+- AI Gateway como dependencia externa con fallback
+- Patrón: **JAMstack + BaaS + serverless functions** (no servidor propio)
 
-**A. Stack tecnológico**
-- Frontend: React 18, Vite 5, TS 5, Tailwind v3, shadcn/ui, TanStack Query, React Router, Recharts, framer-motion, react-markdown+remark-gfm
-- Backend: Lovable Cloud (Supabase Postgres + Auth + Storage + Edge Functions Deno)
-- IA: Lovable AI Gateway
+**Capítulo 3 — Arquitectura de componentes (C4 nivel 3)**
+Por cada módulo: componentes React + hooks TanStack Query + tablas Supabase + edge functions involucradas. Módulos:
+- Auth/RBAC, Implementación, Soporte, Scrum unificado, Team Hub, Time Tracking, AI Agents, Engagement, Admin
 
-**B. RBAC y roles** (4 roles, qué ve cada uno, tabla `user_roles` + `has_role()` SECURITY DEFINER)
+**Capítulo 4 — Modelo de datos completo**
+- Agrupado por bounded context (DDD)
+- Tablas con PK/FK lógicas (aunque sin FKs físicas en muchos casos — anotar deuda técnica)
+- Convenciones: `client_id text` como tenant key, `original_id` para idempotencia, JSONB para configs flexibles
+- Diagrama ERD por dominio
 
-**C. Mapa de módulos**
-- Implementación (clientes, minutas, deliverables, presentaciones)
-- Soporte (tickets, SLAs, DevOps sync)
-- Equipo Scrum unificado (sprints, WSJF backlog, Active Sprint Hub, Kanban, ceremonias)
-- Team Hub (directorio, skills matrix, onboarding, career path, recommender)
-- Time Tracking (timer, timesheet, aprobaciones, audit)
-- AI Agents (agente personal por colaborador, weekly digest)
-- Engagement (kudos, badges, time-off, learning hub, mentor IA)
-- Admin (usuarios, RBAC, auditoría, Nivel IA del equipo)
+**Capítulo 5 — Seguridad y RBAC**
+- 4 roles + tabla `user_roles` + función `has_role()` SECURITY DEFINER (anti-recursión RLS)
+- Patrones RLS observados: "public allow all" (deuda) vs "role-gated" (correcto)
+- **Hallazgo crítico**: muchas tablas tienen RLS permisiva (`USING true`) — riesgo documentado
+- Flujo de sesión: sessionStorage flag + auto-signOut en pestaña nueva (decisión de UX)
 
-**D. Modelo de datos** (tablas agrupadas por dominio con propósito breve)
+**Capítulo 6 — Integraciones externas**
+- **Azure DevOps**: bidireccional pull/push, mapping `devops_sync_mappings`, logs `devops_sync_logs`, secret `AZURE_DEVOPS_PAT`
+- **Lovable AI Gateway**: 17 edge functions, modelos Gemini/GPT, manejo de 429/402, logs en `ai_usage_logs`
 
-**E. Edge functions** (catálogo de las ~17 funciones con input/output y modelo IA)
+**Capítulo 7 — Patrones y convenciones**
+- Single Source of Truth (Supabase)
+- TanStack Query como cache layer (invalidaciones por mutación)
+- `.maybeSingle()` siempre, `null` nunca `undefined`
+- Optimistic updates donde aplica
+- Multi-tenancy por `client_id`
 
-**F. Páginas y rutas** (App.tsx routing + dashboards condicionados por rol)
+**Capítulo 8 — Calidad, observabilidad, deuda técnica**
+- Logs: `ai_usage_logs`, `devops_sync_logs`, `user_activity_log`, `user_sessions` (heartbeat 60s)
+- Tests: Vitest configurado, cobertura mínima
+- Deuda: RLS permisiva, sin FKs físicas, sin migrations versionadas localmente
+- Roadmap de hardening sugerido
 
-**G. Flujos clave** (auth+session, sprint lifecycle, agent chat con contexto, time entry desde timer)
+**Capítulo 9 — Decisiones arquitectónicas (ADRs cortos)**
+- ADR-001: Por qué Supabase BaaS en vez de backend propio
+- ADR-002: Edge Functions Deno vs API REST tradicional
+- ADR-003: AI Gateway centralizado vs OpenAI directo
+- ADR-004: Roles en tabla separada (anti privilege escalation)
+- ADR-005: Multi-tenancy lógica vía `client_id` (no schemas separados)
 
-**H. Convenciones** (Supabase SSOT, `.maybeSingle()`, `null` not `undefined`, "Progreso", terminología comercial, slide editing bloqueado, etc.)
+### 2. `Sysde_C4_Context.mmd` — Diagrama C4 nivel 1 (contexto)
+### 3. `Sysde_C4_Containers.mmd` — Diagrama C4 nivel 2 (containers)
+### 4. `Sysde_DataFlow_Sequences.mmd` — Diagramas de secuencia de 4 flujos críticos:
+- Login + carga de rol
+- Pull WSJF item → sprint con sync DevOps
+- Chat agente IA con contexto
+- Compartir minuta con cliente externo
 
 ### Tareas
-1. Leer rápido `App.tsx`, `AppSidebar.tsx`, `AdminUsers.tsx`, lista de edge functions y schema clave para confirmar nombres exactos
-2. Generar `.mmd` y `.md` en `/mnt/documents/`
-3. QA visual del Mermaid (renderizar a PNG y revisar)
+1. Inspeccionar rápidamente edge functions, hooks clave (`useScrum`, `useDevOps`, `useTimeTracking`) y `AppSidebar` para confirmar nombres
+2. Generar los 4 archivos en `/mnt/documents/`
+3. QA: renderizar los 3 `.mmd` a PNG y revisar legibilidad
 4. Emitir tags `<lov-artifact>` para descarga
 
-No hay cambios de código ni DB.
+Sin cambios de código ni DB.
 
