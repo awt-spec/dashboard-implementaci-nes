@@ -191,9 +191,8 @@ function PipelineView({
                             onClick={() => onSelect?.(item)}
                             className={cn(
                               "group rounded-md bg-background border-l-4 border-y border-r border-border/50 p-2 cursor-pointer hover:shadow-md transition",
-                              stale && "border-l-destructive"
+                              stale ? "border-l-destructive" : "border-l-primary"
                             )}
-                            style={!stale ? { borderLeftColor: `hsl(var(--primary))` } : undefined}
                           >
                             <div className="flex items-start gap-1.5 mb-1">
                               <span className={cn("h-2 w-2 rounded-full mt-1 shrink-0", PRIORITY_DOT[item.priority?.toLowerCase()] || PRIORITY_DOT.media)} />
