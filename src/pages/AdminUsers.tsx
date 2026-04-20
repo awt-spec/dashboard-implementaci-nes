@@ -1,10 +1,11 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Users, Lock, Activity } from "lucide-react";
+import { Shield, Users, Lock, Activity, Brain } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { SystemUsersTab } from "@/components/admin/SystemUsersTab";
 import { TeamHub } from "@/components/team/TeamHub";
 import { RBACPermissionsTab } from "@/components/admin/RBACPermissionsTab";
 import { TeamActivityPanel } from "@/components/admin/TeamActivityPanel";
+import { TeamLevelAIPanel } from "@/components/admin/TeamLevelAIPanel";
 
 export default function AdminUsers() {
   const { role: myRole } = useAuth();
@@ -23,6 +24,9 @@ export default function AdminUsers() {
           <TabsTrigger value="team" className="gap-2 data-[state=active]:shadow-sm py-2.5 px-4">
             <Users className="h-4 w-4" /> Equipo SYSDE
           </TabsTrigger>
+          <TabsTrigger value="ai-level" className="gap-2 data-[state=active]:shadow-sm py-2.5 px-4">
+            <Brain className="h-4 w-4" /> Nivel IA
+          </TabsTrigger>
           <TabsTrigger value="activity" className="gap-2 data-[state=active]:shadow-sm py-2.5 px-4">
             <Activity className="h-4 w-4" /> Actividad
           </TabsTrigger>
@@ -39,6 +43,10 @@ export default function AdminUsers() {
           <TeamHub />
         </TabsContent>
 
+        <TabsContent value="ai-level" className="mt-6">
+          <TeamLevelAIPanel />
+        </TabsContent>
+
         <TabsContent value="activity" className="mt-6">
           <TeamActivityPanel />
         </TabsContent>
@@ -50,3 +58,4 @@ export default function AdminUsers() {
     </div>
   );
 }
+
