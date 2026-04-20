@@ -59,6 +59,14 @@ export default function ColaboradorDashboard() {
   const [clientFilter, setClientFilter] = useState<string>("all");
   const [selectedItem, setSelectedItem] = useState<ScrumWorkItem | null>(null);
   const [logHoursOpen, setLogHoursOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("sysde_collab_sidebar_collapsed") === "1";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("sysde_collab_sidebar_collapsed", sidebarCollapsed ? "1" : "0");
+  }, [sidebarCollapsed]);
 
   const fullName = profile?.full_name || "";
   const initials = fullName.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase();
