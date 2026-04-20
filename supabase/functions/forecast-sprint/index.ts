@@ -20,6 +20,7 @@ Calcula velocity promedio, cuántos sprints faltan, fecha estimada de fin (asumi
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         messages: [

@@ -90,6 +90,7 @@ ${JSON.stringify(activeSprints, null, 1)}`;
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
+      signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         messages: [

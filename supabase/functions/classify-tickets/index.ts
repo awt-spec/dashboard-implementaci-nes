@@ -48,6 +48,7 @@ serve(async (req) => {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
+      signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
         model,
         messages: [
