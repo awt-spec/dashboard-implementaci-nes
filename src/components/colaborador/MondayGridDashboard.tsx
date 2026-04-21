@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
-import { Responsive, WidthProvider } from "react-grid-layout";
+import { useEffect, useMemo, useState, Component, type ReactNode } from "react";
+// react-grid-layout exposes Responsive + WidthProvider as named runtime exports,
+// but its TS typings only declare the default. Use namespace import to access them safely.
+import * as RGL from "react-grid-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +12,10 @@ import { toast } from "sonner";
 import { useColaboradorLayout, type WidgetConfig, type WidgetLayoutItem } from "@/hooks/useColaboradorLayout";
 import "react-grid-layout/css/styles.css";
 
-const ResponsiveGridLayout = WidthProvider(Responsive);
+const RGLAny: any = RGL;
+const ResponsiveCls: any = RGLAny.Responsive ?? RGLAny.default?.Responsive;
+const WidthProviderFn: any = RGLAny.WidthProvider ?? RGLAny.default?.WidthProvider;
+const ResponsiveGridLayout: any = WidthProviderFn(ResponsiveCls);
 
 export interface WidgetRegistryEntry {
   type: string;
@@ -250,7 +255,7 @@ export function MondayGridDashboard({ registry, onEditingChange }: Props) {
 }
 
 // Defensive wrapper: if a widget throws, catch and show a placeholder instead of breaking the whole dashboard.
-class SafeRender extends (require("react").Component as typeof import("react").Component)<{ children: React.ReactNode }, { error: boolean }> {
+class SafeRender extends Component<{ children: ReactNode }, { error: boolean }> {
   state = { error: false };
   static getDerivedStateFromError() { return { error: true }; }
   componentDidCatch(err: unknown) { console.error("[Widget render error]", err); }
