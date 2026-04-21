@@ -1,20 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
-// @ts-ignore - mixed default/named exports
-import RGL from "react-grid-layout";
+import { useEffect, useMemo, useState, Component, type ReactNode } from "react";
+// react-grid-layout exposes Responsive + WidthProvider as named runtime exports,
+// but its TS typings only declare the default. Use namespace import to access them safely.
+import * as RGL from "react-grid-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
-import { GripVertical, Settings2, RotateCcw, Save, Plus, X, Check } from "lucide-react";
+import { Loader2, GripVertical, Settings2, RotateCcw, Save, Plus, X, Check } from "lucide-react";
 import { toast } from "sonner";
 import { useColaboradorLayout, type WidgetConfig, type WidgetLayoutItem } from "@/hooks/useColaboradorLayout";
 import "react-grid-layout/css/styles.css";
 
 const RGLAny: any = RGL;
-const Responsive: any = RGLAny.Responsive;
-const WidthProvider: any = RGLAny.WidthProvider;
-const ResponsiveGridLayout: any = WidthProvider(Responsive);
+const ResponsiveCls: any = RGLAny.Responsive ?? RGLAny.default?.Responsive;
+const WidthProviderFn: any = RGLAny.WidthProvider ?? RGLAny.default?.WidthProvider;
+const ResponsiveGridLayout: any = WidthProviderFn(ResponsiveCls);
 
 export interface WidgetRegistryEntry {
   type: string;
@@ -100,7 +101,17 @@ export function MondayGridDashboard({ registry, onEditingChange }: Props) {
     });
   };
 
-  if (isLoading) return null;
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // Filter out widgets whose type is missing in the registry (defensive)
+  const safeEnabledWidgets = enabledWidgets.filter(w => !!registry[w.type]);
+  const safeLayout = visibleLayout.filter(l => safeEnabledWidgets.find(w => w.id === l.i));
 
   return (
     <div className="space-y-3">
@@ -193,44 +204,69 @@ export function MondayGridDashboard({ registry, onEditingChange }: Props) {
 
       {/* Grid */}
       <div className={editing ? "rounded-lg border-2 border-dashed border-primary/30 bg-primary/[0.02]" : ""}>
-        <ResponsiveGridLayout
-          className="layout"
-          layouts={{ lg: visibleLayout, md: visibleLayout, sm: visibleLayout, xs: visibleLayout }}
-          breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 0 }}
-          cols={{ lg: 12, md: 12, sm: 6, xs: 1 }}
-          rowHeight={40}
-          margin={[12, 12]}
-          containerPadding={[8, 8]}
-          isDraggable={editing}
-          isResizable={editing}
-          draggableHandle=".widget-drag-handle"
-          onLayoutChange={handleLayoutChange}
-        >
-          {enabledWidgets.map(w => {
-            const reg = registry[w.type];
-            if (!reg) return null;
-            return (
-              <div key={w.id} className="overflow-hidden">
-                <Card className="h-full overflow-hidden flex flex-col">
-                  {editing && (
-                    <div className="widget-drag-handle cursor-move flex items-center justify-between gap-2 px-3 py-1.5 bg-muted/40 border-b border-border/40">
-                      <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground">
-                        <GripVertical className="h-3 w-3" /> {reg.icon} {reg.label}
+        {safeEnabledWidgets.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-2 text-center">
+            <p className="text-sm text-muted-foreground">No hay widgets activos.</p>
+            <Button size="sm" variant="outline" onClick={handleReset}>
+              <RotateCcw className="h-3.5 w-3.5 mr-1" /> Restablecer dashboard
+            </Button>
+          </div>
+        ) : (
+          <ResponsiveGridLayout
+            className="layout"
+            layouts={{ lg: safeLayout, md: safeLayout, sm: safeLayout, xs: safeLayout }}
+            breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 0 }}
+            cols={{ lg: 12, md: 12, sm: 6, xs: 1 }}
+            rowHeight={40}
+            margin={[12, 12]}
+            containerPadding={[8, 8]}
+            isDraggable={editing}
+            isResizable={editing}
+            draggableHandle=".widget-drag-handle"
+            onLayoutChange={handleLayoutChange}
+          >
+            {safeEnabledWidgets.map(w => {
+              const reg = registry[w.type];
+              return (
+                <div key={w.id} className="overflow-hidden">
+                  <Card className="h-full overflow-hidden flex flex-col">
+                    {editing && (
+                      <div className="widget-drag-handle cursor-move flex items-center justify-between gap-2 px-3 py-1.5 bg-muted/40 border-b border-border/40">
+                        <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground">
+                          <GripVertical className="h-3 w-3" /> {reg.icon} {reg.label}
+                        </div>
+                        <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => removeWidget(w.id)}>
+                          <X className="h-3 w-3" />
+                        </Button>
                       </div>
-                      <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => removeWidget(w.id)}>
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  )}
-                  <CardContent className="p-0 flex-1 overflow-auto">
-                    {reg.render()}
-                  </CardContent>
-                </Card>
-              </div>
-            );
-          })}
-        </ResponsiveGridLayout>
+                    )}
+                    <CardContent className="p-0 flex-1 overflow-auto">
+                      <SafeRender>{reg.render()}</SafeRender>
+                    </CardContent>
+                  </Card>
+                </div>
+              );
+            })}
+          </ResponsiveGridLayout>
+        )}
       </div>
     </div>
   );
+}
+
+// Defensive wrapper: if a widget throws, catch and show a placeholder instead of breaking the whole dashboard.
+class SafeRender extends Component<{ children: ReactNode }, { error: boolean }> {
+  state = { error: false };
+  static getDerivedStateFromError() { return { error: true }; }
+  componentDidCatch(err: unknown) { console.error("[Widget render error]", err); }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="p-4 text-xs text-muted-foreground">
+          Este widget falló al renderizar.
+        </div>
+      );
+    }
+    return this.props.children as any;
+  }
 }

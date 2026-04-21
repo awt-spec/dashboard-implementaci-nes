@@ -39,6 +39,20 @@ const DEFAULTS: ColaboradorLayoutPayload = {
   ],
 };
 
+function sanitize(payload: Partial<ColaboradorLayoutPayload> | null | undefined): ColaboradorLayoutPayload {
+  try {
+    const widgetsRaw = (payload?.widgets as WidgetConfig[] | undefined) || [];
+    const layoutRaw = (payload?.layout as WidgetLayoutItem[] | undefined) || [];
+    const widgets = widgetsRaw.filter(w => w && typeof w.id === "string" && typeof w.type === "string");
+    const widgetIds = new Set(widgets.map(w => w.id));
+    const layout = layoutRaw.filter(l => l && typeof l.i === "string" && widgetIds.has(l.i));
+    if (widgets.length === 0 || layout.length === 0) return DEFAULTS;
+    return { widgets, layout };
+  } catch {
+    return DEFAULTS;
+  }
+}
+
 export function useColaboradorLayout() {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -54,10 +68,10 @@ export function useColaboradorLayout() {
         .maybeSingle() as any);
       if (error && error.code !== "PGRST116") throw error;
       if (!data) return DEFAULTS;
-      return {
-        layout: (data.layout as WidgetLayoutItem[]) || DEFAULTS.layout,
-        widgets: (data.widgets as WidgetConfig[]) || DEFAULTS.widgets,
-      };
+      return sanitize({
+        layout: data.layout as WidgetLayoutItem[],
+        widgets: data.widgets as WidgetConfig[],
+      });
     },
     staleTime: 5 * 60 * 1000,
   });
