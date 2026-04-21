@@ -10,7 +10,6 @@ import { GripVertical, Settings2, RotateCcw, Save, Plus, X, Check } from "lucide
 import { toast } from "sonner";
 import { useColaboradorLayout, type WidgetConfig, type WidgetLayoutItem } from "@/hooks/useColaboradorLayout";
 import "react-grid-layout/css/styles.css";
-import "react-resizable/css/styles.css";
 
 const RGLAny: any = RGL;
 const Responsive: any = RGLAny.Responsive;
