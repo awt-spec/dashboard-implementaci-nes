@@ -1,76 +1,93 @@
 
 
-El usuario quiere un documento de arquitectura nivel "arquitecto experto" — más profundo que el anterior. Debe incluir patrones, decisiones técnicas, trade-offs, capas, flujos secuenciales, modelo de datos completo con relaciones, seguridad, observabilidad, escalabilidad, y diagramas múltiples.
+## Política de Cierre v4.5 + Reglas de Negocio + Configuración con IA
 
-## Plan: Arquitectura Empresarial Detallada de Sysde Support
+Voy a integrar la **Política de Gestión y Cierre de Casos v4.5** como motor de reglas vivo dentro de la plataforma, con tres capas: **(1) Configuración global / por cliente / por caso**, **(2) Motor de evaluación automática** que vigila cada ticket contra los SLAs, y **(3) Asistente IA** que recomienda acciones, redacta avisos con la firma estándar, valida el checklist de cierre y sincroniza con sprints.
 
-Voy a generar **4 artefactos** en `/mnt/documents/` con nivel de arquitecto de software senior.
+### Lo que se va a construir
 
-### 1. `Sysde_Architecture_v2.md` — Documento técnico ejecutivo (~25-30 páginas)
+**1. Modelo de datos (3 tablas nuevas)**
+- `business_rules` — biblioteca de reglas (plazo, avisos, checklist, firma). Scope: `global` | `client` | `case_type`. Versionada (v4.5).
+- `client_rule_overrides` — sobrescritura por cliente (ej. cliente VIP usa 2 días en vez de 3).
+- `case_compliance` — evaluación calculada por ticket: días restantes, avisos enviados, checklist completo (5 puntos), riesgo de incumplimiento, recomendación IA.
 
-**Capítulo 1 — Visión y contexto (C4 nivel 1)**
-- Propósito de la plataforma, stakeholders, dominios de negocio (Implementación, Soporte, Equipo Interno)
-- Diagrama de contexto: usuarios externos (gerentes cliente vía link público) + internos (admin/pm/colaborador) + sistemas externos (Azure DevOps, Lovable AI Gateway)
+Seed automático con la política v4.5: plazos por tipo+prioridad, los 5 elementos del checklist, la firma estándar, las reglas de cierre semanal y las 4 métricas activas (backlog, reapertura, checklist, CSAT).
 
-**Capítulo 2 — Arquitectura lógica (C4 nivel 2: Containers)**
-- SPA React (Vite) → Supabase JS Client → PostgREST/Auth/Realtime/Storage
-- Edge Functions Deno (BFF para IA + integraciones)
-- AI Gateway como dependencia externa con fallback
-- Patrón: **JAMstack + BaaS + serverless functions** (no servidor propio)
+**2. Sidebar — nuevo item "Configuración" (icono ⚙️ rueda)**
+Sección visible para `admin`/`pm` al final del menú principal, con 4 pestañas:
+- **Política activa** — visualiza la política v4.5 cargada (tablas de plazos, checklist, firma, reglas semanales) en formato editable.
+- **Reglas de negocio** — CRUD de reglas, activar/desactivar, versionar, duplicar.
+- **Por cliente** — overrides por cliente (plazos custom, firma personalizada, equipo asignado).
+- **IA & Estrategia** — toggles del motor (auto-aviso, auto-checklist, sugerencias IA, sync con sprint), modelo IA por defecto, frecuencia de evaluación.
 
-**Capítulo 3 — Arquitectura de componentes (C4 nivel 3)**
-Por cada módulo: componentes React + hooks TanStack Query + tablas Supabase + edge functions involucradas. Módulos:
-- Auth/RBAC, Implementación, Soporte, Scrum unificado, Team Hub, Time Tracking, AI Agents, Engagement, Admin
+**3. Motor de evaluación (Edge Function `evaluate-case-compliance`)**
+Para cada ticket evalúa: tipo+prioridad → plazo aplicable → días restantes → estado de avisos → checklist (5 puntos) → riesgo (verde/amarillo/rojo) → recomendación IA contextual. Se ejecuta on-demand y al abrir el detalle del ticket. Resultado se guarda en `case_compliance` y dispara badges visuales.
 
-**Capítulo 4 — Modelo de datos completo**
-- Agrupado por bounded context (DDD)
-- Tablas con PK/FK lógicas (aunque sin FKs físicas en muchos casos — anotar deuda técnica)
-- Convenciones: `client_id text` como tenant key, `original_id` para idempotencia, JSONB para configs flexibles
-- Diagrama ERD por dominio
+**4. Panel "Cumplimiento de Política" en el detalle del caso (`SupportCaseDetailPanel`)**
+Nueva sección con:
+- Semáforo de SLA (días restantes vs plazo de la política).
+- Checklist de 5 puntos interactivo (los del documento: solución documentada, notificación, ticket referenciado, tipo de cierre, guía de validación). El cierre se bloquea si falta alguno.
+- Contador de avisos enviados (3/3 para corrección alta y requerimientos).
+- Botón **"Generar aviso con IA"** → produce el texto con la firma estándar y el placeholder `[X días]` ya resuelto según prioridad.
+- Botón **"Recomendación IA"** → analiza el caso + historial + reglas activas y devuelve la próxima acción recomendada (enviar aviso, escalar, cerrar, vincular a sprint).
 
-**Capítulo 5 — Seguridad y RBAC**
-- 4 roles + tabla `user_roles` + función `has_role()` SECURITY DEFINER (anti-recursión RLS)
-- Patrones RLS observados: "public allow all" (deuda) vs "role-gated" (correcto)
-- **Hallazgo crítico**: muchas tablas tienen RLS permisiva (`USING true`) — riesgo documentado
-- Flujo de sesión: sessionStorage flag + auto-signOut en pestaña nueva (decisión de UX)
+**5. Estrategia por nivel (global / cliente / caso)**
+- **Global**: KPIs agregados de las 4 métricas activas (backlog <5d, reapertura <10%, checklist 100%, CSAT ≥4) en el dashboard ejecutivo.
+- **Cliente**: tarjeta "Salud de cumplimiento" en el detalle del cliente de soporte con su tendencia.
+- **Caso**: panel de cumplimiento en el ticket (descrito en punto 4).
 
-**Capítulo 6 — Integraciones externas**
-- **Azure DevOps**: bidireccional pull/push, mapping `devops_sync_mappings`, logs `devops_sync_logs`, secret `AZURE_DEVOPS_PAT`
-- **Lovable AI Gateway**: 17 edge functions, modelos Gemini/GPT, manejo de 429/402, logs en `ai_usage_logs`
+**6. Integración con Sprint / Equipo Scrum**
+- Cuando un caso entra en riesgo crítico (vence en <24h, supera plazo, o tiene 3 avisos sin respuesta), aparece un botón **"Escalar a sprint"** que lo agrega al sprint activo del consultor responsable con `business_value` y `effort` precargados según prioridad.
+- En `TeamScrumDashboard` y en la línea Ford aparece un badge de "Política" sobre items que vienen de tickets en riesgo, con tooltip explicando la regla violada.
+- El **agente IA del colaborador** ya existente recibe contexto extra: "Tienes 2 casos en riesgo de SLA según política v4.5", con acción de un click para revisarlos.
 
-**Capítulo 7 — Patrones y convenciones**
-- Single Source of Truth (Supabase)
-- TanStack Query como cache layer (invalidaciones por mutación)
-- `.maybeSingle()` siempre, `null` nunca `undefined`
-- Optimistic updates donde aplica
-- Multi-tenancy por `client_id`
+**7. IA conectada en todas las capas**
+Edge function `policy-ai-assistant` con 3 modos:
+- `recommend_action(case)` → próxima acción según política + contexto.
+- `generate_notice(case, type)` → texto del aviso con firma estándar, plazo correcto y referencia al ticket.
+- `validate_closing(case)` → revisa el diagnóstico documentado contra los 4 elementos obligatorios (qué pasó, qué se hizo, estado final, definitiva/temporal) y devuelve OK o qué falta.
 
-**Capítulo 8 — Calidad, observabilidad, deuda técnica**
-- Logs: `ai_usage_logs`, `devops_sync_logs`, `user_activity_log`, `user_sessions` (heartbeat 60s)
-- Tests: Vitest configurado, cobertura mínima
-- Deuda: RLS permisiva, sin FKs físicas, sin migrations versionadas localmente
-- Roadmap de hardening sugerido
+Modelo: `google/gemini-3-flash-preview` (rápido, barato, suficiente para reglas estructuradas).
 
-**Capítulo 9 — Decisiones arquitectónicas (ADRs cortos)**
-- ADR-001: Por qué Supabase BaaS en vez de backend propio
-- ADR-002: Edge Functions Deno vs API REST tradicional
-- ADR-003: AI Gateway centralizado vs OpenAI directo
-- ADR-004: Roles en tabla separada (anti privilege escalation)
-- ADR-005: Multi-tenancy lógica vía `client_id` (no schemas separados)
+### Estructura técnica
 
-### 2. `Sysde_C4_Context.mmd` — Diagrama C4 nivel 1 (contexto)
-### 3. `Sysde_C4_Containers.mmd` — Diagrama C4 nivel 2 (containers)
-### 4. `Sysde_DataFlow_Sequences.mmd` — Diagramas de secuencia de 4 flujos críticos:
-- Login + carga de rol
-- Pull WSJF item → sprint con sync DevOps
-- Chat agente IA con contexto
-- Compartir minuta con cliente externo
+```text
+supabase/
+  migrations/  → business_rules, client_rule_overrides, case_compliance + seed v4.5
+  functions/
+    evaluate-case-compliance/   → calcula semáforo + checklist
+    policy-ai-assistant/        → 3 modos IA (recommend/generate/validate)
 
-### Tareas
-1. Inspeccionar rápidamente edge functions, hooks clave (`useScrum`, `useDevOps`, `useTimeTracking`) y `AppSidebar` para confirmar nombres
-2. Generar los 4 archivos en `/mnt/documents/`
-3. QA: renderizar los 3 `.mmd` a PNG y revisar legibilidad
-4. Emitir tags `<lov-artifact>` para descarga
+src/
+  components/
+    settings/
+      ConfigurationHub.tsx          → contenedor con 4 pestañas (icono ⚙️)
+      ActivePolicyPanel.tsx         → tablas de la política v4.5 editables
+      BusinessRulesPanel.tsx        → CRUD de reglas
+      ClientOverridesPanel.tsx      → overrides por cliente
+      AIStrategyPanel.tsx           → toggles IA + sync sprint
+    support/
+      CaseCompliancePanel.tsx       → semáforo + checklist 5 puntos + avisos + IA
+  hooks/
+    useBusinessRules.ts
+    useCaseCompliance.ts
+    usePolicyAI.ts
+  pages/
+    Index.tsx                       → ruta "config" + icono ⚙️ en sidebar
+  components/dashboard/AppSidebar.tsx → nuevo item "Configuración"
+```
 
-Sin cambios de código ni DB.
+### Flujo end-to-end
+1. Admin abre ⚙️ → la política v4.5 ya está cargada → ajusta override para cliente VIP.
+2. Llega ticket → motor evalúa → muestra "Vence en 2d, 0/3 avisos, checklist 1/5".
+3. Consultor pulsa "Generar aviso IA" → texto listo con firma → envía.
+4. Día 3, sin respuesta → IA recomienda "Cerrar con diagnóstico documentado".
+5. Consultor llena checklist → IA valida los 4 elementos → permite cerrar.
+6. Caso crítico no atendido → botón "Escalar a sprint" lo lleva al sprint activo del responsable.
+7. Métricas globales actualizadas en tiempo real en el dashboard ejecutivo.
+
+### Lo que no cambia
+- Tablas existentes de `support_tickets`, `clients`, `tasks`, `support_sprints` se mantienen — solo se enlazan vía `case_compliance.ticket_id`.
+- Sin tocar la auth, RLS sigue el patrón `has_role()` actual.
+- El tablero de colaborador y la línea Ford ya construidos se respetan; solo reciben badges nuevos.
 
