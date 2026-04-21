@@ -118,6 +118,138 @@ export type Database = {
         }
         Relationships: []
       }
+      business_rules: {
+        Row: {
+          content: Json
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          policy_version: string
+          rule_type: string
+          scope: string
+          updated_at: string
+        }
+        Insert: {
+          content?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          policy_version?: string
+          rule_type?: string
+          scope?: string
+          updated_at?: string
+        }
+        Update: {
+          content?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          policy_version?: string
+          rule_type?: string
+          scope?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      case_compliance: {
+        Row: {
+          ai_last_run_at: string | null
+          ai_model: string | null
+          ai_recommendation: string | null
+          ai_recommendation_action: string | null
+          applicable_deadline_days: number | null
+          checklist: Json
+          checklist_completed_count: number
+          client_id: string | null
+          created_at: string
+          days_remaining: number | null
+          escalated_at: string | null
+          escalated_to_sprint_id: string | null
+          id: string
+          last_evaluated_at: string
+          notices_required: number
+          notices_sent: number
+          policy_version: string
+          risk_level: string
+          rule_id: string | null
+          semaphore: string
+          ticket_id: string
+          updated_at: string
+        }
+        Insert: {
+          ai_last_run_at?: string | null
+          ai_model?: string | null
+          ai_recommendation?: string | null
+          ai_recommendation_action?: string | null
+          applicable_deadline_days?: number | null
+          checklist?: Json
+          checklist_completed_count?: number
+          client_id?: string | null
+          created_at?: string
+          days_remaining?: number | null
+          escalated_at?: string | null
+          escalated_to_sprint_id?: string | null
+          id?: string
+          last_evaluated_at?: string
+          notices_required?: number
+          notices_sent?: number
+          policy_version?: string
+          risk_level?: string
+          rule_id?: string | null
+          semaphore?: string
+          ticket_id: string
+          updated_at?: string
+        }
+        Update: {
+          ai_last_run_at?: string | null
+          ai_model?: string | null
+          ai_recommendation?: string | null
+          ai_recommendation_action?: string | null
+          applicable_deadline_days?: number | null
+          checklist?: Json
+          checklist_completed_count?: number
+          client_id?: string | null
+          created_at?: string
+          days_remaining?: number | null
+          escalated_at?: string | null
+          escalated_to_sprint_id?: string | null
+          id?: string
+          last_evaluated_at?: string
+          notices_required?: number
+          notices_sent?: number
+          policy_version?: string
+          risk_level?: string
+          rule_id?: string | null
+          semaphore?: string
+          ticket_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_compliance_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_compliance_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "business_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_contacts: {
         Row: {
           client_id: string
@@ -334,6 +466,57 @@ export type Database = {
           type?: string
         }
         Relationships: []
+      }
+      client_rule_overrides: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          notes: string | null
+          override_content: Json
+          rule_id: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          override_content?: Json
+          rule_id: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          override_content?: Json
+          rule_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_rule_overrides_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_rule_overrides_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "business_rules"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       client_slas: {
         Row: {
@@ -1344,6 +1527,51 @@ export type Database = {
           risks?: Json | null
           scope?: string | null
           team_health_score?: number | null
+        }
+        Relationships: []
+      }
+      policy_ai_settings: {
+        Row: {
+          ai_model: string
+          ai_suggestions: boolean
+          auto_checklist: boolean
+          auto_notice: boolean
+          created_at: string
+          evaluation_frequency_minutes: number
+          id: string
+          scope: string
+          signature_template: string | null
+          sync_with_sprint: boolean
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          ai_model?: string
+          ai_suggestions?: boolean
+          auto_checklist?: boolean
+          auto_notice?: boolean
+          created_at?: string
+          evaluation_frequency_minutes?: number
+          id?: string
+          scope?: string
+          signature_template?: string | null
+          sync_with_sprint?: boolean
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          ai_model?: string
+          ai_suggestions?: boolean
+          auto_checklist?: boolean
+          auto_notice?: boolean
+          created_at?: string
+          evaluation_frequency_minutes?: number
+          id?: string
+          scope?: string
+          signature_template?: string | null
+          sync_with_sprint?: boolean
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
