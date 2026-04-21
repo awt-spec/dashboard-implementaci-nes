@@ -22,6 +22,8 @@ import {
   useAvailableTickets,
 } from "@/hooks/useSupportTicketDetails";
 import { SupportCaseScrumSection } from "./SupportCaseScrumSection";
+import { CaseCompliancePanel } from "./CaseCompliancePanel";
+import { Shield } from "lucide-react";
 
 const TAG_COLORS = ["#6366f1", "#ec4899", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6", "#06b6d4", "#f97316"];
 
@@ -119,8 +121,11 @@ export function SupportCaseDetailPanel({ ticket, teamMembers = [] }: Props) {
   };
 
   return (
-    <Tabs defaultValue="scrum" className="w-full">
+    <Tabs defaultValue="policy" className="w-full">
       <TabsList className="w-full h-8 bg-muted/50 flex-wrap">
+        <TabsTrigger value="policy" className="text-[10px] h-6 px-2 gap-1 flex-1">
+          <Shield className="h-3 w-3" />Política
+        </TabsTrigger>
         <TabsTrigger value="scrum" className="text-[10px] h-6 px-2 gap-1 flex-1">
           <Target className="h-3 w-3" />Scrum
         </TabsTrigger>
@@ -145,6 +150,11 @@ export function SupportCaseDetailPanel({ ticket, teamMembers = [] }: Props) {
           {notes.length > 0 && <Badge variant="secondary" className="text-[8px] h-3.5 px-1">{notes.length}</Badge>}
         </TabsTrigger>
       </TabsList>
+
+      {/* Política v4.5 */}
+      <TabsContent value="policy" className="mt-3">
+        <CaseCompliancePanel ticketId={ticket.id} clientId={(ticket as any).client_id} />
+      </TabsContent>
 
       {/* Scrum */}
       <TabsContent value="scrum" className="mt-3">

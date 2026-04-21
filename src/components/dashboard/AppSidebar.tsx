@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, Users, Building2, ListTodo, Shield, LogOut, Headset, Sparkles, Trophy, ChevronDown
+  LayoutDashboard, Users, Building2, ListTodo, Shield, LogOut, Headset, Sparkles, Trophy, ChevronDown, Settings
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
@@ -96,6 +96,7 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
     { id: "team-scrum", title: "Equipo Scrum", icon: Trophy, roles: ["admin", "pm"] },
     { id: "ai-usage", title: "IA & Clasificación", icon: Sparkles, roles: ["admin", "pm"] },
     { id: "users", title: "Usuarios", icon: Shield, roles: ["admin"] },
+    { id: "config", title: "Configuración", icon: Settings, roles: ["admin", "pm"] },
   ].filter(item => role && item.roles.includes(role));
 
   const renderClientGroup = (

@@ -12,6 +12,7 @@ import { SupportDashboard } from "@/components/support/SupportDashboard";
 import { AIUsageDashboard } from "@/components/support/AIUsageDashboard";
 import AdminUsers from "@/pages/AdminUsers";
 import ColaboradorDashboard from "@/pages/ColaboradorDashboard";
+import { ConfigurationHub } from "@/components/settings/ConfigurationHub";
 import { useClients } from "@/hooks/useClients";
 import { useAuth } from "@/hooks/useAuth";
 import { projectInfo } from "@/data/projectData";
@@ -92,6 +93,7 @@ const Index = () => {
     if (activeSection === "ai-usage") return "IA & Clasificación";
     if (activeSection === "team-scrum") return "Equipo Scrum";
     if (activeSection === "users") return "Gestión de Usuarios";
+    if (activeSection === "config") return "Configuración · Política v4.5";
     if (selectedSupportClientId) {
       const sc = clientData.find(c => c.id === selectedSupportClientId);
       return sc ? `Soporte — ${sc.name}` : "Soporte — Cliente";
@@ -141,6 +143,7 @@ const Index = () => {
               {selectedSupportClientId && <SupportDashboard initialClientId={selectedSupportClientId} onBack={() => setActiveSection("soporte")} />}
               {activeSection === "ai-usage" && <AIUsageDashboard />}
               {activeSection === "users" && <AdminUsers />}
+              {activeSection === "config" && <ConfigurationHub />}
               {activeSection === "clients" && (
                 <ClientList
                   onSelectClient={(id) => setActiveSection(`client-${id}`)}
