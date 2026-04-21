@@ -25,3 +25,4 @@ AI edge functions use AbortSignal.timeout(30000) on Gemini fetch.
 - [Performance](mem://technical/performance) — Query cache defaults, useClients active-only filter, AI fetch 30s timeout
 - [Team Scrum](mem://features/team-scrum) — Unified backlog (tasks+tickets), WSJF, Kanban, IA bottlenecks, burndown/velocity
 - [Time Tracking](mem://features/time-tracking) — Hours registration, weekly timesheet, billable, approvals, workload bands
+- [Política Cierre v4.5](mem://features/policy-rules) — business_rules + case_compliance + ConfigurationHub (⚙️) + IA (recommend/notice/validate) + sync sprint
