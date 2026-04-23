@@ -61,7 +61,21 @@ export function useToggleTicketSubtask() {
       if (error) throw error;
       return ticket_id;
     },
-    onSuccess: (ticket_id) => qc.invalidateQueries({ queryKey: ["ticket-subtasks", ticket_id] }),
+    // Optimistic: marca el check al instante; si falla la DB se revierte.
+    onMutate: async ({ id, completed, ticket_id }) => {
+      await qc.cancelQueries({ queryKey: ["ticket-subtasks", ticket_id] });
+      const previous = qc.getQueryData<TicketSubtask[]>(["ticket-subtasks", ticket_id]);
+      if (previous) {
+        qc.setQueryData(["ticket-subtasks", ticket_id],
+          previous.map((s) => s.id === id ? { ...s, completed } : s),
+        );
+      }
+      return { previous };
+    },
+    onError: (_err, vars, ctx) => {
+      if (ctx?.previous) qc.setQueryData(["ticket-subtasks", vars.ticket_id], ctx.previous);
+    },
+    onSettled: (_d, _e, v) => qc.invalidateQueries({ queryKey: ["ticket-subtasks", v.ticket_id] }),
   });
 }
 
@@ -77,7 +91,22 @@ export function useUpdateTicketSubtask() {
       if (error) throw error;
       return ticket_id;
     },
-    onSuccess: (ticket_id) => qc.invalidateQueries({ queryKey: ["ticket-subtasks", ticket_id] }),
+    // Optimistic update: la UI refleja prioridad/asignado/fecha/descr al instante
+    // sin esperar el refetch. Si la DB falla, se revierte al valor previo.
+    onMutate: async ({ id, ticket_id, updates }) => {
+      await qc.cancelQueries({ queryKey: ["ticket-subtasks", ticket_id] });
+      const previous = qc.getQueryData<TicketSubtask[]>(["ticket-subtasks", ticket_id]);
+      if (previous) {
+        qc.setQueryData(["ticket-subtasks", ticket_id],
+          previous.map((s) => s.id === id ? { ...s, ...updates } as TicketSubtask : s),
+        );
+      }
+      return { previous };
+    },
+    onError: (_err, vars, ctx) => {
+      if (ctx?.previous) qc.setQueryData(["ticket-subtasks", vars.ticket_id], ctx.previous);
+    },
+    onSettled: (_d, _e, v) => qc.invalidateQueries({ queryKey: ["ticket-subtasks", v.ticket_id] }),
   });
 }
 
