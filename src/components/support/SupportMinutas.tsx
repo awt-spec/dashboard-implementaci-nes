@@ -188,7 +188,10 @@ Genera una minuta ejecutiva de soporte con título, resumen, acuerdos y acciones
       const minutaRow = {
         client_id: primaryClientId,
         title: newTitle || parsed.title || `Minuta de Soporte - ${effectiveClientName}`,
-        date: now.split("T")[0],
+        // ISO completo para que el display en TZ local sea exacto y muestre hora.
+        // Antes se guardaba solo YYYY-MM-DD; al parsearse como UTC 00:00, la
+        // TZ local (ej: UTC-6) lo mostraba un día antes.
+        date: now,
         summary: parsed.summary || "",
         cases_referenced: parsed.cases_highlighted || casesToUse.map(t => t.ticket_id),
         action_items: [...manualActions, ...(parsed.actionItems || parsed.action_items || [])],
@@ -318,6 +321,7 @@ Genera una minuta ejecutiva de soporte con título, resumen, acuerdos y acciones
           minuta={shareMinuta}
           tickets={tickets}
           clientName={clientName}
+          clientId={(shareMinuta as any).client_id || clientId}
           open={!!shareMinutaId}
           onClose={() => setShareMinutaId(null)}
         />
@@ -659,7 +663,15 @@ Genera una minuta ejecutiva de soporte con título, resumen, acuerdos y acciones
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold truncate">{m.title}</p>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
-                      <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {new Date(m.date).toLocaleDateString("es")}</span>
+                      <span className="flex items-center gap-1" title={new Date(m.date).toLocaleString("es")}>
+                        <Calendar className="h-3 w-3" />
+                        {new Date(m.date).toLocaleDateString("es")}
+                        {m.date?.includes("T") && (
+                          <span className="text-muted-foreground/70 tabular-nums">
+                            {" · "}{new Date(m.date).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        )}
+                      </span>
                       <span>•</span>
                       <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {m.attendees?.length || 0} participantes</span>
                       <span>•</span>

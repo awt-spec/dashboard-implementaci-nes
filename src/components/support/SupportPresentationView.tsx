@@ -189,6 +189,11 @@ function SlidePortada({ minuta, clientName }: { minuta: any; clientName: string 
       <Badge variant="outline" className="text-sm gap-2 px-3 py-1.5">
         <Calendar className="h-3.5 w-3.5" />
         {new Date(minuta.date).toLocaleDateString("es", { day: "2-digit", month: "long", year: "numeric" })}
+        {minuta.date?.includes("T") && (
+          <span className="text-muted-foreground tabular-nums">
+            {" · "}{new Date(minuta.date).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })}
+          </span>
+        )}
       </Badge>
     </div>
   );

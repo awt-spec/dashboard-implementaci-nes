@@ -27,6 +27,12 @@ interface Props {
   minuta: Minuta;
   tickets: SupportTicket[];
   clientName: string;
+  /**
+   * client_id explícito de la empresa dueña de la minuta. Crítico para que
+   * la minuta aparezca en el perfil del cliente correcto. Si no se pasa,
+   * se infiere de tickets[0]?.client_id (fallback retroactivo).
+   */
+  clientId?: string;
   open: boolean;
   onClose: () => void;
 }
@@ -41,7 +47,7 @@ const SLIDE_OPTIONS = [
   { id: 6, label: "Cierre", icon: Headset, desc: "Despedida" },
 ];
 
-export function ShareSupportPresentationDialog({ minuta, tickets, clientName, open, onClose }: Props) {
+export function ShareSupportPresentationDialog({ minuta, tickets, clientName, clientId: clientIdProp, open, onClose }: Props) {
   const [selectedSlides, setSelectedSlides] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
   const [title, setTitle] = useState(`Soporte ${clientName} - ${new Date(minuta.date).toLocaleDateString("es")}`);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -55,7 +61,9 @@ export function ShareSupportPresentationDialog({ minuta, tickets, clientName, op
 
   const handlePublish = async () => {
     if (selectedSlides.length === 0) { toast.error("Selecciona al menos una diapositiva"); return; }
-    const clientId = tickets[0]?.client_id;
+    // Prioridad: prop explícita → primer ticket → error. La prop la pasa
+    // SupportMinutas desde minuta.client_id (fuente de verdad).
+    const clientId = (clientIdProp && clientIdProp.trim()) || tickets[0]?.client_id;
     if (!clientId) { toast.error("No se pudo determinar el cliente de esta minuta"); return; }
 
     setIsPublishing(true);
