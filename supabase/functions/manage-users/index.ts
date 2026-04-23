@@ -221,6 +221,15 @@ Deno.serve(async (req) => {
       let userId: string;
       if (existingProfile?.user_id) {
         userId = existingProfile.user_id;
+        // Reset password + confirm email para que el password que venga en el
+        // request sea el password real del user (útil para seed scripts y
+        // para resetear cuando el admin re-invita a un user existente).
+        const { error: updErr } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+          password,
+          email_confirm: true,
+          user_metadata: { full_name: full_name ?? email.split("@")[0], role: "cliente" },
+        });
+        if (updErr) throw updErr;
       } else {
         // Crear auth user con role=cliente en metadata (para que el trigger
         // handle_new_user inserte el rol correcto en vez del default gerente).

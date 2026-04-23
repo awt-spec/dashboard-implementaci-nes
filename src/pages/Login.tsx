@@ -20,22 +20,24 @@ const SYSDE_USERS: DemoAccount[] = [
   { label: "Carlos Solis", email: "solis.sequeira@sysde.com", pw: "Sysde2026!" },
 ];
 
+// Usuarios con rol "cliente" (Portal Cliente) — uno por cada empresa activa.
+// Generados por scripts/seed-cliente-users.mjs. Al loguearse van al
+// ClientPortalDashboard (panel horas + minutas + casos scopeados a su empresa).
 const IMPLEMENTATION_CLIENTS: DemoAccount[] = [
-  { label: "Aurum", email: "gerente.aurum@sysde.com", pw: "GerenteAurum2026!" },
-  { label: "Arkfin", email: "gerente.arkfin@sysde.com", pw: "GerenteArkfin2026!" },
-  { label: "Apex", email: "gerente.apex@sysde.com", pw: "GerenteApex2026!" },
+  { label: "Apex", email: "cliente.apex@sysde.com", pw: "ClienteApex2026!" },
+  { label: "Arkfin", email: "cliente.arkfin@sysde.com", pw: "ClienteArkfin2026!" },
+  { label: "Aurum", email: "cliente.aurum@sysde.com", pw: "ClienteAurum2026!" },
 ];
 
-// Solo los 8 clientes activos con tickets importados.
 const SUPPORT_CLIENTS: DemoAccount[] = [
-  { label: "CFE Panamá", email: "cliente.cfe@sysde.com", pw: "ClienteCfe2026!" },
+  { label: "CFE Panamá", email: "cliente.cfe@sysde.com", pw: "ClienteCfePanam2026!" },
   { label: "CMI", email: "cliente.cmi@sysde.com", pw: "ClienteCmi2026!" },
   { label: "Coopecar", email: "cliente.coopecar@sysde.com", pw: "ClienteCoopecar2026!" },
   { label: "Credicefi", email: "cliente.credicefi@sysde.com", pw: "ClienteCredicefi2026!" },
   { label: "FIACG", email: "cliente.fiacg@sysde.com", pw: "ClienteFiacg2026!" },
   { label: "Fundap", email: "cliente.fundap@sysde.com", pw: "ClienteFundap2026!" },
-  { label: "Quiero Confianza (ION)", email: "cliente.ion@sysde.com", pw: "ClienteIon2026!" },
-  { label: "SAF UPV", email: "cliente.safupv@sysde.com", pw: "ClienteSafupv2026!" },
+  { label: "Quiero Confianza (ION)", email: "cliente.ion@sysde.com", pw: "ClienteQuieroConfianzaIon2026!" },
+  { label: "SAF UPV", email: "cliente.safupv@sysde.com", pw: "ClienteSafUpv2026!" },
 ];
 
 export default function Login() {
