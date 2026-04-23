@@ -189,31 +189,66 @@ export function ExecutiveOverview() {
           <CardContent className="p-5">
             <h3 className="text-sm font-semibold text-foreground mb-3">Progreso por Cliente</h3>
             {(() => {
+              const CLOSED = new Set(["CERRADA", "ANULADA"]);
               const impl = clients.filter((c: any) => c.client_type === "implementacion");
               const sup = clients.filter((c: any) => c.client_type === "soporte");
               const other = clients.filter((c: any) => !["implementacion", "soporte"].includes(c.client_type));
 
-              const Row = ({ c }: { c: any }) => (
-                <div key={c.id}>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-foreground font-medium truncate mr-2">{c.name}</span>
-                    <span className="text-muted-foreground shrink-0">{c.progress ?? 0}%</span>
-                  </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${(c.progress ?? 0) > 80 ? 'bg-success' : (c.progress ?? 0) > 40 ? 'bg-primary' : 'bg-warning'}`}
-                      style={{ width: `${c.progress ?? 0}%` }}
-                    />
-                  </div>
-                </div>
-              );
+              // Para soporte, calcular tasa de cierre de tickets (closed / total).
+              // Si no tiene tickets, ponemos 100% (no hay nada pendiente = sano).
+              const supportProgress = (clientId: string) => {
+                const myTickets = supportTickets.filter((t: any) => t.client_id === clientId);
+                if (myTickets.length === 0) return { pct: 100, label: "sin tickets", total: 0 };
+                const closed = myTickets.filter((t: any) => CLOSED.has(t.estado)).length;
+                return { pct: Math.round((closed / myTickets.length) * 100), label: `${closed}/${myTickets.length} cerrados`, total: myTickets.length };
+              };
 
-              const Section = ({ title, count, items }: { title: string; count: number; items: any[] }) => (
+              const ImplRow = ({ c }: { c: any }) => {
+                const pct = c.progress ?? 0;
+                return (
+                  <div key={c.id}>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-foreground font-medium truncate mr-2">{c.name}</span>
+                      <span className="text-muted-foreground shrink-0 tabular-nums">{pct}%</span>
+                    </div>
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${pct > 80 ? 'bg-success' : pct > 40 ? 'bg-primary' : 'bg-warning'}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              };
+
+              const SupportRow = ({ c }: { c: any }) => {
+                const { pct, label, total } = supportProgress(c.id);
+                return (
+                  <div key={c.id}>
+                    <div className="flex justify-between items-baseline text-xs mb-1 gap-2">
+                      <span className="text-foreground font-medium truncate">{c.name}</span>
+                      <div className="flex items-baseline gap-1.5 shrink-0">
+                        <span className="text-[10px] text-muted-foreground/70 whitespace-nowrap">{label}</span>
+                        <span className="text-muted-foreground tabular-nums">{pct}%</span>
+                      </div>
+                    </div>
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${pct >= 80 ? 'bg-success' : pct >= 50 ? 'bg-primary' : total === 0 ? 'bg-muted-foreground/30' : 'bg-warning'}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              };
+
+              const Section = ({ title, subtitle, count, items, Row }: { title: string; subtitle?: string; count: number; items: any[]; Row: (p: { c: any }) => JSX.Element }) => (
                 items.length === 0 ? null : (
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 pb-1 border-b border-border/50">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{title}</span>
                       <span className="text-[10px] font-mono text-muted-foreground/70">({count})</span>
+                      {subtitle && <span className="text-[10px] text-muted-foreground/60 ml-auto italic">{subtitle}</span>}
                     </div>
                     <div className="space-y-2.5">
                       {items.map((c) => <Row key={c.id} c={c} />)}
@@ -224,9 +259,9 @@ export function ExecutiveOverview() {
 
               return (
                 <div className="space-y-4">
-                  <Section title="Implementación" count={impl.length} items={impl} />
-                  <Section title="Soporte" count={sup.length} items={sup} />
-                  <Section title="Otros" count={other.length} items={other} />
+                  <Section title="Implementación" subtitle="% avance del proyecto" count={impl.length} items={impl} Row={ImplRow} />
+                  <Section title="Soporte" subtitle="% tickets cerrados" count={sup.length} items={sup} Row={SupportRow} />
+                  <Section title="Otros" count={other.length} items={other} Row={ImplRow} />
                 </div>
               );
             })()}
