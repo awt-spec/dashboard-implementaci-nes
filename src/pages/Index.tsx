@@ -12,6 +12,7 @@ import { SupportDashboard } from "@/components/support/SupportDashboard";
 import { AIUsageDashboard } from "@/components/support/AIUsageDashboard";
 import AdminUsers from "@/pages/AdminUsers";
 import ColaboradorDashboard from "@/pages/ColaboradorDashboard";
+import { ClientPortalDashboard } from "@/components/dashboard/ClientPortalDashboard";
 import { ConfigurationHub } from "@/components/settings/ConfigurationHub";
 import { useClients } from "@/hooks/useClients";
 import { useAuth } from "@/hooks/useAuth";
@@ -66,6 +67,11 @@ const Index = () => {
   // Colaborador uses its own full-screen layout (Jira/DevOps style) — no admin sidebar
   if (role === "colaborador") {
     return <ColaboradorDashboard />;
+  }
+
+  // Cliente externo: portal dedicado con su empresa scopeada
+  if (role === "cliente") {
+    return <ClientPortalDashboard />;
   }
 
   const clientData = clients || [];

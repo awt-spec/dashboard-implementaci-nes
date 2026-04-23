@@ -23,6 +23,10 @@ import { PackageCheck, RotateCcw } from "lucide-react";
 
 interface Props {
   client: Client;
+  /** Si false, oculta el botón "Nueva solicitud de soporte" y la creación de tickets. Default true. */
+  canCreateTickets?: boolean;
+  /** Nodo opcional que se renderiza en el sidebar, por ejemplo el panel de horas del cliente. */
+  sidebarExtras?: React.ReactNode;
 }
 
 // Criterio unificado con el SVA: "abierto" = todo lo que no sea CERRADA/ANULADA.
@@ -54,7 +58,7 @@ function getHealth(openCount: number, criticalCount: number) {
   return { label: "Excelente", emoji: "🌟", color: "from-[hsl(0_72%_45%)] via-[hsl(0_72%_51%)] to-[hsl(0_85%_60%)]" };
 }
 
-export function GerenteSupportDashboard({ client }: Props) {
+export function GerenteSupportDashboard({ client, canCreateTickets = true, sidebarExtras }: Props) {
   const { data: tickets = [], isLoading } = useSupportTickets(client.id);
   const updateTicket = useUpdateSupportTicket();
   const [tab, setTab] = useState("resumen");
@@ -192,19 +196,23 @@ export function GerenteSupportDashboard({ client }: Props) {
           </motion.div>
 
           {/* Quick action: new request */}
-          <Button
-            onClick={() => setRequestOpen(true)}
-            className="w-full h-12 text-sm font-semibold shadow-md"
-            size="lg"
-          >
-            <Send className="h-4 w-4 mr-2" /> Nueva solicitud de soporte
-          </Button>
+          {canCreateTickets && (
+            <Button
+              onClick={() => setRequestOpen(true)}
+              className="w-full h-12 text-sm font-semibold shadow-md"
+              size="lg"
+            >
+              <Send className="h-4 w-4 mr-2" /> Nueva solicitud de soporte
+            </Button>
+          )}
 
           {/* Mini stats */}
           <div className="grid grid-cols-2 gap-3">
             <MiniStat icon={Flame} label="Alta prioridad" value={highPriorityOpen.length} tone="warning" />
             <MiniStat icon={Clock} label=">30 días" value={oldTickets.length} tone="destructive" />
           </div>
+
+          {sidebarExtras}
         </div>
 
         {/* ─── RIGHT / MAIN COLUMN ─── */}

@@ -2,34 +2,44 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
-type AppRole = "admin" | "pm" | "gerente" | "colaborador";
+type AppRole = "admin" | "pm" | "gerente" | "colaborador" | "cliente";
+export type ClientePermission = "viewer" | "editor" | "admin";
+
+export interface ClienteAssignment {
+  client_id: string;
+  permission_level: ClientePermission;
+}
 
 interface AuthContextType {
   user: User | null;
   role: AppRole | null;
   profile: { full_name: string; email: string; avatar_url: string | null } | null;
+  /** Sólo existe cuando role === "cliente". */
+  clienteAssignment: ClienteAssignment | null;
   loading: boolean;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
-  user: null, role: null, profile: null, loading: true, signOut: async () => {},
+  user: null, role: null, profile: null, clienteAssignment: null, loading: true, signOut: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [profile, setProfile] = useState<AuthContextType["profile"]>(null);
+  const [clienteAssignment, setClienteAssignment] = useState<ClienteAssignment | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Prioridad: admin > pm > gerente > colaborador.
+  // Prioridad: admin > pm > gerente > colaborador > cliente.
   // El trigger `handle_new_user` inserta `gerente` por default, así que un
   // usuario puede tener múltiples filas en user_roles. Elegimos la más alta.
   const ROLE_PRIORITY: Record<string, number> = {
-    admin: 4,
-    pm: 3,
-    gerente: 2,
-    colaborador: 1,
+    admin: 5,
+    pm: 4,
+    gerente: 3,
+    colaborador: 2,
+    cliente: 1,
   };
 
   const fetchUserData = async (u: User) => {
@@ -44,12 +54,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!acc) return r.role;
         return (ROLE_PRIORITY[r.role] ?? 0) > (ROLE_PRIORITY[acc] ?? 0) ? r.role : acc;
       }, null);
-      setRole((best as AppRole | null) ?? null);
+      const bestRole = (best as AppRole | null) ?? null;
+      setRole(bestRole);
       setProfile(profileData ?? null);
+
+      // Cuando es cliente, buscamos su asignación (empresa + nivel de permiso).
+      if (bestRole === "cliente") {
+        const { data: assignment } = await supabase
+          .from("cliente_company_assignments" as any)
+          .select("client_id, permission_level")
+          .eq("user_id", u.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        setClienteAssignment(
+          assignment ? (assignment as unknown as ClienteAssignment) : null
+        );
+      } else {
+        setClienteAssignment(null);
+      }
     } catch (err) {
       console.error("Error fetching user data:", err);
       setRole(null);
       setProfile(null);
+      setClienteAssignment(null);
     }
   };
 
@@ -66,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(null);
           setRole(null);
           setProfile(null);
+          setClienteAssignment(null);
           setLoading(false);
           return;
         }
@@ -90,6 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(null);
           setRole(null);
           setProfile(null);
+          setClienteAssignment(null);
           initialDone = true;
           setLoading(false);
         }
@@ -124,10 +154,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setRole(null);
     setProfile(null);
+    setClienteAssignment(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, role, profile, loading, signOut }}>
+    <AuthContext.Provider value={{ user, role, profile, clienteAssignment, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );
