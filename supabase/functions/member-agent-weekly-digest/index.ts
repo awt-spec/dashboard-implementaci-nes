@@ -1,9 +1,5 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { AuthError, authErrorResponse, canAccessMember, requireAuth } from "../_shared/auth.ts";
 
 function startOfWeek(d = new Date()) {
   const date = new Date(d);
@@ -14,20 +10,27 @@ function startOfWeek(d = new Date()) {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const pre = corsPreflight(req);
+  if (pre) return pre;
+  const cors = corsHeaders(req);
 
   try {
-    const { member_id } = await req.json().catch(() => ({}));
-    const apiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
+    const ctx = await requireAuth(req);
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
+    const { member_id } = await req.json().catch(() => ({}));
+    const apiKey = Deno.env.get("GEMINI_API_KEY");
+    if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
+
+    const supabase = ctx.adminClient;
 
     if (!member_id) {
-      return new Response(JSON.stringify({ error: "member_id required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "member_id required" }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
+    if (!(await canAccessMember(ctx, member_id))) {
+      return new Response(JSON.stringify({ error: "No autorizado a generar el digest de este miembro" }), {
+        status: 403, headers: { ...cors, "Content-Type": "application/json" },
+      });
     }
 
     const ws = startOfWeek();
@@ -40,7 +43,7 @@ Deno.serve(async (req) => {
     ]);
 
     if (!member) {
-      return new Response(JSON.stringify({ error: "member not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "member not found" }), { status: 404, headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     // Fetch hours this week (best-effort)
@@ -87,12 +90,12 @@ Responde en JSON estricto:
 }
 Devuelve 3 sugerencias máximo. NO uses markdown, solo JSON.`;
 
-    const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const r = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gemini-2.5-flash-lite",
         messages: [
           { role: "system", content: "Eres un coach que produce JSON válido." },
           { role: "user", content: prompt },
@@ -102,7 +105,7 @@ Devuelve 3 sugerencias máximo. NO uses markdown, solo JSON.`;
     });
 
     if (r.status === 429 || r.status === 402) {
-      return new Response(JSON.stringify({ error: r.status === 429 ? "Rate limit" : "Sin créditos" }), { status: r.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: r.status === 429 ? "Rate limit" : "Sin créditos" }), { status: r.status, headers: { ...cors, "Content-Type": "application/json" } });
     }
     if (!r.ok) throw new Error(`AI gateway ${r.status}`);
 
@@ -127,9 +130,10 @@ Devuelve 3 sugerencias máximo. NO uses markdown, solo JSON.`;
 
     if (error) throw error;
 
-    return new Response(JSON.stringify({ digest }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ digest }), { headers: { ...cors, "Content-Type": "application/json" } });
   } catch (e) {
+    if (e instanceof AuthError) return authErrorResponse(e, cors);
     console.error("member-agent-weekly-digest error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown" }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
   }
 });

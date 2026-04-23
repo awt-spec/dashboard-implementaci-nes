@@ -1,9 +1,5 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { AuthError, authErrorResponse, canAccessMember, requireAuth } from "../_shared/auth.ts";
 
 const ROLE_TEMPLATES: Record<string, string> = {
   developer: `Eres un mentor técnico senior especializado en desarrollo de software. Ayudas con:
@@ -74,30 +70,42 @@ const TONES: Record<string, string> = {
 };
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const pre = corsPreflight(req);
+  if (pre) return pre;
+  const cors = corsHeaders(req);
 
   try {
+    const ctx = await requireAuth(req);
+
     const { member_id, message, conversation_id, task_id, ticket_id } = await req.json();
     if (!message?.trim()) {
       return new Response(JSON.stringify({ error: "message required" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+    if (typeof message !== "string" || message.length > 4000) {
+      return new Response(JSON.stringify({ error: "message must be a string up to 4000 chars" }), {
+        status: 400, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 
-    const apiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
+    if (member_id && !(await canAccessMember(ctx, member_id))) {
+      return new Response(JSON.stringify({ error: "No autorizado a usar el agente de este miembro" }), {
+        status: 403, headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
+    const apiKey = Deno.env.get("GEMINI_API_KEY");
+    if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
+
+    const supabase = ctx.adminClient;
 
     // Load member + agent config + context
     let context = "";
     let template = "default";
     let tone = "friendly";
     let custom = "";
-    let model = "google/gemini-2.5-flash";
+    let model = "gemini-2.5-flash-lite";
 
     if (member_id) {
       const [
@@ -117,7 +125,7 @@ Deno.serve(async (req) => {
         : detectTemplate(member?.role || undefined);
       tone = agent?.tone || "friendly";
       custom = agent?.custom_instructions || "";
-      model = agent?.preferred_model || "google/gemini-2.5-flash";
+      model = agent?.preferred_model || "gemini-2.5-flash-lite";
 
       // Optional task / ticket context
       let taskCtx = "";
@@ -173,7 +181,7 @@ Responde SIEMPRE en español, con markdown bien estructurado y escaneable. Sigue
       history = ((existing?.messages as any[]) || []).map((m) => ({ role: m.role, content: m.content }));
     }
 
-    const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const r = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       signal: AbortSignal.timeout(30000),
@@ -187,12 +195,12 @@ Responde SIEMPRE en español, con markdown bien estructurado y escaneable. Sigue
       }),
     });
 
-    if (r.status === 429) return new Response(JSON.stringify({ error: "Límite de IA alcanzado, intenta en un minuto." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    if (r.status === 402) return new Response(JSON.stringify({ error: "Créditos de IA agotados. Añade fondos en Lovable." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (r.status === 429) return new Response(JSON.stringify({ error: "Límite de IA alcanzado, intenta en un minuto." }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });
+    if (r.status === 402) return new Response(JSON.stringify({ error: "Créditos de IA agotados. Añade fondos en Lovable." }), { status: 402, headers: { ...cors, "Content-Type": "application/json" } });
     if (!r.ok) {
       const t = await r.text();
       console.error("AI gateway error:", r.status, t);
-      return new Response(JSON.stringify({ error: "AI gateway error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "AI gateway error" }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     const data = await r.json();
@@ -232,12 +240,13 @@ Responde SIEMPRE en español, con markdown bien estructurado y escaneable. Sigue
     });
 
     return new Response(JSON.stringify({ answer, conversation_id: convId, template }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
     });
   } catch (e) {
+    if (e instanceof AuthError) return authErrorResponse(e, cors);
     console.error("member-agent-chat error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...cors, "Content-Type": "application/json" },
     });
   }
 });

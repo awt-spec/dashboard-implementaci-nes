@@ -1,18 +1,17 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { AuthError, authErrorResponse, requireAuth, requireRole } from "../_shared/auth.ts";
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const pre = corsPreflight(req);
+  if (pre) return pre;
+  const cors = corsHeaders(req);
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const ctx = await requireAuth(req);
+    await requireRole(ctx, ["admin", "pm", "gerente"]);
+
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY")!;
+    const supabase = ctx.adminClient;
 
     // 1) Pull team, skills, scrum stats in parallel
     const [membersRes, skillsRes, itemsRes, supportRes] = await Promise.all([
@@ -84,12 +83,12 @@ Deno.serve(async (req) => {
 
     const userPrompt = `Equipo SYSDE actual (${roster.length} miembros activos):\n\n${JSON.stringify(roster, null, 2)}`;
 
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
       signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
+        model: "gemini-2.5-flash-lite",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -189,8 +188,8 @@ Deno.serve(async (req) => {
     });
 
     if (!aiResp.ok) {
-      if (aiResp.status === 429) return new Response(JSON.stringify({ error: "Rate limit excedido. Intenta en un momento." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (aiResp.status === 402) return new Response(JSON.stringify({ error: "Créditos de IA agotados." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (aiResp.status === 429) return new Response(JSON.stringify({ error: "Rate limit excedido. Intenta en un momento." }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });
+      if (aiResp.status === 402) return new Response(JSON.stringify({ error: "Créditos de IA agotados." }), { status: 402, headers: { ...cors, "Content-Type": "application/json" } });
       const t = await aiResp.text();
       throw new Error(`AI error: ${aiResp.status} ${t}`);
     }
@@ -210,14 +209,14 @@ Deno.serve(async (req) => {
       risks: analysis.at_risk || [],
       metrics: { ...analysis.metrics, seniority_distribution: analysis.seniority_distribution },
       full_analysis: analysis,
-      model: "google/gemini-2.5-pro",
+      model: "gemini-2.5-flash-lite",
     });
 
     // Log usage
     const usage = aiData.usage || {};
     await supabase.from("ai_usage_logs").insert({
       function_name: "analyze-team-level",
-      model: "google/gemini-2.5-pro",
+      model: "gemini-2.5-flash-lite",
       prompt_tokens: usage.prompt_tokens || 0,
       completion_tokens: usage.completion_tokens || 0,
       total_tokens: usage.total_tokens || 0,
@@ -226,12 +225,13 @@ Deno.serve(async (req) => {
     });
 
     return new Response(JSON.stringify({ success: true, analysis, roster_count: roster.length }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
     });
   } catch (e: any) {
+    if (e instanceof AuthError) return authErrorResponse(e, cors);
     console.error("analyze-team-level error:", e);
     return new Response(JSON.stringify({ error: e.message }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...cors, "Content-Type": "application/json" },
     });
   }
 });

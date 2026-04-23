@@ -2,10 +2,16 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 // ─── Subtasks ───
+export type SubtaskPriority = "baja" | "media" | "alta" | "critica";
+
 export interface TicketSubtask {
   id: string;
   ticket_id: string;
   title: string;
+  description: string | null;
+  assignee: string | null;
+  due_date: string | null;
+  priority: SubtaskPriority;
   completed: boolean;
   sort_order: number;
   created_at: string;
@@ -31,7 +37,15 @@ export function useTicketSubtasks(ticketId: string | null) {
 export function useCreateTicketSubtask() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { ticket_id: string; title: string; sort_order?: number }) => {
+    mutationFn: async (data: {
+      ticket_id: string;
+      title: string;
+      sort_order?: number;
+      description?: string | null;
+      assignee?: string | null;
+      due_date?: string | null;
+      priority?: SubtaskPriority;
+    }) => {
       const { error } = await supabase.from("support_ticket_subtasks").insert([data]);
       if (error) throw error;
     },
@@ -48,6 +62,58 @@ export function useToggleTicketSubtask() {
       return ticket_id;
     },
     onSuccess: (ticket_id) => qc.invalidateQueries({ queryKey: ["ticket-subtasks", ticket_id] }),
+  });
+}
+
+export function useUpdateTicketSubtask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ticket_id, updates }: {
+      id: string;
+      ticket_id: string;
+      updates: Partial<Pick<TicketSubtask, "title" | "description" | "assignee" | "due_date" | "priority" | "completed" | "sort_order">>;
+    }) => {
+      const { error } = await supabase.from("support_ticket_subtasks").update(updates).eq("id", id);
+      if (error) throw error;
+      return ticket_id;
+    },
+    onSuccess: (ticket_id) => qc.invalidateQueries({ queryKey: ["ticket-subtasks", ticket_id] }),
+  });
+}
+
+export function useReorderTicketSubtasks() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ ticket_id, order }: { ticket_id: string; order: string[] }) => {
+      // Optimistic: actualiza sort_order secuencialmente en Supabase.
+      // No hay batch-update nativo; se mandan en paralelo.
+      const updates = order.map((id, sort_order) =>
+        supabase.from("support_ticket_subtasks").update({ sort_order }).eq("id", id)
+      );
+      const results = await Promise.all(updates);
+      const firstError = results.find((r) => r.error)?.error;
+      if (firstError) throw firstError;
+      return ticket_id;
+    },
+    onMutate: async ({ ticket_id, order }) => {
+      await qc.cancelQueries({ queryKey: ["ticket-subtasks", ticket_id] });
+      const previous = qc.getQueryData<TicketSubtask[]>(["ticket-subtasks", ticket_id]);
+      if (previous) {
+        const byId = new Map(previous.map((s) => [s.id, s]));
+        const optimistic = order
+          .map((id, idx) => {
+            const s = byId.get(id);
+            return s ? { ...s, sort_order: idx } : null;
+          })
+          .filter(Boolean) as TicketSubtask[];
+        qc.setQueryData(["ticket-subtasks", ticket_id], optimistic);
+      }
+      return { previous };
+    },
+    onError: (_err, vars, ctx) => {
+      if (ctx?.previous) qc.setQueryData(["ticket-subtasks", vars.ticket_id], ctx.previous);
+    },
+    onSettled: (_d, _e, v) => qc.invalidateQueries({ queryKey: ["ticket-subtasks", v.ticket_id] }),
   });
 }
 
@@ -179,8 +245,8 @@ export function useDeleteTicketAttachment() {
 export interface TicketNote {
   id: string;
   ticket_id: string;
-  message: string;
-  author: string;
+  content: string;
+  author_name: string;
   visibility: string;
   created_at: string;
 }
@@ -205,7 +271,7 @@ export function useTicketNotes(ticketId: string | null) {
 export function useCreateTicketNote() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { ticket_id: string; message: string; author: string; visibility?: string }) => {
+    mutationFn: async (data: { ticket_id: string; content: string; author_name: string; visibility?: string }) => {
       const { error } = await supabase.from("support_ticket_notes").insert([{ ...data, visibility: data.visibility || "interna" }]);
       if (error) throw error;
     },

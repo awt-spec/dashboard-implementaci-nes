@@ -22,13 +22,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<AuthContextType["profile"]>(null);
   const [loading, setLoading] = useState(true);
 
+  // Prioridad: admin > pm > gerente > colaborador.
+  // El trigger `handle_new_user` inserta `gerente` por default, así que un
+  // usuario puede tener múltiples filas en user_roles. Elegimos la más alta.
+  const ROLE_PRIORITY: Record<string, number> = {
+    admin: 4,
+    pm: 3,
+    gerente: 2,
+    colaborador: 1,
+  };
+
   const fetchUserData = async (u: User) => {
     try {
-      const [{ data: roleData }, { data: profileData }] = await Promise.all([
-        supabase.from("user_roles").select("role").eq("user_id", u.id).maybeSingle(),
+      const [{ data: roleRows }, { data: profileData }] = await Promise.all([
+        supabase.from("user_roles").select("role").eq("user_id", u.id),
         supabase.from("profiles").select("full_name, email, avatar_url").eq("user_id", u.id).maybeSingle(),
       ]);
-      setRole((roleData?.role as AppRole) ?? null);
+      const rows = (roleRows ?? []) as Array<{ role: string }>;
+      const best = rows.reduce<string | null>((acc, r) => {
+        if (!r?.role) return acc;
+        if (!acc) return r.role;
+        return (ROLE_PRIORITY[r.role] ?? 0) > (ROLE_PRIORITY[acc] ?? 0) ? r.role : acc;
+      }, null);
+      setRole((best as AppRole | null) ?? null);
       setProfile(profileData ?? null);
     } catch (err) {
       console.error("Error fetching user data:", err);

@@ -1,24 +1,23 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { AuthError, authErrorResponse, requireAuth, requireRole } from "../_shared/auth.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const pre = corsPreflight(req);
+  if (pre) return pre;
+  const cors = corsHeaders(req);
 
   const startedAt = Date.now();
-  const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   try {
-    if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY no configurado" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    const ctx = await requireAuth(req);
+    await requireRole(ctx, ["admin", "pm", "gerente"]);
+    const sb = ctx.adminClient;
+
+    if (!GEMINI_API_KEY) {
+      return new Response(JSON.stringify({ error: "GEMINI_API_KEY no configurado" }), {
+        status: 500, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 
@@ -84,15 +83,15 @@ ${JSON.stringify(compactItems.slice(0, 100), null, 1)}
 Sprints activos:
 ${JSON.stringify(activeSprints, null, 1)}`;
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResponse = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
         "Content-Type": "application/json",
       },
       signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "gemini-2.5-flash-lite",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -173,12 +172,12 @@ ${JSON.stringify(activeSprints, null, 1)}`;
     if (!aiResponse.ok) {
       if (aiResponse.status === 429) {
         return new Response(JSON.stringify({ error: "Límite de IA alcanzado, intenta en unos minutos" }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 429, headers: { ...cors, "Content-Type": "application/json" },
         });
       }
       if (aiResponse.status === 402) {
         return new Response(JSON.stringify({ error: "Sin créditos de IA. Recarga en Configuración." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 402, headers: { ...cors, "Content-Type": "application/json" },
         });
       }
       const t = await aiResponse.text();
@@ -197,7 +196,7 @@ ${JSON.stringify(activeSprints, null, 1)}`;
     // Log AI usage
     await sb.from("ai_usage_logs").insert({
       function_name: "analyze-team-scrum",
-      model: "google/gemini-3-flash-preview",
+      model: "gemini-2.5-flash-lite",
       prompt_tokens: usage.prompt_tokens || 0,
       completion_tokens: usage.completion_tokens || 0,
       total_tokens: usage.total_tokens || 0,
@@ -206,17 +205,13 @@ ${JSON.stringify(activeSprints, null, 1)}`;
     });
 
     return new Response(JSON.stringify(result), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
     });
   } catch (e: any) {
-    await sb.from("ai_usage_logs").insert({
-      function_name: "analyze-team-scrum",
-      model: "google/gemini-3-flash-preview",
-      status: "error",
-      error_message: e.message,
-    });
+    if (e instanceof AuthError) return authErrorResponse(e, cors);
+    console.error("analyze-team-scrum error:", e?.message);
     return new Response(JSON.stringify({ error: e.message }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...cors, "Content-Type": "application/json" },
     });
   }
 });

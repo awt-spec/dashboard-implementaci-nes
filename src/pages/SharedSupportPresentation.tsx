@@ -6,11 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Headset, Calendar, AlertTriangle, FileText, CheckSquare, ArrowRight,
-  Loader2, ChevronLeft, ChevronRight, BarChart3, ThumbsUp, ThumbsDown, Send,
+  Loader2, ChevronLeft, ChevronRight, BarChart3,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { MinuteFeedbackRecorder } from "@/components/support/MinuteFeedbackRecorder";
 
 interface Snapshot {
   minuta: {
@@ -32,6 +32,7 @@ interface Snapshot {
 
 interface SharedRow {
   id: string;
+  client_id: string | null;
   title: string;
   selected_slides: number[];
   presentation_snapshot: Snapshot;
@@ -44,10 +45,6 @@ export default function SharedSupportPresentation() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeSlide, setActiveSlide] = useState(0);
-  const [feedbackSentiment, setFeedbackSentiment] = useState<"up" | "down" | null>(null);
-  const [feedbackComment, setFeedbackComment] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -55,7 +52,7 @@ export default function SharedSupportPresentation() {
       setLoading(true);
       const { data, error } = await supabase
         .from("shared_support_presentations")
-        .select("id, title, selected_slides, presentation_snapshot, expires_at")
+        .select("id, client_id, title, selected_slides, presentation_snapshot, expires_at")
         .eq("token", token)
         .maybeSingle();
       if (error || !data) {
@@ -72,29 +69,6 @@ export default function SharedSupportPresentation() {
       setLoading(false);
     })();
   }, [token]);
-
-  const handleSubmitFeedback = async () => {
-    if (!data) return;
-    if (!feedbackSentiment) {
-      toast.error("Por favor califica la presentación");
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const { error } = await supabase.from("support_presentation_feedback").insert({
-        shared_presentation_id: data.id,
-        overall_sentiment: feedbackSentiment,
-        comments: feedbackComment || null,
-      });
-      if (error) throw error;
-      setSubmitted(true);
-      toast.success("¡Gracias por tu feedback!");
-    } catch (e: any) {
-      toast.error(e.message || "Error enviando feedback");
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -187,14 +161,9 @@ export default function SharedSupportPresentation() {
               <SlideCierre clientName={clientName} />
             )}
             {isFeedbackSlide && (
-              <SlideFeedback
-                submitted={submitted}
-                sentiment={feedbackSentiment}
-                onSentimentChange={setFeedbackSentiment}
-                comment={feedbackComment}
-                onCommentChange={setFeedbackComment}
-                onSubmit={handleSubmitFeedback}
-                submitting={submitting}
+              <MinuteFeedbackRecorder
+                sharedPresentationId={data.id}
+                clientId={data.client_id}
               />
             )}
           </motion.div>
@@ -377,69 +346,5 @@ function SlideCierre({ clientName }: { clientName: string }) {
   );
 }
 
-function SlideFeedback({ submitted, sentiment, onSentimentChange, comment, onCommentChange, onSubmit, submitting }: {
-  submitted: boolean;
-  sentiment: "up" | "down" | null;
-  onSentimentChange: (s: "up" | "down") => void;
-  comment: string;
-  onCommentChange: (s: string) => void;
-  onSubmit: () => void;
-  submitting: boolean;
-}) {
-  if (submitted) {
-    return (
-      <div className="text-center py-16">
-        <div className="inline-flex h-16 w-16 rounded-full bg-success/15 items-center justify-center mb-4">
-          <ThumbsUp className="h-7 w-7 text-success" />
-        </div>
-        <h2 className="text-2xl font-bold mb-2">¡Feedback recibido!</h2>
-        <p className="text-sm text-muted-foreground">Gracias por tu evaluación.</p>
-      </div>
-    );
-  }
-  return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div className="text-center">
-        <h2 className="text-2xl md:text-3xl font-black mb-2">¿Cómo evalúas esta sesión?</h2>
-        <p className="text-sm text-muted-foreground">Tu feedback nos ayuda a mejorar el servicio</p>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          onClick={() => onSentimentChange("up")}
-          className={cn(
-            "p-6 rounded-2xl border-2 transition-all",
-            sentiment === "up" ? "border-success bg-success/10" : "border-border hover:border-success/40"
-          )}
-        >
-          <ThumbsUp className={cn("h-10 w-10 mx-auto mb-2", sentiment === "up" ? "text-success" : "text-muted-foreground")} />
-          <p className="font-bold text-sm">Satisfecho</p>
-        </button>
-        <button
-          onClick={() => onSentimentChange("down")}
-          className={cn(
-            "p-6 rounded-2xl border-2 transition-all",
-            sentiment === "down" ? "border-destructive bg-destructive/10" : "border-border hover:border-destructive/40"
-          )}
-        >
-          <ThumbsDown className={cn("h-10 w-10 mx-auto mb-2", sentiment === "down" ? "text-destructive" : "text-muted-foreground")} />
-          <p className="font-bold text-sm">Mejorable</p>
-        </button>
-      </div>
-      <textarea
-        value={comment}
-        onChange={(e) => onCommentChange(e.target.value)}
-        placeholder="Comentarios opcionales..."
-        rows={4}
-        className="w-full rounded-xl border border-border bg-background p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30"
-      />
-      <Button
-        onClick={onSubmit}
-        disabled={submitting || !sentiment}
-        className="w-full h-11 gap-2"
-      >
-        {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-        Enviar feedback
-      </Button>
-    </div>
-  );
-}
+// NOTE: SlideFeedback fue reemplazado por MinuteFeedbackRecorder
+// (soporta audio/video + sentimiento triple + texto).

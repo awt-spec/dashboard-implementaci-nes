@@ -1,18 +1,18 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { AuthError, authErrorResponse, requireAuth, requireRole } from "../_shared/auth.ts";
+import { isTicketClosed, isTaskClosed } from "../_shared/ticketStatus.ts";
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const pre = corsPreflight(req);
+  if (pre) return pre;
+  const cors = corsHeaders(req);
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const ctx = await requireAuth(req);
+    await requireRole(ctx, ["admin", "pm", "gerente"]);
+
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY")!;
+    const supabase = ctx.adminClient;
 
     // Gather full context
     const [clientsR, contractsR, slasR, financialsR, ticketsR, tasksR, teamR] = await Promise.all([
@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
       const clientTasks = tasks.filter((x: any) => x.client_id === c.id);
       const monthlyValue = contract?.monthly_value || 0;
       const hourlyRate = contract?.hourly_rate || 0;
-      const openItems = clientTickets.filter((t: any) => t.estado !== "FINALIZADO").length + clientTasks.filter((t: any) => t.status !== "completado").length;
+      const openItems = clientTickets.filter((t: any) => !isTicketClosed(t.estado)).length + clientTasks.filter((t: any) => !isTaskClosed(t.status)).length;
       const totalEffort = [...clientTickets, ...clientTasks].reduce((s: number, x: any) => s + (x.effort || 0), 0);
       return {
         id: c.id,
@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
     });
 
     const totalMonthlyRevenue = clientSnapshots.reduce((s, c) => s + Number(c.monthly_value || 0), 0);
-    const totalActiveItems = tickets.filter((t: any) => t.estado !== "FINALIZADO").length + tasks.filter((t: any) => t.status !== "completado").length;
+    const totalActiveItems = tickets.filter((t: any) => !isTicketClosed(t.estado)).length + tasks.filter((t: any) => !isTaskClosed(t.status)).length;
 
     const context = JSON.stringify({
       clients: clientSnapshots,
@@ -80,12 +80,12 @@ Deno.serve(async (req) => {
 
     const userPrompt = `Analiza el estado global del portafolio y genera tu informe ejecutivo:\n\n${context}`;
 
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
       signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
+        model: "gemini-2.5-flash-lite",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
@@ -156,8 +156,8 @@ Deno.serve(async (req) => {
     });
 
     if (!aiResp.ok) {
-      if (aiResp.status === 429) return new Response(JSON.stringify({ error: "Rate limit excedido, intenta en unos minutos" }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (aiResp.status === 402) return new Response(JSON.stringify({ error: "Créditos de IA agotados" }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (aiResp.status === 429) return new Response(JSON.stringify({ error: "Rate limit excedido, intenta en unos minutos" }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });
+      if (aiResp.status === 402) return new Response(JSON.stringify({ error: "Créditos de IA agotados" }), { status: 402, headers: { ...cors, "Content-Type": "application/json" } });
       const t = await aiResp.text();
       throw new Error(`AI error: ${aiResp.status} ${t}`);
     }
@@ -179,13 +179,13 @@ Deno.serve(async (req) => {
       risks: analysis.risks,
       metrics: { total_monthly_revenue: totalMonthlyRevenue, total_active_items: totalActiveItems, team_size: team.length },
       full_analysis: analysis,
-      model: "google/gemini-2.5-pro"
+      model: "gemini-2.5-flash-lite"
     }).select().single();
 
     const usage = aiData.usage || {};
     await supabase.from("ai_usage_logs").insert({
       function_name: "pm-ai-analysis",
-      model: "google/gemini-2.5-pro",
+      model: "gemini-2.5-flash-lite",
       prompt_tokens: usage.prompt_tokens || 0,
       completion_tokens: usage.completion_tokens || 0,
       total_tokens: usage.total_tokens || 0,
@@ -193,12 +193,13 @@ Deno.serve(async (req) => {
     });
 
     return new Response(JSON.stringify({ success: true, analysis, id: saved?.id }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
+      headers: { ...cors, "Content-Type": "application/json" }
     });
   } catch (e: any) {
+    if (e instanceof AuthError) return authErrorResponse(e, cors);
     console.error("pm-ai-analysis error:", e);
     return new Response(JSON.stringify({ error: e.message }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      status: 500, headers: { ...cors, "Content-Type": "application/json" }
     });
   }
 });

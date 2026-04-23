@@ -18,6 +18,8 @@ export function CreateClientDialog() {
   const [contractEnd, setContractEnd] = useState("");
   const [status, setStatus] = useState<string>("activo");
   const [coreVersion, setCoreVersion] = useState("");
+  const [clientType, setClientType] = useState<"soporte" | "implementacion">("soporte");
+  const [nivelServicio, setNivelServicio] = useState<"Base" | "Premium" | "Platinum">("Base");
   const createClient = useCreateClient();
   const { toast } = useToast();
 
@@ -42,10 +44,14 @@ export function CreateClientDialog() {
         team_assigned: [],
         core_version: coreVersion || "",
         modules: [],
-      });
-      toast({ title: "Cliente creado", description: name });
+        client_type: clientType,
+        nivel_servicio: nivelServicio,
+      } as any);
+      toast({ title: "Cliente creado", description: `${name} · ${clientType} · ${nivelServicio}` });
       setOpen(false);
-      setName(""); setCountry(""); setIndustry(""); setContactName(""); setContactEmail(""); setContractStart(""); setContractEnd(""); setStatus("activo"); setCoreVersion("");
+      setName(""); setCountry(""); setIndustry(""); setContactName(""); setContactEmail("");
+      setContractStart(""); setContractEnd(""); setStatus("activo"); setCoreVersion("");
+      setClientType("soporte"); setNivelServicio("Base");
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
@@ -95,6 +101,29 @@ export function CreateClientDialog() {
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">Email contacto *</label>
               <Input type="email" value={contactEmail} onChange={e => setContactEmail(e.target.value)} placeholder="juan@empresa.com" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Tipo *</label>
+              <Select value={clientType} onValueChange={(v) => setClientType(v as any)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="soporte">Soporte</SelectItem>
+                  <SelectItem value="implementacion">Implementación</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Nivel servicio *</label>
+              <Select value={nivelServicio} onValueChange={(v) => setNivelServicio(v as any)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Base">Base</SelectItem>
+                  <SelectItem value="Premium">Premium</SelectItem>
+                  <SelectItem value="Platinum">Platinum</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">

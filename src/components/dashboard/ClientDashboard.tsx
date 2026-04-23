@@ -18,6 +18,7 @@ import {
   Settings, GripVertical, Eye, EyeOff, ChevronDown, ChevronUp,
   CheckSquare, ArrowRight, Users
 } from "lucide-react";
+import { isTaskClosed } from "@/lib/ticketStatus";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   RadialBarChart, RadialBar, Legend, Area, AreaChart, Label, LineChart, Line, ReferenceLine
@@ -1024,7 +1025,7 @@ export function ClientDashboard({ client }: ClientDashboardProps) {
 
   const navItems: { id: Section; label: string; icon: any; badge?: number }[] = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { id: "actividades", label: "Actividades", icon: ListTodo, badge: tasks.filter(t => t.status !== "completada").length },
+    { id: "actividades", label: "Actividades", icon: ListTodo, badge: tasks.filter(t => !isTaskClosed(t.status)).length },
     { id: "entregables", label: "Entregables", icon: FileCheck },
     { id: "minutas", label: "Minutas", icon: FileText, badge: client.meetingMinutes.filter(m => m.visibleToClient).length },
     { id: "comunicacion", label: "Comunicación", icon: MessageCircle },

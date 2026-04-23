@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { isTaskClosed } from "@/lib/ticketStatus";
 
 interface UpcomingDeliverablesProps {
   clients: Client[];
@@ -79,7 +80,7 @@ export function UpcomingDeliverables({ clients, client }: UpcomingDeliverablesPr
       const now = new Date();
       const in30 = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
       const filtered = all.filter(d => d.parsedDate && d.parsedDate >= now && d.parsedDate <= in30 && d.status !== "aprobado" && d.status !== "entregado");
-      const filteredTasks = allTasks.filter(t => t.parsedDate && t.parsedDate >= now && t.parsedDate <= in30 && t.status !== "completada");
+      const filteredTasks = allTasks.filter(t => t.parsedDate && t.parsedDate >= now && t.parsedDate <= in30 && !isTaskClosed(t.status));
       return { deliverables: filtered.sort((a, b) => (a.parsedDate?.getTime() || 0) - (b.parsedDate?.getTime() || 0)), tasks: filteredTasks.sort((a, b) => (a.parsedDate?.getTime() || 0) - (b.parsedDate?.getTime() || 0)) };
     }
 
@@ -182,7 +183,7 @@ export function UpcomingDeliverables({ clients, client }: UpcomingDeliverablesPr
               <>
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mt-3">Tareas ({items.tasks.length})</p>
                 {items.tasks.map(t => {
-                  const isOverdue = t.parsedDate && t.parsedDate < new Date() && t.status !== "completada";
+                  const isOverdue = t.parsedDate && t.parsedDate < new Date() && !isTaskClosed(t.status);
                   return (
                     <div key={t.id} className={`flex items-center justify-between p-2.5 rounded-lg border ${isOverdue ? "border-destructive/30 bg-destructive/5" : "border-border"}`}>
                       <div className="min-w-0 flex-1">

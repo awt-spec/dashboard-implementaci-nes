@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { useAllSprints, useAllScrumWorkItems } from "@/hooks/useTeamScrum";
 import { useSprintDailies, useUpsertDaily } from "@/hooks/useSprintCeremonies";
 import { useAuth } from "@/hooks/useAuth";
+import { useClients } from "@/hooks/useClients";
+import { Building2 } from "lucide-react";
 
 const MOODS = ["😞", "😐", "🙂", "😊", "🤩"];
 const MOOD_LABELS = ["Muy mal", "Regular", "Ok", "Bien", "Genial"];
@@ -20,11 +22,24 @@ const initials = (n: string) => n.split(" ").map(p => p[0]).slice(0, 2).join("")
 export function DailyStandupPanel() {
   const { data: sprints = [] } = useAllSprints();
   const { data: items = [] } = useAllScrumWorkItems();
+  const { data: clients = [] } = useClients();
   const { profile } = useAuth();
+
+  const clientMap = useMemo(() => {
+    const m = new Map<string, string>();
+    (clients as any[]).forEach(c => m.set(c.id, c.name));
+    return m;
+  }, [clients]);
 
   const activeSprints = sprints.filter(s => s.status === "activo");
   const [sprintId, setSprintId] = useState<string>(activeSprints[0]?.id || "");
   const sprint = sprints.find(s => s.id === sprintId);
+  const sprintClient = sprint ? (clientMap.get(sprint.client_id) || sprint.client_id) : "";
+
+  const sprintDaysLeft = useMemo(() => {
+    if (!sprint?.end_date) return null;
+    return Math.ceil((new Date(sprint.end_date).getTime() - Date.now()) / 86400000);
+  }, [sprint]);
   const { data: dailies = [] } = useSprintDailies(sprintId);
   const upsert = useUpsertDaily();
 
@@ -106,16 +121,54 @@ export function DailyStandupPanel() {
           <Sun className="h-5 w-5 text-warning" />
           <div>
             <h3 className="text-base font-bold leading-tight">Daily Standup</h3>
-            <p className="text-[11px] text-muted-foreground">{new Date(today).toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}</p>
+            <p className="text-[11px] text-muted-foreground capitalize">
+              {new Date(today).toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}
+            </p>
           </div>
         </div>
         <Select value={sprintId} onValueChange={setSprintId}>
-          <SelectTrigger className="w-[260px] h-8 text-xs"><SelectValue placeholder="Sprint" /></SelectTrigger>
+          <SelectTrigger className="w-[280px] h-9 text-xs">
+            <SelectValue placeholder="Seleccionar sprint" />
+          </SelectTrigger>
           <SelectContent>
-            {activeSprints.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+            {activeSprints.map(s => {
+              const cn = clientMap.get(s.client_id) || s.client_id;
+              return (
+                <SelectItem key={s.id} value={s.id}>
+                  <span className="font-semibold">{cn}</span>
+                  <span className="text-muted-foreground ml-2 text-[10px]">· {s.name}</span>
+                </SelectItem>
+              );
+            })}
           </SelectContent>
         </Select>
       </div>
+
+      {/* Contexto del sprint actual */}
+      {sprint && (
+        <Card className="border-primary/20 bg-gradient-to-r from-primary/5 via-card to-card">
+          <CardContent className="p-3 flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2 min-w-0">
+              <Building2 className="h-4 w-4 text-primary shrink-0" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold truncate">{sprintClient}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{sprint.name}{sprint.goal && ` · ${sprint.goal}`}</p>
+              </div>
+            </div>
+            {sprintDaysLeft !== null && (
+              <Badge className={
+                sprintDaysLeft < 0 ? "ml-auto bg-destructive/15 text-destructive border-destructive/30" :
+                sprintDaysLeft <= 2 ? "ml-auto bg-warning/15 text-warning border-warning/30" :
+                "ml-auto bg-success/15 text-success border-success/30"
+              }>
+                {sprintDaysLeft < 0 ? `Vencido hace ${Math.abs(sprintDaysLeft)}d` :
+                 sprintDaysLeft === 0 ? "Último día" :
+                 `${sprintDaysLeft} días restantes`}
+              </Badge>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Team Health Overview */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -198,18 +251,42 @@ export function DailyStandupPanel() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
-              <label className="text-[10px] font-bold uppercase text-muted-foreground">Ayer hice</label>
-              <Textarea rows={3} value={form.yesterday} onChange={e => setForm(f => ({ ...f, yesterday: e.target.value }))} className="text-xs mt-1" placeholder="Cerré ticket #123, code review…" />
+              <label className="text-[11px] font-bold uppercase tracking-wide text-success flex items-center gap-1">
+                <CheckCircle2 className="h-3 w-3" /> Ayer completé
+              </label>
+              <Textarea
+                rows={3}
+                value={form.yesterday}
+                onChange={e => setForm(f => ({ ...f, yesterday: e.target.value }))}
+                className="text-xs mt-1 resize-none"
+                placeholder="Ej: Cerré 2 tickets de AFPC, code review del PR #23, sesión con cliente por integración."
+              />
             </div>
             <div>
-              <label className="text-[10px] font-bold uppercase text-muted-foreground">Hoy haré</label>
-              <Textarea rows={3} value={form.today} onChange={e => setForm(f => ({ ...f, today: e.target.value }))} className="text-xs mt-1" placeholder="Implementar feature X, refactorizar…" />
+              <label className="text-[11px] font-bold uppercase tracking-wide text-info flex items-center gap-1">
+                <TrendingUp className="h-3 w-3" /> Hoy voy a
+              </label>
+              <Textarea
+                rows={3}
+                value={form.today}
+                onChange={e => setForm(f => ({ ...f, today: e.target.value }))}
+                className="text-xs mt-1 resize-none"
+                placeholder="Ej: Avanzar ticket SPRME-68, daily con cliente, cerrar validación del módulo de pensión."
+              />
             </div>
             <div>
-              <label className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Bloqueos</label>
-              <Textarea rows={3} value={form.blockers} onChange={e => setForm(f => ({ ...f, blockers: e.target.value }))} className="text-xs mt-1" placeholder="Espero info de cliente…" />
+              <label className="text-[11px] font-bold uppercase tracking-wide text-destructive flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" /> Necesito ayuda con
+              </label>
+              <Textarea
+                rows={3}
+                value={form.blockers}
+                onChange={e => setForm(f => ({ ...f, blockers: e.target.value }))}
+                className="text-xs mt-1 resize-none"
+                placeholder="Ej: Espero credenciales de AFPC desde el jueves, o bloqueado por falta de specs."
+              />
             </div>
           </div>
           <div className="flex items-center justify-between flex-wrap gap-2">

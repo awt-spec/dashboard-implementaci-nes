@@ -1,26 +1,24 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { AuthError, authErrorResponse, requireAuth, requireRole } from "../_shared/auth.ts";
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const pre = corsPreflight(req);
+  if (pre) return pre;
+  const cors = corsHeaders(req);
 
   try {
+    const ctx = await requireAuth(req);
+    await requireRole(ctx, ["admin", "pm", "gerente"]);
+
     const { client_id, project_brief, required_skills = [], team_size = 3 } = await req.json();
     if (!client_id && !project_brief) {
       return new Response(JSON.stringify({ error: "client_id or project_brief required" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const supabase = ctx.adminClient;
 
     // Load active members + skills + capacity
     const { data: members } = await supabase
@@ -49,8 +47,8 @@ serve(async (req) => {
       };
     });
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not set");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not set");
 
     const prompt = `Eres un PM senior. Recomienda los mejores ${team_size} candidatos del equipo SYSDE para este proyecto.
 
@@ -65,12 +63,12 @@ ${JSON.stringify(memberSummary, null, 2)}
 
 Devuelve SOLO JSON con candidatos rankeados, justificación y skill gaps.`;
 
-    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
       signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gemini-2.5-flash-lite",
         messages: [
           { role: "system", content: "Eres un experto en asignación de equipos. Responde SOLO con la herramienta provista." },
           { role: "user", content: prompt },
@@ -112,8 +110,8 @@ Devuelve SOLO JSON con candidatos rankeados, justificación y skill gaps.`;
     });
 
     if (!aiRes.ok) {
-      if (aiRes.status === 429) return new Response(JSON.stringify({ error: "Rate limit" }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (aiRes.status === 402) return new Response(JSON.stringify({ error: "Sin créditos" }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (aiRes.status === 429) return new Response(JSON.stringify({ error: "Rate limit" }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });
+      if (aiRes.status === 402) return new Response(JSON.stringify({ error: "Sin créditos" }), { status: 402, headers: { ...cors, "Content-Type": "application/json" } });
       throw new Error(`AI error ${aiRes.status}`);
     }
 
@@ -122,12 +120,13 @@ Devuelve SOLO JSON con candidatos rankeados, justificación y skill gaps.`;
     const result = toolCall ? JSON.parse(toolCall.function.arguments) : {};
 
     return new Response(JSON.stringify(result), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
     });
   } catch (e) {
+    if (e instanceof AuthError) return authErrorResponse(e, cors);
     console.error(e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...cors, "Content-Type": "application/json" },
     });
   }
 });

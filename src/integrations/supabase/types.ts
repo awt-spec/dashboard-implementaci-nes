@@ -1808,6 +1808,65 @@ export type Database = {
         }
         Relationships: []
       }
+      shared_ticket_history: {
+        Row: {
+          client_name: string | null
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          history_snapshot: Json
+          id: string
+          include_internal_notes: boolean
+          include_system_views: boolean
+          last_viewed_at: string | null
+          ticket_id: string | null
+          ticket_snapshot: Json
+          title: string
+          token: string
+          view_count: number
+        }
+        Insert: {
+          client_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          history_snapshot: Json
+          id?: string
+          include_internal_notes?: boolean
+          include_system_views?: boolean
+          last_viewed_at?: string | null
+          ticket_id?: string | null
+          ticket_snapshot: Json
+          title: string
+          token?: string
+          view_count?: number
+        }
+        Update: {
+          client_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          history_snapshot?: Json
+          id?: string
+          include_internal_notes?: boolean
+          include_system_views?: boolean
+          last_viewed_at?: string | null
+          ticket_id?: string | null
+          ticket_snapshot?: Json
+          title?: string
+          token?: string
+          view_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_ticket_history_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sprint_dailies: {
         Row: {
           blockers: string | null
@@ -2005,6 +2064,78 @@ export type Database = {
         }
         Relationships: []
       }
+      support_minutes_feedback: {
+        Row: {
+          audio_duration_seconds: number | null
+          audio_transcript: string | null
+          audio_url: string | null
+          author_name: string | null
+          author_role: string | null
+          client_id: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          minute_id: string | null
+          sentiment: string | null
+          shared_presentation_id: string | null
+          text_comment: string | null
+          video_duration_seconds: number | null
+          video_transcript: string | null
+          video_url: string | null
+        }
+        Insert: {
+          audio_duration_seconds?: number | null
+          audio_transcript?: string | null
+          audio_url?: string | null
+          author_name?: string | null
+          author_role?: string | null
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          minute_id?: string | null
+          sentiment?: string | null
+          shared_presentation_id?: string | null
+          text_comment?: string | null
+          video_duration_seconds?: number | null
+          video_transcript?: string | null
+          video_url?: string | null
+        }
+        Update: {
+          audio_duration_seconds?: number | null
+          audio_transcript?: string | null
+          audio_url?: string | null
+          author_name?: string | null
+          author_role?: string | null
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          minute_id?: string | null
+          sentiment?: string | null
+          shared_presentation_id?: string | null
+          text_comment?: string | null
+          video_duration_seconds?: number | null
+          video_transcript?: string | null
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_minutes_feedback_minute_id_fkey"
+            columns: ["minute_id"]
+            isOneToOne: false
+            referencedRelation: "support_minutes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_minutes_feedback_shared_presentation_id_fkey"
+            columns: ["shared_presentation_id"]
+            isOneToOne: false
+            referencedRelation: "shared_support_presentations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       support_presentation_feedback: {
         Row: {
           comments: string | null
@@ -2176,26 +2307,26 @@ export type Database = {
       }
       support_ticket_notes: {
         Row: {
-          author: string
+          author_name: string
+          content: string
           created_at: string
           id: string
-          message: string
           ticket_id: string
           visibility: string
         }
         Insert: {
-          author?: string
+          author_name?: string
+          content: string
           created_at?: string
           id?: string
-          message: string
           ticket_id: string
           visibility?: string
         }
         Update: {
-          author?: string
+          author_name?: string
+          content?: string
           created_at?: string
           id?: string
-          message?: string
           ticket_id?: string
           visibility?: string
         }
@@ -2211,25 +2342,37 @@ export type Database = {
       }
       support_ticket_subtasks: {
         Row: {
+          assignee: string | null
           completed: boolean
           created_at: string
+          description: string | null
+          due_date: string | null
           id: string
+          priority: string
           sort_order: number
           ticket_id: string
           title: string
         }
         Insert: {
+          assignee?: string | null
           completed?: boolean
           created_at?: string
+          description?: string | null
+          due_date?: string | null
           id?: string
+          priority?: string
           sort_order?: number
           ticket_id: string
           title: string
         }
         Update: {
+          assignee?: string | null
           completed?: boolean
           created_at?: string
+          description?: string | null
+          due_date?: string | null
           id?: string
+          priority?: string
           sort_order?: number
           ticket_id?: string
           title?: string

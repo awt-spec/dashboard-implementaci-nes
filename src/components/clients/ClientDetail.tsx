@@ -9,8 +9,9 @@ import { Slider } from "@/components/ui/slider";
 import {
   Building2, MapPin, Mail, User, Calendar, TrendingUp,
   CheckCircle2, Loader2, Circle, Clock, AlertTriangle,
-  ArrowLeft, Download, ArrowRightLeft
+  ArrowLeft, Download, ArrowRightLeft, Plus, Ticket,
 } from "lucide-react";
+import { NewTicketForm } from "@/components/support/NewTicketForm";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { exportClientPdf } from "@/lib/exportPdf";
@@ -51,6 +52,7 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
   const queryClient = useQueryClient();
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferring, setTransferring] = useState(false);
+  const [newCaseOpen, setNewCaseOpen] = useState(false);
 
   const handleTransferToSupport = async () => {
     setTransferring(true);
@@ -110,6 +112,13 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => setNewCaseOpen(true)}
+                      className="gap-1.5"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Nuevo caso
+                    </Button>
                     <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
                       <DialogTrigger asChild>
                         <Button variant="outline" size="sm" className="gap-1.5 border-amber-500/30 text-amber-500 hover:bg-amber-500/10">
@@ -294,6 +303,19 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
           <ContractsSLATab clientId={client.id} />
         </TabsContent>
       </Tabs>
+
+      {/* Dialog para crear caso desde el perfil del cliente */}
+      <NewTicketForm
+        open={newCaseOpen}
+        onOpenChange={setNewCaseOpen}
+        defaultClientId={client.id}
+        mode="admin"
+        onCreated={() => {
+          toast.success("El caso apareció en la Bandeja de Soporte.", {
+            description: "Podés ver el detalle en la sección Soporte → Bandeja.",
+          });
+        }}
+      />
     </div>
   );
 }

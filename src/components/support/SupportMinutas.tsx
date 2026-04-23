@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { SupportMinutaPresentation } from "./SupportMinutaPresentation";
 import { ShareSupportPresentationDialog } from "./ShareSupportPresentationDialog";
+import { MinuteFeedbackList } from "./MinuteFeedbackList";
 import { toast } from "sonner";
 import type { SupportTicket } from "@/hooks/useSupportTickets";
 
@@ -639,6 +640,9 @@ Genera una minuta ejecutiva de soporte con título, resumen, acuerdos y acciones
           </CardContent>
         </Card>
       )}
+
+      {/* Feedback recibido del cliente (audio/video/texto) */}
+      <MinuteFeedbackList clientId={clientId} />
 
       {/* Minutas List */}
       {minutas.map(m => {

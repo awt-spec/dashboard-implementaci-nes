@@ -27,7 +27,12 @@ import { SupportMinutas } from "./SupportMinutas";
 import { SupportAgreementsTab } from "./SupportAgreementsTab";
 import { ContractsSLATab } from "@/components/clients/ContractsSLATab";
 import { SupportScrumPanel } from "./SupportScrumPanel";
+import { ClientStrategyPanel } from "./ClientStrategyPanel";
 import { DevOpsPanel } from "./DevOpsPanel";
+import { NewTicketForm } from "./NewTicketForm";
+import { SupportInbox } from "./SupportInbox";
+import { ExportTicketsMenu } from "./ExportTicketsMenu";
+import { Plus, Inbox } from "lucide-react";
 
 const prioridadColors: Record<string, string> = {
   "Critica, Impacto Negocio": "bg-red-600 text-white",
@@ -83,6 +88,7 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
   const [classifying, setClassifying] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferring, setTransferring] = useState(false);
+  const [newTicketOpen, setNewTicketOpen] = useState(false);
 
   const isClientView = !!initialClientId;
 
@@ -375,10 +381,43 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
           {classifying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
           Clasificar con IA
         </Button>
+        <ExportTicketsMenu
+          tickets={allTickets}
+          clients={clients}
+          currentClientId={isClientView ? initialClientId : (selectedClient !== "all" ? selectedClient : undefined)}
+        />
+        <Button
+          size="sm"
+          className="h-8 gap-1.5 text-xs"
+          onClick={() => setNewTicketOpen(true)}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Nuevo caso
+        </Button>
       </div>
 
-      <Tabs defaultValue="operacion">
+      <NewTicketForm
+        open={newTicketOpen}
+        onOpenChange={setNewTicketOpen}
+        defaultClientId={isClientView ? initialClientId : (selectedClient !== "all" ? selectedClient : undefined)}
+        mode="admin"
+      />
+
+      <Tabs defaultValue="inbox">
         <TabsList className="flex-wrap">
+          <TabsTrigger value="inbox" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <Inbox className="h-3.5 w-3.5" /> Bandeja
+            {(() => {
+              const inboxCount = allTickets.filter(t =>
+                ["PENDIENTE", "EN ATENCIÓN"].includes(t.estado) &&
+                (!isClientView || t.client_id === initialClientId) &&
+                (selectedClient === "all" || t.client_id === selectedClient)
+              ).length;
+              return inboxCount > 0 ? (
+                <Badge variant="outline" className="ml-1 text-[10px] h-4 px-1 tabular-nums">{inboxCount}</Badge>
+              ) : null;
+            })()}
+          </TabsTrigger>
           <TabsTrigger value="operacion">Operación</TabsTrigger>
           <TabsTrigger value="analitica">Analítica</TabsTrigger>
           <TabsTrigger value="ia">IA & Estrategia</TabsTrigger>
@@ -386,6 +425,12 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
           <TabsTrigger value="minutas">Minutas</TabsTrigger>
           {!isClientView && <TabsTrigger value="datos">Datos & Sync</TabsTrigger>}
         </TabsList>
+
+        <TabsContent value="inbox" className="mt-4">
+          <SupportInbox
+            clientId={isClientView ? initialClientId : (selectedClient !== "all" ? selectedClient : undefined)}
+          />
+        </TabsContent>
 
         {/* ============ 1. OPERACIÓN: KPIs visuales + tabla de casos ============ */}
         <TabsContent value="operacion" className="space-y-4 mt-4">
@@ -671,11 +716,12 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
             </Button>
           </div>
 
-          <Tabs defaultValue="clasificacion">
+          <Tabs defaultValue={(isClientView || selectedClient !== "all") ? "estrategia-cliente" : "clasificacion"}>
             <TabsList className="h-8">
               <TabsTrigger value="clasificacion" className="text-xs h-6 gap-1"><Brain className="h-3 w-3" /> Clasificación</TabsTrigger>
               <TabsTrigger value="seguimiento" className="text-xs h-6 gap-1"><AlertTriangle className="h-3 w-3" /> Seguimiento IA</TabsTrigger>
               <TabsTrigger value="agentes" className="text-xs h-6 gap-1"><Sparkles className="h-3 w-3" /> Agentes IA</TabsTrigger>
+              {(isClientView || selectedClient !== "all") && <TabsTrigger value="estrategia-cliente" className="text-xs h-6 gap-1"><Sparkles className="h-3 w-3" /> Estrategia Cliente</TabsTrigger>}
               {(isClientView || selectedClient !== "all") && <TabsTrigger value="scrum" className="text-xs h-6 gap-1"><Activity className="h-3 w-3" /> Backlog Scrum</TabsTrigger>}
             </TabsList>
 
@@ -964,6 +1010,24 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
                   </CardContent>
                 </Card>
               </div>
+            </TabsContent>
+
+            {/* Sub-tab: Estrategia Cliente (IA) */}
+            <TabsContent value="estrategia-cliente" className="mt-4">
+              {(isClientView || selectedClient !== "all") ? (
+                <ClientStrategyPanel
+                  clientId={isClientView ? initialClientId! : selectedClient}
+                  clientName={isClientView ? selectedClientObj?.name : selectedClientName}
+                  canEdit={true}
+                />
+              ) : (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <Sparkles className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground">Seleccioná un cliente para generar su estrategia IA</p>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             {/* Sub-tab: Backlog Scrum */}

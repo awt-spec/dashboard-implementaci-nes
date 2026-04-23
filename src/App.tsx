@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Report from "./pages/Report";
 import SharedPresentation from "./pages/SharedPresentation";
 import SharedSupportPresentation from "./pages/SharedSupportPresentation";
+import SharedTicketHistory from "./pages/SharedTicketHistory";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import MemberProfile from "./pages/MemberProfile";
@@ -48,6 +49,7 @@ const App = () => (
             <Route path="/report" element={<Report />} />
             <Route path="/shared/:token" element={<SharedPresentation />} />
             <Route path="/shared-support/:token" element={<SharedSupportPresentation />} />
+            <Route path="/historial-caso/:token" element={<SharedTicketHistory />} />
             <Route path="/team/:memberId" element={<MemberProfile />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

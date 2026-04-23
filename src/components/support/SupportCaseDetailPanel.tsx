@@ -23,7 +23,9 @@ import {
 } from "@/hooks/useSupportTicketDetails";
 import { SupportCaseScrumSection } from "./SupportCaseScrumSection";
 import { CaseCompliancePanel } from "./CaseCompliancePanel";
-import { Shield } from "lucide-react";
+import { TicketLegacyView } from "./TicketLegacyView";
+import { Shield, ScrollText } from "lucide-react";
+import { useSupportClients } from "@/hooks/useSupportTickets";
 
 const TAG_COLORS = ["#6366f1", "#ec4899", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6", "#06b6d4", "#f97316"];
 
@@ -34,6 +36,8 @@ interface Props {
 
 export function SupportCaseDetailPanel({ ticket, teamMembers = [] }: Props) {
   const t = ticket;
+  const { data: clients = [] } = useSupportClients();
+  const clientForTicket = clients.find(c => c.id === t.client_id);
 
   // Subtasks
   const { data: subtasks = [] } = useTicketSubtasks(t.id);
@@ -98,7 +102,7 @@ export function SupportCaseDetailPanel({ ticket, teamMembers = [] }: Props) {
   const handleAddNote = () => {
     if (!newNote.trim()) return;
     createNote.mutate(
-      { ticket_id: t.id, message: newNote.trim(), author: "Sistema", visibility: noteVisibility },
+      { ticket_id: t.id, content: newNote.trim(), author_name: "Sistema", visibility: noteVisibility },
       { onSuccess: () => { setNewNote(""); toast.success("Nota agregada"); } }
     );
   };
@@ -125,6 +129,9 @@ export function SupportCaseDetailPanel({ ticket, teamMembers = [] }: Props) {
       <TabsList className="w-full h-8 bg-muted/50 flex-wrap">
         <TabsTrigger value="policy" className="text-[10px] h-6 px-2 gap-1 flex-1">
           <Shield className="h-3 w-3" />Política
+        </TabsTrigger>
+        <TabsTrigger value="legacy" className="text-[10px] h-6 px-2 gap-1 flex-1">
+          <ScrollText className="h-3 w-3" />Vista clásica
         </TabsTrigger>
         <TabsTrigger value="scrum" className="text-[10px] h-6 px-2 gap-1 flex-1">
           <Target className="h-3 w-3" />Scrum
@@ -154,6 +161,11 @@ export function SupportCaseDetailPanel({ ticket, teamMembers = [] }: Props) {
       {/* Política v4.5 */}
       <TabsContent value="policy" className="mt-3">
         <CaseCompliancePanel ticketId={ticket.id} clientId={(ticket as any).client_id} />
+      </TabsContent>
+
+      {/* Vista clásica (replica del formulario Gurunet legacy) */}
+      <TabsContent value="legacy" className="mt-3">
+        <TicketLegacyView ticket={ticket} client={clientForTicket || null} canEditInternal={true} />
       </TabsContent>
 
       {/* Scrum */}
@@ -306,14 +318,14 @@ export function SupportCaseDetailPanel({ ticket, teamMembers = [] }: Props) {
             <motion.div key={n.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
               className={`group p-3 rounded-lg border ${n.visibility === "interna" ? "border-amber-500/20 bg-amber-500/5" : "border-blue-500/20 bg-blue-500/5"}`}>
               <div className="flex items-start justify-between gap-2">
-                <p className="text-xs text-foreground leading-relaxed flex-1">{n.message}</p>
+                <p className="text-xs text-foreground leading-relaxed flex-1">{n.content}</p>
                 <button onClick={() => deleteNote.mutate({ id: n.id, ticket_id: t.id })}
                   className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive p-1 rounded shrink-0">
                   <Trash2 className="h-3 w-3" />
                 </button>
               </div>
               <div className="flex items-center gap-2 mt-2 text-[10px] text-muted-foreground">
-                <span>{n.author}</span>
+                <span>{n.author_name}</span>
                 <span>·</span>
                 <span>{new Date(n.created_at).toLocaleDateString("es")}</span>
                 <Badge variant="outline" className={`text-[8px] h-3.5 px-1 gap-0.5 ${n.visibility === "interna" ? "border-amber-500/30 text-amber-400" : "border-blue-500/30 text-blue-400"}`}>

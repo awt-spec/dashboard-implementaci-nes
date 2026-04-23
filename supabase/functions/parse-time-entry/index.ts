@@ -1,9 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
 
 interface ParsedEntry {
   source: "task" | "ticket";
@@ -20,12 +16,14 @@ interface ParsedEntry {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const pre = corsPreflight(req);
+  if (pre) return pre;
+  const cors = corsHeaders(req);
 
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     const supabase = createClient(
@@ -36,13 +34,13 @@ Deno.serve(async (req) => {
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     const body = await req.json();
     const text: string = body?.text ?? "";
     if (!text || text.length > 1000) {
-      return new Response(JSON.stringify({ error: "text required (1-1000 chars)" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "text required (1-1000 chars)" }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     // Cargar contexto: tareas y tickets activos del usuario, clientes
@@ -93,15 +91,15 @@ Devuelve SOLO un JSON con este formato exacto:
   "confidence": number
 }`;
 
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${Deno.env.get("LOVABLE_API_KEY")}`,
+        Authorization: `Bearer ${Deno.env.get("GEMINI_API_KEY")}`,
         "Content-Type": "application/json",
       },
       signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gemini-2.5-flash-lite",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -111,14 +109,14 @@ Devuelve SOLO un JSON con este formato exacto:
     });
 
     if (aiResp.status === 429) {
-      return new Response(JSON.stringify({ error: "Demasiadas solicitudes, intenta en un momento" }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Demasiadas solicitudes, intenta en un momento" }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });
     }
     if (aiResp.status === 402) {
-      return new Response(JSON.stringify({ error: "Sin créditos de IA. Agrega fondos en Workspace > Usage" }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Sin créditos de IA. Agrega fondos en Workspace > Usage" }), { status: 402, headers: { ...cors, "Content-Type": "application/json" } });
     }
     if (!aiResp.ok) {
       const t = await aiResp.text();
-      return new Response(JSON.stringify({ error: "AI gateway error", detail: t }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "AI gateway error", detail: t }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     const aiJson = await aiResp.json();
@@ -130,7 +128,7 @@ Devuelve SOLO un JSON con este formato exacto:
     // Log uso IA
     await supabase.from("ai_usage_logs").insert({
       function_name: "parse-time-entry",
-      model: "google/gemini-2.5-flash",
+      model: "gemini-2.5-flash-lite",
       prompt_tokens: aiJson?.usage?.prompt_tokens ?? 0,
       completion_tokens: aiJson?.usage?.completion_tokens ?? 0,
       total_tokens: aiJson?.usage?.total_tokens ?? 0,
@@ -138,9 +136,9 @@ Devuelve SOLO un JSON con este formato exacto:
     });
 
     return new Response(JSON.stringify({ parsed }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
     });
   } catch (e) {
-    return new Response(JSON.stringify({ error: (e as Error).message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: (e as Error).message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
   }
 });
