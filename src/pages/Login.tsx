@@ -26,27 +26,16 @@ const IMPLEMENTATION_CLIENTS: DemoAccount[] = [
   { label: "Apex", email: "gerente.apex@sysde.com", pw: "GerenteApex2026!" },
 ];
 
+// Solo los 8 clientes activos con tickets importados.
 const SUPPORT_CLIENTS: DemoAccount[] = [
-  { label: "AFP Atlántico", email: "cliente.atlantico@sysde.com", pw: "ClienteAtlantico2026!" },
-  { label: "AFP Atlántida", email: "cliente.atlantida@sysde.com", pw: "ClienteAtlantida2026!" },
-  { label: "AFPC Occidente", email: "cliente.occidente@sysde.com", pw: "ClienteOccidente2026!" },
-  { label: "Banco de Bogotá", email: "cliente.bogota@sysde.com", pw: "ClienteBogota2026!" },
   { label: "CFE Panamá", email: "cliente.cfe@sysde.com", pw: "ClienteCfe2026!" },
   { label: "CMI", email: "cliente.cmi@sysde.com", pw: "ClienteCmi2026!" },
   { label: "Coopecar", email: "cliente.coopecar@sysde.com", pw: "ClienteCoopecar2026!" },
   { label: "Credicefi", email: "cliente.credicefi@sysde.com", pw: "ClienteCredicefi2026!" },
-  { label: "CRG Credit Rural", email: "cliente.crg@sysde.com", pw: "ClienteCrg2026!" },
-  { label: "Factor y Valor", email: "cliente.factor@sysde.com", pw: "ClienteFactor2026!" },
-  { label: "Fafidess", email: "cliente.fafidess@sysde.com", pw: "ClienteFafidess2026!" },
   { label: "FIACG", email: "cliente.fiacg@sysde.com", pw: "ClienteFiacg2026!" },
   { label: "Fundap", email: "cliente.fundap@sysde.com", pw: "ClienteFundap2026!" },
-  { label: "INS Filemaster", email: "cliente.ins@sysde.com", pw: "ClienteIns2026!" },
-  { label: "Kafo Jiginew", email: "cliente.kafo@sysde.com", pw: "ClienteKafo2026!" },
-  { label: "MECZY", email: "cliente.meczy@sysde.com", pw: "ClienteMeczy2026!" },
-  { label: "Micitt", email: "cliente.micitt@sysde.com", pw: "ClienteMicitt2026!" },
-  { label: "Municipalidad de Escazú", email: "cliente.escazu@sysde.com", pw: "ClienteEscazu2026!" },
-  { label: "Quiero Confianza", email: "cliente.ion@sysde.com", pw: "ClienteIon2026!" },
-  { label: "SOFIMSA", email: "cliente.sofimsa@sysde.com", pw: "ClienteSofimsa2026!" },
+  { label: "Quiero Confianza (ION)", email: "cliente.ion@sysde.com", pw: "ClienteIon2026!" },
+  { label: "SAF UPV", email: "cliente.safupv@sysde.com", pw: "ClienteSafupv2026!" },
 ];
 
 export default function Login() {
