@@ -153,28 +153,47 @@ function ResumenSections({ sections, clients }: { sections: ReportSection[]; cli
         </Card>
       )}
 
-      {sections.includes("progress-cards") && (
-        <div>
-          <h3 className="text-sm font-semibold text-foreground mb-3">Progreso por Cliente</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {clients.map(c => (
-              <Card key={c.id}>
-                <CardContent className="p-4">
-                  <h4 className="text-sm font-bold text-foreground">{c.name}</h4>
-                  <p className="text-xs text-muted-foreground mb-2">{c.country} · {c.industry}</p>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-muted-foreground">Progreso</span>
-                    <span className="font-bold text-foreground">{c.progress}%</span>
-                  </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div className="h-full bg-primary rounded-full" style={{ width: `${c.progress}%` }} />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+      {sections.includes("progress-cards") && (() => {
+        const impl = clients.filter((c: any) => c.client_type === "implementacion");
+        const sup = clients.filter((c: any) => c.client_type === "soporte");
+        const other = clients.filter((c: any) => !["implementacion", "soporte"].includes(c.client_type));
+        const Card1 = (c: any) => (
+          <Card key={c.id}>
+            <CardContent className="p-4">
+              <h4 className="text-sm font-bold text-foreground">{c.name}</h4>
+              <p className="text-xs text-muted-foreground mb-2">{c.country} · {c.industry}</p>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-muted-foreground">Progreso</span>
+                <span className="font-bold text-foreground">{c.progress ?? 0}%</span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div className="h-full bg-primary rounded-full" style={{ width: `${c.progress ?? 0}%` }} />
+              </div>
+            </CardContent>
+          </Card>
+        );
+        const Section = ({ title, count, items }: { title: string; count: number; items: any[] }) => (
+          items.length === 0 ? null : (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{title}</h4>
+                <span className="text-xs font-mono text-muted-foreground/60">({count})</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {items.map(Card1)}
+              </div>
+            </div>
+          )
+        );
+        return (
+          <div className="space-y-6">
+            <h3 className="text-sm font-semibold text-foreground">Progreso por Cliente</h3>
+            <Section title="Implementación" count={impl.length} items={impl} />
+            <Section title="Soporte" count={sup.length} items={sup} />
+            <Section title="Otros" count={other.length} items={other} />
           </div>
-        </div>
-      )}
+        );
+      })()}
     </>
   );
 }

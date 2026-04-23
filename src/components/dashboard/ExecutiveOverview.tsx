@@ -188,22 +188,48 @@ export function ExecutiveOverview() {
         <Card className="lg:col-span-2">
           <CardContent className="p-5">
             <h3 className="text-sm font-semibold text-foreground mb-3">Progreso por Cliente</h3>
-            <div className="space-y-3">
-              {clients.map((c, i) => (
+            {(() => {
+              const impl = clients.filter((c: any) => c.client_type === "implementacion");
+              const sup = clients.filter((c: any) => c.client_type === "soporte");
+              const other = clients.filter((c: any) => !["implementacion", "soporte"].includes(c.client_type));
+
+              const Row = ({ c }: { c: any }) => (
                 <div key={c.id}>
                   <div className="flex justify-between text-xs mb-1">
                     <span className="text-foreground font-medium truncate mr-2">{c.name}</span>
-                    <span className="text-muted-foreground shrink-0">{c.progress}%</span>
+                    <span className="text-muted-foreground shrink-0">{c.progress ?? 0}%</span>
                   </div>
                   <div className="h-2 bg-muted rounded-full overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-all ${c.progress > 80 ? 'bg-success' : c.progress > 40 ? 'bg-primary' : 'bg-warning'}`}
-                      style={{ width: `${c.progress}%` }}
+                      className={`h-full rounded-full transition-all ${(c.progress ?? 0) > 80 ? 'bg-success' : (c.progress ?? 0) > 40 ? 'bg-primary' : 'bg-warning'}`}
+                      style={{ width: `${c.progress ?? 0}%` }}
                     />
                   </div>
                 </div>
-              ))}
-            </div>
+              );
+
+              const Section = ({ title, count, items }: { title: string; count: number; items: any[] }) => (
+                items.length === 0 ? null : (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 pb-1 border-b border-border/50">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{title}</span>
+                      <span className="text-[10px] font-mono text-muted-foreground/70">({count})</span>
+                    </div>
+                    <div className="space-y-2.5">
+                      {items.map((c) => <Row key={c.id} c={c} />)}
+                    </div>
+                  </div>
+                )
+              );
+
+              return (
+                <div className="space-y-4">
+                  <Section title="Implementación" count={impl.length} items={impl} />
+                  <Section title="Soporte" count={sup.length} items={sup} />
+                  <Section title="Otros" count={other.length} items={other} />
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
       </div>
