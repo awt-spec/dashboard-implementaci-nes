@@ -278,6 +278,15 @@ async function testClienteUsers(adminJwt) {
     assert(data?.role === "cliente", "El rol cliente no se asignó en user_roles");
   });
 
+  await step("VERIFY: cliente tiene SOLO rol cliente (sin gerente/colaborador extras)", async () => {
+    const { data } = await sbAdmin.from("user_roles").select("role").eq("user_id", userId);
+    const roles = (data ?? []).map((r) => r.role).sort();
+    assert(
+      roles.length === 1 && roles[0] === "cliente",
+      `User tiene múltiples roles [${roles.join(", ")}] — useAuth lo enrutaría al dashboard incorrecto`
+    );
+  });
+
   await step("READ: cliente_company_assignments tiene el row correcto", async () => {
     const { data } = await sbAdmin.from("cliente_company_assignments")
       .select("*").eq("user_id", userId).eq("client_id", TEST_CLIENT_ID).maybeSingle();

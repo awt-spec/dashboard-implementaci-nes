@@ -221,35 +221,33 @@ Deno.serve(async (req) => {
       let userId: string;
       if (existingProfile?.user_id) {
         userId = existingProfile.user_id;
-        // Asegurar que tiene el rol cliente
-        const { data: existingRole } = await supabaseAdmin
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", userId)
-          .eq("role", "cliente")
-          .maybeSingle();
-        if (!existingRole) {
-          const { error: roleErr } = await supabaseAdmin
-            .from("user_roles")
-            .insert({ user_id: userId, role: "cliente" });
-          if (roleErr) throw roleErr;
-        }
       } else {
-        // Crear auth user
+        // Crear auth user con role=cliente en metadata (para que el trigger
+        // handle_new_user inserte el rol correcto en vez del default gerente).
         const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
           email,
           password,
           email_confirm: true,
-          user_metadata: { full_name: full_name ?? email.split("@")[0] },
+          user_metadata: {
+            full_name: full_name ?? email.split("@")[0],
+            role: "cliente",
+          },
         });
         if (createErr) throw createErr;
         userId = newUser.user.id;
-
-        const { error: roleErr } = await supabaseAdmin
-          .from("user_roles")
-          .insert({ user_id: userId, role: "cliente" });
-        if (roleErr) throw roleErr;
       }
+
+      // Cliente users deben tener SOLO rol cliente, para que useAuth en el
+      // frontend los rutee al ClientPortalDashboard y no al dashboard interno.
+      // Si había un rol default (ej: gerente) del trigger o asignaciones previas,
+      // se borra acá y se asegura que quede sólo cliente.
+      await supabaseAdmin.from("user_roles").delete().eq("user_id", userId).neq("role", "cliente");
+
+      // Idempotente: si el trigger ya insertó cliente, ignora el duplicado.
+      const { error: roleErr } = await supabaseAdmin
+        .from("user_roles")
+        .upsert({ user_id: userId, role: "cliente" }, { onConflict: "user_id,role", ignoreDuplicates: true });
+      if (roleErr) throw roleErr;
 
       // Upsert assignment (si ya existía para este client_id, actualiza permiso)
       const { error: assignErr } = await supabaseAdmin
