@@ -21,9 +21,12 @@ export function useLatestPMAnalysis() {
   return useQuery({
     queryKey: ["pm-ai-analysis-latest"],
     queryFn: async () => {
+      // Filtrar por analysis_type="global" porque la tabla ahora tiene
+      // también case_strategy y client_strategy (scope-limitado).
       const { data, error } = await (supabase
         .from("pm_ai_analysis" as any)
         .select("*")
+        .eq("analysis_type", "global")
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle() as any);

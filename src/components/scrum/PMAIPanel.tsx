@@ -7,7 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sparkles, Brain, TrendingUp, AlertTriangle, Target, Lightbulb, Clock, DollarSign, Loader2, RefreshCw, Award } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { useState } from "react";
 import { useLatestPMAnalysis, useRunPMAnalysis } from "@/hooks/usePMAnalysis";
+import { AiErrorDialog } from "@/components/ui/ai-error-dialog";
 
 const URGENCY_COLOR: Record<string, string> = {
   inmediata: "bg-red-500/20 text-red-400 border-red-500/30",
@@ -31,12 +33,13 @@ const REC_TYPE_LABEL: Record<string, string> = {
 export function PMAIPanel() {
   const { data: analysis, isLoading } = useLatestPMAnalysis();
   const runAnalysis = useRunPMAnalysis();
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const handleRun = () => {
     toast.info("PM IA analizando todo el portafolio...");
     runAnalysis.mutate(undefined, {
       onSuccess: () => toast.success("Análisis completado"),
-      onError: (e: any) => toast.error(e.message || "Error al analizar"),
+      onError: (e: any) => setAiError(e?.message || "Error al analizar"),
     });
   };
 
@@ -187,6 +190,7 @@ export function PMAIPanel() {
           </Tabs>
         </>
       )}
+      <AiErrorDialog open={!!aiError} onClose={() => setAiError(null)} message={aiError} onRetry={handleRun} />
     </div>
   );
 }
