@@ -64,7 +64,7 @@ Cuando recomiendes un curso del catálogo, menciona su título exactamente. Da p
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-lite",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: question },
@@ -101,7 +101,7 @@ Cuando recomiendes un curso del catálogo, menciona su título exactamente. Da p
     // Log usage
     await supabase.from("ai_usage_logs").insert({
       function_name: "mentor-ai",
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash-lite",
       prompt_tokens: data.usage?.prompt_tokens || 0,
       completion_tokens: data.usage?.completion_tokens || 0,
       total_tokens: data.usage?.total_tokens || 0,

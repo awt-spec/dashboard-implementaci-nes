@@ -95,7 +95,7 @@ Devuelve 3 sugerencias máximo. NO uses markdown, solo JSON.`;
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-lite",
         messages: [
           { role: "system", content: "Eres un coach que produce JSON válido." },
           { role: "user", content: prompt },

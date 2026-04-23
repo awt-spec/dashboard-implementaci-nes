@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
       headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
       signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
-        model: "gemini-2.5-pro",
+        model: "gemini-2.5-flash-lite",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -209,14 +209,14 @@ Deno.serve(async (req) => {
       risks: analysis.at_risk || [],
       metrics: { ...analysis.metrics, seniority_distribution: analysis.seniority_distribution },
       full_analysis: analysis,
-      model: "gemini-2.5-pro",
+      model: "gemini-2.5-flash-lite",
     });
 
     // Log usage
     const usage = aiData.usage || {};
     await supabase.from("ai_usage_logs").insert({
       function_name: "analyze-team-level",
-      model: "gemini-2.5-pro",
+      model: "gemini-2.5-flash-lite",
       prompt_tokens: usage.prompt_tokens || 0,
       completion_tokens: usage.completion_tokens || 0,
       total_tokens: usage.total_tokens || 0,

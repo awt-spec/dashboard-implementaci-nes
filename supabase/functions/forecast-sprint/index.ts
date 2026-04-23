@@ -28,7 +28,7 @@ Calcula velocity promedio, cuántos sprints faltan, fecha estimada de fin (asumi
       headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
       signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-lite",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },

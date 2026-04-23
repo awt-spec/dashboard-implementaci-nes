@@ -68,7 +68,7 @@ Devuelve SOLO JSON con candidatos rankeados, justificación y skill gaps.`;
       headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
       signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-lite",
         messages: [
           { role: "system", content: "Eres un experto en asignación de equipos. Responde SOLO con la herramienta provista." },
           { role: "user", content: prompt },

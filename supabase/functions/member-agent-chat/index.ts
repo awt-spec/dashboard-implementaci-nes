@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
     let template = "default";
     let tone = "friendly";
     let custom = "";
-    let model = "gemini-2.5-flash";
+    let model = "gemini-2.5-flash-lite";
 
     if (member_id) {
       const [
@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
         : detectTemplate(member?.role || undefined);
       tone = agent?.tone || "friendly";
       custom = agent?.custom_instructions || "";
-      model = agent?.preferred_model || "gemini-2.5-flash";
+      model = agent?.preferred_model || "gemini-2.5-flash-lite";
 
       // Optional task / ticket context
       let taskCtx = "";

@@ -7,7 +7,7 @@ import { AuthError, authErrorResponse, requireAuth, requireRole } from "../_shar
 import { isTicketClosed, isTaskClosed } from "../_shared/ticketStatus.ts";
 
 const GATEWAY = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-const MODEL = "gemini-2.5-pro";
+const MODEL = "gemini-2.5-flash-lite";
 
 Deno.serve(async (req) => {
   const pre = corsPreflight(req);

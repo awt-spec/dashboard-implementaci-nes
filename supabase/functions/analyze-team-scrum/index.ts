@@ -91,7 +91,7 @@ ${JSON.stringify(activeSprints, null, 1)}`;
       },
       signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-lite",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -196,7 +196,7 @@ ${JSON.stringify(activeSprints, null, 1)}`;
     // Log AI usage
     await sb.from("ai_usage_logs").insert({
       function_name: "analyze-team-scrum",
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash-lite",
       prompt_tokens: usage.prompt_tokens || 0,
       completion_tokens: usage.completion_tokens || 0,
       total_tokens: usage.total_tokens || 0,

@@ -22,7 +22,7 @@ serve(async (req) => {
 
     const supabase = ctx.adminClient;
 
-    const model = "gemini-2.5-flash";
+    const model = "gemini-2.5-flash-lite";
     const startTime = Date.now();
 
     const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {

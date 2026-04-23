@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
       .select("ai_model")
       .eq("scope", "global")
       .maybeSingle();
-    const model = settings?.ai_model || "gemini-2.5-flash";
+    const model = settings?.ai_model || "gemini-2.5-flash-lite";
 
     // La tabla real usa `tipo`, `prioridad`, `estado`, `asunto`, `notas` (español).
     const ctx = `

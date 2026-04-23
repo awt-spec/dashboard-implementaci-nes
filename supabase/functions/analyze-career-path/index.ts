@@ -61,7 +61,7 @@ Contexto SYSDE: consultoría SAF+ (banca, pensiones, vehículos). Roles típicos
       headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
       signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-lite",
         messages: [
           { role: "system", content: "Eres un mentor senior y career coach técnico con 20+ años en consultoría de software. Generas planes de carrera realistas, con pasos concretos y timeline." },
           { role: "user", content: userPrompt },
@@ -151,7 +151,7 @@ Contexto SYSDE: consultoría SAF+ (banca, pensiones, vehículos). Roles típicos
       mentoring_suggestions: plan.mentoring_suggestions || [],
       ai_summary: plan.ai_summary || "",
       generated_at: new Date().toISOString(),
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash-lite",
     };
     if (existing) await supabase.from("team_career_paths").update(payload).eq("id", existing.id);
     else await supabase.from("team_career_paths").insert(payload);
@@ -159,7 +159,7 @@ Contexto SYSDE: consultoría SAF+ (banca, pensiones, vehículos). Roles típicos
     const usage = aiData.usage || {};
     await supabase.from("ai_usage_logs").insert({
       function_name: "analyze-career-path",
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash-lite",
       prompt_tokens: usage.prompt_tokens || 0,
       completion_tokens: usage.completion_tokens || 0,
       total_tokens: usage.total_tokens || 0,

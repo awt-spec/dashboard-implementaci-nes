@@ -99,7 +99,7 @@ Devuelve SOLO un JSON con este formato exacto:
       },
       signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-lite",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -128,7 +128,7 @@ Devuelve SOLO un JSON con este formato exacto:
     // Log uso IA
     await supabase.from("ai_usage_logs").insert({
       function_name: "parse-time-entry",
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash-lite",
       prompt_tokens: aiJson?.usage?.prompt_tokens ?? 0,
       completion_tokens: aiJson?.usage?.completion_tokens ?? 0,
       total_tokens: aiJson?.usage?.total_tokens ?? 0,

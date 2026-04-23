@@ -11,11 +11,11 @@
 //   GEMINI_API_KEY  — generala en https://aistudio.google.com/apikey
 //
 // Modelos:
-//   - gemini-2.5-pro      (top quality, default)
+//   - gemini-2.5-flash      (top quality, default)
 //   - gemini-2.5-flash    (rápido y barato, para clasificación/parse)
 // ============================================================================
 
-const DEFAULT_MODEL = "gemini-2.5-pro";
+const DEFAULT_MODEL = "gemini-2.5-flash-lite";
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 
 export class AiError extends Error {
@@ -27,8 +27,8 @@ export class AiError extends Error {
 
 /**
  * Normaliza el nombre del modelo para Gemini:
- * - `google/gemini-2.5-pro` → `gemini-2.5-pro` (remueve prefix del gateway viejo)
- * - `claude-sonnet-4-6`     → `gemini-2.5-pro` (fallback al default)
+ * - `google/gemini-2.5-flash` → `gemini-2.5-flash` (remueve prefix del gateway viejo)
+ * - `claude-sonnet-4-6`     → `gemini-2.5-flash` (fallback al default)
  * - `gemini-*` se respeta
  */
 function normalizeModel(requested?: string): string {
@@ -71,24 +71,49 @@ export async function lovableCompatFetch(
   }
 
   const normalizedBody = { ...body, model: normalizeModel(body.model) };
+  const timeoutMs = opts.timeoutMs ?? 45000;
 
-  try {
-    return await fetch(GEMINI_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-      },
-      signal: AbortSignal.timeout(opts.timeoutMs ?? 45000),
-      body: JSON.stringify(normalizedBody),
-    });
-  } catch (e: any) {
-    const msg = e?.name === "TimeoutError" ? "Timeout esperando respuesta de la IA" : (e?.message ?? String(e));
-    return new Response(
-      JSON.stringify({ error: { message: msg } }),
-      { status: 504, headers: { "Content-Type": "application/json" } },
-    );
+  // Retry con backoff exponencial para 503 (model overloaded) y 429 (rate limit).
+  // Gemini free tier es intermitente; 3 intentos con 1.5s, 4s, 10s entre ellos.
+  const DELAYS = [1500, 4000, 10000];
+  let lastResp: Response | null = null;
+
+  for (let attempt = 0; attempt <= DELAYS.length; attempt++) {
+    try {
+      const resp = await fetch(GEMINI_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+        },
+        signal: AbortSignal.timeout(timeoutMs),
+        body: JSON.stringify(normalizedBody),
+      });
+      if (resp.ok) return resp;
+      // No reintentar 4xx no-throttle (mal request, auth, etc)
+      if (resp.status !== 503 && resp.status !== 429 && resp.status !== 500 && resp.status !== 502) {
+        return resp;
+      }
+      lastResp = resp;
+      if (attempt < DELAYS.length) {
+        await new Promise((r) => setTimeout(r, DELAYS[attempt]));
+        continue;
+      }
+      return resp;
+    } catch (e: any) {
+      const msg = e?.name === "TimeoutError" ? "Timeout esperando respuesta de la IA" : (e?.message ?? String(e));
+      if (attempt < DELAYS.length) {
+        await new Promise((r) => setTimeout(r, DELAYS[attempt]));
+        continue;
+      }
+      return new Response(
+        JSON.stringify({ error: { message: msg } }),
+        { status: 504, headers: { "Content-Type": "application/json" } },
+      );
+    }
   }
+  // Unreachable, pero satisface al type checker
+  return lastResp ?? new Response(JSON.stringify({ error: { message: "unknown" } }), { status: 500 });
 }
 
 // ─── Helpers opcionales para nuevas funciones ──────────────────────────

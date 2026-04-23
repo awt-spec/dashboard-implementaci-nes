@@ -13,7 +13,7 @@ import { anthropicTool, AiError, resolvedModel } from "../_shared/ai.ts";
  * y scope=<uuid del ticket>.
  */
 
-const MODEL = "gemini-2.5-pro";
+const MODEL = "gemini-2.5-flash-lite";
 const FUNCTION_NAME = "case-strategy-ai";
 
 Deno.serve(async (req) => {

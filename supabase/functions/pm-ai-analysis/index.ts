@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
       headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
       signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
-        model: "gemini-2.5-pro",
+        model: "gemini-2.5-flash-lite",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
@@ -179,13 +179,13 @@ Deno.serve(async (req) => {
       risks: analysis.risks,
       metrics: { total_monthly_revenue: totalMonthlyRevenue, total_active_items: totalActiveItems, team_size: team.length },
       full_analysis: analysis,
-      model: "gemini-2.5-pro"
+      model: "gemini-2.5-flash-lite"
     }).select().single();
 
     const usage = aiData.usage || {};
     await supabase.from("ai_usage_logs").insert({
       function_name: "pm-ai-analysis",
-      model: "gemini-2.5-pro",
+      model: "gemini-2.5-flash-lite",
       prompt_tokens: usage.prompt_tokens || 0,
       completion_tokens: usage.completion_tokens || 0,
       total_tokens: usage.total_tokens || 0,

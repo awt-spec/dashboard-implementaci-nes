@@ -148,7 +148,7 @@ Devuelve un análisis con:
       },
       signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-lite",
         messages: [
           { role: "system", content: "Eres un analista de productividad senior. Devuelves SIEMPRE en JSON válido siguiendo el schema requerido." },
           { role: "user", content: prompt },
@@ -201,7 +201,7 @@ Devuelve un análisis con:
     // Log
     await sb.from("ai_usage_logs").insert({
       function_name: "analyze-team-activity",
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash-lite",
       prompt_tokens: aiData?.usage?.prompt_tokens || 0,
       completion_tokens: aiData?.usage?.completion_tokens || 0,
       total_tokens: aiData?.usage?.total_tokens || 0,

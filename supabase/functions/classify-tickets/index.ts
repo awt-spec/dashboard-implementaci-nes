@@ -38,7 +38,7 @@ serve(async (req) => {
       `ID:${t.ticket_id} | Asunto:${t.asunto} | Tipo:${t.tipo} | Prioridad:${t.prioridad} | Estado:${t.estado} | Días:${t.dias_antiguedad} | Producto:${t.producto} | Responsable:${t.responsable || 'N/A'} | Notas:${t.notas || 'N/A'}`
     ).join("\n");
 
-    const model = "gemini-2.5-flash";
+    const model = "gemini-2.5-flash-lite";
     const startTime = Date.now();
 
     const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
