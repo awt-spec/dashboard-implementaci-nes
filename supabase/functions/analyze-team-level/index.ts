@@ -10,7 +10,7 @@ Deno.serve(async (req) => {
     const ctx = await requireAuth(req);
     await requireRole(ctx, ["admin", "pm", "gerente"]);
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY")!;
     const supabase = ctx.adminClient;
 
     // 1) Pull team, skills, scrum stats in parallel
@@ -83,12 +83,12 @@ Deno.serve(async (req) => {
 
     const userPrompt = `Equipo SYSDE actual (${roster.length} miembros activos):\n\n${JSON.stringify(roster, null, 2)}`;
 
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
       signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
+        model: "gemini-2.5-pro",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -209,14 +209,14 @@ Deno.serve(async (req) => {
       risks: analysis.at_risk || [],
       metrics: { ...analysis.metrics, seniority_distribution: analysis.seniority_distribution },
       full_analysis: analysis,
-      model: "google/gemini-2.5-pro",
+      model: "gemini-2.5-pro",
     });
 
     // Log usage
     const usage = aiData.usage || {};
     await supabase.from("ai_usage_logs").insert({
       function_name: "analyze-team-level",
-      model: "google/gemini-2.5-pro",
+      model: "gemini-2.5-pro",
       prompt_tokens: usage.prompt_tokens || 0,
       completion_tokens: usage.completion_tokens || 0,
       total_tokens: usage.total_tokens || 0,

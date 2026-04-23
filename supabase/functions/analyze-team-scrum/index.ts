@@ -1,7 +1,7 @@
 import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
 import { AuthError, authErrorResponse, requireAuth, requireRole } from "../_shared/auth.ts";
 
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 
 Deno.serve(async (req) => {
   const pre = corsPreflight(req);
@@ -15,8 +15,8 @@ Deno.serve(async (req) => {
     await requireRole(ctx, ["admin", "pm", "gerente"]);
     const sb = ctx.adminClient;
 
-    if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY no configurado" }), {
+    if (!GEMINI_API_KEY) {
+      return new Response(JSON.stringify({ error: "GEMINI_API_KEY no configurado" }), {
         status: 500, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
@@ -83,15 +83,15 @@ ${JSON.stringify(compactItems.slice(0, 100), null, 1)}
 Sprints activos:
 ${JSON.stringify(activeSprints, null, 1)}`;
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResponse = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
         "Content-Type": "application/json",
       },
       signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -196,7 +196,7 @@ ${JSON.stringify(activeSprints, null, 1)}`;
     // Log AI usage
     await sb.from("ai_usage_logs").insert({
       function_name: "analyze-team-scrum",
-      model: "google/gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       prompt_tokens: usage.prompt_tokens || 0,
       completion_tokens: usage.completion_tokens || 0,
       total_tokens: usage.total_tokens || 0,

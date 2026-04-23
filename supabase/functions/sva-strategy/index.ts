@@ -6,8 +6,8 @@ import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
 import { AuthError, authErrorResponse, requireAuth, requireRole } from "../_shared/auth.ts";
 import { isTicketClosed, isTaskClosed } from "../_shared/ticketStatus.ts";
 
-const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const MODEL = "google/gemini-2.5-pro";
+const GATEWAY = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+const MODEL = "gemini-2.5-pro";
 
 Deno.serve(async (req) => {
   const pre = corsPreflight(req);
@@ -18,8 +18,8 @@ Deno.serve(async (req) => {
     const ctx = await requireAuth(req);
     await requireRole(ctx, ["admin", "pm", "gerente"]);
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
 
     const sb = ctx.adminClient;
 
@@ -175,7 +175,7 @@ Genera el plan de la semana.`;
     // ── Llamada al modelo ───────────────────────────────────────────────
     const aiResp = await fetch(GATEWAY, {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
       signal: AbortSignal.timeout(45000),
       body: JSON.stringify({
         model: MODEL,

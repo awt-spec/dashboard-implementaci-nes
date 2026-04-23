@@ -27,8 +27,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const apiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
+    const apiKey = Deno.env.get("GEMINI_API_KEY");
+    if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
 
     const supabase = ctx.adminClient;
 
@@ -59,12 +59,12 @@ ${(courses || []).map((c: any) => `- [${c.id}] ${c.title} | ${(c.related_skills 
 
 Cuando recomiendes un curso del catálogo, menciona su título exactamente. Da pasos concretos, plazos y ejemplos.`;
 
-    const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const r = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: question },
@@ -101,7 +101,7 @@ Cuando recomiendes un curso del catálogo, menciona su título exactamente. Da p
     // Log usage
     await supabase.from("ai_usage_logs").insert({
       function_name: "mentor-ai",
-      model: "google/gemini-2.5-flash",
+      model: "gemini-2.5-flash",
       prompt_tokens: data.usage?.prompt_tokens || 0,
       completion_tokens: data.usage?.completion_tokens || 0,
       total_tokens: data.usage?.total_tokens || 0,

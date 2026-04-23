@@ -2,7 +2,7 @@
 import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
 import { AuthError, authErrorResponse, canActOnUser, requireAuth } from "../_shared/auth.ts";
 
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
+const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY")!;
 
 interface ActivityRow {
   action: string;
@@ -140,15 +140,15 @@ Devuelve un análisis con:
 5. focus_assessment: evaluación de concentración (alto/medio/bajo) y por qué
 6. risk_flags: alertas si las hay (inactividad, sobrecarga, fragmentación)`;
 
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
         "Content-Type": "application/json",
       },
       signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gemini-2.5-flash",
         messages: [
           { role: "system", content: "Eres un analista de productividad senior. Devuelves SIEMPRE en JSON válido siguiendo el schema requerido." },
           { role: "user", content: prompt },
@@ -201,7 +201,7 @@ Devuelve un análisis con:
     // Log
     await sb.from("ai_usage_logs").insert({
       function_name: "analyze-team-activity",
-      model: "google/gemini-2.5-flash",
+      model: "gemini-2.5-flash",
       prompt_tokens: aiData?.usage?.prompt_tokens || 0,
       completion_tokens: aiData?.usage?.completion_tokens || 0,
       total_tokens: aiData?.usage?.total_tokens || 0,

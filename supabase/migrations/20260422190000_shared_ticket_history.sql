@@ -47,17 +47,17 @@ CREATE POLICY "shared_ticket_history_authenticated_insert"
   FOR INSERT TO authenticated
   WITH CHECK (true);
 
--- Solo el creador o admins pueden borrar/invalidar.
+-- Solo el creador o admins/pm/gerentes pueden borrar/invalidar.
+-- Usa el helper public.has_role() ya definido en migración 20260320221601.
 DROP POLICY IF EXISTS "shared_ticket_history_creator_delete" ON public.shared_ticket_history;
 CREATE POLICY "shared_ticket_history_creator_delete"
   ON public.shared_ticket_history
   FOR DELETE TO authenticated
   USING (
     created_by = auth.uid()
-    OR EXISTS (
-      SELECT 1 FROM public.profiles p
-      WHERE p.user_id = auth.uid() AND p.role IN ('admin','manager','gerente')
-    )
+    OR public.has_role(auth.uid(), 'admin'::public.app_role)
+    OR public.has_role(auth.uid(), 'pm'::public.app_role)
+    OR public.has_role(auth.uid(), 'gerente'::public.app_role)
   );
 
 -- Incremento de view_count permitido a público (ÚNICAMENTE de los campos

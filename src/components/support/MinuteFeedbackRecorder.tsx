@@ -27,6 +27,14 @@ interface RecordedMedia {
   url: string;               // object URL para preview
   kind: MediaKind;
   duration: number;
+  transcript: string | null; // del Web Speech API durante la grabación
+}
+
+// ─── Web Speech API (no-op fallback si el browser no soporta) ──────────
+type SpeechRecognitionLike = any;
+function getSpeechRecognition(): { new(): SpeechRecognitionLike } | null {
+  if (typeof window === "undefined") return null;
+  return (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition || null;
 }
 
 // ─── Props ───────────────────────────────────────────────────────────────
@@ -66,6 +74,12 @@ export function MinuteFeedbackRecorder({
   const videoTimerRef = useRef<number | null>(null);
   const videoPreviewRef = useRef<HTMLVideoElement | null>(null);
 
+  // Web Speech API refs — transcribe mientras grabás (opcional, depende del browser)
+  const audioRecognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const videoRecognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const audioTranscriptRef = useRef<string>("");
+  const videoTranscriptRef = useRef<string>("");
+
   // Cleanup al desmontar
   useEffect(() => {
     return () => {
@@ -88,6 +102,39 @@ export function MinuteFeedbackRecorder({
     videoStreamRef.current = null;
   };
 
+  // Inicia reconocimiento de voz en paralelo a la grabación.
+  // Si el browser no lo soporta (Firefox, Safari < iOS 17), no pasa nada:
+  // el recorder sigue funcionando y simplemente no hay transcripción.
+  const startRecognition = (which: "audio" | "video"): void => {
+    const SR = getSpeechRecognition();
+    if (!SR) return;
+    try {
+      const rec = new SR();
+      rec.continuous = true;
+      rec.interimResults = false;
+      rec.lang = "es-419"; // español latinoamérica; degrada a es-ES si no existe
+      const transcriptRef = which === "audio" ? audioTranscriptRef : videoTranscriptRef;
+      transcriptRef.current = "";
+      rec.onresult = (ev: any) => {
+        for (let i = ev.resultIndex; i < ev.results.length; i++) {
+          const r = ev.results[i];
+          if (r.isFinal) transcriptRef.current += r[0].transcript + " ";
+        }
+      };
+      rec.onerror = () => { /* silent — se pierde la transcripción sin romper la grabación */ };
+      rec.start();
+      if (which === "audio") audioRecognitionRef.current = rec;
+      else videoRecognitionRef.current = rec;
+    } catch { /* ignore */ }
+  };
+
+  const stopRecognition = (which: "audio" | "video"): void => {
+    const rec = which === "audio" ? audioRecognitionRef.current : videoRecognitionRef.current;
+    try { rec?.stop?.(); } catch { /* ignore */ }
+    if (which === "audio") audioRecognitionRef.current = null;
+    else videoRecognitionRef.current = null;
+  };
+
   // ─── Audio ────────────────────────────────────────────────────────────
 
   const startAudio = async () => {
@@ -106,12 +153,15 @@ export function MinuteFeedbackRecorder({
       recorder.onstop = () => {
         const blob = new Blob(audioChunksRef.current, { type: mime || "audio/webm" });
         const url = URL.createObjectURL(blob);
-        setAudioMedia({ blob, url, kind: "audio", duration: audioElapsed });
+        const transcript = audioTranscriptRef.current.trim();
+        setAudioMedia({ blob, url, kind: "audio", duration: audioElapsed, transcript: transcript || null });
         setAudioRecording("recorded");
+        stopRecognition("audio");
         stopAudioTracks();
         if (audioTimerRef.current) { clearInterval(audioTimerRef.current); audioTimerRef.current = null; }
       };
       recorder.start(1000);
+      startRecognition("audio");
       setAudioRecording("recording");
       setAudioElapsed(0);
       audioTimerRef.current = window.setInterval(() => {
@@ -161,13 +211,16 @@ export function MinuteFeedbackRecorder({
       recorder.onstop = () => {
         const blob = new Blob(videoChunksRef.current, { type: mime || "video/webm" });
         const url = URL.createObjectURL(blob);
-        setVideoMedia({ blob, url, kind: "video", duration: videoElapsed });
+        const transcript = videoTranscriptRef.current.trim();
+        setVideoMedia({ blob, url, kind: "video", duration: videoElapsed, transcript: transcript || null });
         setVideoRecording("recorded");
+        stopRecognition("video");
         stopVideoTracks();
         if (videoPreviewRef.current) videoPreviewRef.current.srcObject = null;
         if (videoTimerRef.current) { clearInterval(videoTimerRef.current); videoTimerRef.current = null; }
       };
       recorder.start(1000);
+      startRecognition("video");
       setVideoRecording("recording");
       setVideoElapsed(0);
       videoTimerRef.current = window.setInterval(() => {
@@ -234,29 +287,17 @@ export function MinuteFeedbackRecorder({
         text_comment: textComment.trim() || null,
         audio_url: audioUrl,
         audio_duration_seconds: audioMedia?.duration ?? null,
+        audio_transcript: audioMedia?.transcript ?? null,
         video_url: videoUrl,
         video_duration_seconds: videoMedia?.duration ?? null,
+        video_transcript: videoMedia?.transcript ?? null,
         author_name: authorName.trim() || null,
       };
 
-      const { data: inserted, error } = await (supabase
+      const { error } = await (supabase
         .from("support_minutes_feedback" as any)
-        .insert(payload)
-        .select("id")
-        .single() as any);
+        .insert(payload) as any);
       if (error) throw error;
-
-      // Best-effort: disparar transcripción async para audio (no bloqueante)
-      if (audioUrl && inserted?.id) {
-        supabase.functions.invoke("transcribe-audio", {
-          body: { feedback_id: inserted.id, audio_url: audioUrl, kind: "audio" },
-        }).catch(() => { /* ignore — se puede re-disparar luego */ });
-      }
-      if (videoUrl && inserted?.id) {
-        supabase.functions.invoke("transcribe-audio", {
-          body: { feedback_id: inserted.id, audio_url: videoUrl, kind: "video" },
-        }).catch(() => { /* ignore */ });
-      }
 
       setSubmitted(true);
       toast.success("¡Gracias por tu feedback!");
@@ -355,6 +396,11 @@ export function MinuteFeedbackRecorder({
           {audioMedia && audioRecording === "recorded" && (
             <div className="space-y-2">
               <audio src={audioMedia.url} controls className="w-full" />
+              {audioMedia.transcript && (
+                <p className="text-[11px] italic text-muted-foreground p-2 rounded bg-muted/30 border border-border/40">
+                  “{audioMedia.transcript}”
+                </p>
+              )}
               <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                 <span>Duración: {fmtTime(audioMedia.duration)}</span>
                 <Button variant="ghost" size="sm" onClick={discardAudio} className="h-7 gap-1 text-[11px] text-destructive hover:bg-destructive/10">
@@ -412,11 +458,18 @@ export function MinuteFeedbackRecorder({
           )}
 
           {videoMedia && videoRecording === "recorded" && (
-            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-              <span>Duración: {fmtTime(videoMedia.duration)}</span>
-              <Button variant="ghost" size="sm" onClick={discardVideo} className="h-7 gap-1 text-[11px] text-destructive hover:bg-destructive/10">
-                <Trash2 className="h-3 w-3" /> Descartar
-              </Button>
+            <div className="space-y-2">
+              {videoMedia.transcript && (
+                <p className="text-[11px] italic text-muted-foreground p-2 rounded bg-muted/30 border border-border/40">
+                  “{videoMedia.transcript}”
+                </p>
+              )}
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                <span>Duración: {fmtTime(videoMedia.duration)}</span>
+                <Button variant="ghost" size="sm" onClick={discardVideo} className="h-7 gap-1 text-[11px] text-destructive hover:bg-destructive/10">
+                  <Trash2 className="h-3 w-3" /> Descartar
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

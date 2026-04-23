@@ -95,8 +95,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const apiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
+    const apiKey = Deno.env.get("GEMINI_API_KEY");
+    if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
 
     const supabase = ctx.adminClient;
 
@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
     let template = "default";
     let tone = "friendly";
     let custom = "";
-    let model = "google/gemini-2.5-flash";
+    let model = "gemini-2.5-flash";
 
     if (member_id) {
       const [
@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
         : detectTemplate(member?.role || undefined);
       tone = agent?.tone || "friendly";
       custom = agent?.custom_instructions || "";
-      model = agent?.preferred_model || "google/gemini-2.5-flash";
+      model = agent?.preferred_model || "gemini-2.5-flash";
 
       // Optional task / ticket context
       let taskCtx = "";
@@ -181,7 +181,7 @@ Responde SIEMPRE en español, con markdown bien estructurado y escaneable. Sigue
       history = ((existing?.messages as any[]) || []).map((m) => ({ role: m.role, content: m.content }));
     }
 
-    const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const r = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       signal: AbortSignal.timeout(30000),

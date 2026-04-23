@@ -11,8 +11,8 @@ serve(async (req) => {
     const ctx = await requireAuth(req);
     await requireRole(ctx, ["admin", "pm", "gerente"]);
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
 
     const { ticketIds } = await req.json();
 
@@ -38,13 +38,13 @@ serve(async (req) => {
       `ID:${t.ticket_id} | Asunto:${t.asunto} | Tipo:${t.tipo} | Prioridad:${t.prioridad} | Estado:${t.estado} | Días:${t.dias_antiguedad} | Producto:${t.producto} | Responsable:${t.responsable || 'N/A'} | Notas:${t.notas || 'N/A'}`
     ).join("\n");
 
-    const model = "google/gemini-3-flash-preview";
+    const model = "gemini-2.5-flash";
     const startTime = Date.now();
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
         "Content-Type": "application/json",
       },
       signal: AbortSignal.timeout(30000),

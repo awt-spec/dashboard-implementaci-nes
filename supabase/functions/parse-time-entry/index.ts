@@ -91,15 +91,15 @@ Devuelve SOLO un JSON con este formato exacto:
   "confidence": number
 }`;
 
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${Deno.env.get("LOVABLE_API_KEY")}`,
+        Authorization: `Bearer ${Deno.env.get("GEMINI_API_KEY")}`,
         "Content-Type": "application/json",
       },
       signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -128,7 +128,7 @@ Devuelve SOLO un JSON con este formato exacto:
     // Log uso IA
     await supabase.from("ai_usage_logs").insert({
       function_name: "parse-time-entry",
-      model: "google/gemini-2.5-flash",
+      model: "gemini-2.5-flash",
       prompt_tokens: aiJson?.usage?.prompt_tokens ?? 0,
       completion_tokens: aiJson?.usage?.completion_tokens ?? 0,
       total_tokens: aiJson?.usage?.total_tokens ?? 0,

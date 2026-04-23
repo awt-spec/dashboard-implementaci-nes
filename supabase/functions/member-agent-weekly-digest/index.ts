@@ -18,8 +18,8 @@ Deno.serve(async (req) => {
     const ctx = await requireAuth(req);
 
     const { member_id } = await req.json().catch(() => ({}));
-    const apiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
+    const apiKey = Deno.env.get("GEMINI_API_KEY");
+    if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
 
     const supabase = ctx.adminClient;
 
@@ -90,12 +90,12 @@ Responde en JSON estricto:
 }
 Devuelve 3 sugerencias máximo. NO uses markdown, solo JSON.`;
 
-    const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const r = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gemini-2.5-flash",
         messages: [
           { role: "system", content: "Eres un coach que produce JSON válido." },
           { role: "user", content: prompt },

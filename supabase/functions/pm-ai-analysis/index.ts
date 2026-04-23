@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
     const ctx = await requireAuth(req);
     await requireRole(ctx, ["admin", "pm", "gerente"]);
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY")!;
     const supabase = ctx.adminClient;
 
     // Gather full context
@@ -80,12 +80,12 @@ Deno.serve(async (req) => {
 
     const userPrompt = `Analiza el estado global del portafolio y genera tu informe ejecutivo:\n\n${context}`;
 
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
       signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
+        model: "gemini-2.5-pro",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
@@ -179,13 +179,13 @@ Deno.serve(async (req) => {
       risks: analysis.risks,
       metrics: { total_monthly_revenue: totalMonthlyRevenue, total_active_items: totalActiveItems, team_size: team.length },
       full_analysis: analysis,
-      model: "google/gemini-2.5-pro"
+      model: "gemini-2.5-pro"
     }).select().single();
 
     const usage = aiData.usage || {};
     await supabase.from("ai_usage_logs").insert({
       function_name: "pm-ai-analysis",
-      model: "google/gemini-2.5-pro",
+      model: "gemini-2.5-pro",
       prompt_tokens: usage.prompt_tokens || 0,
       completion_tokens: usage.completion_tokens || 0,
       total_tokens: usage.total_tokens || 0,

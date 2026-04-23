@@ -1,6 +1,7 @@
 import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
 import { AuthError, authErrorResponse, requireAuth, requireRole } from "../_shared/auth.ts";
 import { isTicketClosed } from "../_shared/ticketStatus.ts";
+import { anthropicTool, AiError, resolvedModel } from "../_shared/ai.ts";
 
 /**
  * case-strategy-ai
@@ -12,7 +13,7 @@ import { isTicketClosed } from "../_shared/ticketStatus.ts";
  * y scope=<uuid del ticket>.
  */
 
-const MODEL = "google/gemini-2.5-pro";
+const MODEL = "gemini-2.5-pro";
 const FUNCTION_NAME = "case-strategy-ai";
 
 Deno.serve(async (req) => {
@@ -30,9 +31,6 @@ Deno.serve(async (req) => {
         status: 400, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
-
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY no configurada");
 
     const db = ctx.adminClient;
 
@@ -176,100 +174,79 @@ Deno.serve(async (req) => {
 
     const userPrompt = `Analiza este caso y devuelve una estrategia accionable:\n\n${JSON.stringify(context, null, 2)}`;
 
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(45000),
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "case_strategy",
-            description: "Análisis estratégico del caso de soporte",
-            parameters: {
+    const { result: analysis, usage } = await anthropicTool<any>({
+      model: MODEL,
+      system: systemPrompt,
+      userPrompt,
+      maxTokens: 4096,
+      timeoutMs: 45000,
+      tool: {
+        name: "case_strategy",
+        description: "Análisis estratégico del caso de soporte",
+        input_schema: {
+          type: "object",
+          properties: {
+            diagnostico: {
+              type: "string",
+              description: "Diagnóstico técnico/funcional del caso en 2-4 frases. Qué está pasando realmente, causa raíz probable.",
+            },
+            accion_recomendada: {
               type: "object",
               properties: {
-                diagnostico: {
-                  type: "string",
-                  description: "Diagnóstico técnico/funcional del caso en 2-4 frases. Qué está pasando realmente, causa raíz probable.",
-                },
-                accion_recomendada: {
-                  type: "object",
-                  properties: {
-                    titulo: { type: "string", description: "Acción concreta a tomar AHORA (imperativo, 1 línea)" },
-                    detalle: { type: "string", description: "Cómo ejecutar la acción, pasos concretos" },
-                    responsable_sugerido: { type: "string", description: "Nombre del responsable sugerido o rol" },
-                    urgencia: { type: "string", enum: ["inmediata", "hoy", "esta_semana", "este_mes"] },
-                    esfuerzo_estimado_horas: { type: "number" },
-                  },
-                  required: ["titulo", "detalle", "urgencia"],
-                },
-                riesgos: {
-                  type: "array",
-                  description: "Riesgos identificados, ordenados por severidad descendente",
-                  items: {
-                    type: "object",
-                    properties: {
-                      titulo: { type: "string" },
-                      severidad: { type: "string", enum: ["critico", "alto", "medio", "bajo"] },
-                      impacto_financiero: { type: "string", description: "Si aplica, estimación en USD o descripción del impacto" },
-                      mitigacion: { type: "string" },
-                    },
-                    required: ["titulo", "severidad", "mitigacion"],
-                  },
-                },
-                casos_similares: {
-                  type: "array",
-                  description: "Qué se aprende de los casos similares del histórico. Si no hay patrones útiles, devolver array vacío.",
-                  items: {
-                    type: "object",
-                    properties: {
-                      ticket_id: { type: "string" },
-                      asunto: { type: "string" },
-                      relevancia: { type: "string", description: "Por qué este caso es relevante para el actual" },
-                      leccion_aplicable: { type: "string" },
-                    },
-                    required: ["ticket_id", "relevancia", "leccion_aplicable"],
-                  },
-                },
-                sla_status: {
-                  type: "object",
-                  properties: {
-                    estado: { type: "string", enum: ["ok", "en_riesgo", "incumplido", "sin_sla", "cerrado"] },
-                    mensaje: { type: "string", description: "Una línea: 'Dentro de SLA (4h restantes)' o 'Incumplido hace 3h — penalidad $500'" },
-                    accion_sla: { type: "string", description: "Qué hacer para cumplir o mitigar el incumplimiento" },
-                  },
-                  required: ["estado", "mensaje"],
-                },
-                confianza: {
-                  type: "number",
-                  description: "Confianza del análisis 0-100 basada en calidad de la data disponible",
-                },
+                titulo: { type: "string", description: "Acción concreta a tomar AHORA (imperativo, 1 línea)" },
+                detalle: { type: "string", description: "Cómo ejecutar la acción, pasos concretos" },
+                responsable_sugerido: { type: "string", description: "Nombre del responsable sugerido o rol" },
+                urgencia: { type: "string", enum: ["inmediata", "hoy", "esta_semana", "este_mes"] },
+                esfuerzo_estimado_horas: { type: "number" },
               },
-              required: ["diagnostico", "accion_recomendada", "riesgos", "casos_similares", "sla_status", "confianza"],
+              required: ["titulo", "detalle", "urgencia"],
+            },
+            riesgos: {
+              type: "array",
+              description: "Riesgos identificados, ordenados por severidad descendente",
+              items: {
+                type: "object",
+                properties: {
+                  titulo: { type: "string" },
+                  severidad: { type: "string", enum: ["critico", "alto", "medio", "bajo"] },
+                  impacto_financiero: { type: "string", description: "Si aplica, estimación en USD o descripción del impacto" },
+                  mitigacion: { type: "string" },
+                },
+                required: ["titulo", "severidad", "mitigacion"],
+              },
+            },
+            casos_similares: {
+              type: "array",
+              description: "Qué se aprende de los casos similares del histórico. Si no hay patrones útiles, devolver array vacío.",
+              items: {
+                type: "object",
+                properties: {
+                  ticket_id: { type: "string" },
+                  asunto: { type: "string" },
+                  relevancia: { type: "string", description: "Por qué este caso es relevante para el actual" },
+                  leccion_aplicable: { type: "string" },
+                },
+                required: ["ticket_id", "relevancia", "leccion_aplicable"],
+              },
+            },
+            sla_status: {
+              type: "object",
+              properties: {
+                estado: { type: "string", enum: ["ok", "en_riesgo", "incumplido", "sin_sla", "cerrado"] },
+                mensaje: { type: "string", description: "Una línea: 'Dentro de SLA (4h restantes)' o 'Incumplido hace 3h — penalidad $500'" },
+                accion_sla: { type: "string", description: "Qué hacer para cumplir o mitigar el incumplimiento" },
+              },
+              required: ["estado", "mensaje"],
+            },
+            confianza: {
+              type: "number",
+              description: "Confianza del análisis 0-100 basada en calidad de la data disponible",
             },
           },
-        }],
-        tool_choice: { type: "function", function: { name: "case_strategy" } },
-      }),
+          required: ["diagnostico", "accion_recomendada", "riesgos", "casos_similares", "sla_status", "confianza"],
+        },
+      },
     });
-
-    if (!aiResp.ok) {
-      if (aiResp.status === 429) return new Response(JSON.stringify({ error: "Rate limit excedido, intenta en unos minutos" }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });
-      if (aiResp.status === 402) return new Response(JSON.stringify({ error: "Créditos de IA agotados" }), { status: 402, headers: { ...cors, "Content-Type": "application/json" } });
-      const t = await aiResp.text();
-      throw new Error(`AI error: ${aiResp.status} ${t}`);
-    }
-
-    const aiData = await aiResp.json();
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) throw new Error("La IA no devolvió un tool_call válido");
-    const analysis = JSON.parse(toolCall.function.arguments);
 
     // ─── 8. Persistir + loggear uso ─────────────────────────────────────
     const { data: saved } = await db.from("pm_ai_analysis").insert({
@@ -289,13 +266,12 @@ Deno.serve(async (req) => {
       model: MODEL,
     }).select().single();
 
-    const usage = aiData.usage ?? {};
     await db.from("ai_usage_logs").insert({
       function_name: FUNCTION_NAME,
-      model: MODEL,
-      prompt_tokens: usage.prompt_tokens ?? 0,
-      completion_tokens: usage.completion_tokens ?? 0,
-      total_tokens: usage.total_tokens ?? 0,
+      model: resolvedModel(MODEL),
+      prompt_tokens: usage.input_tokens,
+      completion_tokens: usage.output_tokens,
+      total_tokens: usage.total_tokens,
       status: "success",
       client_id: ticket.client_id,
       metadata: { ticket_id: ticket.ticket_id, scope: ticket_id },
@@ -306,6 +282,11 @@ Deno.serve(async (req) => {
     });
   } catch (e: any) {
     if (e instanceof AuthError) return authErrorResponse(e, cors);
+    if (e instanceof AiError) {
+      return new Response(JSON.stringify({ error: e.message }), {
+        status: e.status, headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
     console.error("case-strategy-ai error:", e);
     // Intentar loggear el fallo (best-effort)
     try {

@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY")!;
     const supabase = ctx.adminClient;
 
     const { data: member } = await supabase.from("sysde_team_members").select("*").eq("id", memberId).maybeSingle();
@@ -56,12 +56,12 @@ ROL OBJETIVO: ${target}
 
 Contexto SYSDE: consultoría SAF+ (banca, pensiones, vehículos). Roles típicos: Junior Dev → Semi-Senior Dev → Senior Dev → Tech Lead → Architect. Especializaciones: Backend Java, Frontend React, DevOps, QA, BA, PM, Soporte.`;
 
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
       signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gemini-2.5-flash",
         messages: [
           { role: "system", content: "Eres un mentor senior y career coach técnico con 20+ años en consultoría de software. Generas planes de carrera realistas, con pasos concretos y timeline." },
           { role: "user", content: userPrompt },
@@ -151,7 +151,7 @@ Contexto SYSDE: consultoría SAF+ (banca, pensiones, vehículos). Roles típicos
       mentoring_suggestions: plan.mentoring_suggestions || [],
       ai_summary: plan.ai_summary || "",
       generated_at: new Date().toISOString(),
-      model: "google/gemini-2.5-flash",
+      model: "gemini-2.5-flash",
     };
     if (existing) await supabase.from("team_career_paths").update(payload).eq("id", existing.id);
     else await supabase.from("team_career_paths").insert(payload);
@@ -159,7 +159,7 @@ Contexto SYSDE: consultoría SAF+ (banca, pensiones, vehículos). Roles típicos
     const usage = aiData.usage || {};
     await supabase.from("ai_usage_logs").insert({
       function_name: "analyze-career-path",
-      model: "google/gemini-2.5-flash",
+      model: "gemini-2.5-flash",
       prompt_tokens: usage.prompt_tokens || 0,
       completion_tokens: usage.completion_tokens || 0,
       total_tokens: usage.total_tokens || 0,

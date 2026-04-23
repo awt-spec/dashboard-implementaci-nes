@@ -2,11 +2,11 @@ import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
 import { AuthError, authErrorResponse, requireAuth, requireRole } from "../_shared/auth.ts";
 import { normalizeTipo, normalizePrioridad } from "../_shared/ticketStatus.ts";
 
-const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const GATEWAY = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 
 async function callAI(model: string, messages: any[]) {
-  const apiKey = Deno.env.get("LOVABLE_API_KEY");
-  if (!apiKey) throw new Error("LOVABLE_API_KEY missing");
+  const apiKey = Deno.env.get("GEMINI_API_KEY");
+  if (!apiKey) throw new Error("GEMINI_API_KEY missing");
   const res = await fetch(GATEWAY, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
       .select("ai_model")
       .eq("scope", "global")
       .maybeSingle();
-    const model = settings?.ai_model || "google/gemini-3-flash-preview";
+    const model = settings?.ai_model || "gemini-2.5-flash";
 
     // La tabla real usa `tipo`, `prioridad`, `estado`, `asunto`, `notas` (español).
     const ctx = `
