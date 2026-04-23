@@ -18,18 +18,32 @@ Deno.serve(async (req) => {
     const { data: { user: caller } } = await supabaseAdmin.auth.getUser(token);
     if (!caller) throw new Error("Invalid token");
 
-    const { data: callerRole } = await supabaseAdmin
+    const { data: callerRoles } = await supabaseAdmin
       .from("user_roles")
       .select("role")
-      .eq("user_id", caller.id)
-      .maybeSingle();
-
-    if (callerRole?.role !== "admin") {
-      throw new Error("Solo administradores pueden gestionar usuarios");
-    }
+      .eq("user_id", caller.id);
+    const callerRoleSet = new Set((callerRoles ?? []).map((r: any) => r.role));
+    const isAdmin = callerRoleSet.has("admin");
+    const isPM = callerRoleSet.has("pm");
 
     const body = await req.json();
     const { action } = body;
+
+    // Acciones sobre clientes (crear usuario cliente, cambiar permiso, revocar)
+    // permitidas para admin y pm. El resto sólo admin.
+    const CLIENTE_ACTIONS = new Set([
+      "create_cliente",
+      "update_cliente_permission",
+      "remove_cliente_assignment",
+      "list_cliente_users",
+    ]);
+    if (CLIENTE_ACTIONS.has(action)) {
+      if (!isAdmin && !isPM) {
+        throw new Error("Solo admin o pm pueden gestionar usuarios cliente");
+      }
+    } else if (!isAdmin) {
+      throw new Error("Solo administradores pueden gestionar usuarios");
+    }
 
     if (action === "create") {
       const { email, password, full_name, role } = body;
@@ -178,6 +192,155 @@ Deno.serve(async (req) => {
       await supabaseAdmin.from("profiles").update({ email }).eq("user_id", user_id);
 
       return new Response(JSON.stringify({ success: true }), {
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // CLIENTE ACTIONS — gestión de usuarios externos vinculados a un cliente
+    // ─────────────────────────────────────────────────────────────────
+
+    if (action === "create_cliente") {
+      const { email, password, full_name, client_id, permission_level } = body;
+      if (!email || !password || password.length < 8) {
+        throw new Error("email y password (>=8 chars) son requeridos");
+      }
+      if (!client_id) throw new Error("client_id es requerido");
+      const perm = permission_level ?? "viewer";
+      if (!["viewer", "editor", "admin"].includes(perm)) {
+        throw new Error("permission_level inválido (viewer | editor | admin)");
+      }
+
+      // Ver si ya existe el user por email (para no duplicar)
+      const { data: existingProfile } = await supabaseAdmin
+        .from("profiles")
+        .select("user_id")
+        .eq("email", email)
+        .maybeSingle();
+
+      let userId: string;
+      if (existingProfile?.user_id) {
+        userId = existingProfile.user_id;
+        // Asegurar que tiene el rol cliente
+        const { data: existingRole } = await supabaseAdmin
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId)
+          .eq("role", "cliente")
+          .maybeSingle();
+        if (!existingRole) {
+          const { error: roleErr } = await supabaseAdmin
+            .from("user_roles")
+            .insert({ user_id: userId, role: "cliente" });
+          if (roleErr) throw roleErr;
+        }
+      } else {
+        // Crear auth user
+        const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+          email,
+          password,
+          email_confirm: true,
+          user_metadata: { full_name: full_name ?? email.split("@")[0] },
+        });
+        if (createErr) throw createErr;
+        userId = newUser.user.id;
+
+        const { error: roleErr } = await supabaseAdmin
+          .from("user_roles")
+          .insert({ user_id: userId, role: "cliente" });
+        if (roleErr) throw roleErr;
+      }
+
+      // Upsert assignment (si ya existía para este client_id, actualiza permiso)
+      const { error: assignErr } = await supabaseAdmin
+        .from("cliente_company_assignments")
+        .upsert(
+          {
+            user_id: userId,
+            client_id,
+            permission_level: perm,
+            created_by: caller.id,
+          },
+          { onConflict: "user_id,client_id" }
+        );
+      if (assignErr) throw assignErr;
+
+      return new Response(JSON.stringify({ success: true, user_id: userId }), {
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "update_cliente_permission") {
+      const { user_id, client_id, permission_level } = body;
+      if (!user_id || !client_id) throw new Error("user_id y client_id son requeridos");
+      if (!["viewer", "editor", "admin"].includes(permission_level)) {
+        throw new Error("permission_level inválido");
+      }
+      const { error } = await supabaseAdmin
+        .from("cliente_company_assignments")
+        .update({ permission_level })
+        .eq("user_id", user_id)
+        .eq("client_id", client_id);
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "remove_cliente_assignment") {
+      const { user_id, client_id, delete_user } = body;
+      if (!user_id || !client_id) throw new Error("user_id y client_id son requeridos");
+
+      const { error: delAssignErr } = await supabaseAdmin
+        .from("cliente_company_assignments")
+        .delete()
+        .eq("user_id", user_id)
+        .eq("client_id", client_id);
+      if (delAssignErr) throw delAssignErr;
+
+      if (delete_user) {
+        // Sólo borra el auth user si no quedan otras asignaciones
+        const { data: remaining } = await supabaseAdmin
+          .from("cliente_company_assignments")
+          .select("id")
+          .eq("user_id", user_id);
+        if (!remaining || remaining.length === 0) {
+          await supabaseAdmin.auth.admin.deleteUser(user_id);
+        }
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "list_cliente_users") {
+      const { client_id } = body;
+      if (!client_id) throw new Error("client_id es requerido");
+
+      const { data: assignments, error } = await supabaseAdmin
+        .from("cliente_company_assignments")
+        .select("id, user_id, permission_level, created_at, created_by")
+        .eq("client_id", client_id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+
+      const userIds = (assignments ?? []).map((a: any) => a.user_id);
+      const { data: profiles } = await supabaseAdmin
+        .from("profiles")
+        .select("user_id, full_name, email, avatar_url")
+        .in("user_id", userIds.length > 0 ? userIds : ["00000000-0000-0000-0000-000000000000"]);
+
+      const profileMap = new Map((profiles ?? []).map((p: any) => [p.user_id, p]));
+      const result = (assignments ?? []).map((a: any) => ({
+        assignment_id: a.id,
+        user_id: a.user_id,
+        permission_level: a.permission_level,
+        created_at: a.created_at,
+        profile: profileMap.get(a.user_id) ?? null,
+      }));
+
+      return new Response(JSON.stringify({ success: true, users: result }), {
         headers: { ...cors, "Content-Type": "application/json" },
       });
     }
