@@ -1,9 +1,11 @@
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useClients } from "@/hooks/useClients";
 import { type Client } from "@/data/projectData";
-import { Building2, MapPin, Search, Loader2 } from "lucide-react";
+import { Building2, MapPin, Search, Loader2, Database, Upload, Download, FileSpreadsheet, GitMerge } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
@@ -46,30 +48,38 @@ export function ClientList({ onSelectClient, selectedClientId }: ClientListProps
     );
   }
 
+  const canManage = role === "admin" || role === "pm";
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-3">
-        {(role === "admin" || role === "pm") && (
-          <CreateClientDialog />
+    <Tabs defaultValue="clientes" className="space-y-4">
+      <TabsList className="h-9">
+        <TabsTrigger value="clientes" className="gap-1.5"><Building2 className="h-3.5 w-3.5" /> Clientes</TabsTrigger>
+        {canManage && (
+          <TabsTrigger value="datos" className="gap-1.5"><Database className="h-3.5 w-3.5" /> Datos & Sync</TabsTrigger>
         )}
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Buscar cliente..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+      </TabsList>
+
+      <TabsContent value="clientes" className="space-y-4">
+        <div className="flex flex-col sm:flex-row gap-3">
+          {canManage && <CreateClientDialog />}
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="Buscar cliente..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+          </div>
+          <div className="flex gap-1.5 flex-wrap">
+            {statuses.map(s => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  statusFilter === s ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-accent"
+                }`}
+              >
+                {s === "todos" ? "Todos" : statusConfig[s as Client["status"]]?.label}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="flex gap-1.5 flex-wrap">
-          {statuses.map(s => (
-            <button
-              key={s}
-              onClick={() => setStatusFilter(s)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                statusFilter === s ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-accent"
-              }`}
-            >
-              {s === "todos" ? "Todos" : statusConfig[s as Client["status"]]?.label}
-            </button>
-          ))}
-        </div>
-      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {filtered.map((client, i) => {
@@ -117,9 +127,96 @@ export function ClientList({ onSelectClient, selectedClientId }: ClientListProps
         })}
       </div>
 
-      {filtered.length === 0 && (
-        <p className="text-sm text-muted-foreground text-center py-8">No se encontraron clientes</p>
+        {filtered.length === 0 && (
+          <p className="text-sm text-muted-foreground text-center py-8">No se encontraron clientes</p>
+        )}
+      </TabsContent>
+
+      {canManage && (
+        <TabsContent value="datos" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className="border-primary/30">
+              <CardHeader>
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-primary" />
+                  Agregar cliente manualmente
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Crea un cliente nuevo con contrato, SLA y contacto. Quedará disponible en la lista.
+                </p>
+                <CreateClientDialog />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <FileSpreadsheet className="h-4 w-4 text-info" />
+                  Importar desde CSV/Excel
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Sube un archivo con múltiples clientes, contratos o tareas.
+                  Columnas aceptadas: <code className="text-[10px] bg-muted px-1 rounded">name, country, industry, contact_name, contact_email, client_type, nivel_servicio</code>.
+                </p>
+                <Button variant="outline" disabled className="w-full gap-2">
+                  <Upload className="h-4 w-4" /> Subir archivo (próximamente)
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Download className="h-4 w-4 text-success" />
+                  Exportar
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Descarga todos los clientes de implementación con su data actualizada.
+                </p>
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={() => {
+                    const csv = [
+                      "id,name,country,industry,client_type,nivel_servicio,status,progress",
+                      ...filtered.map(c =>
+                        [c.id, c.name, c.country, (c as any).industry, "implementacion", (c as any).nivel_servicio || "Base", c.status, c.progress].map(v => `"${v ?? ""}"`).join(","),
+                      ),
+                    ].join("\n");
+                    const blob = new Blob([csv], { type: "text/csv" });
+                    const a = document.createElement("a");
+                    a.href = URL.createObjectURL(blob);
+                    a.download = `clientes-implementacion-${new Date().toISOString().slice(0, 10)}.csv`;
+                    a.click();
+                  }}
+                >
+                  <Download className="h-4 w-4" /> Exportar CSV ({filtered.length} clientes)
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <GitMerge className="h-4 w-4 text-primary" />
+                  Azure DevOps
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Sincronizar tareas desde Azure DevOps a un cliente específico. Abrí el detalle de un cliente y andá al tab "Datos & Sync".
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
       )}
-    </div>
+    </Tabs>
   );
 }

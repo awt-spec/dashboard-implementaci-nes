@@ -3,7 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Bell, Search, LogOut, Moon, Sun, Loader2, Factory } from "lucide-react";
+import {
+  Bell, Search, LogOut, Moon, Sun, Loader2, Factory,
+  Sunrise, Target, Zap, Bot, LayoutGrid, CalendarDays, AlertTriangle, Building2, BarChart3,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAllScrumWorkItems, useAllSprints, useUpdateWorkItemScrum, type ScrumWorkItem } from "@/hooks/useTeamScrum";
@@ -60,8 +63,9 @@ export default function ColaboradorDashboard() {
   }, [allItems, user?.id, fullName]);
 
   const mySprintIds = new Set(myItems.map(i => i.sprint_id).filter(Boolean));
-  const activeSprint = allSprints.find(s => s.status === "activo" && mySprintIds.has(s.id))
-    || allSprints.find(s => s.status === "activo");
+  // Solo muestra sprint activo si el user tiene items ahí. Sin fallback a
+  // sprints ajenos (antes mostraba Credicefi a un user sin tareas, confundiendo).
+  const activeSprint = allSprints.find(s => s.status === "activo" && mySprintIds.has(s.id));
 
   const sprintItems = useMemo(
     () => myItems.filter(i => activeSprint && i.sprint_id === activeSprint.id),
@@ -184,7 +188,7 @@ export default function ColaboradorDashboard() {
   // Widget registry
   const widgetRegistry = useMemo(() => ({
     hero: {
-      type: "hero", label: "Saludo y resumen", description: "Buenos días + KPIs y timer activo", icon: "👋",
+      type: "hero", label: "Saludo y resumen", description: "Buenos días + KPIs y timer activo", icon: Sunrise,
       defaultSize: { w: 12, h: 4, minW: 6, minH: 3 },
       render: () => (
         <HeroBuenosDias
@@ -197,7 +201,7 @@ export default function ColaboradorDashboard() {
       ),
     },
     focus: {
-      type: "focus", label: "Foco del día", description: "Top 3 tareas con timer", icon: "🎯",
+      type: "focus", label: "Foco del día", description: "Top 3 tareas con timer", icon: Target,
       defaultSize: { w: 4, h: 6, minW: 3, minH: 4 },
       render: () => (
         <FocusCard items={sprintItems} clientNames={clientNames} activeTimer={activeTimer}
@@ -205,7 +209,7 @@ export default function ColaboradorDashboard() {
       ),
     },
     sprint: {
-      type: "sprint", label: "Mi sprint", description: "Donut con avance del sprint", icon: "🏃",
+      type: "sprint", label: "Mi sprint", description: "Donut con avance del sprint", icon: Zap,
       defaultSize: { w: 4, h: 6, minW: 3, minH: 4 },
       render: () => (
         <MiSprintCard pointsDone={donePoints} pointsTotal={totalPoints}
@@ -213,7 +217,7 @@ export default function ColaboradorDashboard() {
       ),
     },
     agent: {
-      type: "agent", label: "Agente IA", description: "Insights y consultas rápidas", icon: "🤖",
+      type: "agent", label: "Agente IA", description: "Insights y consultas rápidas", icon: Bot,
       defaultSize: { w: 4, h: 6, minW: 3, minH: 4 },
       render: () => (
         <AgenteIACompactCard insights={insights}
@@ -221,7 +225,7 @@ export default function ColaboradorDashboard() {
       ),
     },
     board: {
-      type: "board", label: "Mi tablero", description: "Kanban 4 columnas con drag", icon: "📋",
+      type: "board", label: "Mi tablero", description: "Kanban 4 columnas con drag", icon: LayoutGrid,
       defaultSize: { w: 12, h: 10, minW: 6, minH: 6 },
       render: () => (
         <MiTablero items={sprintItems} clientNames={clientNames}
@@ -230,22 +234,22 @@ export default function ColaboradorDashboard() {
       ),
     },
     calendar: {
-      type: "calendar", label: "Esta semana", description: "Distribución semanal de tareas", icon: "📅",
+      type: "calendar", label: "Esta semana", description: "Distribución semanal de tareas", icon: CalendarDays,
       defaultSize: { w: 12, h: 6, minW: 6, minH: 4 },
       render: () => <EstaSemanaCalendar items={sprintItems} />,
     },
     overdue: {
-      type: "overdue", label: "Vencidas", description: "Tareas atrasadas", icon: "⚠️",
+      type: "overdue", label: "Vencidas", description: "Tareas atrasadas", icon: AlertTriangle,
       defaultSize: { w: 4, h: 6, minW: 3, minH: 4 },
       render: () => <OverdueTasksWidget items={myItems} />,
     },
     topClients: {
-      type: "topClients", label: "Top clientes", description: "Clientes con más carga activa", icon: "🏢",
+      type: "topClients", label: "Top clientes", description: "Clientes con más carga activa", icon: Building2,
       defaultSize: { w: 4, h: 6, minW: 3, minH: 4 },
       render: () => <TopClientsWidget items={myItems} clientNames={clientNames} />,
     },
     kpi: {
-      type: "kpi", label: "KPI personal", description: "Horas, racha y avance", icon: "📊",
+      type: "kpi", label: "KPI personal", description: "Horas, racha y avance", icon: BarChart3,
       defaultSize: { w: 4, h: 6, minW: 3, minH: 4 },
       render: () => <PersonalKpiWidget todayMinutes={todayMinutes} streakDays={streakDays}
         donePoints={donePoints} totalPoints={totalPoints} />,

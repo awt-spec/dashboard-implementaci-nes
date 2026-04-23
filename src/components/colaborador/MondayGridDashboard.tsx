@@ -142,9 +142,13 @@ export function MondayGridDashboard({ registry, onEditingChange }: Props) {
                           const reg = registry[w.type];
                           if (!reg) return null;
                           return (
-                            <div key={w.id} className="flex items-center justify-between gap-2 p-2 rounded border border-border/50">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span className="text-base">{reg.icon}</span>
+                            <div key={w.id} className="flex items-center justify-between gap-2 p-2 rounded-lg border border-border/50 hover:border-primary/30 transition-colors">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                  {typeof reg.icon === "string"
+                                    ? <span className="text-base">{reg.icon}</span>
+                                    : <reg.icon className="h-4 w-4 text-primary" />}
+                                </div>
                                 <div className="min-w-0">
                                   <p className="text-xs font-semibold truncate">{reg.label}</p>
                                   <p className="text-[10px] text-muted-foreground truncate">{reg.description}</p>
@@ -165,9 +169,13 @@ export function MondayGridDashboard({ registry, onEditingChange }: Props) {
                       <h4 className="text-xs font-bold uppercase text-muted-foreground mb-2">Catálogo</h4>
                       <div className="space-y-2">
                         {Object.values(registry).map(reg => (
-                          <div key={reg.type} className="flex items-center justify-between gap-2 p-2 rounded border border-border/50">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="text-base">{reg.icon}</span>
+                          <div key={reg.type} className="flex items-center justify-between gap-2 p-2 rounded-lg border border-border/50 hover:border-primary/30 transition-colors">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                {typeof reg.icon === "string"
+                                  ? <span className="text-base">{reg.icon}</span>
+                                  : <reg.icon className="h-4 w-4 text-primary" />}
+                              </div>
                               <div className="min-w-0">
                                 <p className="text-xs font-semibold truncate">{reg.label}</p>
                                 <p className="text-[10px] text-muted-foreground truncate">{reg.description}</p>
@@ -228,7 +236,11 @@ export function MondayGridDashboard({ registry, onEditingChange }: Props) {
                     {editing && (
                       <div className="widget-drag-handle cursor-move flex items-center justify-between gap-2 px-3 py-1.5 bg-muted/40 border-b border-border/40">
                         <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground">
-                          <GripVertical className="h-3 w-3" /> {reg.icon} {reg.label}
+                          <GripVertical className="h-3 w-3" />
+                          {typeof reg.icon === "string"
+                            ? <span>{reg.icon}</span>
+                            : <reg.icon className="h-3 w-3" />}
+                          {reg.label}
                         </div>
                         <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => removeWidget(w.id)}>
                           <X className="h-3 w-3" />

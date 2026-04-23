@@ -406,7 +406,7 @@ export function ExecutivePresentation({ clients, supportTickets = [], supportCli
     <AnimatePresence>
       {open && (
         <motion.div ref={wrapperRef} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 bg-black/95 flex flex-col">
+          className="fixed inset-0 z-[100] bg-black/95 flex flex-col">
           {!isFullscreen && (
             <div className="flex items-center justify-between px-4 py-2 bg-black/50 shrink-0">
               <div className="flex items-center gap-3">
