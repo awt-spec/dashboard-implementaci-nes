@@ -1,7 +1,6 @@
-import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { corsHeaders, corsPreflight, anthropicTool, AiError, resolvedModel } from "../_shared/cors.ts";
 import { AuthError, authErrorResponse, requireAuth, requireRole } from "../_shared/auth.ts";
 import { isTicketClosed } from "../_shared/ticketStatus.ts";
-import { anthropicTool, AiError, resolvedModel } from "../_shared/ai.ts";
 
 /**
  * case-strategy-ai

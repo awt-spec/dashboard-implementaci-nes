@@ -1,7 +1,6 @@
-import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { corsHeaders, corsPreflight, anthropicTool, AiError, resolvedModel } from "../_shared/cors.ts";
 import { AuthError, authErrorResponse, requireAuth, requireRole } from "../_shared/auth.ts";
 import { isTicketClosed } from "../_shared/ticketStatus.ts";
-import { anthropicTool, AiError, resolvedModel } from "../_shared/ai.ts";
 
 /**
  * client-strategy-ai
@@ -57,14 +56,15 @@ Deno.serve(async (req) => {
     const financials = financialsR.data ?? null;
 
     // ─── 3. Todos los tickets del cliente (histórico completo) ───────────
-    const { data: tickets = [] } = await db
+    const { data: ticketsRaw } = await db
       .from("support_tickets")
       .select("id, ticket_id, asunto, estado, prioridad, tipo, producto, responsable, descripcion, created_at, fecha_entrega, dias_antiguedad, effort, business_value, is_confidential, ai_classification, ai_risk_level")
       .eq("client_id", client_id)
       .order("created_at", { ascending: false });
+    const tickets: any[] = ticketsRaw ?? [];
 
     // ─── 4. Notas "externas" recientes (indicadores de tono cliente) ─────
-    const ticketIds = (tickets || []).map((t: any) => t.id);
+    const ticketIds = tickets.map((t: any) => t.id);
     let recentNotes: any[] = [];
     if (ticketIds.length > 0) {
       const { data: notesData } = await db
@@ -77,13 +77,17 @@ Deno.serve(async (req) => {
       recentNotes = notesData ?? [];
     }
 
-    // ─── 5. Agreements con el cliente ────────────────────────────────────
-    const { data: agreements = [] } = await db
-      .from("client_agreements" as any)
-      .select("*")
-      .eq("client_id", client_id)
-      .order("created_at", { ascending: false })
-      .limit(30);
+    // ─── 5. Agreements con el cliente (tabla opcional, tolerar 404) ──────
+    let agreements: any[] = [];
+    try {
+      const { data: agrData } = await db
+        .from("client_agreements" as any)
+        .select("*")
+        .eq("client_id", client_id)
+        .order("created_at", { ascending: false })
+        .limit(30);
+      agreements = agrData ?? [];
+    } catch { /* tabla puede no existir en el schema */ }
 
     // ─── 6. Métricas derivadas ──────────────────────────────────────────
     const total = tickets.length;

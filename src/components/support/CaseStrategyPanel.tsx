@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { AiErrorDialog } from "@/components/ui/ai-error-dialog";
 import {
   useLatestCaseStrategy, useRunCaseStrategy,
   type CaseStrategyOutput, type CaseStrategyRisk, type CaseStrategySlaStatus,
@@ -53,11 +54,12 @@ export function CaseStrategyPanel({ ticketId, canEdit }: Props) {
   const { data: latest, isLoading } = useLatestCaseStrategy(ticketId);
   const run = useRunCaseStrategy();
   const [showFullAnalysis, setShowFullAnalysis] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const handleGenerate = () => {
     run.mutate(ticketId, {
       onSuccess: () => toast.success("Análisis generado"),
-      onError: (e: any) => toast.error(e?.message || "No se pudo generar el análisis"),
+      onError: (e: any) => setAiError(e?.message || "No se pudo generar el análisis"),
     });
   };
 
@@ -102,6 +104,7 @@ export function CaseStrategyPanel({ ticketId, canEdit }: Props) {
             )}
           </CardContent>
         </Card>
+        <AiErrorDialog open={!!aiError} onClose={() => setAiError(null)} message={aiError} onRetry={handleGenerate} />
       </div>
     );
   }
@@ -291,6 +294,7 @@ export function CaseStrategyPanel({ ticketId, canEdit }: Props) {
           </motion.pre>
         )}
       </AnimatePresence>
+      <AiErrorDialog open={!!aiError} onClose={() => setAiError(null)} message={aiError} onRetry={handleGenerate} />
     </div>
   );
 }

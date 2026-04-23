@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { AiErrorDialog } from "@/components/ui/ai-error-dialog";
 import {
   useLatestClientStrategy, useRunClientStrategy,
   type ClientStrategyOutput, type ClientStrategyChurnRisk,
@@ -65,11 +66,12 @@ export function ClientStrategyPanel({ clientId, clientName, canEdit }: Props) {
   const { data: latest, isLoading } = useLatestClientStrategy(clientId);
   const run = useRunClientStrategy();
   const [showJson, setShowJson] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const handleGenerate = () => {
     run.mutate(clientId, {
       onSuccess: () => toast.success("Estrategia generada"),
-      onError: (e: any) => toast.error(e?.message || "No se pudo generar"),
+      onError: (e: any) => setAiError(e?.message || "No se pudo generar"),
     });
   };
 
@@ -86,29 +88,32 @@ export function ClientStrategyPanel({ clientId, clientName, canEdit }: Props) {
   // Empty state
   if (!analysis) {
     return (
-      <Card>
-        <CardContent className="p-8 text-center space-y-3">
-          <div className="h-14 w-14 rounded-2xl bg-primary/10 mx-auto flex items-center justify-center">
-            <Sparkles className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <p className="text-base font-bold">Estrategia IA para {clientName || "este cliente"}</p>
-            <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
-              Análisis 360° de la cuenta: salud de la relación, top 3 dolores recurrentes,
-              oportunidades de upsell, riesgos de churn y plan semana-a-semana.
-            </p>
-          </div>
-          <Button onClick={handleGenerate} disabled={!canEdit || run.isPending} className="gap-2">
-            {run.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            {run.isPending ? "Generando…" : "Generar estrategia"}
-          </Button>
-          {!canEdit && (
-            <p className="text-[10px] text-muted-foreground italic">
-              Requiere permisos admin / PM / gerente.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+      <>
+        <Card>
+          <CardContent className="p-8 text-center space-y-3">
+            <div className="h-14 w-14 rounded-2xl bg-primary/10 mx-auto flex items-center justify-center">
+              <Sparkles className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <p className="text-base font-bold">Estrategia IA para {clientName || "este cliente"}</p>
+              <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
+                Análisis 360° de la cuenta: salud de la relación, top 3 dolores recurrentes,
+                oportunidades de upsell, riesgos de churn y plan semana-a-semana.
+              </p>
+            </div>
+            <Button onClick={handleGenerate} disabled={!canEdit || run.isPending} className="gap-2">
+              {run.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              {run.isPending ? "Generando…" : "Generar estrategia"}
+            </Button>
+            {!canEdit && (
+              <p className="text-[10px] text-muted-foreground italic">
+                Requiere permisos admin / PM / gerente.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+        <AiErrorDialog open={!!aiError} onClose={() => setAiError(null)} message={aiError} onRetry={handleGenerate} />
+      </>
     );
   }
 
@@ -383,6 +388,7 @@ export function ClientStrategyPanel({ clientId, clientName, canEdit }: Props) {
           {JSON.stringify(analysis, null, 2)}
         </pre>
       )}
+      <AiErrorDialog open={!!aiError} onClose={() => setAiError(null)} message={aiError} onRetry={handleGenerate} />
     </div>
   );
 }
