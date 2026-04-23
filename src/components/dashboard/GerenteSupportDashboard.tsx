@@ -60,7 +60,12 @@ export function GerenteSupportDashboard({ client }: Props) {
   const [tab, setTab] = useState("resumen");
   const [search, setSearch] = useState("");
   const [filterPriority, setFilterPriority] = useState<string>("all");
-  const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  // Re-lookup desde la lista para que optimistic updates se reflejen sin cerrar el sheet
+  const selectedTicket: SupportTicket | null = useMemo(
+    () => selectedTicketId ? (tickets.find(t => t.id === selectedTicketId) ?? null) : null,
+    [tickets, selectedTicketId],
+  );
 
   // Dialog para crear una nueva solicitud — usa NewTicketForm (mode="cliente")
   const [requestOpen, setRequestOpen] = useState(false);
@@ -236,7 +241,7 @@ export function GerenteSupportDashboard({ client }: Props) {
                       {criticalTickets.slice(0, 3).map(t => (
                         <button
                           key={t.id}
-                          onClick={() => setSelectedTicket(t)}
+                          onClick={() => setSelectedTicketId(t.id)}
                           className="w-full text-left p-2 rounded-lg bg-background hover:bg-muted/50 border border-destructive/20"
                         >
                           <div className="flex items-center justify-between gap-2">
@@ -297,7 +302,7 @@ export function GerenteSupportDashboard({ client }: Props) {
                     {tickets.slice(0, 5).map(t => (
                       <button
                         key={t.id}
-                        onClick={() => setSelectedTicket(t)}
+                        onClick={() => setSelectedTicketId(t.id)}
                         className="w-full text-left p-2 rounded-lg hover:bg-muted/50 flex items-center gap-2"
                       >
                         <div className={cn("h-2 w-2 rounded-full shrink-0", !isTicketClosed(t.estado) ? "bg-warning" : "bg-success")} />
@@ -352,7 +357,7 @@ export function GerenteSupportDashboard({ client }: Props) {
                           className="flex items-center gap-2 p-2.5 rounded-md border border-success/30 bg-background"
                         >
                           <button
-                            onClick={() => setSelectedTicket(t)}
+                            onClick={() => setSelectedTicketId(t.id)}
                             className="flex-1 min-w-0 text-left"
                           >
                             <p className="text-xs font-semibold truncate">{t.asunto}</p>
@@ -419,7 +424,7 @@ export function GerenteSupportDashboard({ client }: Props) {
                       initial={{ opacity: 0, y: 6 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: Math.min(idx * 0.02, 0.3) }}
-                      onClick={() => setSelectedTicket(t)}
+                      onClick={() => setSelectedTicketId(t.id)}
                       className="w-full text-left"
                     >
                       <Card className="hover:border-primary/40 transition-colors">
@@ -451,7 +456,7 @@ export function GerenteSupportDashboard({ client }: Props) {
                 <EmptyState message="No hay casos cerrados aún" />
               ) : (
                 closedTickets.slice(0, 30).map(t => (
-                  <button key={t.id} onClick={() => setSelectedTicket(t)} className="w-full text-left">
+                  <button key={t.id} onClick={() => setSelectedTicketId(t.id)} className="w-full text-left">
                     <Card>
                       <CardContent className="p-3">
                         <div className="flex items-start justify-between gap-2">
@@ -472,7 +477,7 @@ export function GerenteSupportDashboard({ client }: Props) {
       </div>
 
       {/* ─── Ticket detail sheet ─── */}
-      <Sheet open={!!selectedTicket} onOpenChange={o => !o && setSelectedTicket(null)}>
+      <Sheet open={!!selectedTicket} onOpenChange={o => !o && setSelectedTicketId(null)}>
         <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
           {selectedTicket && (
             <>
