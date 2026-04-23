@@ -74,8 +74,15 @@ export function SupportInbox({ clientId, onOpenTicket }: Props) {
 
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [recentlyAdded, setRecentlyAdded] = useState<Set<string>>(new Set());
-  const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+
+  // Re-lookup desde la lista para que los cambios optimistic (via useUpdateSupportTicket)
+  // se reflejen sin cerrar/reabrir el sheet.
+  const selectedTicket: SupportTicket | null = useMemo(
+    () => selectedTicketId ? (tickets.find(t => t.id === selectedTicketId) ?? null) : null,
+    [tickets, selectedTicketId],
+  );
 
   // ── Filtro por cliente si aplica ──
   const filteredTickets = useMemo(() => {
@@ -352,7 +359,7 @@ export function SupportInbox({ clientId, onOpenTicket }: Props) {
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     if (onOpenTicket) onOpenTicket(t);
-                                    else { setSelectedTicket(t); setDetailOpen(true); }
+                                    else { setSelectedTicketId(t.id); setDetailOpen(true); }
                                   }}
                                   className="h-7 gap-1 text-[11px]"
                                 >
@@ -386,7 +393,7 @@ export function SupportInbox({ clientId, onOpenTicket }: Props) {
       <TicketDetailSheet
         ticket={selectedTicket}
         open={detailOpen}
-        onOpenChange={(o) => { setDetailOpen(o); if (!o) setSelectedTicket(null); }}
+        onOpenChange={(o) => { setDetailOpen(o); if (!o) setSelectedTicketId(null); }}
         canEditInternal={true}
       />
     </div>

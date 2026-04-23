@@ -139,6 +139,13 @@ export function useAllSupportTickets() {
 
 export function useUpdateSupportTicket() {
   const qc = useQueryClient();
+
+  const LIST_KEYS = [
+    ["support-tickets"],
+    ["support-tickets-all"],
+    ["support-inbox"],
+  ];
+
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Record<string, unknown> }) => {
       const { data, error } = await supabase
@@ -150,7 +157,36 @@ export function useUpdateSupportTicket() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    // Optimistic update: el TicketDetailSheet y todas las listas reflejan el
+    // cambio (estado/prioridad/responsable/etc) al instante sin esperar refetch.
+    onMutate: async ({ id, updates }) => {
+      const snapshots: Array<[readonly unknown[], unknown]> = [];
+      for (const key of LIST_KEYS) {
+        await qc.cancelQueries({ queryKey: key });
+        // Recorrer TODAS las entries que matcheen ese prefix (pueden haber varias
+        // por filtros distintos: por cliente, por rol, etc.)
+        const matches = qc.getQueriesData({ queryKey: key });
+        for (const [qkey, data] of matches) {
+          snapshots.push([qkey, data]);
+          if (Array.isArray(data)) {
+            qc.setQueryData(
+              qkey,
+              (data as any[]).map((t) => t?.id === id ? { ...t, ...updates } : t),
+            );
+          }
+        }
+      }
+      return { snapshots };
+    },
+    onError: (_err, _vars, ctx) => {
+      // Revertir todos los snapshots si falla
+      if (ctx?.snapshots) {
+        for (const [qkey, data] of ctx.snapshots) {
+          qc.setQueryData(qkey as any, data);
+        }
+      }
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: ["support-tickets"] });
       qc.invalidateQueries({ queryKey: ["support-tickets-all"] });
       qc.invalidateQueries({ queryKey: ["support-inbox"] });
