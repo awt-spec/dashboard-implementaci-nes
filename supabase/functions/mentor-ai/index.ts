@@ -1,21 +1,36 @@
-import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
+import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { AuthError, authErrorResponse, canAccessMember, requireAuth } from "../_shared/auth.ts";
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const pre = corsPreflight(req);
+  if (pre) return pre;
+  const cors = corsHeaders(req);
 
   try {
+    const ctx = await requireAuth(req);
+
     const { member_id, question, conversation_id } = await req.json();
     if (!question?.trim()) {
       return new Response(JSON.stringify({ error: "question required" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+    if (typeof question !== "string" || question.length > 4000) {
+      return new Response(JSON.stringify({ error: "question must be a string up to 4000 chars" }), {
+        status: 400, headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+
+    if (member_id && !(await canAccessMember(ctx, member_id))) {
+      return new Response(JSON.stringify({ error: "No autorizado a usar el mentor de este miembro" }), {
+        status: 403, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
 
-    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const supabase = ctx.adminClient;
 
     // Build context from member skills + career path + courses
     let context = "";
@@ -57,12 +72,12 @@ Cuando recomiendes un curso del catálogo, menciona su título exactamente. Da p
       }),
     });
 
-    if (r.status === 429) return new Response(JSON.stringify({ error: "Límite de IA alcanzado, intenta más tarde." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    if (r.status === 402) return new Response(JSON.stringify({ error: "Créditos de IA agotados. Añade fondos en Lovable." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (r.status === 429) return new Response(JSON.stringify({ error: "Límite de IA alcanzado, intenta más tarde." }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });
+    if (r.status === 402) return new Response(JSON.stringify({ error: "Créditos de IA agotados. Añade fondos en Lovable." }), { status: 402, headers: { ...cors, "Content-Type": "application/json" } });
     if (!r.ok) {
       const t = await r.text();
       console.error("AI gateway error:", r.status, t);
-      return new Response(JSON.stringify({ error: "AI gateway error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "AI gateway error" }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     const data = await r.json();
@@ -93,12 +108,13 @@ Cuando recomiendes un curso del catálogo, menciona su título exactamente. Da p
     });
 
     return new Response(JSON.stringify({ answer, conversation_id: convId }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
     });
   } catch (e) {
+    if (e instanceof AuthError) return authErrorResponse(e, cors);
     console.error("mentor-ai error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...cors, "Content-Type": "application/json" },
     });
   }
 });

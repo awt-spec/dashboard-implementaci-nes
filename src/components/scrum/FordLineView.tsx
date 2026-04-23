@@ -43,7 +43,7 @@ interface Props {
   title?: string;
 }
 
-export function FordLineView({ items, onSelect, onMove, defaultMode = "pipeline", showToggle = true, title = "Línea de trabajo" }: Props) {
+export function FordLineView({ items, onSelect, onMove, defaultMode = "pipeline", showToggle = true, title = "Flujo de trabajo" }: Props) {
   const [mode, setMode] = useState<"pipeline" | "swimlanes">(defaultMode);
 
   const itemsByStation = useMemo(() => {

@@ -250,9 +250,9 @@ export default function ColaboradorDashboard() {
         donePoints={donePoints} totalPoints={totalPoints} />,
     },
     fordMini: {
-      type: "fordMini", label: "Línea de trabajo (mini)", description: "Pipeline Ford de mis tareas", icon: "🏭",
+      type: "fordMini", label: "Flujo de trabajo (mini)", description: "Mi pipeline de tareas y tickets", icon: "🏭",
       defaultSize: { w: 12, h: 8, minW: 8, minH: 6 },
-      render: () => <div className="p-2"><FordLineView items={myItems} onSelect={setSelectedItem} onMove={handleMoveItem} title="Mi línea de trabajo" /></div>,
+      render: () => <div className="p-2"><FordLineView items={myItems} onSelect={setSelectedItem} onMove={handleMoveItem} title="Mi flujo de trabajo" /></div>,
     },
   }), [
     fullName, todayTasks.length, todayMeetingsCount, streakDays, donePoints, todayMinutes,
@@ -304,7 +304,7 @@ export default function ColaboradorDashboard() {
           </TabsContent>
 
           <TabsContent value="linea-ford">
-            <FordLineView items={myItems} onSelect={setSelectedItem} onMove={handleMoveItem} title="Mi línea de trabajo" />
+            <FordLineView items={myItems} onSelect={setSelectedItem} onMove={handleMoveItem} title="Mi flujo de trabajo" />
           </TabsContent>
         </Tabs>
 

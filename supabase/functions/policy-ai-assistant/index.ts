@@ -1,9 +1,6 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { AuthError, authErrorResponse, requireAuth, requireRole } from "../_shared/auth.ts";
+import { normalizeTipo, normalizePrioridad } from "../_shared/ticketStatus.ts";
 
 const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
@@ -26,21 +23,23 @@ async function callAI(model: string, messages: any[]) {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const pre = corsPreflight(req);
+  if (pre) return pre;
+  const cors = corsHeaders(req);
 
   try {
+    const ctx = await requireAuth(req);
+    await requireRole(ctx, ["admin", "pm", "gerente"]);
+
     const { mode, ticket_id, notice_type } = await req.json();
     if (!mode || !ticket_id) {
       return new Response(JSON.stringify({ error: "mode and ticket_id required" }), {
         status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
+    const supabase = ctx.adminClient;
 
     const [{ data: ticket }, { data: compliance }, { data: rules }] = await Promise.all([
       supabase.from("support_tickets").select("*").eq("id", ticket_id).maybeSingle(),
@@ -51,7 +50,7 @@ Deno.serve(async (req) => {
     if (!ticket) {
       return new Response(JSON.stringify({ error: "ticket not found" }), {
         status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 
@@ -66,15 +65,16 @@ Deno.serve(async (req) => {
       .maybeSingle();
     const model = settings?.ai_model || "google/gemini-3-flash-preview";
 
+    // La tabla real usa `tipo`, `prioridad`, `estado`, `asunto`, `notas` (español).
     const ctx = `
-Ticket: ${ticket.title || ticket.id}
-Tipo: ${ticket.case_type || "n/a"} | Prioridad: ${ticket.priority || "n/a"}
-Estado: ${ticket.status} | Cliente: ${ticket.client_id}
+Ticket: ${ticket.asunto || ticket.ticket_id || ticket.id}
+Tipo: ${ticket.tipo || "n/a"} (normalizado: ${normalizeTipo(ticket.tipo)}) | Prioridad: ${ticket.prioridad || "n/a"} (normalizada: ${normalizePrioridad(ticket.prioridad)})
+Estado: ${ticket.estado} | Cliente: ${ticket.client_id}
 Días restantes (política v4.5): ${compliance?.days_remaining ?? "?"}
 Semáforo: ${compliance?.semaphore ?? "?"} | Riesgo: ${compliance?.risk_level ?? "?"}
 Avisos enviados: ${compliance?.notices_sent ?? 0}/${compliance?.notices_required ?? 3}
 Checklist: ${compliance?.checklist_completed_count ?? 0}/5
-Descripción: ${ticket.description || "(sin descripción)"}
+Descripción: ${ticket.notas || "(sin descripción)"}
 `.trim();
 
     let systemPrompt = "";
@@ -93,7 +93,7 @@ Descripción: ${ticket.description || "(sin descripción)"}
     } else {
       return new Response(JSON.stringify({ error: "invalid mode" }), {
         status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 
@@ -115,14 +115,15 @@ Descripción: ${ticket.description || "(sin descripción)"}
     }
 
     return new Response(JSON.stringify({ result, mode, model }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
     });
   } catch (e) {
+    if (e instanceof AuthError) return authErrorResponse(e, cors);
     const msg = e instanceof Error ? e.message : String(e);
     const status = msg === "rate_limited" ? 429 : msg === "payment_required" ? 402 : 500;
     return new Response(JSON.stringify({ error: msg }), {
       status,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
     });
   }
 });

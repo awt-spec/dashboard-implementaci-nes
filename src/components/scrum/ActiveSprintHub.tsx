@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import {
   useAllScrumWorkItems, useAllSprints, useUpdateWorkItemScrum, type ScrumWorkItem, type UnifiedSprint,
 } from "@/hooks/useTeamScrum";
+import { useClients } from "@/hooks/useClients";
 
 const COLUMNS = [
   { key: "backlog", label: "Backlog", icon: "📋", color: "bg-muted/40" },
@@ -33,7 +34,14 @@ interface Props {
 export function ActiveSprintHub({ onGoToSprintsTab, onOpenDaily, onOpenRetro }: Props) {
   const { data: items = [], isLoading } = useAllScrumWorkItems();
   const { data: sprints = [] } = useAllSprints();
+  const { data: clients = [] } = useClients();
   const updateScrum = useUpdateWorkItemScrum();
+
+  const clientMap = useMemo(() => {
+    const m = new Map<string, string>();
+    (clients as any[]).forEach(c => m.set(c.id, c.name));
+    return m;
+  }, [clients]);
 
   const activeSprints = useMemo(() => sprints.filter(s => s.status === "activo"), [sprints]);
   const [selectedSprintId, setSelectedSprintId] = useState<string | null>(null);
@@ -73,21 +81,30 @@ export function ActiveSprintHub({ onGoToSprintsTab, onOpenDaily, onOpenRetro }: 
 
   return (
     <div className="space-y-4">
-      {/* Selector si hay múltiples sprints activos */}
+      {/* Selector si hay múltiples sprints activos (cliente es lo que distingue) */}
       {activeSprints.length > 1 && (
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-muted-foreground">Sprints activos:</span>
-          {activeSprints.map(s => (
-            <Button
-              key={s.id}
-              size="sm"
-              variant={s.id === currentSprint.id ? "default" : "outline"}
-              onClick={() => setSelectedSprintId(s.id)}
-              className="h-7 text-xs"
-            >
-              {s.name}
-            </Button>
-          ))}
+          <span className="text-xs text-muted-foreground shrink-0">Sprint activo de:</span>
+          {activeSprints.map(s => {
+            const clientName = clientMap.get(s.client_id) || s.client_id;
+            const sItems = items.filter(i => i.sprint_id === s.id);
+            const done = sItems.filter(i => i.scrum_status === "done").length;
+            const isActive = s.id === currentSprint.id;
+            return (
+              <Button
+                key={s.id}
+                size="sm"
+                variant={isActive ? "default" : "outline"}
+                onClick={() => setSelectedSprintId(s.id)}
+                className="h-8 text-xs gap-1.5"
+              >
+                <span className="font-semibold">{clientName}</span>
+                <span className={`text-[10px] tabular-nums ${isActive ? "opacity-80" : "text-muted-foreground"}`}>
+                  {done}/{sItems.length}
+                </span>
+              </Button>
+            );
+          })}
         </div>
       )}
 

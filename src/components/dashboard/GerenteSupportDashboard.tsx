@@ -4,31 +4,31 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import {
   Headset, AlertTriangle, Clock, CheckCircle2, Activity, Send,
-  MessageSquare, TrendingUp, Flame, Loader2, Search, ChevronRight,
-  Calendar, FileText, Ticket, Sparkles, Bug, HelpCircle, Settings2,
-  Zap, GraduationCap, ArrowLeft, ArrowRight, X, CheckCheck,
+  TrendingUp, Flame, Loader2, Search, ChevronRight,
+  FileText, Ticket, Sparkles,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { type Client } from "@/data/projectData";
-import { useSupportTickets, type SupportTicket } from "@/hooks/useSupportTickets";
-import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { useSupportTickets, useUpdateSupportTicket, type SupportTicket } from "@/hooks/useSupportTickets";
 import { cn } from "@/lib/utils";
 import { SharedMinutasPanel } from "./SharedMinutasPanel";
+import { NewTicketForm } from "@/components/support/NewTicketForm";
+import { isTicketClosed } from "@/lib/ticketStatus";
+import { toast } from "sonner";
+import { PackageCheck, RotateCcw } from "lucide-react";
 
 interface Props {
   client: Client;
 }
 
-// Buckets
-const OPEN_STATES = ["EN ATENCIÓN", "PENDIENTE", "ON HOLD", "POR CERRAR", "VALORACIÓN", "COTIZADA", "APROBADA"];
-const CLOSED_STATES = ["CERRADA", "ENTREGADA", "ANULADA"];
+// Criterio unificado con el SVA: "abierto" = todo lo que no sea CERRADA/ANULADA.
+// ENTREGADA queda clasificado como "abierto pero esperando validación del cliente"
+// — requiere que el cliente confirme la recepción para que pase a CERRADA.
+const DELIVERED_STATE = "ENTREGADA";
 
 const PRIORITY_STYLES: Record<string, string> = {
   "Critica, Impacto Negocio": "bg-destructive/15 text-destructive border-destructive/30",
@@ -55,35 +55,25 @@ function getHealth(openCount: number, criticalCount: number) {
 }
 
 export function GerenteSupportDashboard({ client }: Props) {
-  const { profile } = useAuth();
   const { data: tickets = [], isLoading } = useSupportTickets(client.id);
+  const updateTicket = useUpdateSupportTicket();
   const [tab, setTab] = useState("resumen");
   const [search, setSearch] = useState("");
   const [filterPriority, setFilterPriority] = useState<string>("all");
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
 
-  // New request wizard
+  // Dialog para crear una nueva solicitud — usa NewTicketForm (mode="cliente")
   const [requestOpen, setRequestOpen] = useState(false);
-  const [wizardStep, setWizardStep] = useState(1);
-  const [requestCategory, setRequestCategory] = useState<string>("");
-  const [requestText, setRequestText] = useState("");
-  const [requestTitle, setRequestTitle] = useState("");
-  const [requestPriority, setRequestPriority] = useState("Media");
-  const [requestProduct, setRequestProduct] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
-  const resetWizard = () => {
-    setWizardStep(1);
-    setRequestCategory("");
-    setRequestText("");
-    setRequestTitle("");
-    setRequestPriority("Media");
-    setRequestProduct("");
-  };
 
   // ── Metrics ──
-  const openTickets = useMemo(() => tickets.filter(t => OPEN_STATES.includes(t.estado)), [tickets]);
-  const closedTickets = useMemo(() => tickets.filter(t => CLOSED_STATES.includes(t.estado)), [tickets]);
+  // Criterio unificado con el SVA: "abierto" = no cerrado (no CERRADA/ANULADA).
+  const openTickets = useMemo(() => tickets.filter(t => !isTicketClosed(t.estado)), [tickets]);
+  const closedTickets = useMemo(() => tickets.filter(t => isTicketClosed(t.estado)), [tickets]);
+  // Sub-bucket: ENTREGADAs esperando validación del cliente
+  const deliveredTickets = useMemo(() => openTickets.filter(t => t.estado === DELIVERED_STATE), [openTickets]);
+  // "En atención" = abiertos pero sin contar los entregados (los que el SVA aún trabaja)
+  const inProgressTickets = useMemo(() => openTickets.filter(t => t.estado !== DELIVERED_STATE), [openTickets]);
+
   const criticalTickets = useMemo(() => openTickets.filter(t => t.prioridad?.toLowerCase().includes("critica")), [openTickets]);
   const highPriorityOpen = useMemo(() => openTickets.filter(t => t.prioridad === "Alta"), [openTickets]);
   const oldTickets = useMemo(() => openTickets.filter(t => (t.dias_antiguedad ?? 0) > 30), [openTickets]);
@@ -108,45 +98,26 @@ export function GerenteSupportDashboard({ client }: Props) {
 
   const health = getHealth(openTickets.length, criticalTickets.length);
 
-  // ── Submit new request ──
-  const handleSubmitRequest = async () => {
-    if (!requestText.trim() || !requestTitle.trim()) {
-      toast.error("Completa el título y la descripción");
-      return;
-    }
-    setSubmitting(true);
+  // ── Acciones del cliente sobre tickets ENTREGADA ──
+  const handleValidate = async (ticket: SupportTicket) => {
     try {
-      const ticketId = `CLI-${Date.now().toString().slice(-6)}`;
-      const { error } = await (supabase.from("support_tickets") as any).insert({
-        client_id: client.id,
-        ticket_id: ticketId,
-        producto: requestProduct || "General",
-        asunto: requestTitle.slice(0, 120),
-        tipo: requestCategory || "Solicitud Cliente",
-        prioridad: requestPriority,
-        estado: "PENDIENTE",
-        fecha_registro: new Date().toISOString(),
-        dias_antiguedad: 0,
-        notas: `[${requestCategory || "Solicitud"}] Creada desde el portal por ${profile?.full_name || "cliente"}:\n\n${requestText}`,
-        case_agreements: [],
-        case_actions: [],
+      await updateTicket.mutateAsync({ id: ticket.id, updates: { estado: "CERRADA" } });
+      toast.success(`Caso ${ticket.ticket_id} cerrado`, {
+        description: "Gracias por validar la entrega del caso.",
       });
-      if (error) throw error;
-      await supabase.from("client_notifications").insert({
-        client_id: client.id,
-        type: requestPriority.toLowerCase().includes("critica") ? "error" : "warning",
-        title: `Nueva solicitud: ${requestTitle.slice(0, 60)}`,
-        message: `${profile?.full_name || "Cliente"} · ${requestCategory || "Solicitud"} · ${requestPriority}`,
-      });
-      toast.success("✓ Solicitud enviada al equipo de Soporte Sysde", {
-        description: `Ticket ${ticketId} creado. Recibirás respuesta pronto.`,
-      });
-      resetWizard();
-      setRequestOpen(false);
     } catch (e: any) {
-      toast.error(e.message || "Error al enviar");
-    } finally {
-      setSubmitting(false);
+      toast.error(e.message || "No se pudo validar el caso");
+    }
+  };
+
+  const handleReopen = async (ticket: SupportTicket) => {
+    try {
+      await updateTicket.mutateAsync({ id: ticket.id, updates: { estado: "EN ATENCIÓN" } });
+      toast.info(`Caso ${ticket.ticket_id} reabierto`, {
+        description: "El equipo SVA fue notificado para retomar el caso.",
+      });
+    } catch (e: any) {
+      toast.error(e.message || "No se pudo reabrir el caso");
     }
   };
 
@@ -184,10 +155,19 @@ export function GerenteSupportDashboard({ client }: Props) {
                 </Badge>
               </div>
 
-              <div className="flex items-end gap-2 mb-3">
+              <div className="flex items-end gap-2 mb-1">
                 <span className="text-4xl md:text-5xl font-black leading-none tabular-nums">{openTickets.length}</span>
                 <span className="text-xs text-white/80 mb-2 ml-1">casos abiertos</span>
               </div>
+              {deliveredTickets.length > 0 && (
+                <div className="flex items-center gap-1.5 mb-3 text-[11px] text-white/90">
+                  <PackageCheck className="h-3 w-3" />
+                  <span>
+                    {inProgressTickets.length} en progreso · <strong>{deliveredTickets.length} esperando tu validación</strong>
+                  </span>
+                </div>
+              )}
+              {deliveredTickets.length === 0 && <div className="mb-3" />}
 
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2">
@@ -320,7 +300,7 @@ export function GerenteSupportDashboard({ client }: Props) {
                         onClick={() => setSelectedTicket(t)}
                         className="w-full text-left p-2 rounded-lg hover:bg-muted/50 flex items-center gap-2"
                       >
-                        <div className={cn("h-2 w-2 rounded-full shrink-0", OPEN_STATES.includes(t.estado) ? "bg-warning" : "bg-success")} />
+                        <div className={cn("h-2 w-2 rounded-full shrink-0", !isTicketClosed(t.estado) ? "bg-warning" : "bg-success")} />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-semibold truncate">{t.asunto}</p>
                           <p className="text-[10px] text-muted-foreground truncate">{t.ticket_id} · {t.estado}</p>
@@ -346,6 +326,67 @@ export function GerenteSupportDashboard({ client }: Props) {
 
             {/* ABIERTOS */}
             <TabsContent value="abiertos" className="mt-4 space-y-3">
+              {/* Banner: entregados esperando validación del cliente */}
+              {deliveredTickets.length > 0 && (
+                <Card className="border-success/40 bg-gradient-to-br from-success/5 via-card to-card">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="h-10 w-10 rounded-full bg-success/15 flex items-center justify-center shrink-0">
+                        <PackageCheck className="h-5 w-5 text-success" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold">
+                          {deliveredTickets.length === 1
+                            ? "1 caso entregado esperando tu validación"
+                            : `${deliveredTickets.length} casos entregados esperando tu validación`}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          El SVA entregó la solución. Confirmá que está OK para cerrarlo o reabrilo si todavía hay un problema.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      {deliveredTickets.map(t => (
+                        <div
+                          key={t.id}
+                          className="flex items-center gap-2 p-2.5 rounded-md border border-success/30 bg-background"
+                        >
+                          <button
+                            onClick={() => setSelectedTicket(t)}
+                            className="flex-1 min-w-0 text-left"
+                          >
+                            <p className="text-xs font-semibold truncate">{t.asunto}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {t.ticket_id} · {t.producto || "Sin producto"}
+                              {t.dias_antiguedad != null && ` · ${t.dias_antiguedad}d`}
+                            </p>
+                          </button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleReopen(t)}
+                            disabled={updateTicket.isPending}
+                            className="h-7 gap-1 text-[11px]"
+                            title="El caso no está resuelto — reabrir y notificar al SVA"
+                          >
+                            <RotateCcw className="h-3 w-3" /> Reabrir
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => handleValidate(t)}
+                            disabled={updateTicket.isPending}
+                            className="h-7 gap-1 text-[11px] bg-success hover:bg-success/90"
+                            title="Confirmar que la solución es correcta y cerrar el caso"
+                          >
+                            <CheckCircle2 className="h-3 w-3" /> Validar
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -501,277 +542,13 @@ export function GerenteSupportDashboard({ client }: Props) {
           )}
         </SheetContent>
       </Sheet>
-
-      {/* ─── New request wizard sheet ─── */}
-      <Sheet open={requestOpen} onOpenChange={(o) => { setRequestOpen(o); if (!o) resetWizard(); }}>
-        <SheetContent
-          side="bottom"
-          className="rounded-t-3xl max-h-[92vh] overflow-y-auto p-0 border-t-2 border-primary/20 sm:max-w-2xl sm:mx-auto"
-        >
-          <SheetHeader className="sr-only">
-            <SheetTitle>Nueva solicitud de soporte</SheetTitle>
-            <SheetDescription>Asistente paso a paso para crear una solicitud</SheetDescription>
-          </SheetHeader>
-          {/* Header with progress */}
-          <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b px-5 pt-5 pb-3">
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Headset className="h-4 w-4 text-primary" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold leading-tight">Nueva solicitud</h2>
-                  <p className="text-[11px] text-muted-foreground">Soporte Sysde · Paso {wizardStep} de 3</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setRequestOpen(false)}
-                className="h-8 w-8 rounded-full hover:bg-muted flex items-center justify-center"
-                aria-label="Cerrar"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="flex gap-1.5">
-              {[1, 2, 3].map((s) => (
-                <div key={s} className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-                  <motion.div
-                    initial={false}
-                    animate={{ width: wizardStep >= s ? "100%" : "0%" }}
-                    transition={{ duration: 0.4 }}
-                    className="h-full bg-primary"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="px-5 py-5">
-            {wizardStep === 1 && (
-              <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
-                <div>
-                  <h3 className="text-lg font-bold mb-1">¿Qué tipo de ayuda necesitas?</h3>
-                  <p className="text-xs text-muted-foreground">Elige la opción que mejor describa tu solicitud</p>
-                </div>
-                <div className="grid grid-cols-2 gap-2.5">
-                  {[
-                    { id: "Bug", label: "Reportar un error", desc: "Algo no funciona", icon: Bug, color: "destructive" },
-                    { id: "Consulta", label: "Hacer una consulta", desc: "Tengo una duda", icon: HelpCircle, color: "info" },
-                    { id: "Mejora", label: "Solicitar mejora", desc: "Sugerir cambio", icon: Sparkles, color: "primary" },
-                    { id: "Configuración", label: "Configuración", desc: "Ajuste de sistema", icon: Settings2, color: "warning" },
-                    { id: "Capacitación", label: "Capacitación", desc: "Necesito entrenamiento", icon: GraduationCap, color: "info" },
-                    { id: "Urgencia Operativa", label: "Urgencia operativa", desc: "Impacto al negocio", icon: Zap, color: "destructive" },
-                  ].map((opt) => {
-                    const Icon = opt.icon;
-                    const selected = requestCategory === opt.id;
-                    return (
-                      <button
-                        key={opt.id}
-                        onClick={() => {
-                          setRequestCategory(opt.id);
-                          if (opt.id === "Urgencia Operativa") setRequestPriority("Critica, Impacto Negocio");
-                          else if (opt.id === "Bug") setRequestPriority("Alta");
-                        }}
-                        className={cn(
-                          "relative text-left p-3.5 rounded-xl border-2 transition-all",
-                          selected
-                            ? "border-primary bg-primary/5 shadow-sm"
-                            : "border-border hover:border-primary/40 hover:bg-muted/30"
-                        )}
-                      >
-                        {selected && (
-                          <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-primary flex items-center justify-center">
-                            <CheckCheck className="h-3 w-3 text-primary-foreground" />
-                          </div>
-                        )}
-                        <div className={cn(
-                          "h-9 w-9 rounded-lg flex items-center justify-center mb-2",
-                          opt.color === "destructive" && "bg-destructive/10 text-destructive",
-                          opt.color === "info" && "bg-info/10 text-info",
-                          opt.color === "primary" && "bg-primary/10 text-primary",
-                          opt.color === "warning" && "bg-warning/10 text-warning",
-                        )}>
-                          <Icon className="h-4 w-4" />
-                        </div>
-                        <p className="text-sm font-bold leading-tight">{opt.label}</p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">{opt.desc}</p>
-                      </button>
-                    );
-                  })}
-                </div>
-              </motion.div>
-            )}
-
-            {wizardStep === 2 && (
-              <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
-                <div>
-                  <h3 className="text-lg font-bold mb-1">Cuéntanos los detalles</h3>
-                  <p className="text-xs text-muted-foreground">Mientras más claro, más rápido te ayudamos</p>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold flex items-center gap-1.5">
-                    Título <span className="text-destructive">*</span>
-                  </label>
-                  <Input
-                    value={requestTitle}
-                    onChange={(e) => setRequestTitle(e.target.value)}
-                    placeholder="Resume tu solicitud en una línea"
-                    className="h-11 text-sm"
-                    maxLength={120}
-                    autoFocus
-                  />
-                  <p className="text-[10px] text-muted-foreground text-right">{requestTitle.length}/120</p>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold">Producto o módulo afectado</label>
-                  <Input
-                    value={requestProduct}
-                    onChange={(e) => setRequestProduct(e.target.value)}
-                    placeholder="Ej: Cartera, Contabilidad, Facturación..."
-                    className="h-11 text-sm"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold flex items-center gap-1.5">
-                    Descripción <span className="text-destructive">*</span>
-                  </label>
-                  <Textarea
-                    value={requestText}
-                    onChange={(e) => setRequestText(e.target.value)}
-                    placeholder="¿Qué pasó? ¿Cómo se reproduce? ¿Qué esperabas que sucediera?"
-                    rows={5}
-                    className="text-sm resize-none"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold">Nivel de urgencia</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { v: "Baja", label: "Baja", desc: "Sin urgencia", color: "muted" },
-                      { v: "Media", label: "Media", desc: "Normal", color: "info" },
-                      { v: "Alta", label: "Alta", desc: "Importante", color: "warning" },
-                      { v: "Critica, Impacto Negocio", label: "Crítica", desc: "Detiene operación", color: "destructive" },
-                    ].map((p) => {
-                      const selected = requestPriority === p.v;
-                      return (
-                        <button
-                          key={p.v}
-                          onClick={() => setRequestPriority(p.v)}
-                          className={cn(
-                            "text-left p-2.5 rounded-lg border-2 transition-all",
-                            selected
-                              ? p.color === "destructive" ? "border-destructive bg-destructive/5"
-                                : p.color === "warning" ? "border-warning bg-warning/5"
-                                : p.color === "info" ? "border-info bg-info/5"
-                                : "border-primary bg-primary/5"
-                              : "border-border hover:border-primary/30"
-                          )}
-                        >
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm font-bold">{p.label}</p>
-                            {selected && <CheckCheck className="h-3.5 w-3.5 text-primary" />}
-                          </div>
-                          <p className="text-[10px] text-muted-foreground">{p.desc}</p>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {wizardStep === 3 && (
-              <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
-                <div>
-                  <h3 className="text-lg font-bold mb-1">Revisa tu solicitud</h3>
-                  <p className="text-xs text-muted-foreground">Confirma que todo esté correcto antes de enviar</p>
-                </div>
-
-                <Card className="border-2 border-primary/20">
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-start justify-between gap-2 pb-3 border-b">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Título</p>
-                        <p className="text-sm font-bold leading-tight">{requestTitle || "(sin título)"}</p>
-                      </div>
-                      <Badge className={cn("text-[9px] shrink-0", PRIORITY_STYLES[requestPriority])}>
-                        {requestPriority === "Critica, Impacto Negocio" ? "Crítica" : requestPriority}
-                      </Badge>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 text-xs">
-                      <div>
-                        <p className="text-[10px] uppercase text-muted-foreground mb-0.5">Tipo</p>
-                        <p className="font-semibold">{requestCategory}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] uppercase text-muted-foreground mb-0.5">Producto</p>
-                        <p className="font-semibold">{requestProduct || "General"}</p>
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="text-[10px] uppercase text-muted-foreground mb-1">Descripción</p>
-                      <p className="text-xs leading-relaxed bg-muted/40 rounded-lg p-2.5 whitespace-pre-wrap">
-                        {requestText}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <div className="bg-info/5 border border-info/20 rounded-lg p-3 flex gap-2.5">
-                  <Sparkles className="h-4 w-4 text-info shrink-0 mt-0.5" />
-                  <div className="text-[11px] text-muted-foreground leading-relaxed">
-                    Recibirás una notificación cuando el equipo Sysde clasifique y asigne tu solicitud.
-                    Tiempo estimado de respuesta:{" "}
-                    <span className="font-semibold text-foreground">
-                      {requestPriority.includes("Critica") ? "menos de 2h" : requestPriority === "Alta" ? "4-8h" : "24-48h"}
-                    </span>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </div>
-
-          {/* Sticky footer */}
-          <div className="sticky bottom-0 bg-background/95 backdrop-blur-sm border-t px-5 py-3 flex gap-2">
-            {wizardStep > 1 && (
-              <Button
-                variant="outline"
-                onClick={() => setWizardStep(wizardStep - 1)}
-                disabled={submitting}
-                className="h-11"
-              >
-                <ArrowLeft className="h-4 w-4 mr-1" /> Atrás
-              </Button>
-            )}
-            {wizardStep < 3 ? (
-              <Button
-                onClick={() => setWizardStep(wizardStep + 1)}
-                disabled={
-                  (wizardStep === 1 && !requestCategory) ||
-                  (wizardStep === 2 && (!requestTitle.trim() || !requestText.trim()))
-                }
-                className="flex-1 h-11 font-semibold"
-              >
-                Continuar <ArrowRight className="h-4 w-4 ml-1" />
-              </Button>
-            ) : (
-              <Button onClick={handleSubmitRequest} disabled={submitting} className="flex-1 h-11 font-semibold">
-                {submitting ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Enviando...</>
-                ) : (
-                  <><Send className="h-4 w-4 mr-2" /> Enviar solicitud</>
-                )}
-              </Button>
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
+      {/* Portal del gerente: usa el formulario completo en modo "cliente" */}
+      <NewTicketForm
+        open={requestOpen}
+        onOpenChange={setRequestOpen}
+        defaultClientId={client.id}
+        mode="cliente"
+      />
     </div>
   );
 }

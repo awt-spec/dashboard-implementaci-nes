@@ -1,13 +1,7 @@
 // Analiza la actividad de un colaborador con Lovable AI y devuelve insights estructurados.
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { AuthError, authErrorResponse, canActOnUser, requireAuth } from "../_shared/auth.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 
 interface ActivityRow {
@@ -19,13 +13,23 @@ interface ActivityRow {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const pre = corsPreflight(req);
+  if (pre) return pre;
+  const cors = corsHeaders(req);
 
   try {
+    const ctx = await requireAuth(req);
+
     const { user_id, user_name, role, days = 7 } = await req.json();
     if (!user_id) throw new Error("user_id requerido");
 
-    const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    if (!(await canActOnUser(ctx, user_id))) {
+      return new Response(JSON.stringify({ error: "No autorizado a analizar la actividad de este usuario" }), {
+        status: 403, headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+
+    const sb = ctx.adminClient;
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
     const [actsRes, clientsRes, sessionsRes] = await Promise.all([
@@ -51,7 +55,7 @@ Deno.serve(async (req) => {
           working_hours: null,
           top_actions: [],
         }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { ...cors, "Content-Type": "application/json" } }
       );
     }
 
@@ -179,12 +183,12 @@ Devuelve un análisis con:
     if (!aiResp.ok) {
       if (aiResp.status === 429) {
         return new Response(JSON.stringify({ error: "Límite de uso de IA excedido. Intenta en unos minutos." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 429, headers: { ...cors, "Content-Type": "application/json" },
         });
       }
       if (aiResp.status === 402) {
         return new Response(JSON.stringify({ error: "Sin créditos de IA. Recarga en Settings > Workspace > Usage." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 402, headers: { ...cors, "Content-Type": "application/json" },
         });
       }
       throw new Error(`AI error: ${aiResp.status} ${await aiResp.text()}`);
@@ -215,12 +219,13 @@ Devuelve un análisis con:
       top_actions: topActions,
       top_clients: topClients,
       daily_activity: dailyActivity,
-    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }), { headers: { ...cors, "Content-Type": "application/json" } });
 
   } catch (e: any) {
+    if (e instanceof AuthError) return authErrorResponse(e, cors);
     console.error("analyze-team-activity error:", e);
     return new Response(JSON.stringify({ error: e.message }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...cors, "Content-Type": "application/json" },
     });
   }
 });

@@ -1,25 +1,34 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { AuthError, authErrorResponse, canAccessMember, requireAuth } from "../_shared/auth.ts";
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const pre = corsPreflight(req);
+  if (pre) return pre;
+  const cors = corsHeaders(req);
 
   try {
+    const ctx = await requireAuth(req);
+
     const { memberId, cvText } = await req.json();
     if (!memberId || !cvText) {
       return new Response(JSON.stringify({ error: "memberId and cvText required" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
+        status: 400, headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+    if (typeof cvText !== "string" || cvText.length > 50000) {
+      return new Response(JSON.stringify({ error: "cvText must be a string up to 50000 chars" }), {
+        status: 400, headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (!(await canAccessMember(ctx, memberId))) {
+      return new Response(JSON.stringify({ error: "No autorizado a analizar el CV de este miembro" }), {
+        status: 403, headers: { ...cors, "Content-Type": "application/json" }
       });
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const supabase = ctx.adminClient;
 
     // Get clients for matching context
     const { data: clients } = await supabase
@@ -84,8 +93,8 @@ Deno.serve(async (req) => {
     });
 
     if (!aiResp.ok) {
-      if (aiResp.status === 429) return new Response(JSON.stringify({ error: "Rate limit excedido" }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (aiResp.status === 402) return new Response(JSON.stringify({ error: "Créditos agotados" }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (aiResp.status === 429) return new Response(JSON.stringify({ error: "Rate limit excedido" }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });
+      if (aiResp.status === 402) return new Response(JSON.stringify({ error: "Créditos agotados" }), { status: 402, headers: { ...cors, "Content-Type": "application/json" } });
       const t = await aiResp.text();
       throw new Error(`AI error: ${aiResp.status} ${t}`);
     }
@@ -117,12 +126,13 @@ Deno.serve(async (req) => {
     });
 
     return new Response(JSON.stringify({ success: true, analysis }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
+      headers: { ...cors, "Content-Type": "application/json" }
     });
   } catch (e: any) {
+    if (e instanceof AuthError) return authErrorResponse(e, cors);
     console.error("analyze-cv error:", e);
     return new Response(JSON.stringify({ error: e.message }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      status: 500, headers: { ...cors, "Content-Type": "application/json" }
     });
   }
 });

@@ -1,26 +1,25 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { AuthError, authErrorResponse, requireAuth, requireRole } from "../_shared/auth.ts";
+import { normalizeTipo, normalizePrioridad, isTicketClosed } from "../_shared/ticketStatus.ts";
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const pre = corsPreflight(req);
+  if (pre) return pre;
+  const cors = corsHeaders(req);
 
   try {
+    const ctx = await requireAuth(req);
+    await requireRole(ctx, ["admin", "pm", "gerente"]);
+
     const { ticket_id } = await req.json();
     if (!ticket_id) {
       return new Response(JSON.stringify({ error: "ticket_id required" }), {
         status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
+    const supabase = ctx.adminClient;
 
     // Load ticket
     const { data: ticket, error: tErr } = await supabase
@@ -32,7 +31,7 @@ Deno.serve(async (req) => {
     if (!ticket) {
       return new Response(JSON.stringify({ error: "ticket not found" }), {
         status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 
@@ -61,13 +60,20 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Match deadline
-    const caseType = (ticket.case_type || "consulta").toLowerCase();
-    const priority = (ticket.priority || "media").toLowerCase();
+    // Match deadline. OJO: la tabla real es `tipo` y `prioridad` (no case_type/priority),
+    // y los valores vienen con mayúsculas y acentos. Normalizamos antes de comparar.
+    const caseType = normalizeTipo(ticket.tipo);
+    const priority = normalizePrioridad(ticket.prioridad);
     const deadlines = (effectiveContent as any)?.deadlines || [];
-    const match = deadlines.find(
-      (d: any) => d.case_type === caseType && d.priority === priority,
-    ) || deadlines.find((d: any) => d.priority === priority) || { deadline_days: 5, notices: 2 };
+    const normDl = (d: any) => ({
+      caseType: normalizeTipo(d.case_type),
+      priority: normalizePrioridad(d.priority),
+      raw: d,
+    });
+    const match =
+      deadlines.map(normDl).find((d: any) => d.caseType === caseType && d.priority === priority)?.raw ||
+      deadlines.map(normDl).find((d: any) => d.priority === priority)?.raw ||
+      { deadline_days: 5, notices: 2 };
 
     const createdAt = new Date(ticket.created_at);
     const ageDays = Math.floor((Date.now() - createdAt.getTime()) / 86400000);
@@ -97,7 +103,8 @@ Deno.serve(async (req) => {
       documented_solution: false,
       client_notification: false,
       ticket_reference: true,
-      closure_type: !!ticket.status && ticket.status !== "open",
+      // auto-check si el ticket YA está cerrado; el equipo puede desmarcarlo después
+      closure_type: isTicketClosed(ticket.estado),
       validation_guide: false,
     };
     const checklist_completed_count = Object.values(checklist).filter(Boolean).length;
@@ -125,13 +132,14 @@ Deno.serve(async (req) => {
     if (uErr) throw uErr;
 
     return new Response(JSON.stringify({ compliance: upserted }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
     });
   } catch (e) {
+    if (e instanceof AuthError) return authErrorResponse(e, cors);
     console.error("evaluate-case-compliance error", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
     });
   }
 });

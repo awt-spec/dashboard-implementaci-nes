@@ -1,12 +1,5 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { AuthError, authErrorResponse, requireAuth, requireRole } from "../_shared/auth.ts";
 
 function getDevOpsPat(): string {
   const pat = Deno.env.get("AZURE_DEVOPS_PAT");
@@ -292,12 +285,17 @@ async function pullIterations(sb: any, conn: Connection, pat: string) {
 // ---------- Handler ----------
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const pre = corsPreflight(req);
+  if (pre) return pre;
+  const cors = corsHeaders(req);
 
   const startTime = Date.now();
-  const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   try {
+    const ctx = await requireAuth(req);
+    await requireRole(ctx, ["admin", "pm"]);
+    const sb = ctx.adminClient;
+
     const { action, client_id, direction } = await req.json();
 
     // Test connection
@@ -314,7 +312,7 @@ Deno.serve(async (req) => {
       const result = await devopsGet(pat, `${base}/_apis/projects/${conn.project}`);
 
       return new Response(JSON.stringify({ success: true, project: result.name }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 
@@ -329,7 +327,7 @@ Deno.serve(async (req) => {
           error: "AZURE_DEVOPS_PAT no está configurado. Agrega la llave en la configuración de secretos.",
         }), {
           status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...cors, "Content-Type": "application/json" },
         });
       }
 
@@ -395,18 +393,19 @@ Deno.serve(async (req) => {
         duration_ms: durationMs,
         errors,
       }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 
     return new Response(JSON.stringify({ error: "Unknown action" }), {
       status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
     });
   } catch (e: any) {
+    if (e instanceof AuthError) return authErrorResponse(e, cors);
     return new Response(JSON.stringify({ error: e.message }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
     });
   }
 });
