@@ -19,6 +19,7 @@ import { projectInfo } from "@/data/projectData";
 import { Moon, Sun, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ShareReportDialog } from "@/components/dashboard/ShareReportDialog";
+import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { supabase } from "@/integrations/supabase/client";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
 
@@ -117,6 +118,7 @@ const Index = () => {
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
+              <NotificationBell />
               {role !== "gerente" && <ShareReportDialog />}
               <Button variant="ghost" size="icon" onClick={() => setDark(!dark)}>
                 {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}

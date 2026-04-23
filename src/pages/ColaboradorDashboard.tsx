@@ -22,6 +22,7 @@ import { TaskDetailSheet } from "@/components/colaborador/TaskDetailSheet";
 import { MondayGridDashboard } from "@/components/colaborador/MondayGridDashboard";
 import { OverdueTasksWidget, TopClientsWidget, PersonalKpiWidget } from "@/components/colaborador/widgets/ExtraWidgets";
 import { FordLineView } from "@/components/scrum/FordLineView";
+import { NotificationBell } from "@/components/dashboard/NotificationBell";
 
 export default function ColaboradorDashboard() {
   const { user, profile, signOut } = useAuth();
@@ -275,10 +276,7 @@ export default function ColaboradorDashboard() {
             <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono text-muted-foreground bg-background px-1.5 py-0.5 rounded border border-border">⌘K</kbd>
           </div>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="h-9 w-9 relative" title="Notificaciones">
-              <Bell className="h-4 w-4" />
-              <span className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-destructive" />
-            </Button>
+            <NotificationBell />
             <Button variant="ghost" size="icon" className="h-9 w-9" onClick={toggleDark} title="Tema">
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
