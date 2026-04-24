@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SupportChartBuilder } from "./SupportChartBuilder";
 import { SupportPanoramaPanel } from "./SupportPanoramaPanel";
+import { InsightsGuidedView } from "./InsightsGuidedView";
 import { SupportCaseTable } from "./SupportCaseTable";
 import { SupportClientHeatmap } from "./SupportClientHeatmap";
 import { SupportDataLoader } from "./SupportDataLoader";
@@ -625,8 +626,9 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
             </Button>
           </div>
 
-          <Tabs defaultValue="panorama">
+          <Tabs defaultValue="asistente">
             <TabsList className="h-8 flex-wrap">
+              <TabsTrigger value="asistente" className="text-xs h-6 gap-1"><Sparkles className="h-3 w-3" /> Asistente</TabsTrigger>
               <TabsTrigger value="panorama" className="text-xs h-6 gap-1"><Activity className="h-3 w-3" /> Panorama</TabsTrigger>
               <TabsTrigger value="distribuciones" className="text-xs h-6">Distribuciones</TabsTrigger>
               {!isClientView && <TabsTrigger value="cliente" className="text-xs h-6">Mapa por Cliente</TabsTrigger>}
@@ -636,6 +638,21 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
               {(isClientView || selectedClient !== "all") && <TabsTrigger value="estrategia-cliente" className="text-xs h-6 gap-1"><Sparkles className="h-3 w-3" /> Estrategia</TabsTrigger>}
               {(isClientView || selectedClient !== "all") && <TabsTrigger value="scrum" className="text-xs h-6 gap-1"><Activity className="h-3 w-3" /> Backlog</TabsTrigger>}
             </TabsList>
+
+            {/* Sub-tab: Asistente guiado (wizard + vistas guardadas) */}
+            <TabsContent value="asistente" className="mt-4">
+              <InsightsGuidedView
+                tickets={scopedTickets}
+                ticketsWithClientName={ticketsWithClientName}
+                allTickets={allTickets}
+                clients={clients}
+                selectedClient={selectedClient}
+                selectedClientName={selectedClientName}
+                selectedClientObj={selectedClientObj}
+                isClientView={isClientView}
+                initialClientId={initialClientId}
+              />
+            </TabsContent>
 
             {/* Sub-tab: Panorama (SLA + acciones recomendadas) */}
             <TabsContent value="panorama" className="mt-4">
