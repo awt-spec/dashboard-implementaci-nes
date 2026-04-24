@@ -21,6 +21,7 @@ import { useSupportClients, useAllSupportTickets, type SupportTicket } from "@/h
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SupportChartBuilder } from "./SupportChartBuilder";
+import { SupportPanoramaPanel } from "./SupportPanoramaPanel";
 import { SupportCaseTable } from "./SupportCaseTable";
 import { SupportClientHeatmap } from "./SupportClientHeatmap";
 import { SupportDataLoader } from "./SupportDataLoader";
@@ -624,8 +625,9 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
             </Button>
           </div>
 
-          <Tabs defaultValue="distribuciones">
+          <Tabs defaultValue="panorama">
             <TabsList className="h-8 flex-wrap">
+              <TabsTrigger value="panorama" className="text-xs h-6 gap-1"><Activity className="h-3 w-3" /> Panorama</TabsTrigger>
               <TabsTrigger value="distribuciones" className="text-xs h-6">Distribuciones</TabsTrigger>
               {!isClientView && <TabsTrigger value="cliente" className="text-xs h-6">Mapa por Cliente</TabsTrigger>}
               <TabsTrigger value="clasificacion" className="text-xs h-6 gap-1"><Brain className="h-3 w-3" /> Clasificación</TabsTrigger>
@@ -634,6 +636,17 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
               {(isClientView || selectedClient !== "all") && <TabsTrigger value="estrategia-cliente" className="text-xs h-6 gap-1"><Sparkles className="h-3 w-3" /> Estrategia</TabsTrigger>}
               {(isClientView || selectedClient !== "all") && <TabsTrigger value="scrum" className="text-xs h-6 gap-1"><Activity className="h-3 w-3" /> Backlog</TabsTrigger>}
             </TabsList>
+
+            {/* Sub-tab: Panorama (SLA + acciones recomendadas) */}
+            <TabsContent value="panorama" className="mt-4">
+              <SupportPanoramaPanel
+                tickets={scopedTickets}
+                clientName={
+                  isClientView ? (selectedClientObj?.name || "")
+                  : (selectedClient !== "all" ? selectedClientName : undefined)
+                }
+              />
+            </TabsContent>
 
             <TabsContent value="distribuciones" className="mt-4">
               <SupportChartBuilder tickets={ticketsWithClientName} />
