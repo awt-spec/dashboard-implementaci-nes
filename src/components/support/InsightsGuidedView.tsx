@@ -444,10 +444,13 @@ function PresetContent({
   }
 
   if (preset === "tabla_casos") {
+    // SupportCaseTable espera clientName como función (id → nombre),
+    // no como string. Construimos el lookup desde clients.
+    const clientNameFn = (id: string) => clients.find(c => c.id === id)?.name || id;
     return (
       <SupportCaseTable
         tickets={scopedTickets}
-        clientName={clientName || (isClientView ? (selectedClientObj?.name || "") : "Todos los clientes")}
+        clientName={clientNameFn}
         teamMembers={selectedClientObj?.team_assigned || []}
       />
     );
