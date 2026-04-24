@@ -19,6 +19,9 @@ import { SupportChartBuilder } from "./SupportChartBuilder";
 import { SupportClientHeatmap } from "./SupportClientHeatmap";
 import { ClientStrategyPanel } from "./ClientStrategyPanel";
 import { SupportScrumPanel } from "./SupportScrumPanel";
+import { SupportCaseTable } from "./SupportCaseTable";
+import { SupportMinutas } from "./SupportMinutas";
+import { FileText, Ticket as TicketIcon } from "lucide-react";
 import type { SupportTicket } from "@/hooks/useSupportTickets";
 import { useSavedViews, useSaveView, useDeleteView, useTogglePinView } from "@/hooks/useSavedViews";
 import { isTicketClosed } from "@/lib/ticketStatus";
@@ -27,6 +30,8 @@ import { isTicketClosed } from "@/lib/ticketStatus";
 
 type PresetKey =
   | "resumen"
+  | "tabla_casos"
+  | "minutas"
   | "criticos"
   | "sla_riesgo"
   | "por_cliente"
@@ -46,36 +51,50 @@ const PRESETS: Preset[] = [
   {
     key: "resumen",
     title: "Resumen ejecutivo",
-    description: "Panorama SLA + acciones recomendadas + distribuciones globales.",
+    description: "SLA, acciones recomendadas y distribuciones en una sola vista.",
     Icon: LayoutDashboard,
     tone: "bg-primary/10 text-primary border-primary/30",
   },
   {
+    key: "tabla_casos",
+    title: "Tabla de casos",
+    description: "Todos los casos con filtros, búsqueda y edición inline.",
+    Icon: TicketIcon,
+    tone: "bg-sky-500/10 text-sky-500 border-sky-500/30",
+  },
+  {
+    key: "minutas",
+    title: "Minutas",
+    description: "Generar minutas con IA, compartir con cliente y ver feedback.",
+    Icon: FileText,
+    tone: "bg-emerald-500/10 text-emerald-500 border-emerald-500/30",
+  },
+  {
     key: "criticos",
     title: "Casos críticos ahora",
-    description: "Solo prioridad Crítica abiertos, con acciones sugeridas priorizadas.",
+    description: "Solo prioridad Crítica abiertos, con acciones priorizadas.",
     Icon: Flame,
     tone: "bg-destructive/10 text-destructive border-destructive/30",
   },
   {
     key: "sla_riesgo",
     title: "SLA en riesgo",
-    description: "Casos con ≥70% del SLA consumido o vencidos. Compliance view.",
+    description: "Casos con ≥70% del SLA consumido o vencidos.",
     Icon: ShieldAlert,
     tone: "bg-warning/10 text-warning border-warning/30",
   },
   {
     key: "por_cliente",
     title: "Análisis por cliente",
-    description: "Heatmap + estrategia IA + backlog scrum del cliente seleccionado.",
+    description: "SLA + mapa de calor del cliente seleccionado.",
     Icon: Building2,
     tone: "bg-info/10 text-info border-info/30",
     needsClient: true,
   },
   {
     key: "actividad_ia",
-    title: "Actividad IA",
-    description: "Estrategia IA por cliente con acciones y riesgos detectados.",
+    title: "Estrategia IA por cliente",
+    description: "Análisis IA con acciones, riesgos y upsells detectados.",
     Icon: Sparkles,
     tone: "bg-violet-500/10 text-violet-400 border-violet-500/30",
     needsClient: true,
@@ -83,7 +102,7 @@ const PRESETS: Preset[] = [
   {
     key: "ia_clasificacion",
     title: "Distribuciones globales",
-    description: "Gráficos de distribución por prioridad, estado, producto y tipo.",
+    description: "Gráficos de prioridad, estado, producto y tipo.",
     Icon: Brain,
     tone: "bg-muted text-foreground border-border",
   },
@@ -95,21 +114,24 @@ interface Props {
   tickets: SupportTicket[];
   ticketsWithClientName: SupportTicket[];
   allTickets: SupportTicket[];
-  clients: Array<{ id: string; name: string; nivel_servicio?: string }>;
+  clients: Array<{ id: string; name: string; nivel_servicio?: string; team_assigned?: any }>;
   selectedClient: string;
   selectedClientName: string;
   selectedClientObj?: any;
   isClientView: boolean;
   initialClientId?: string;
   onOpenTicket?: (t: SupportTicket) => void;
+  /** Required para la preset de minutas y tabla (misma lista ya filtrada). */
+  scopedTickets?: SupportTicket[];
 }
 
 // ─── Componente principal ────────────────────────────────────────────────
 
 export function InsightsGuidedView(props: Props) {
   const {
-    tickets, ticketsWithClientName, clients, selectedClient, selectedClientName,
+    tickets, ticketsWithClientName, allTickets, clients, selectedClient, selectedClientName,
     selectedClientObj, isClientView, initialClientId, onOpenTicket,
+    scopedTickets = tickets,
   } = props;
 
   const [activePreset, setActivePreset] = useState<PresetKey | null>(null);
@@ -350,6 +372,9 @@ export function InsightsGuidedView(props: Props) {
           preset={activePreset}
           tickets={filteredTickets}
           ticketsWithClientName={ticketsWithClientName}
+          allTickets={allTickets}
+          clients={clients}
+          scopedTickets={scopedTickets}
           clientId={clientIdForView || ""}
           clientName={clientNameForView}
           selectedClientObj={selectedClientObj}
@@ -390,12 +415,15 @@ export function InsightsGuidedView(props: Props) {
 // ─── Render de contenido por preset ─────────────────────────────
 
 function PresetContent({
-  preset, tickets, ticketsWithClientName, clientId, clientName, selectedClientObj,
-  isClientView, onOpenTicket,
+  preset, tickets, ticketsWithClientName, allTickets, clients, scopedTickets,
+  clientId, clientName, selectedClientObj, isClientView, onOpenTicket,
 }: {
   preset: PresetKey;
   tickets: SupportTicket[];
   ticketsWithClientName: SupportTicket[];
+  allTickets: SupportTicket[];
+  clients: Array<{ id: string; name: string; nivel_servicio?: string; team_assigned?: any }>;
+  scopedTickets: SupportTicket[];
   clientId: string;
   clientName: string;
   selectedClientObj?: any;
@@ -406,7 +434,7 @@ function PresetContent({
     return (
       <div className="space-y-4">
         <SupportPanoramaPanel
-          tickets={tickets}
+          tickets={scopedTickets}
           clientName={clientName || undefined}
           onOpenTicket={onOpenTicket}
         />
@@ -415,10 +443,34 @@ function PresetContent({
     );
   }
 
+  if (preset === "tabla_casos") {
+    return (
+      <SupportCaseTable
+        tickets={scopedTickets}
+        clientName={clientName || (isClientView ? (selectedClientObj?.name || "") : "Todos los clientes")}
+        teamMembers={selectedClientObj?.team_assigned || []}
+      />
+    );
+  }
+
+  if (preset === "minutas") {
+    return (
+      <SupportMinutas
+        tickets={scopedTickets}
+        clientName={clientName || "Soporte General"}
+        clientId={clientId || "all"}
+        teamMembers={selectedClientObj?.team_assigned || []}
+        availableClients={clients.map(c => ({ id: c.id, name: c.name }))}
+        allTickets={allTickets}
+      />
+    );
+  }
+
   if (preset === "criticos") {
+    const critical = scopedTickets.filter(t => /critica/i.test(t.prioridad || "") && !isTicketClosed(t.estado));
     return (
       <SupportPanoramaPanel
-        tickets={tickets}
+        tickets={critical}
         clientName={clientName || undefined}
         onOpenTicket={onOpenTicket}
       />
@@ -426,8 +478,7 @@ function PresetContent({
   }
 
   if (preset === "sla_riesgo") {
-    // Reusamos panorama — ya clasifica riesgo/vencido. El filtro visual lo hace el panel.
-    const slaRisky = tickets.filter(t => !isTicketClosed(t.estado));
+    const slaRisky = scopedTickets.filter(t => !isTicketClosed(t.estado));
     return (
       <SupportPanoramaPanel
         tickets={slaRisky}
