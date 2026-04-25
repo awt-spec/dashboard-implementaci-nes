@@ -14,6 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 import { ActiveSprintHub } from "./ActiveSprintHub";
 import { SprintBoard } from "./SprintBoard";
 import { DailyStandupPanel } from "./DailyStandupPanel";
@@ -172,9 +173,19 @@ function MetricChip({
   );
 }
 
+function InlineStat({ value, label, tone = "text-foreground" }: { value: number | string; label: string; tone?: string }) {
+  return (
+    <div className="text-right">
+      <p className={cn("text-2xl font-black tabular-nums leading-none", tone)}>{value}</p>
+      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1">{label}</p>
+    </div>
+  );
+}
+
 // ─── Componente ───────────────────────────────────────────────────────
 
 export function TeamScrumGuidedView(props: Props) {
+  const auth = useAuth();
   const [activePreset, setActivePreset] = useState<PresetKey | null>(null);
   const [loadedFromSaved, setLoadedFromSaved] = useState<string | null>(null);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -295,41 +306,92 @@ export function TeamScrumGuidedView(props: Props) {
   };
 
   // ─── Render: picker ──
+  const greeting = (() => {
+    const h = new Date().getHours();
+    if (h < 12) return "Buenos días";
+    if (h < 19) return "Buenas tardes";
+    return "Buenas noches";
+  })();
+  const firstName = (auth.profile?.full_name || auth.profile?.email || "").split(" ")[0].split("@")[0];
+  const featured = pinnedView ? PRESETS.find(p => p.key === pinnedView.preset_key) : null;
+
   if (!activePreset) {
     return (
-      <div className="space-y-6">
-        {/* Hero — más punzante, con chips de métricas integrados */}
-        <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card to-card p-6">
-          <div className="absolute -top-12 -right-12 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
-          <div className="relative flex items-start gap-4 flex-wrap">
-            <div className="h-14 w-14 rounded-2xl bg-primary/15 flex items-center justify-center shrink-0 border border-primary/20">
-              <Star className="h-7 w-7 text-primary" />
-            </div>
-            <div className="flex-1 min-w-[220px]">
-              <h2 className="text-xl font-black leading-tight">¿Qué querés ver hoy?</h2>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                Elegí una vista del equipo Scrum. Fijá una como default para que se abra automáticamente.
-              </p>
-              {props.kpis && (
-                <div className="flex items-center gap-2 mt-3 flex-wrap">
-                  <MetricChip Icon={ListOrdered} label="Items" value={props.kpis.total} />
-                  <MetricChip Icon={Flame} label="En progreso" value={props.kpis.inProgress} tone="text-info" />
-                  <MetricChip Icon={Target} label="Sprints activos" value={props.kpis.activeSprints} tone="text-primary" />
-                  {props.kpis.noEstimate > 0 && (
-                    <MetricChip Icon={Sparkles} label="Sin estimar" value={props.kpis.noEstimate} tone="text-warning" />
-                  )}
-                </div>
+      <div className="space-y-7">
+        {/* Hero compacto — saludo + stats inline (sin card grande) */}
+        <div className="flex items-end justify-between gap-4 flex-wrap pt-2">
+          <div>
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground font-bold">Equipo Scrum</p>
+            <h1 className="text-2xl md:text-3xl font-black leading-tight mt-1">
+              {greeting}{firstName ? `, ${firstName}` : ""}.
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">¿Qué querés ver hoy?</p>
+          </div>
+          {props.kpis && (
+            <div className="flex items-center gap-4 text-right">
+              <InlineStat value={props.kpis.total} label="items" />
+              <div className="h-8 w-px bg-border" />
+              <InlineStat value={props.kpis.activeSprints} label="sprints activos" tone="text-primary" />
+              {props.kpis.noEstimate > 0 && (
+                <>
+                  <div className="h-8 w-px bg-border" />
+                  <InlineStat value={props.kpis.noEstimate} label="sin estimar" tone="text-warning" />
+                </>
               )}
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Vistas guardadas */}
-        {savedViews.length > 0 && (
+        {/* Featured card — solo si hay pinned */}
+        {featured && pinnedView && (
+          <motion.button
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            whileHover={{ y: -2 }}
+            onClick={() => loadSaved(pinnedView)}
+            className={cn(
+              "group relative w-full overflow-hidden rounded-3xl border-2 text-left",
+              "bg-gradient-to-br from-card via-card to-muted/20 hover:shadow-2xl transition-all",
+              "border-primary/40 hover:border-primary"
+            )}
+          >
+            <div className={cn(
+              "absolute inset-0 opacity-30 group-hover:opacity-60 transition-opacity bg-gradient-to-br",
+              featured.gradient
+            )} />
+            <div className="relative p-6 flex items-center gap-5 flex-wrap">
+              <div className={cn(
+                "h-16 w-16 rounded-2xl flex items-center justify-center shrink-0 border-2",
+                featured.tone, "shadow-lg"
+              )}>
+                <featured.Icon className="h-7 w-7" />
+              </div>
+              <div className="flex-1 min-w-[200px]">
+                <div className="flex items-center gap-2 mb-1">
+                  <Badge className="bg-primary text-primary-foreground text-[10px] gap-1 h-5 px-2">
+                    <Pin className="h-2.5 w-2.5" /> Tu vista predeterminada
+                  </Badge>
+                </div>
+                <p className="text-lg font-black">{pinnedView.name}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{featured.description}</p>
+              </div>
+              <div className="flex items-center gap-2 ml-auto">
+                <span className="text-xs text-muted-foreground hidden md:inline">Abrir</span>
+                <div className="h-10 w-10 rounded-full bg-primary/15 flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                  <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+                </div>
+              </div>
+            </div>
+          </motion.button>
+        )}
+
+        {/* Vistas guardadas (excluye la pinned que ya aparece como hero featured arriba) */}
+        {savedViews.filter(v => !v.is_pinned).length > 0 && (
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground mb-2.5">Mis vistas</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground mb-2.5">Otras vistas guardadas</p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-              {savedViews.map(v => {
+              {savedViews.filter(v => !v.is_pinned).map(v => {
                 const p = PRESETS.find(pp => pp.key === v.preset_key);
                 const Icon = p?.Icon ?? Star;
                 return (
