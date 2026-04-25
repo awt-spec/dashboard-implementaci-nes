@@ -150,6 +150,26 @@ interface Props {
   velocityData: any[];
   burndown: any[];
   scrumStatusDist: any[];
+  kpis?: { total: number; inProgress: number; avgWsjf: number; noEstimate: number; activeSprints: number };
+}
+
+// ─── Helper: chip de métrica slim ────────────────────────────────────
+
+function MetricChip({
+  Icon, label, value, tone = "text-foreground",
+}: {
+  Icon: any;
+  label: string;
+  value: number | string;
+  tone?: string;
+}) {
+  return (
+    <div className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-card/60 border border-border backdrop-blur-sm">
+      <Icon className={cn("h-3.5 w-3.5", tone)} />
+      <span className="text-[11px] text-muted-foreground">{label}</span>
+      <span className={cn("text-xs font-bold tabular-nums", tone)}>{value}</span>
+    </div>
+  );
 }
 
 // ─── Componente ───────────────────────────────────────────────────────
@@ -277,16 +297,30 @@ export function TeamScrumGuidedView(props: Props) {
   // ─── Render: picker ──
   if (!activePreset) {
     return (
-      <div className="space-y-5">
-        <div className="flex items-start gap-3">
-          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-            <Star className="h-5 w-5 text-primary" />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-base font-bold">¿Qué querés ver hoy?</h3>
-            <p className="text-xs text-muted-foreground">
-              Elegí una vista del equipo Scrum. Anclá la que más uses para que se abra automáticamente.
-            </p>
+      <div className="space-y-6">
+        {/* Hero — más punzante, con chips de métricas integrados */}
+        <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card to-card p-6">
+          <div className="absolute -top-12 -right-12 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
+          <div className="relative flex items-start gap-4 flex-wrap">
+            <div className="h-14 w-14 rounded-2xl bg-primary/15 flex items-center justify-center shrink-0 border border-primary/20">
+              <Star className="h-7 w-7 text-primary" />
+            </div>
+            <div className="flex-1 min-w-[220px]">
+              <h2 className="text-xl font-black leading-tight">¿Qué querés ver hoy?</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Elegí una vista del equipo Scrum. Fijá una como default para que se abra automáticamente.
+              </p>
+              {props.kpis && (
+                <div className="flex items-center gap-2 mt-3 flex-wrap">
+                  <MetricChip Icon={ListOrdered} label="Items" value={props.kpis.total} />
+                  <MetricChip Icon={Flame} label="En progreso" value={props.kpis.inProgress} tone="text-info" />
+                  <MetricChip Icon={Target} label="Sprints activos" value={props.kpis.activeSprints} tone="text-primary" />
+                  {props.kpis.noEstimate > 0 && (
+                    <MetricChip Icon={Sparkles} label="Sin estimar" value={props.kpis.noEstimate} tone="text-warning" />
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

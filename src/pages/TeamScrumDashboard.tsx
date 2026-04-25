@@ -287,64 +287,9 @@ export default function TeamScrumDashboard() {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      {/* ─────────── KPIs ─────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <KPIStat label="Total Items"    value={kpis.total}         Icon={ListOrdered}    accent="text-foreground" />
-        <KPIStat label="En Progreso"    value={kpis.inProgress}    Icon={Zap}            accent="text-info" />
-        <KPIStat label="WSJF Promedio"  value={kpis.avgWsjf}       Icon={Trophy}         accent="text-success" />
-        <KPIStat label="Sin Estimar"    value={kpis.noEstimate}    Icon={AlertTriangle}  accent="text-warning" hint={kpis.noEstimate > 0 ? "Requieren refinamiento" : undefined} />
-        <KPIStat label="Sprints Activos" value={kpis.activeSprints} Icon={Target}         accent="text-primary" />
-      </div>
-
-      {/* ─────────── TOOLBAR ─────────── */}
-      <Card className="glass-card">
-        <CardContent className="p-3 flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-[220px] max-w-[340px]">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por título…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="h-9 pl-8 text-sm"
-            />
-          </div>
-          <Select value={filterSource} onValueChange={setFilterSource}>
-            <SelectTrigger className="h-9 w-[150px] text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todo origen</SelectItem>
-              <SelectItem value="task">Tareas</SelectItem>
-              <SelectItem value="ticket">Casos soporte</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={filterOwner} onValueChange={setFilterOwner}>
-            <SelectTrigger className="h-9 w-[170px] text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todo el equipo</SelectItem>
-              {owners.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={filterSprint} onValueChange={setFilterSprint}>
-            <SelectTrigger className="h-9 w-[170px] text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos los sprints</SelectItem>
-              <SelectItem value="none">Sin sprint</SelectItem>
-              {sprints.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 gap-1 text-xs">
-              <X className="h-3.5 w-3.5" /> Limpiar
-            </Button>
-          )}
-          <Badge variant="outline" className="ml-auto text-xs font-normal">
-            <Filter className="h-3 w-3 mr-1" /> {filteredItems.length} / {items.length}
-          </Badge>
-        </CardContent>
-      </Card>
-
-      {/* Sin tabs — el wizard es la única vista. Auto-carga la pinned como
-          default si el usuario tiene una. Botón "Cambiar vista" para volver
-          al picker. Sprint activo es ahora un preset más. */}
+      {/* Sin KPIs ni toolbar global — el wizard se autocontiene. Los filtros
+          que se necesiten viven dentro de cada preset. Las métricas globales
+          aparecen integradas en el header del picker como chips. */}
       <TeamScrumGuidedView
         filteredItems={filteredItems}
         backlog={backlog}
@@ -359,6 +304,7 @@ export default function TeamScrumDashboard() {
         velocityData={velocityData}
         burndown={burndown}
         scrumStatusDist={scrumStatusDist}
+        kpis={kpis}
       />
     </div>
   );
