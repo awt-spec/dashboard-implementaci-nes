@@ -13,6 +13,7 @@ import { ExecutivePresentation } from "./ExecutivePresentation";
 import { ProjectKPIs } from "./ProjectKPIs";
 import { UpcomingDeliverables } from "./UpcomingDeliverables";
 import { ExecutiveComposer, type WidgetDef } from "./ExecutiveComposer";
+import { ExecutiveAIChat } from "./ExecutiveAIChat";
 
 const WIDGETS: WidgetDef[] = [
   { key: "pulso",       label: "Pulso del día",        description: "Saludo + insights más urgentes (críticos, vencidos, alertas)", group: "salud", defaultOn: true },
@@ -180,6 +181,9 @@ export function ExecutiveOverview() {
         selected={activeWidgets}
         onChange={setActiveWidgets}
       />
+
+      {/* Botón flotante de chat IA — abre Sheet con asistente conversacional */}
+      <ExecutiveAIChat />
 
       {/* ════ HERO: Pulso del día ════ */}
       {show("pulso") && (
