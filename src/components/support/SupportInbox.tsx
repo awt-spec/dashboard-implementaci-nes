@@ -10,8 +10,10 @@ import {
   Search, X, ArrowUpDown, SlidersHorizontal, Plus,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { ListMinus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -386,32 +388,6 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
           </div>
         </div>
         <div className="ml-auto flex items-center gap-2 flex-wrap">
-          <Select value={groupBy} onValueChange={(v) => setGroupBy(v as any)}>
-            <SelectTrigger className="h-8 w-[170px] text-xs">
-              <SlidersHorizontal className="h-3 w-3 mr-1.5" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="cliente" className="text-xs">Agrupar por cliente</SelectItem>
-              <SelectItem value="prioridad" className="text-xs">Agrupar por prioridad</SelectItem>
-              <SelectItem value="estado" className="text-xs">Agrupar por estado</SelectItem>
-              <SelectItem value="antiguedad" className="text-xs">Agrupar por antigüedad</SelectItem>
-              <SelectItem value="flat" className="text-xs">Lista plana (sin grupos)</SelectItem>
-            </SelectContent>
-          </Select>
-          {groupBy === "cliente" && (
-            <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
-              <SelectTrigger className="h-8 w-[170px] text-xs">
-                <ArrowUpDown className="h-3 w-3 mr-1.5" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="priority" className="text-xs">Prioridad</SelectItem>
-                <SelectItem value="age" className="text-xs">Más antiguos</SelectItem>
-                <SelectItem value="client" className="text-xs">Alfabético</SelectItem>
-              </SelectContent>
-            </Select>
-          )}
           <Button size="sm" variant="ghost" onClick={() => refetch()} className="h-8 gap-1 text-xs">
             <RefreshCw className="h-3.5 w-3.5" /> Refrescar
           </Button>
@@ -532,6 +508,80 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
           )}
         </div>
       </div>
+
+      {/* Vista + Orden — controles visuales segmentados */}
+      <TooltipProvider delayDuration={200}>
+        <div className="flex items-center gap-2 flex-wrap rounded-lg border border-border bg-muted/20 px-3 py-2">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Vista</span>
+          </div>
+          <ToggleGroup
+            type="single"
+            value={groupBy}
+            onValueChange={(v) => v && setGroupBy(v as any)}
+            className="gap-1"
+          >
+            {[
+              { v: "cliente",    Icon: Building2,     label: "Cliente",    hint: "Agrupar por cliente" },
+              { v: "prioridad",  Icon: Flame,         label: "Prioridad",  hint: "Agrupar por prioridad" },
+              { v: "estado",     Icon: AlertTriangle, label: "Estado",     hint: "Agrupar por estado (PENDIENTE / EN ATENCIÓN)" },
+              { v: "antiguedad", Icon: Clock,         label: "Antigüedad", hint: "Agrupar por edad del caso" },
+              { v: "flat",       Icon: ListMinus,     label: "Plana",      hint: "Lista plana, sin grupos" },
+            ].map((opt) => (
+              <Tooltip key={opt.v}>
+                <TooltipTrigger asChild>
+                  <ToggleGroupItem
+                    value={opt.v}
+                    className="h-7 px-2.5 text-[11px] gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                    aria-label={opt.label}
+                  >
+                    <opt.Icon className="h-3 w-3" />
+                    <span className="hidden sm:inline">{opt.label}</span>
+                  </ToggleGroupItem>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-[10px]">{opt.hint}</TooltipContent>
+              </Tooltip>
+            ))}
+          </ToggleGroup>
+
+          {groupBy === "cliente" && (
+            <>
+              <div className="h-5 w-px bg-border mx-1" />
+              <div className="flex items-center gap-1.5 shrink-0">
+                <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Orden</span>
+              </div>
+              <ToggleGroup
+                type="single"
+                value={sortBy}
+                onValueChange={(v) => v && setSortBy(v as any)}
+                className="gap-1"
+              >
+                {[
+                  { v: "priority", Icon: Flame,        label: "Prioridad",   hint: "Clientes con más críticos arriba" },
+                  { v: "age",      Icon: Clock,        label: "Antigüedad",  hint: "Clientes con casos más viejos arriba" },
+                  { v: "client",   Icon: Building2,    label: "A→Z",         hint: "Alfabético por nombre de cliente" },
+                ].map((opt) => (
+                  <Tooltip key={opt.v}>
+                    <TooltipTrigger asChild>
+                      <ToggleGroupItem
+                        value={opt.v}
+                        className="h-7 px-2.5 text-[11px] gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                        aria-label={opt.label}
+                      >
+                        <opt.Icon className="h-3 w-3" />
+                        <span className="hidden sm:inline">{opt.label}</span>
+                      </ToggleGroupItem>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-[10px]">{opt.hint}</TooltipContent>
+                  </Tooltip>
+                ))}
+              </ToggleGroup>
+            </>
+          )}
+        </div>
+      </TooltipProvider>
 
       {isLoading ? (
         <Card><CardContent className="py-12 text-center text-muted-foreground text-sm">Cargando bandeja…</CardContent></Card>
