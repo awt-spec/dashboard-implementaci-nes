@@ -287,8 +287,6 @@ export default function TeamScrumDashboard() {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      {/* KPIs y toolbar — visibles sólo en Explorar (Sprint activo tiene su propio header limpio) */}
-      {activeTab !== "sprint" && (<>
       {/* ─────────── KPIs ─────────── */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <KPIStat label="Total Items"    value={kpis.total}         Icon={ListOrdered}    accent="text-foreground" />
@@ -344,43 +342,24 @@ export default function TeamScrumDashboard() {
         </CardContent>
       </Card>
 
-      </>)}
-
-      {/* ─────────── 2 TABS: Sprint activo + Explorar ─────────── */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="h-auto flex-wrap justify-start gap-1 bg-transparent p-0 border-b border-border/60 rounded-none w-full">
-          <TabsTrigger value="sprint" className="gap-1.5 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
-            <Flame className="h-3.5 w-3.5" /> Sprint activo
-          </TabsTrigger>
-          <TabsTrigger value="explorar" className="gap-1.5 rounded-md">
-            <Sparkles className="h-3.5 w-3.5" /> Explorar
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Sprint activo: vista limpia y enfocada */}
-        <TabsContent value="sprint" className="mt-4">
-          <ActiveSprintHub />
-        </TabsContent>
-
-        {/* Explorar: wizard con presets */}
-        <TabsContent value="explorar" className="mt-4">
-          <TeamScrumGuidedView
-            filteredItems={filteredItems}
-            backlog={backlog}
-            sprintItems={sprintItems}
-            activeSprints={activeSprints}
-            hasActiveFilters={!!hasActiveFilters}
-            onScrumStatusChange={handleScrumStatusChange}
-            workloadStats={workloadStats}
-            ownerLoad={ownerLoad}
-            ownersWithoutLoad={ownersWithoutLoad}
-            sourceDist={sourceDist}
-            velocityData={velocityData}
-            burndown={burndown}
-            scrumStatusDist={scrumStatusDist}
-          />
-        </TabsContent>
-      </Tabs>
+      {/* Sin tabs — el wizard es la única vista. Auto-carga la pinned como
+          default si el usuario tiene una. Botón "Cambiar vista" para volver
+          al picker. Sprint activo es ahora un preset más. */}
+      <TeamScrumGuidedView
+        filteredItems={filteredItems}
+        backlog={backlog}
+        sprintItems={sprintItems}
+        activeSprints={activeSprints}
+        hasActiveFilters={!!hasActiveFilters}
+        onScrumStatusChange={handleScrumStatusChange}
+        workloadStats={workloadStats}
+        ownerLoad={ownerLoad}
+        ownersWithoutLoad={ownersWithoutLoad}
+        sourceDist={sourceDist}
+        velocityData={velocityData}
+        burndown={burndown}
+        scrumStatusDist={scrumStatusDist}
+      />
     </div>
   );
 }

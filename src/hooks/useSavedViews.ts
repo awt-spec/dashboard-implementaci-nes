@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
-export type ViewScope = "insights" | "operacion";
+export type ViewScope = "insights" | "operacion" | "scrum";
 
 export interface SavedView {
   id: string;
