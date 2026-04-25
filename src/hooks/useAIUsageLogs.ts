@@ -8,9 +8,15 @@ export interface AIUsageLog {
   prompt_tokens: number;
   completion_tokens: number;
   total_tokens: number;
+  /** "success" | "error" | "rate_limited" */
   status: string;
   error_message: string | null;
   client_id: string | null;
+  /** Hardening 2026-04-25: agregados a la tabla. */
+  user_id: string | null;
+  scope: string | null;
+  /** true si se redactaron campos confidenciales antes de mandar al LLM. */
+  redacted: boolean;
   metadata: Record<string, any>;
   created_at: string;
 }

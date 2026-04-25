@@ -177,79 +177,123 @@ function ClassificationTab() {
 }
 
 function SecurityTab() {
+  const { data: logs = [] } = useAIUsageLogs();
+
+  // Métricas reales últimos 7 días
+  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const recentLogs = logs.filter(l => new Date(l.created_at).getTime() >= sevenDaysAgo);
+  const totalCalls = recentLogs.length;
+  const redactedCalls = recentLogs.filter(l => l.redacted === true).length;
+  const rateLimited = recentLogs.filter(l => l.status === "rate_limited").length;
+  const errors = recentLogs.filter(l => l.status === "error").length;
+  const success = recentLogs.filter(l => l.status === "success").length;
+  const uniqueUsers = new Set(recentLogs.map(l => l.user_id).filter(Boolean)).size;
+  const redactionPct = totalCalls > 0 ? Math.round((redactedCalls / totalCalls) * 100) : 0;
+
+  // Funciones con hardening aplicado (las que usamos en el smoke con redacted/rate_limit)
+  const HARDENED_FNS = ["case-strategy-ai", "client-strategy-ai", "classify-tickets"];
+  const hardenedCalls = recentLogs.filter(l => HARDENED_FNS.includes(l.function_name)).length;
+
   const securityFeatures = [
     {
-      icon: Lock,
-      title: "Cifrado en Tránsito (TLS 1.3)",
-      description: "Todas las comunicaciones con la API de IA están cifradas con TLS 1.3. Los datos nunca viajan en texto plano.",
-      status: "active",
-      color: "text-emerald-400",
+      icon: Eye,
+      title: "Redacción de campos confidenciales",
+      description: "Tickets con is_confidential=true tienen sus campos sensibles (descripción, notas, credenciales, info de acceso) enmascarados antes de mandarse al LLM. La IA recibe ticket_id + asunto pero no ve datos sensibles.",
+      isNew: true,
     },
     {
-      icon: Key,
-      title: "API Key Cifrada (AES-256)",
-      description: "La clave LOVABLE_API_KEY se almacena cifrada en el vault del backend. Nunca se expone al cliente.",
-      status: "active",
-      color: "text-emerald-400",
+      icon: Hash,
+      title: "Audit log con user_id + scope",
+      description: "Cada llamada queda con user_id (quién), scope (qué recurso), redacted flag y status. Permite auditoría granular y queries de uso por usuario o cliente.",
+      isNew: true,
+    },
+    {
+      icon: Activity,
+      title: "Rate limit por user/función",
+      description: "20-30 llamadas/hora por usuario por función IA. Calls rechazados quedan registrados con status='rate_limited'. Anti-abuso y control de costos.",
+      isNew: true,
     },
     {
       icon: Shield,
-      title: "Aislamiento de Datos",
-      description: "Los datos de cada cliente se procesan de forma aislada. No hay contaminación cruzada entre clasificaciones.",
-      status: "active",
-      color: "text-emerald-400",
+      title: "Rol cliente bloqueado",
+      description: "Las funciones IA son herramientas internas. assertNotCliente() rechaza con 403 cualquier llamada de un usuario con rol cliente, antes de procesar el body.",
+      isNew: true,
+    },
+    {
+      icon: Lock,
+      title: "Cifrado en tránsito (TLS 1.3)",
+      description: "Todas las comunicaciones con la API de IA están cifradas con TLS 1.3.",
+    },
+    {
+      icon: Key,
+      title: "API Key en Supabase Secrets",
+      description: "GEMINI_API_KEY vive en el vault de Supabase Edge Functions. Nunca se expone al cliente ni queda en el repo.",
     },
     {
       icon: Server,
-      title: "Procesamiento Server-Side",
-      description: "Toda la lógica de IA se ejecuta en funciones de backend (Edge Functions). El frontend nunca accede directamente a modelos.",
-      status: "active",
-      color: "text-emerald-400",
-    },
-    {
-      icon: Eye,
-      title: "Sin Retención de Datos por el Modelo",
-      description: "Los modelos de IA no retienen ni aprenden de los datos enviados. Cada solicitud es efímera.",
-      status: "active",
-      color: "text-emerald-400",
+      title: "Procesamiento server-side",
+      description: "Toda la lógica de IA corre en Edge Functions con JWT validado por requireAuth. Frontend nunca toca modelos directamente.",
     },
     {
       icon: FileText,
-      title: "Auditoría de Uso",
-      description: "Cada llamada a la IA se registra en ai_usage_logs con función, modelo, tokens y estado para auditoría completa.",
-      status: "active",
-      color: "text-emerald-400",
+      title: "RLS endurecida en ai_usage_logs",
+      description: "Los logs respetan RLS: cada user ve sólo los suyos; admin/PM ven todos. Cliente no ve nada.",
     },
   ];
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center gap-3 mb-2">
         <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
           <Shield className="h-5 w-5 text-emerald-400" />
         </div>
         <div>
           <h3 className="text-sm font-bold">Seguridad & Cifrado de IA</h3>
-          <p className="text-xs text-muted-foreground">Protección de datos en todas las capas de procesamiento</p>
+          <p className="text-xs text-muted-foreground">Protección de datos + auditoría en todas las capas</p>
         </div>
         <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 ml-auto">
-          <Lock className="h-3 w-3 mr-1" /> Todo Cifrado
+          <Lock className="h-3 w-3 mr-1" /> Hardening v2 activo
         </Badge>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      {/* ════════ MÉTRICAS REALES — últimos 7 días ════════ */}
+      <Card className="border-emerald-500/30 bg-gradient-to-br from-emerald-500/5 via-card to-card">
+        <CardContent className="p-4">
+          <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-muted-foreground mb-3">
+            Auditoría · últimos 7 días
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <SecurityKPI label="Llamadas IA" value={totalCalls} sub={`${uniqueUsers} usuarios distintos`} tone="text-foreground" />
+            <SecurityKPI label="Con redacción" value={`${redactedCalls}`} sub={`${redactionPct}% del total · datos sensibles`} tone="text-emerald-400" />
+            <SecurityKPI label="Rate limited" value={rateLimited} sub={rateLimited === 0 ? "Sin abuso" : "Bloqueos por exceso"} tone={rateLimited > 0 ? "text-warning" : "text-muted-foreground"} />
+            <SecurityKPI label="Errores" value={errors} sub={`${success} success vs ${errors} error`} tone={errors > 0 ? "text-destructive" : "text-success"} />
+          </div>
+          {hardenedCalls > 0 && (
+            <p className="text-[10px] text-muted-foreground mt-3 pt-3 border-t border-border/40">
+              <span className="font-semibold text-emerald-400">{hardenedCalls}</span> de las {totalCalls} llamadas pasaron por funciones con hardening v2 aplicado (case-strategy-ai, client-strategy-ai, classify-tickets).
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ════════ FEATURE CARDS ════════ */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-3">
         {securityFeatures.map((feat, i) => (
-          <motion.div key={feat.title} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-            <Card className="border-emerald-500/10 hover:border-emerald-500/30 transition-colors h-full">
+          <motion.div key={feat.title} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+            <Card className={`h-full transition-colors ${feat.isNew ? "border-emerald-500/40 bg-emerald-500/[0.02]" : "border-border/60 hover:border-emerald-500/30"}`}>
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
-                  <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <feat.icon className={`h-4 w-4 ${feat.color}`} />
+                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${feat.isNew ? "bg-emerald-500/15" : "bg-emerald-500/10"}`}>
+                    <feat.icon className="h-4 w-4 text-emerald-400" />
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-xs font-bold">{feat.title}</p>
-                      <Badge variant="outline" className="text-[8px] px-1.5 py-0 h-4 border-emerald-500/30 text-emerald-400">ACTIVO</Badge>
+                      {feat.isNew ? (
+                        <Badge className="bg-emerald-500 text-white text-[8px] px-1.5 py-0 h-4">NUEVO</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[8px] px-1.5 py-0 h-4 border-emerald-500/30 text-emerald-400">ACTIVO</Badge>
+                      )}
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{feat.description}</p>
                   </div>
@@ -283,6 +327,16 @@ function SecurityTab() {
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function SecurityKPI({ label, value, sub, tone = "text-foreground" }: { label: string; value: number | string; sub?: string; tone?: string }) {
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{label}</p>
+      <p className={`text-2xl font-black tabular-nums leading-tight mt-0.5 ${tone}`}>{value}</p>
+      {sub && <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>}
     </div>
   );
 }
