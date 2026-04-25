@@ -21,7 +21,9 @@ import { ClientStrategyPanel } from "./ClientStrategyPanel";
 import { SupportScrumPanel } from "./SupportScrumPanel";
 import { SupportCaseTable } from "./SupportCaseTable";
 import { SupportMinutas } from "./SupportMinutas";
-import { FileText, Ticket as TicketIcon } from "lucide-react";
+import { SupportGlobalHeatmap } from "./SupportGlobalHeatmap";
+import { FileText, Ticket as TicketIcon, Grid3x3 } from "lucide-react";
+import { motion } from "framer-motion";
 import type { SupportTicket } from "@/hooks/useSupportTickets";
 import { useSavedViews, useSaveView, useDeleteView, useTogglePinView } from "@/hooks/useSavedViews";
 import { isTicketClosed } from "@/lib/ticketStatus";
@@ -36,7 +38,8 @@ type PresetKey =
   | "sla_riesgo"
   | "por_cliente"
   | "actividad_ia"
-  | "ia_clasificacion";
+  | "ia_clasificacion"
+  | "heatmap_global";
 
 interface Preset {
   key: PresetKey;
@@ -44,37 +47,56 @@ interface Preset {
   description: string;
   Icon: typeof Activity;
   tone: string;
+  /** Gradient para el card visual. Formato Tailwind: "from-X to-Y". */
+  gradient: string;
+  /** Color del icono y border. */
+  accent: string;
+  category: "operativo" | "estrategico" | "analisis" | "ia";
   needsClient?: boolean;
 }
 
 const PRESETS: Preset[] = [
-  {
-    key: "resumen",
-    title: "Resumen ejecutivo",
-    description: "SLA, acciones recomendadas y distribuciones en una sola vista.",
-    Icon: LayoutDashboard,
-    tone: "bg-primary/10 text-primary border-primary/30",
-  },
+  // ── OPERATIVO ──
   {
     key: "tabla_casos",
     title: "Tabla de casos",
     description: "Todos los casos con filtros, búsqueda y edición inline.",
     Icon: TicketIcon,
     tone: "bg-sky-500/10 text-sky-500 border-sky-500/30",
+    gradient: "from-sky-500/10 via-sky-500/5 to-transparent",
+    accent: "text-sky-500 ring-sky-500/30",
+    category: "operativo",
   },
   {
     key: "minutas",
     title: "Minutas",
-    description: "Generar minutas con IA, compartir con cliente y ver feedback.",
+    description: "Generar con IA, compartir con cliente y ver feedback.",
     Icon: FileText,
     tone: "bg-emerald-500/10 text-emerald-500 border-emerald-500/30",
+    gradient: "from-emerald-500/10 via-emerald-500/5 to-transparent",
+    accent: "text-emerald-500 ring-emerald-500/30",
+    category: "operativo",
+  },
+  // ── ESTRATÉGICO ──
+  {
+    key: "resumen",
+    title: "Resumen ejecutivo",
+    description: "SLA, acciones recomendadas y distribuciones.",
+    Icon: LayoutDashboard,
+    tone: "bg-primary/10 text-primary border-primary/30",
+    gradient: "from-primary/10 via-primary/5 to-transparent",
+    accent: "text-primary ring-primary/30",
+    category: "estrategico",
   },
   {
     key: "criticos",
-    title: "Casos críticos ahora",
-    description: "Solo prioridad Crítica abiertos, con acciones priorizadas.",
+    title: "Casos críticos",
+    description: "Solo prioridad Crítica abiertos, con acciones.",
     Icon: Flame,
     tone: "bg-destructive/10 text-destructive border-destructive/30",
+    gradient: "from-destructive/10 via-destructive/5 to-transparent",
+    accent: "text-destructive ring-destructive/30",
+    category: "estrategico",
   },
   {
     key: "sla_riesgo",
@@ -82,21 +104,30 @@ const PRESETS: Preset[] = [
     description: "Casos con ≥70% del SLA consumido o vencidos.",
     Icon: ShieldAlert,
     tone: "bg-warning/10 text-warning border-warning/30",
+    gradient: "from-warning/10 via-warning/5 to-transparent",
+    accent: "text-warning ring-warning/30",
+    category: "estrategico",
+  },
+  // ── ANÁLISIS ──
+  {
+    key: "heatmap_global",
+    title: "Mapa de calor",
+    description: "Matriz cliente × prioridad/estado/edad/producto, en vivo.",
+    Icon: Grid3x3,
+    tone: "bg-rose-500/10 text-rose-500 border-rose-500/30",
+    gradient: "from-rose-500/10 via-rose-500/5 to-transparent",
+    accent: "text-rose-500 ring-rose-500/30",
+    category: "analisis",
   },
   {
     key: "por_cliente",
     title: "Análisis por cliente",
-    description: "SLA + mapa de calor del cliente seleccionado.",
+    description: "SLA + mapa de calor del cliente elegido.",
     Icon: Building2,
     tone: "bg-info/10 text-info border-info/30",
-    needsClient: true,
-  },
-  {
-    key: "actividad_ia",
-    title: "Estrategia IA por cliente",
-    description: "Análisis IA con acciones, riesgos y upsells detectados.",
-    Icon: Sparkles,
-    tone: "bg-violet-500/10 text-violet-400 border-violet-500/30",
+    gradient: "from-info/10 via-info/5 to-transparent",
+    accent: "text-info ring-info/30",
+    category: "analisis",
     needsClient: true,
   },
   {
@@ -105,8 +136,30 @@ const PRESETS: Preset[] = [
     description: "Gráficos de prioridad, estado, producto y tipo.",
     Icon: Brain,
     tone: "bg-muted text-foreground border-border",
+    gradient: "from-muted/40 via-muted/20 to-transparent",
+    accent: "text-foreground ring-border",
+    category: "analisis",
+  },
+  // ── IA ──
+  {
+    key: "actividad_ia",
+    title: "Estrategia IA",
+    description: "Análisis IA con acciones, riesgos y upsells.",
+    Icon: Sparkles,
+    tone: "bg-violet-500/10 text-violet-400 border-violet-500/30",
+    gradient: "from-violet-500/10 via-violet-500/5 to-transparent",
+    accent: "text-violet-400 ring-violet-500/30",
+    category: "ia",
+    needsClient: true,
   },
 ];
+
+const CATEGORY_LABELS: Record<Preset["category"], string> = {
+  operativo: "Operativo · día a día",
+  estrategico: "Estratégico · prioridades",
+  analisis: "Análisis · datos",
+  ia: "IA · automatización",
+};
 
 // ─── Props ───────────────────────────────────────────────────────────────
 
@@ -274,36 +327,70 @@ export function InsightsGuidedView(props: Props) {
           </div>
         ) : null}
 
-        {/* Presets */}
-        <div>
-          {savedViews.length > 0 && (
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 mt-4">Presets disponibles</p>
-          )}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-            {PRESETS.map(p => (
-              <button
-                key={p.key}
-                onClick={() => pickPreset(p.key)}
-                className="group text-left rounded-xl border border-border bg-card p-3 hover:border-primary/40 hover:bg-muted/20 transition-colors"
-              >
-                <div className="flex items-start gap-2.5">
-                  <div className={cn("h-9 w-9 rounded-lg flex items-center justify-center shrink-0 border", p.tone)}>
-                    <p.Icon className="h-4 w-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-sm font-bold">{p.title}</p>
-                      {p.needsClient && (
-                        <Badge variant="outline" className="text-[9px] h-4">Por cliente</Badge>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-muted-foreground leading-snug mt-0.5 line-clamp-2">{p.description}</p>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary shrink-0 mt-1" />
+        {/* Presets agrupados por categoría — visualmente más punzante */}
+        <div className="space-y-5">
+          {(Object.keys(CATEGORY_LABELS) as Preset["category"][]).map(cat => {
+            const items = PRESETS.filter(p => p.category === cat);
+            if (items.length === 0) return null;
+            return (
+              <div key={cat}>
+                <div className="flex items-center gap-2 mb-2.5">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                    {CATEGORY_LABELS[cat]}
+                  </span>
+                  <div className="flex-1 h-px bg-border/60" />
                 </div>
-              </button>
-            ))}
-          </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {items.map((p, idx) => (
+                    <motion.button
+                      key={p.key}
+                      onClick={() => pickPreset(p.key)}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.04, duration: 0.25 }}
+                      whileHover={{ y: -3, transition: { duration: 0.15 } }}
+                      whileTap={{ scale: 0.98 }}
+                      className={cn(
+                        "group relative text-left rounded-2xl border border-border overflow-hidden",
+                        "bg-card hover:border-transparent hover:shadow-lg hover:ring-1 transition-all",
+                        p.accent.split(" ").pop(), // ring-color clase
+                      )}
+                    >
+                      {/* Gradient background */}
+                      <div className={cn(
+                        "absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity",
+                        p.gradient
+                      )} />
+
+                      <div className="relative p-4 flex items-start gap-3">
+                        <div className={cn(
+                          "h-12 w-12 rounded-xl flex items-center justify-center shrink-0 border-2",
+                          p.tone, "group-hover:scale-110 transition-transform"
+                        )}>
+                          <p.Icon className="h-5 w-5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="text-sm font-bold">{p.title}</p>
+                            {p.needsClient && (
+                              <Badge variant="outline" className="text-[9px] h-4 px-1.5">Por cliente</Badge>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-muted-foreground leading-snug mt-1 line-clamp-2">
+                            {p.description}
+                          </p>
+                        </div>
+                        <ArrowRight className={cn(
+                          "h-4 w-4 text-muted-foreground/50 shrink-0 mt-1 transition-all",
+                          "group-hover:translate-x-0.5", p.accent.split(" ")[0]
+                        )} />
+                      </div>
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     );
@@ -516,6 +603,16 @@ function PresetContent({
 
   if (preset === "ia_clasificacion") {
     return <SupportChartBuilder tickets={ticketsWithClientName} />;
+  }
+
+  if (preset === "heatmap_global") {
+    return (
+      <SupportGlobalHeatmap
+        tickets={scopedTickets}
+        clients={clients}
+        onOpenTicket={onOpenTicket}
+      />
+    );
   }
 
   return null;
