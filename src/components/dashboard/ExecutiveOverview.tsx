@@ -12,6 +12,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ExecutivePresentation } from "./ExecutivePresentation";
 import { ProjectKPIs } from "./ProjectKPIs";
 import { UpcomingDeliverables } from "./UpcomingDeliverables";
+import { ExecutiveComposer, type WidgetDef } from "./ExecutiveComposer";
+
+const WIDGETS: WidgetDef[] = [
+  { key: "pulso",       label: "Pulso del día",        description: "Saludo + insights más urgentes (críticos, vencidos, alertas)", group: "salud", defaultOn: true },
+  { key: "kpis",        label: "KPIs principales",     description: "8 indicadores: clientes, tareas, riesgos, equipo",            group: "salud", defaultOn: true },
+  { key: "status_pie",  label: "Estado de Clientes",   description: "Pie chart: activos, en riesgo, completados, pausados",         group: "salud", defaultOn: true },
+  { key: "progress",    label: "Progreso por Cliente", description: "Barras: implementación (%) y soporte (% cierre tickets)",      group: "salud", defaultOn: true },
+  { key: "tasks",       label: "Tareas",               description: "Distribución por estado y prioridad",                          group: "tareas" },
+  { key: "deliverables",label: "Entregables",          description: "Estado de los entregables del portafolio",                     group: "tareas", defaultOn: true },
+  { key: "alerts",      label: "Alertas activas",      description: "Riesgos + tareas bloqueadas con filtros",                      group: "alertas", defaultOn: true },
+  { key: "country",     label: "Distribución geográfica", description: "Clientes por país",                                         group: "tiempo" },
+  { key: "team",        label: "Equipo por Cliente",   description: "Personas asignadas a cada proyecto",                           group: "tiempo" },
+  { key: "project_kpis",label: "KPIs por proyecto",    description: "ProjectKPIs panel con métricas detalladas",                    group: "tiempo" },
+  { key: "upcoming",    label: "Próximos entregables", description: "Calendario de lo que vence pronto",                            group: "tareas", defaultOn: true },
+];
 
 export function ExecutiveOverview() {
   const { data: clientsData, isLoading } = useClients();
@@ -25,6 +40,11 @@ export function ExecutiveOverview() {
   const [filterType, setFilterType] = useState<string>("all");
   const [filterImpact, setFilterImpact] = useState<string>("all");
   const [showPresentation, setShowPresentation] = useState(false);
+  // Composer: widgets activos. Default = los marcados defaultOn:true
+  const [activeWidgets, setActiveWidgets] = useState<Set<string>>(
+    () => new Set(WIDGETS.filter(w => w.defaultOn).map(w => w.key))
+  );
+  const show = (k: string) => activeWidgets.has(k);
 
   if (isLoading) {
     return (
@@ -154,7 +174,15 @@ export function ExecutiveOverview() {
 
   return (
     <div className="space-y-6">
+      {/* Composer: ¿Qué querés ver hoy? — multi-widget picker + saved views */}
+      <ExecutiveComposer
+        widgets={WIDGETS}
+        selected={activeWidgets}
+        onChange={setActiveWidgets}
+      />
+
       {/* ════ HERO: Pulso del día ════ */}
+      {show("pulso") && (
       <div className="relative overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/5 via-card to-card p-6">
         <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
         <div className="relative flex items-start justify-between gap-4 flex-wrap">
@@ -209,9 +237,11 @@ export function ExecutiveOverview() {
           </Button>
         </div>
       </div>
+      )}
       <ExecutivePresentation clients={clients} supportTickets={supportTickets} supportClients={supportClients} open={showPresentation} onClose={() => setShowPresentation(false)} />
 
       {/* KPIs */}
+      {show("kpis") && (
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
         {kpis.map((kpi, i) => (
           <motion.div key={kpi.title} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
@@ -225,8 +255,10 @@ export function ExecutiveOverview() {
           </motion.div>
         ))}
       </div>
+      )}
 
       {/* Row 1: Status Pie + Progress by Client */}
+      {(show("status_pie") || show("progress")) && (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card>
           <CardContent className="p-5">
@@ -335,8 +367,10 @@ export function ExecutiveOverview() {
           </CardContent>
         </Card>
       </div>
+      )}
 
       {/* Row 2: Tasks + Deliverables + Priority */}
+      {(show("tasks") || show("deliverables")) && (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <Card>
@@ -438,8 +472,10 @@ export function ExecutiveOverview() {
           </Card>
         </motion.div>
       </div>
+      )}
 
       {/* Row 3: Team workload */}
+      {show("team") && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
           <Card>
@@ -485,15 +521,18 @@ export function ExecutiveOverview() {
           </Card>
         </motion.div>
       </div>
+      )}
 
       {/* KPIs & Upcoming Deliverables */}
+      {(show("project_kpis") || show("upcoming")) && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ProjectKPIs clients={clients} />
-        <UpcomingDeliverables clients={clients} />
+        {show("project_kpis") && <ProjectKPIs clients={clients} />}
+        {show("upcoming") && <UpcomingDeliverables clients={clients} />}
       </div>
+      )}
 
       {/* Critical Alerts with Filters */}
-      {allAlerts.length > 0 && (
+      {show("alerts") && allAlerts.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <Card className="border-destructive/30 bg-destructive/5">
             <CardContent className="p-5">
