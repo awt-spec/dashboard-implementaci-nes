@@ -232,68 +232,107 @@ function SprintHubContent({
 
   const varianceColor = points.variance >= 0 ? "text-success" : "text-destructive";
 
+  // ─── Estado simplificado del sprint para mensaje principal ──
+  const heroStatus = (() => {
+    if (time.overdue) return { label: "Sprint vencido", tone: "text-destructive", Icon: AlertTriangle };
+    if (points.pct >= 100) return { label: "Sprint completado", tone: "text-success", Icon: CheckCircle2 };
+    if (points.variance >= 0) return { label: "En track", tone: "text-success", Icon: CheckCircle2 };
+    if (Math.abs(points.variance) > points.planned * 0.15) return { label: "Atrás del ideal", tone: "text-destructive", Icon: AlertTriangle };
+    return { label: "Atención", tone: "text-warning", Icon: AlertCircle };
+  })();
+
   return (
     <div className="space-y-4">
-      {/* ============ HEADER INMERSIVO ============ */}
+      {/* ════════════ HERO UNIFICADO ════════════ */}
       <motion.div
-        initial={{ opacity: 0, y: -10 }}
+        initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-xl border border-primary/20"
+        className="relative overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/10 via-card to-card"
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-primary/5 to-transparent" />
-        <div className="relative p-5 md:p-6 space-y-3">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="space-y-1 flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <Flame className="h-5 w-5 text-primary" />
-                <h2 className="text-xl md:text-2xl font-bold tracking-tight truncate">{sprint.name}</h2>
-                <Badge className={vibeColor} variant="outline">
-                  {time.overdue ? "Vencido" : `${time.daysRemaining} días restantes`}
-                </Badge>
+        <div className="absolute -top-20 -right-20 h-56 w-56 rounded-full bg-primary/15 blur-3xl pointer-events-none" />
+
+        <div className="relative p-5 md:p-6">
+          {/* Top: title + status + actions */}
+          <div className="flex items-start justify-between gap-3 flex-wrap mb-5">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <Flame className="h-4 w-4 text-primary" />
+                <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-primary">Sprint activo</p>
               </div>
+              <h2 className="text-xl md:text-2xl font-black truncate">{sprint.name}</h2>
               {sprint.goal && (
-                <p className="text-sm text-muted-foreground italic">🎯 {sprint.goal}</p>
+                <p className="text-sm text-muted-foreground mt-1 line-clamp-1">🎯 {sprint.goal}</p>
               )}
-              <div className="flex items-center gap-3 text-xs text-muted-foreground pt-1">
-                <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{sprint.start_date} → {sprint.end_date}</span>
-                <span className="flex items-center gap-1"><Clock className="h-3 w-3" />Día {time.daysElapsed} de {time.totalDays}</span>
-              </div>
             </div>
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => onOpenDaily?.(sprint.id)} className="gap-1.5">
+            <div className="flex items-center gap-2 shrink-0">
+              <Button size="sm" variant="outline" onClick={() => onOpenDaily?.(sprint.id)} className="gap-1.5 h-8">
                 ☀️ Daily
               </Button>
-              <Button size="sm" variant="outline" onClick={() => onOpenRetro?.(sprint.id)} className="gap-1.5">
+              <Button size="sm" variant="outline" onClick={() => onOpenRetro?.(sprint.id)} className="gap-1.5 h-8">
                 <Sparkles className="h-3.5 w-3.5" /> Retro
               </Button>
             </div>
           </div>
 
-          {/* Progress bars */}
-          <div className="grid md:grid-cols-2 gap-3 pt-2">
-            <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-muted-foreground">Tiempo</span>
-                <span className="font-semibold">{time.pctTime}%</span>
+          {/* Main: big circular progress + key info */}
+          <div className="grid grid-cols-1 md:grid-cols-[auto_1fr] gap-6 items-center">
+            {/* Donut progress */}
+            <div className="flex items-center justify-center md:justify-start">
+              <div className="relative h-32 w-32">
+                <svg viewBox="0 0 100 100" className="transform -rotate-90 h-full w-full">
+                  <circle cx="50" cy="50" r="42" stroke="hsl(var(--muted))" strokeWidth="10" fill="none" />
+                  <motion.circle
+                    cx="50" cy="50" r="42" stroke="hsl(var(--primary))" strokeWidth="10" fill="none" strokeLinecap="round"
+                    strokeDasharray={`${2 * Math.PI * 42}`}
+                    initial={{ strokeDashoffset: 2 * Math.PI * 42 }}
+                    animate={{ strokeDashoffset: 2 * Math.PI * 42 * (1 - points.pct / 100) }}
+                    transition={{ duration: 1, ease: "easeOut" }}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-3xl font-black tabular-nums leading-none">{points.pct}%</span>
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">avance</span>
+                </div>
               </div>
-              <Progress value={time.pctTime} className="h-2" />
             </div>
-            <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-muted-foreground">Story Points</span>
-                <span className="font-semibold">{points.completed} / {points.planned} SP ({points.pct}%)</span>
+
+            {/* Key data */}
+            <div className="space-y-3">
+              {/* Status pill + day */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className={`inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-card border ${heroStatus.tone === "text-success" ? "border-success/30" : heroStatus.tone === "text-warning" ? "border-warning/30" : "border-destructive/30"}`}>
+                  <heroStatus.Icon className={`h-3.5 w-3.5 ${heroStatus.tone}`} />
+                  <span className={`text-xs font-bold ${heroStatus.tone}`}>{heroStatus.label}</span>
+                </div>
+                <Badge variant="outline" className="h-7 px-2.5 text-xs gap-1">
+                  <Clock className="h-3 w-3" /> Día {time.daysElapsed} / {time.totalDays}
+                </Badge>
+                <Badge variant="outline" className="h-7 px-2.5 text-xs">
+                  {time.overdue ? "Vencido" : `${time.daysRemaining} días restantes`}
+                </Badge>
               </div>
-              <Progress value={points.pct} className="h-2" />
+
+              {/* Mini stats horizontal — la vista principal */}
+              <div className="grid grid-cols-3 gap-3 pt-1">
+                <HeroStat
+                  label="Story Points"
+                  value={`${points.completed}/${points.planned}`}
+                  hint={points.variance >= 0 ? `+${points.variance} vs ideal` : `${points.variance} vs ideal`}
+                  hintTone={points.variance >= 0 ? "text-success" : "text-destructive"}
+                />
+                <HeroStat label="En progreso" value={points.inProgress} tone="text-info" hint={`${points.inProgress} casos activos`} />
+                <HeroStat label="Sin owner / estimación" value={points.blocked} tone={points.blocked > 0 ? "text-warning" : "text-muted-foreground"} hint={points.blocked > 0 ? "Requieren refinamiento" : "Todo listo"} />
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Confetti sutil al 100% */}
+        {/* Confetti al 100% */}
         <AnimatePresence>
           {points.pct === 100 && points.planned > 0 && (
             <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="absolute top-2 right-2 text-2xl"
+              initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+              className="absolute top-3 right-3 text-3xl"
             >
               🎉
             </motion.div>
@@ -301,14 +340,49 @@ function SprintHubContent({
         </AnimatePresence>
       </motion.div>
 
-      {/* ============ KPIs ============ */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KpiCard icon={Trophy} label="SP Completados" value={`${points.completed}/${points.planned}`} color="text-success" />
-        <KpiCard icon={TrendingDown} label="Avance" value={`${points.pct}%`} color="text-primary"
-          sub={<span className={varianceColor}>{points.variance >= 0 ? "+" : ""}{points.variance} SP vs ideal</span>} />
-        <KpiCard icon={Zap} label="En Progreso" value={points.inProgress} color="text-info" />
-        <KpiCard icon={AlertTriangle} label="Sin owner / sin estimación" value={points.blocked} color="text-warning" />
-      </div>
+      {/* ════════════ ATENCIÓN REQUERIDA — ALERTA PROMINENTE ════════════ */}
+      {risks.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="rounded-2xl border-2 border-warning/40 bg-warning/5 p-4"
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <AlertCircle className="h-4 w-4 text-warning" />
+            <p className="text-sm font-bold text-warning">Necesita atención hoy</p>
+            <Badge className="bg-warning text-warning-foreground text-[10px] h-5">{risks.length}</Badge>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {risks.slice(0, 4).map(r => {
+              const reasons: string[] = [];
+              if (!r.owner || r.owner === "—") reasons.push("Sin owner");
+              if (!r.story_points && !r.effort) reasons.push("Sin estimación");
+              if (r.due_date && new Date(r.due_date) < new Date()) reasons.push("Vencido");
+              return (
+                <div key={`${r.source}-${r.id}`} className="flex items-start gap-2 p-2 rounded-lg bg-card border border-warning/20 hover:border-warning/50 transition-colors">
+                  <div className="h-7 w-7 rounded-md bg-warning/15 flex items-center justify-center shrink-0">
+                    <AlertCircle className="h-3.5 w-3.5 text-warning" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold line-clamp-1">{r.title}</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {reasons.map(reason => (
+                        <Badge key={reason} variant="outline" className="text-[9px] h-4 bg-warning/10 text-warning border-warning/30">{reason}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {risks.length > 4 && (
+            <p className="text-[10px] text-muted-foreground mt-2 text-center">
+              +{risks.length - 4} ítems más con riesgo. Revisá el tablero abajo.
+            </p>
+          )}
+        </motion.div>
+      )}
 
       {/* ============ BURNDOWN ============ */}
       <Card>
@@ -413,9 +487,9 @@ function SprintHubContent({
         </CardContent>
       </Card>
 
-      {/* ============ EQUIPO + RIESGOS ============ */}
-      <div className="grid md:grid-cols-3 gap-3">
-        <Card className="md:col-span-2">
+      {/* ============ EQUIPO ============ */}
+      <div className="grid md:grid-cols-1 gap-3">
+        <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <Users className="h-4 w-4 text-primary" />
@@ -448,43 +522,17 @@ function SprintHubContent({
           </CardContent>
         </Card>
 
-        <Card className="border-warning/30">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-warning" />
-              Items en Riesgo
-              <Badge variant="outline" className="ml-1 text-[10px] bg-warning/10 text-warning border-warning/30">{risks.length}</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {risks.length === 0 ? (
-              <div className="text-center py-6 space-y-2">
-                <CheckCircle2 className="h-8 w-8 text-success mx-auto" />
-                <p className="text-xs text-muted-foreground">Sin items en riesgo 🎉</p>
-              </div>
-            ) : (
-              <div className="space-y-1.5 max-h-[280px] overflow-auto">
-                {risks.map(r => {
-                  const reasons: string[] = [];
-                  if (!r.owner || r.owner === "—") reasons.push("Sin owner");
-                  if (!r.story_points && !r.effort) reasons.push("Sin estimación");
-                  if (r.due_date && new Date(r.due_date) < new Date()) reasons.push("Vencido");
-                  return (
-                    <div key={`${r.source}-${r.id}`} className="p-2 rounded bg-warning/5 border border-warning/20 space-y-1">
-                      <p className="text-[11px] font-medium line-clamp-1">{r.title}</p>
-                      <div className="flex flex-wrap gap-1">
-                        {reasons.map(reason => (
-                          <Badge key={reason} variant="outline" className="text-[9px] h-4 bg-warning/10 text-warning border-warning/30">{reason}</Badge>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
+    </div>
+  );
+}
+
+function HeroStat({ label, value, hint, tone, hintTone }: { label: string; value: number | string; hint?: string; tone?: string; hintTone?: string }) {
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{label}</p>
+      <p className={`text-2xl font-black tabular-nums leading-tight mt-0.5 ${tone || ""}`}>{value}</p>
+      {hint && <p className={`text-[10px] mt-0.5 ${hintTone || "text-muted-foreground"}`}>{hint}</p>}
     </div>
   );
 }

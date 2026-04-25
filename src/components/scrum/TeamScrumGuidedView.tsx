@@ -35,8 +35,7 @@ type PresetKey =
   | "tablero" | "daily" | "flujo"
   | "backlog" | "estrategia"
   | "sprints"
-  | "reportes" | "sprint_analytics"
-  | "pm_ai";
+  | "reportes" | "sprint_analytics";
 
 interface Preset {
   key: PresetKey;
@@ -116,14 +115,6 @@ const PRESETS: Preset[] = [
     Icon: TrendingUp, tone: "bg-cyan-500/10 text-cyan-500 border-cyan-500/30",
     gradient: "from-cyan-500/10 via-cyan-500/5 to-transparent",
     accent: "text-cyan-500 ring-cyan-500/30", category: "analisis",
-  },
-  // ── IA ──
-  {
-    key: "pm_ai", title: "PM IA",
-    description: "Asistente IA para gestión: sugerencias, riesgos, plan.",
-    Icon: Brain, tone: "bg-fuchsia-500/10 text-fuchsia-500 border-fuchsia-500/30",
-    gradient: "from-fuchsia-500/10 via-fuchsia-500/5 to-transparent",
-    accent: "text-fuchsia-500 ring-fuchsia-500/30", category: "ia",
   },
 ];
 
@@ -232,7 +223,6 @@ export function TeamScrumGuidedView(props: Props) {
         />
       );
       case "sprint_analytics":  return <SprintAnalytics />;
-      case "pm_ai":             return <PMAIPanel />;
       default:                  return null;
     }
   }, [activePreset, props]);
