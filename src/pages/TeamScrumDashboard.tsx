@@ -32,6 +32,7 @@ import { FordLineView } from "@/components/scrum/FordLineView";
 import { SVAStrategyPanel } from "@/components/scrum/SVAStrategyPanel";
 import { SprintBoard } from "@/components/scrum/SprintBoard";
 import { BacklogView } from "@/components/scrum/BacklogView";
+import { TeamScrumGuidedView } from "@/components/scrum/TeamScrumGuidedView";
 
 const CHART_COLORS = [
   "hsl(var(--primary))",
@@ -143,6 +144,7 @@ export default function TeamScrumDashboard() {
   const [filterSource, setFilterSource] = useState<string>("all");
   const [filterOwner, setFilterOwner] = useState<string>("all");
   const [filterSprint, setFilterSprint] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState<string>("sprint");
 
   const owners = useMemo(() => {
     const set = new Set<string>();
@@ -285,6 +287,8 @@ export default function TeamScrumDashboard() {
 
   return (
     <div className="space-y-5 animate-fade-in">
+      {/* KPIs y toolbar — visibles sólo en Explorar (Sprint activo tiene su propio header limpio) */}
+      {activeTab !== "sprint" && (<>
       {/* ─────────── KPIs ─────────── */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <KPIStat label="Total Items"    value={kpis.total}         Icon={ListOrdered}    accent="text-foreground" />
@@ -340,253 +344,41 @@ export default function TeamScrumDashboard() {
         </CardContent>
       </Card>
 
-      {/* ─────────── TABS (5 top-level) ─────────── */}
-      <Tabs defaultValue="strategy" className="w-full">
+      </>)}
+
+      {/* ─────────── 2 TABS: Sprint activo + Explorar ─────────── */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="h-auto flex-wrap justify-start gap-1 bg-transparent p-0 border-b border-border/60 rounded-none w-full">
-          <TabsTrigger value="strategy" className="gap-1.5 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
-            <Sparkles className="h-3.5 w-3.5" /> Estrategia
+          <TabsTrigger value="sprint" className="gap-1.5 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
+            <Flame className="h-3.5 w-3.5" /> Sprint activo
           </TabsTrigger>
-          <TabsTrigger value="sprint" className="gap-1.5 rounded-md">
-            <Flame className="h-3.5 w-3.5" /> Sprint Activo
-          </TabsTrigger>
-          <TabsTrigger value="sprints" className="gap-1.5 rounded-md">
-            <Target className="h-3.5 w-3.5" /> Sprints
-          </TabsTrigger>
-          <TabsTrigger value="backlog" className="gap-1.5 rounded-md">
-            <ListOrdered className="h-3.5 w-3.5" /> Backlog
-          </TabsTrigger>
-          <TabsTrigger value="analytics" className="gap-1.5 rounded-md">
-            <TrendingUp className="h-3.5 w-3.5" /> Analytics
+          <TabsTrigger value="explorar" className="gap-1.5 rounded-md">
+            <Sparkles className="h-3.5 w-3.5" /> Explorar
           </TabsTrigger>
         </TabsList>
 
-        {/* ─── 1. ESTRATEGIA ─── */}
-        <TabsContent value="strategy" className="mt-4"><SVAStrategyPanel /></TabsContent>
-
-        {/* ─── 2. SPRINT ACTIVO (4 sub-vistas) ─── */}
+        {/* Sprint activo: vista limpia y enfocada */}
         <TabsContent value="sprint" className="mt-4">
-          <Tabs defaultValue="resumen" className="w-full">
-            <TabsList className="mb-3 h-9 bg-muted/40">
-              <TabsTrigger value="resumen" className="gap-1.5 text-xs"><Flame className="h-3.5 w-3.5" /> Resumen</TabsTrigger>
-              <TabsTrigger value="board"   className="gap-1.5 text-xs"><LayoutGrid className="h-3.5 w-3.5" /> Tablero</TabsTrigger>
-              <TabsTrigger value="flujo"   className="gap-1.5 text-xs"><Workflow className="h-3.5 w-3.5" /> Flujo</TabsTrigger>
-              <TabsTrigger value="daily"   className="gap-1.5 text-xs"><Sunrise className="h-3.5 w-3.5" /> Daily</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="resumen"><ActiveSprintHub /></TabsContent>
-            <TabsContent value="board"><SprintBoard items={sprintItems} activeSprints={activeSprints} onMove={handleScrumStatusChange} /></TabsContent>
-            <TabsContent value="flujo">
-              <FordLineView items={filteredItems} onMove={(item, status) => handleScrumStatusChange(item, status)} title="Flujo del equipo" />
-            </TabsContent>
-            <TabsContent value="daily"><DailyStandupPanel /></TabsContent>
-          </Tabs>
+          <ActiveSprintHub />
         </TabsContent>
 
-        {/* ─── 3. SPRINTS ─── */}
-        <TabsContent value="sprints" className="mt-4"><SprintManager /></TabsContent>
-
-        {/* ─── 4. BACKLOG ─── */}
-        <TabsContent value="backlog" className="mt-4">
-          <BacklogView
-            items={backlog}
+        {/* Explorar: wizard con presets */}
+        <TabsContent value="explorar" className="mt-4">
+          <TeamScrumGuidedView
+            filteredItems={filteredItems}
+            backlog={backlog}
+            sprintItems={sprintItems}
+            activeSprints={activeSprints}
             hasActiveFilters={!!hasActiveFilters}
-            onChangeStatus={handleScrumStatusChange}
+            onScrumStatusChange={handleScrumStatusChange}
+            workloadStats={workloadStats}
+            ownerLoad={ownerLoad}
+            ownersWithoutLoad={ownersWithoutLoad}
+            sourceDist={sourceDist}
+            velocityData={velocityData}
+            burndown={burndown}
+            scrumStatusDist={scrumStatusDist}
           />
-        </TabsContent>
-
-        {/* ─── 5. ANALYTICS (con 3 sub-vistas) ─── */}
-        <TabsContent value="analytics" className="mt-4">
-          <Tabs defaultValue="reportes" className="w-full">
-            <TabsList className="mb-3 h-9 bg-muted/40">
-              <TabsTrigger value="reportes"     className="gap-1.5 text-xs"><BarChart3 className="h-3.5 w-3.5" /> Reportes</TabsTrigger>
-              <TabsTrigger value="sprint-stats" className="gap-1.5 text-xs"><TrendingUp className="h-3.5 w-3.5" /> Sprint Analytics</TabsTrigger>
-              <TabsTrigger value="pm-ai"        className="gap-1.5 text-xs"><Brain className="h-3.5 w-3.5" /> PM IA</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="sprint-stats"><SprintAnalytics /></TabsContent>
-            <TabsContent value="pm-ai"><PMAIPanel /></TabsContent>
-
-            <TabsContent value="reportes" className="space-y-3">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                Carga del Equipo — Resumen
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {(["sobrecargado", "saludable", "subutilizado", "sin_carga"] as const).map((level) => {
-                  const s = WORKLOAD_STYLES[level];
-                  const count =
-                    level === "sobrecargado" ? workloadStats.sobrecargados :
-                    level === "saludable"    ? workloadStats.saludables :
-                    level === "subutilizado" ? workloadStats.subutilizados :
-                                               workloadStats.sin_carga;
-                  return (
-                    <div key={level} className={`p-3 rounded-lg border ${s.border} ${s.bg}`}>
-                      <div className={`flex items-center gap-1.5 ${s.text}`}>
-                        <s.Icon className="h-3.5 w-3.5" />
-                        <p className="text-[11px] uppercase tracking-wide font-bold">{s.label}</p>
-                      </div>
-                      <p className={`mt-1 text-2xl font-bold tabular-nums ${s.text}`}>{count}</p>
-                    </div>
-                  );
-                })}
-              </div>
-              {ownersWithoutLoad.length > 0 && (
-                <div className="p-3 rounded-lg border border-border/60 bg-muted/30">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-2">
-                    Sin items activos asignados ({ownersWithoutLoad.length})
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {ownersWithoutLoad.map(o => (
-                      <Badge key={o} variant="outline" className="text-xs bg-background">{o}</Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Carga por Persona
-                  <span className="ml-auto text-[11px] text-muted-foreground font-normal">
-                    &gt;7 sobrecarga · 3-7 saludable · &lt;3 baja
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[320px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={ownerLoad.slice(0, 12)} layout="vertical" margin={{ left: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                      <XAxis type="number" tick={{ fontSize: 11 }} />
-                      <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={90} />
-                      <Tooltip
-                        formatter={(v: any, _n, p: any) => [`${v} items (${p?.payload?.level})`, "Carga"]}
-                        labelFormatter={(l) => `${l}`}
-                        contentStyle={{ fontSize: 12, borderRadius: 8 }}
-                      />
-                      <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                        {ownerLoad.slice(0, 12).map((d, i) => (
-                          <Cell key={i} fill={
-                            d.level === "sobrecargado" ? "hsl(var(--destructive))" :
-                            d.level === "saludable"    ? "hsl(var(--success))" :
-                                                          "hsl(var(--warning))"
-                          } />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4" />
-                  Distribución por Origen
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[280px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={sourceDist} innerRadius={60} outerRadius={100} dataKey="value" nameKey="name" paddingAngle={2}>
-                        {sourceDist.map((_, i) => <Cell key={i} fill={CHART_COLORS[i]} />)}
-                      </Pie>
-                      <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                      <Legend wrapperStyle={{ fontSize: 12 }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4" />
-                  Velocity por Sprint
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[280px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={velocityData}>
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                      <XAxis dataKey="sprint" tick={{ fontSize: 11 }} />
-                      <YAxis tick={{ fontSize: 11 }} />
-                      <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                      <Legend wrapperStyle={{ fontSize: 12 }} />
-                      <Bar dataKey="planned"   fill="hsl(var(--muted-foreground))" name="Planeados"   radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="completed" fill="hsl(var(--success))"          name="Completados" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Burndown Sprint Activo
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[280px]">
-                  {burndown.length === 0 ? (
-                    <div className="h-full flex items-center justify-center">
-                      <EmptyState Icon={Calendar} title="Sin sprint activo con fechas" />
-                    </div>
-                  ) : (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={burndown}>
-                        <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                        <XAxis dataKey="day" tick={{ fontSize: 11 }} />
-                        <YAxis tick={{ fontSize: 11 }} />
-                        <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                        <Legend wrapperStyle={{ fontSize: 12 }} />
-                        <Line type="monotone" dataKey="ideal" stroke="hsl(var(--muted-foreground))" strokeDasharray="5 5" name="Ideal" dot={false} />
-                        <Line type="monotone" dataKey="real"  stroke="hsl(var(--primary))" name="Real" strokeWidth={2} dot={{ r: 2 }} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="lg:col-span-2">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <ListOrdered className="h-4 w-4" />
-                  Distribución por Estado Scrum
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[220px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={scrumStatusDist}>
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                      <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                      <YAxis tick={{ fontSize: 11 }} />
-                      <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                      <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-            </TabsContent>
-          </Tabs>
         </TabsContent>
       </Tabs>
     </div>
