@@ -1,6 +1,9 @@
 import { corsHeaders, corsPreflight, anthropicTool, AiError, resolvedModel } from "../_shared/cors.ts";
 import { AuthError, authErrorResponse, requireAuth, requireRole } from "../_shared/auth.ts";
 import { isTicketClosed } from "../_shared/ticketStatus.ts";
+import {
+  redactConfidentialTickets, logAiCall, checkRateLimit, assertNotCliente,
+} from "../_shared/aiSafety.ts";
 
 /**
  * client-strategy-ai
@@ -20,9 +23,14 @@ Deno.serve(async (req) => {
   if (pre) return pre;
   const cors = corsHeaders(req);
 
+  let ctx: any = null;
+  let client_id_for_log: string | null = null;
+  let redactedCountTotal = 0;
   try {
-    const ctx = await requireAuth(req);
+    ctx = await requireAuth(req);
+    await assertNotCliente(ctx);
     await requireRole(ctx, ["admin", "pm", "gerente"]);
+    await checkRateLimit(ctx.adminClient, ctx.userId, FUNCTION_NAME, 20); // 20/hora (más caro)
 
     const { client_id } = await req.json().catch(() => ({}));
     if (!client_id || typeof client_id !== "string") {
@@ -44,6 +52,7 @@ Deno.serve(async (req) => {
         status: 404, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
+    client_id_for_log = client_id;
 
     // ─── 2. Contratos + SLAs + financials ────────────────────────────────
     const [contractsR, slasR, financialsR] = await Promise.all([
@@ -56,12 +65,14 @@ Deno.serve(async (req) => {
     const financials = financialsR.data ?? null;
 
     // ─── 3. Todos los tickets del cliente (histórico completo) ───────────
+    // Redactar campos confidenciales antes de pasar al LLM.
     const { data: ticketsRaw } = await db
       .from("support_tickets")
       .select("id, ticket_id, asunto, estado, prioridad, tipo, producto, responsable, descripcion, created_at, fecha_entrega, dias_antiguedad, effort, business_value, is_confidential, ai_classification, ai_risk_level")
       .eq("client_id", client_id)
       .order("created_at", { ascending: false });
-    const tickets: any[] = ticketsRaw ?? [];
+    const { tickets, redactedCount } = redactConfidentialTickets(ticketsRaw ?? []);
+    redactedCountTotal = redactedCount;
 
     // ─── 4. Notas "externas" recientes (indicadores de tono cliente) ─────
     const ticketIds = tickets.map((t: any) => t.id);
@@ -317,39 +328,56 @@ Deno.serve(async (req) => {
       model: MODEL,
     }).select().single();
 
-    await db.from("ai_usage_logs").insert({
+    await logAiCall(db, {
       function_name: FUNCTION_NAME,
       model: resolvedModel(MODEL),
+      user_id: ctx.userId,
+      scope: client_id,
+      client_id,
+      redacted: redactedCountTotal > 0,
+      status: "success",
       prompt_tokens: usage.input_tokens,
       completion_tokens: usage.output_tokens,
       total_tokens: usage.total_tokens,
-      status: "success",
-      client_id,
-      metadata: { client_name: client.name, tickets_total: total, tickets_open: open.length },
+      metadata: { client_name: client.name, tickets_total: total, tickets_open: open.length, tickets_redacted: redactedCountTotal },
     });
 
     return new Response(JSON.stringify({ success: true, analysis, id: saved?.id }), {
       headers: { ...cors, "Content-Type": "application/json" },
     });
   } catch (e: any) {
-    if (e instanceof AuthError) return authErrorResponse(e, cors);
+    if (e instanceof AuthError) {
+      if (ctx?.adminClient) {
+        await logAiCall(ctx.adminClient, {
+          function_name: FUNCTION_NAME, model: MODEL, user_id: ctx.userId,
+          scope: client_id_for_log, client_id: client_id_for_log,
+          redacted: redactedCountTotal > 0,
+          status: e.status === 429 ? "rate_limited" : "error", error_message: e.message,
+        });
+      }
+      return authErrorResponse(e, cors);
+    }
     if (e instanceof AiError) {
+      if (ctx?.adminClient) {
+        await logAiCall(ctx.adminClient, {
+          function_name: FUNCTION_NAME, model: MODEL, user_id: ctx.userId,
+          scope: client_id_for_log, client_id: client_id_for_log,
+          redacted: redactedCountTotal > 0, status: "error", error_message: e.message,
+        });
+      }
       return new Response(JSON.stringify({ error: e.message }), {
         status: e.status, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
     console.error("client-strategy-ai error:", e);
-    try {
-      const ctx = await requireAuth(req).catch(() => null);
-      if (ctx) {
-        await ctx.adminClient.from("ai_usage_logs").insert({
-          function_name: FUNCTION_NAME,
-          model: MODEL,
-          status: "error",
-          error_message: String(e?.message ?? e).slice(0, 500),
-        });
-      }
-    } catch { /* ignore */ }
+    if (ctx?.adminClient) {
+      await logAiCall(ctx.adminClient, {
+        function_name: FUNCTION_NAME, model: MODEL, user_id: ctx.userId,
+        scope: client_id_for_log, client_id: client_id_for_log,
+        redacted: redactedCountTotal > 0, status: "error",
+        error_message: String(e?.message ?? e).slice(0, 500),
+      });
+    }
     return new Response(JSON.stringify({ error: e?.message ?? "Error desconocido" }), {
       status: 500, headers: { ...cors, "Content-Type": "application/json" },
     });

@@ -169,6 +169,44 @@ async function tests() {
       .select("redacted").eq("user_id", adminId).eq("scope", testTicketIdCfg).limit(1);
     if (!data?.length || data[0].redacted !== true) throw new Error("flag redacted no registrada para ticket confidencial");
   });
+
+  log("group", "client-strategy-ai");
+  await step("Cliente role bloqueado en client-strategy-ai", async () => {
+    const r = await callFn(clienteJwt, "client-strategy-ai", { client_id: testClientId });
+    if (r.status !== 403) throw new Error(`esperaba 403, obtuvo ${r.status}`);
+  });
+  await step("Admin → 200 + log con scope=client_id + redacted (1 ticket conf)", async () => {
+    const r = await callFn(adminJwt, "client-strategy-ai", { client_id: testClientId });
+    if (r.status !== 200) throw new Error(`status ${r.status} (${r.body?.error})`);
+    const { data } = await sbAdmin.from("ai_usage_logs")
+      .select("user_id, scope, redacted, status").eq("user_id", adminId)
+      .eq("function_name", "client-strategy-ai").order("created_at", { ascending: false }).limit(1);
+    if (!data?.length) throw new Error("no se loggeó");
+    if (data[0].scope !== testClientId) throw new Error(`scope mal: ${data[0].scope}`);
+    if (data[0].redacted !== true) throw new Error("debería estar redacted=true (hay 1 ticket conf)");
+  });
+
+  log("group", "classify-tickets");
+  await step("Cliente role bloqueado en classify-tickets", async () => {
+    const r = await callFn(clienteJwt, "classify-tickets", { ticketIds: [testTicketId] });
+    if (r.status !== 403) throw new Error(`esperaba 403, obtuvo ${r.status}`);
+  });
+  await step("Admin clasifica ticket no-conf (sin redacted)", async () => {
+    const r = await callFn(adminJwt, "classify-tickets", { ticketIds: [testTicketId] });
+    if (r.status !== 200) throw new Error(`status ${r.status} (${r.body?.error})`);
+    const { data } = await sbAdmin.from("ai_usage_logs")
+      .select("user_id, redacted, status").eq("user_id", adminId)
+      .eq("function_name", "classify-tickets").order("created_at", { ascending: false }).limit(1);
+    if (!data?.length || data[0].redacted !== false) throw new Error("no debería estar redacted");
+  });
+  await step("Admin clasifica ticket CONF → redacted=true", async () => {
+    const r = await callFn(adminJwt, "classify-tickets", { ticketIds: [testTicketIdCfg] });
+    if (r.status !== 200) throw new Error(`status ${r.status} (${r.body?.error})`);
+    const { data } = await sbAdmin.from("ai_usage_logs")
+      .select("redacted").eq("user_id", adminId)
+      .eq("function_name", "classify-tickets").order("created_at", { ascending: false }).limit(1);
+    if (!data?.length || data[0].redacted !== true) throw new Error("debería redacted=true");
+  });
 }
 
 // ── Cleanup ──

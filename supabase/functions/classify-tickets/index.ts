@@ -1,15 +1,24 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
 import { AuthError, authErrorResponse, requireAuth, requireRole } from "../_shared/auth.ts";
+import {
+  redactConfidentialTickets, logAiCall, checkRateLimit, assertNotCliente,
+} from "../_shared/aiSafety.ts";
+
+const FUNCTION_NAME = "classify-tickets";
 
 serve(async (req) => {
   const pre = corsPreflight(req);
   if (pre) return pre;
   const cors = corsHeaders(req);
 
+  let ctx: any = null;
+  let redactedCountTotal = 0;
   try {
-    const ctx = await requireAuth(req);
+    ctx = await requireAuth(req);
+    await assertNotCliente(ctx);
     await requireRole(ctx, ["admin", "pm", "gerente"]);
+    await checkRateLimit(ctx.adminClient, ctx.userId, FUNCTION_NAME, 20);
 
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
@@ -18,23 +27,28 @@ serve(async (req) => {
 
     const supabase = ctx.adminClient;
 
-    let query = supabase.from("support_tickets").select("id, ticket_id, asunto, tipo, prioridad, estado, dias_antiguedad, producto, responsable, notas, client_id");
-    
+    // Trae también is_confidential para que la redacción funcione
+    let query = supabase.from("support_tickets").select("id, ticket_id, asunto, tipo, prioridad, estado, dias_antiguedad, producto, responsable, notas, client_id, is_confidential, descripcion");
+
     if (ticketIds && ticketIds.length > 0) {
       query = query.in("id", ticketIds);
     } else {
       query = query.is("ai_classification", null).limit(50);
     }
 
-    const { data: tickets, error: fetchError } = await query;
+    const { data: ticketsRaw, error: fetchError } = await query;
     if (fetchError) throw fetchError;
-    if (!tickets || tickets.length === 0) {
+    if (!ticketsRaw || ticketsRaw.length === 0) {
       return new Response(JSON.stringify({ classified: 0, message: "No tickets to classify" }), {
         headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 
-    const ticketDescriptions = tickets.map((t: any) => 
+    // Redactar campos confidenciales antes de mandar al LLM
+    const { tickets, redactedCount } = redactConfidentialTickets(ticketsRaw);
+    redactedCountTotal = redactedCount;
+
+    const ticketDescriptions = tickets.map((t: any) =>
       `ID:${t.ticket_id} | Asunto:${t.asunto} | Tipo:${t.tipo} | Prioridad:${t.prioridad} | Estado:${t.estado} | Días:${t.dias_antiguedad} | Producto:${t.producto} | Responsable:${t.responsable || 'N/A'} | Notas:${t.notas || 'N/A'}`
     ).join("\n");
 
@@ -101,16 +115,14 @@ Responde SOLO con JSON válido sin markdown.`
       const status = response.status;
       const errorText = await response.text();
       
-      // Log failed AI call
-      await supabase.from("ai_usage_logs").insert({
-        function_name: "classify-tickets",
-        model,
-        prompt_tokens: 0,
-        completion_tokens: 0,
-        total_tokens: 0,
-        status: "error",
+      // Log failed AI call (con user_id + redacted)
+      await logAiCall(supabase, {
+        function_name: FUNCTION_NAME, model,
+        user_id: ctx.userId,
+        redacted: redactedCountTotal > 0,
+        status: status === 429 ? "rate_limited" : "error",
         error_message: `HTTP ${status}: ${errorText.slice(0, 200)}`,
-        metadata: { tickets_count: tickets.length, elapsed_ms: elapsed },
+        metadata: { tickets_count: tickets.length, elapsed_ms: elapsed, tickets_redacted: redactedCountTotal },
       });
 
       if (status === 429) {
@@ -160,25 +172,42 @@ Responde SOLO con JSON válido sin markdown.`
       if (!updateError) classified++;
     }
 
-    // Log successful AI call
-    await supabase.from("ai_usage_logs").insert({
-      function_name: "classify-tickets",
-      model,
+    // Log successful AI call (con user_id + redacted)
+    await logAiCall(supabase, {
+      function_name: FUNCTION_NAME, model,
+      user_id: ctx.userId,
+      client_id: clientIds.size === 1 ? [...clientIds][0] : null,
+      redacted: redactedCountTotal > 0,
+      status: "success",
       prompt_tokens: promptTokens,
       completion_tokens: completionTokens,
       total_tokens: totalTokens,
-      status: "success",
-      client_id: clientIds.size === 1 ? [...clientIds][0] : null,
-      metadata: { tickets_count: tickets.length, classified_count: classified, elapsed_ms: elapsed },
+      metadata: { tickets_count: tickets.length, classified_count: classified, elapsed_ms: elapsed, tickets_redacted: redactedCountTotal },
     });
 
     return new Response(JSON.stringify({ classified, total: tickets.length }), {
       headers: { ...cors, "Content-Type": "application/json" },
     });
 
-  } catch (e) {
-    if (e instanceof AuthError) return authErrorResponse(e, cors);
+  } catch (e: any) {
+    if (e instanceof AuthError) {
+      if (ctx?.adminClient) {
+        await logAiCall(ctx.adminClient, {
+          function_name: FUNCTION_NAME, model: "gemini-2.5-flash-lite",
+          user_id: ctx.userId, redacted: redactedCountTotal > 0,
+          status: e.status === 429 ? "rate_limited" : "error", error_message: e.message,
+        });
+      }
+      return authErrorResponse(e, cors);
+    }
     console.error("classify-tickets error:", e);
+    if (ctx?.adminClient) {
+      await logAiCall(ctx.adminClient, {
+        function_name: FUNCTION_NAME, model: "gemini-2.5-flash-lite",
+        user_id: ctx.userId, redacted: redactedCountTotal > 0,
+        status: "error", error_message: String(e?.message ?? e).slice(0, 500),
+      });
+    }
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
       status: 500, headers: { ...cors, "Content-Type": "application/json" },
     });
