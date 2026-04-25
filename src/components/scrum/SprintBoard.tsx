@@ -5,11 +5,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import {
   PackageOpen, CheckCircle2, PlayCircle, Flame, Flag, Target,
-  AlertTriangle, Building2, Calendar, type LucideIcon,
+  AlertTriangle, Building2, Calendar, X, type LucideIcon,
 } from "lucide-react";
 import { normalizePrioridad } from "@/lib/ticketStatus";
 import type { ScrumWorkItem, UnifiedSprint } from "@/hooks/useTeamScrum";
 import { useClients } from "@/hooks/useClients";
+import { useUpdateWorkItemScrum } from "@/hooks/useTeamScrum";
+import { toast } from "sonner";
 
 // ─── Columnas del tablero ────────────────────────────────────────────────
 
@@ -48,20 +50,35 @@ function isOverdue(dueDate: string | null | undefined) {
 
 // ─── Card individual ─────────────────────────────────────────────────────
 
-function ItemCard({ item, onMove }: { item: ScrumWorkItem; onMove: (i: ScrumWorkItem, status: string) => void }) {
+function ItemCard({ item, onMove, onRemoveFromSprint }: { item: ScrumWorkItem; onMove: (i: ScrumWorkItem, status: string) => void; onRemoveFromSprint?: (i: ScrumWorkItem) => void }) {
   const rawPriority = (item.raw?.prioridad as string) || item.priority;
   const p = priorityStyles(rawPriority);
   const overdue = isOverdue(item.due_date);
 
   return (
-    <div className={`p-3 rounded-lg border bg-card border-l-4 ${p.border} space-y-2 hover:border-primary/40 hover:shadow-sm transition-all`}>
+    <div className={`group p-3 rounded-lg border bg-card border-l-4 ${p.border} space-y-2 hover:border-primary/40 hover:shadow-sm transition-all relative`}>
+      {/* Botón "Quitar del sprint" — visible al hover */}
+      {onRemoveFromSprint && (
+        <button
+          onClick={() => {
+            if (confirm(`Quitar "${item.title.slice(0, 60)}" del sprint y devolver al backlog?`)) {
+              onRemoveFromSprint(item);
+            }
+          }}
+          className="absolute top-1.5 right-1.5 h-5 w-5 rounded hover:bg-destructive/15 text-muted-foreground hover:text-destructive flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          title="Quitar del sprint (volver al backlog)"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
+
       <div className="flex items-start gap-2">
         <div className="flex flex-col gap-1 items-start shrink-0">
           <Badge variant="outline" className="text-[10px] h-5 font-semibold">
             {item.source === "task" ? "T" : "C"}
           </Badge>
         </div>
-        <p className="flex-1 text-sm font-medium leading-snug line-clamp-2 min-h-[2.5rem]">{item.title}</p>
+        <p className="flex-1 text-sm font-medium leading-snug line-clamp-2 min-h-[2.5rem] pr-5">{item.title}</p>
       </div>
 
       {item.client_name && (
@@ -114,6 +131,18 @@ interface Props {
 
 export function SprintBoard({ items, activeSprints, onMove }: Props) {
   const { data: clients = [] } = useClients();
+  const updateScrum = useUpdateWorkItemScrum();
+  const removeFromSprint = async (item: ScrumWorkItem) => {
+    try {
+      await updateScrum.mutateAsync({
+        id: item.id, source: item.source,
+        updates: { sprint_id: null, scrum_status: "backlog" },
+      });
+      toast.success("Devuelto al backlog");
+    } catch (e: any) {
+      toast.error(e.message || "Error quitando del sprint");
+    }
+  };
   const clientMap = useMemo(() => {
     const m = new Map<string, string>();
     (clients as any[]).forEach(c => m.set(c.id, c.name));
@@ -231,7 +260,7 @@ export function SprintBoard({ items, activeSprints, onMove }: Props) {
                 {colItems.length === 0 ? (
                   <p className="text-xs text-center text-muted-foreground/50 py-8 italic">—</p>
                 ) : colItems.map(item => (
-                  <ItemCard key={`${item.source}-${item.id}`} item={item} onMove={onMove} />
+                  <ItemCard key={`${item.source}-${item.id}`} item={item} onMove={onMove} onRemoveFromSprint={removeFromSprint} />
                 ))}
               </CardContent>
             </Card>

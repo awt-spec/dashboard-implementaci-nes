@@ -6,9 +6,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Trophy, Inbox, List, Users, Building2, Table as TableIcon,
-  ChevronDown, ChevronRight, type LucideIcon,
+  ChevronDown, ChevronRight, Target, ArrowRightCircle, type LucideIcon,
 } from "lucide-react";
-import type { ScrumWorkItem } from "@/hooks/useTeamScrum";
+import type { ScrumWorkItem, UnifiedSprint } from "@/hooks/useTeamScrum";
+import { useUpdateWorkItemScrum } from "@/hooks/useTeamScrum";
+import { toast } from "sonner";
 
 const SCRUM_COLUMNS = [
   { key: "backlog",     label: "Backlog" },
@@ -29,6 +31,8 @@ interface Props {
   items: ScrumWorkItem[];
   hasActiveFilters: boolean;
   onChangeStatus: (item: ScrumWorkItem, status: string) => void;
+  /** Sprints activos para el dropdown "Asignar a sprint". Si no se pasa, no se muestra el botón. */
+  activeSprints?: UnifiedSprint[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -53,7 +57,34 @@ function EmptyBacklog({ hasActiveFilters }: { hasActiveFilters: boolean }) {
   );
 }
 
-function ItemRow({ item, idx, onChangeStatus }: { item: ScrumWorkItem; idx?: number; onChangeStatus: (i: ScrumWorkItem, s: string) => void }) {
+function ItemRow({
+  item, idx, onChangeStatus, activeSprints,
+}: {
+  item: ScrumWorkItem;
+  idx?: number;
+  onChangeStatus: (i: ScrumWorkItem, s: string) => void;
+  activeSprints?: UnifiedSprint[];
+}) {
+  const updateScrum = useUpdateWorkItemScrum();
+  // Filtra sprints del cliente del item (o todos si no hay match)
+  const eligibleSprints = (activeSprints || []).filter(
+    s => !item.client_id || s.client_id === item.client_id
+  );
+
+  const assignToSprint = async (sprintId: string) => {
+    try {
+      await updateScrum.mutateAsync({
+        id: item.id,
+        source: item.source,
+        updates: { sprint_id: sprintId, scrum_status: "in_sprint" },
+      });
+      const sprintName = eligibleSprints.find(s => s.id === sprintId)?.name || "sprint";
+      toast.success(`Asignado a ${sprintName}`);
+    } catch (e: any) {
+      toast.error(e.message || "Error asignando a sprint");
+    }
+  };
+
   return (
     <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-muted/40 border border-border/40 transition-colors">
       {idx !== undefined && (
@@ -82,6 +113,25 @@ function ItemRow({ item, idx, onChangeStatus }: { item: ScrumWorkItem; idx?: num
           {SCRUM_COLUMNS.map(c => <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>)}
         </SelectContent>
       </Select>
+      {/* Asignar a sprint (sólo si hay sprints elegibles del mismo cliente) */}
+      {eligibleSprints.length > 0 && (
+        <Select value={item.sprint_id ?? "__none"} onValueChange={(v) => v !== "__none" && assignToSprint(v)}>
+          <SelectTrigger className="h-7 w-[150px] text-[11px] shrink-0 border-primary/30 text-primary">
+            <Target className="h-3 w-3 mr-1" />
+            <SelectValue placeholder="→ Sprint" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none" disabled className="text-xs text-muted-foreground">
+              {item.sprint_id ? "Ya en sprint" : "Asignar a sprint…"}
+            </SelectItem>
+            {eligibleSprints.map(s => (
+              <SelectItem key={s.id} value={s.id} className="text-xs">
+                {s.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
     </div>
   );
 }
@@ -90,20 +140,21 @@ function ItemRow({ item, idx, onChangeStatus }: { item: ScrumWorkItem; idx?: num
 // Vistas
 // ─────────────────────────────────────────────────────────────────────────
 
-function ListView({ items, onChangeStatus }: { items: ScrumWorkItem[]; onChangeStatus: Props["onChangeStatus"] }) {
+function ListView({ items, onChangeStatus, activeSprints }: { items: ScrumWorkItem[]; onChangeStatus: Props["onChangeStatus"]; activeSprints?: UnifiedSprint[] }) {
   return (
     <div className="space-y-1 max-h-[640px] overflow-auto pr-1">
-      {items.map((item, idx) => <ItemRow key={`${item.source}-${item.id}`} item={item} idx={idx} onChangeStatus={onChangeStatus} />)}
+      {items.map((item, idx) => <ItemRow key={`${item.source}-${item.id}`} item={item} idx={idx} onChangeStatus={onChangeStatus} activeSprints={activeSprints} />)}
     </div>
   );
 }
 
 function GroupedView({
-  items, groupBy, onChangeStatus,
+  items, groupBy, onChangeStatus, activeSprints,
 }: {
   items: ScrumWorkItem[];
   groupBy: (item: ScrumWorkItem) => string;
   onChangeStatus: Props["onChangeStatus"];
+  activeSprints?: UnifiedSprint[];
 }) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const groups = useMemo(() => {
@@ -153,7 +204,7 @@ function GroupedView({
             {!isCollapsed && (
               <div className="p-2 space-y-1 bg-card">
                 {g.items.map((item, idx) => (
-                  <ItemRow key={`${item.source}-${item.id}`} item={item} idx={idx} onChangeStatus={onChangeStatus} />
+                  <ItemRow key={`${item.source}-${item.id}`} item={item} idx={idx} onChangeStatus={onChangeStatus} activeSprints={activeSprints} />
                 ))}
               </div>
             )}
@@ -227,7 +278,7 @@ const VIEWS: Array<{ value: ViewMode; label: string; Icon: LucideIcon; title: st
   { value: "table",     label: "Tabla",          Icon: TableIcon,  title: "Vista compacta" },
 ];
 
-export function BacklogView({ items, hasActiveFilters, onChangeStatus }: Props) {
+export function BacklogView({ items, hasActiveFilters, onChangeStatus, activeSprints }: Props) {
   const [view, setView] = useState<ViewMode>("list");
   const current = VIEWS.find(v => v.value === view)!;
 
@@ -267,11 +318,11 @@ export function BacklogView({ items, hasActiveFilters, onChangeStatus }: Props) 
         {items.length === 0 ? (
           <EmptyBacklog hasActiveFilters={hasActiveFilters} />
         ) : view === "list" ? (
-          <ListView items={items} onChangeStatus={onChangeStatus} />
+          <ListView items={items} onChangeStatus={onChangeStatus} activeSprints={activeSprints} />
         ) : view === "by-client" ? (
-          <GroupedView items={items} groupBy={(i) => i.client_name || "Sin cliente"} onChangeStatus={onChangeStatus} />
+          <GroupedView items={items} groupBy={(i) => i.client_name || "Sin cliente"} onChangeStatus={onChangeStatus} activeSprints={activeSprints} />
         ) : view === "by-owner" ? (
-          <GroupedView items={items} groupBy={(i) => (i.owner && i.owner !== "—") ? i.owner : "Sin responsable"} onChangeStatus={onChangeStatus} />
+          <GroupedView items={items} groupBy={(i) => (i.owner && i.owner !== "—") ? i.owner : "Sin responsable"} onChangeStatus={onChangeStatus} activeSprints={activeSprints} />
         ) : (
           <TableView items={items} onChangeStatus={onChangeStatus} />
         )}

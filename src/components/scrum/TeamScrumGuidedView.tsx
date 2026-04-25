@@ -20,6 +20,7 @@ import { SprintBoard } from "./SprintBoard";
 import { DailyStandupPanel } from "./DailyStandupPanel";
 import { FordLineView } from "./FordLineView";
 import { BacklogView } from "./BacklogView";
+import { SprintPlanner } from "./SprintPlanner";
 import { SVAStrategyPanel } from "./SVAStrategyPanel";
 import { SprintManager } from "./SprintManager";
 import { SprintAnalytics } from "./SprintAnalytics";
@@ -33,6 +34,7 @@ import type { ScrumWorkItem } from "@/hooks/useTeamScrum";
 type PresetKey =
   | "sprint_activo"
   | "tablero" | "daily" | "flujo"
+  | "planner"
   | "backlog" | "estrategia"
   | "sprints"
   | "reportes" | "sprint_analytics";
@@ -80,8 +82,15 @@ const PRESETS: Preset[] = [
   },
   // ── PLANIFICACIÓN ──
   {
+    key: "planner", title: "Planificación de sprint",
+    description: "Drag-drop entre backlog y sprint activo. Mover items en ambos sentidos.",
+    Icon: Target, tone: "bg-cyan-500/10 text-cyan-500 border-cyan-500/30",
+    gradient: "from-cyan-500/10 via-cyan-500/5 to-transparent",
+    accent: "text-cyan-500 ring-cyan-500/30", category: "planificacion",
+  },
+  {
     key: "backlog", title: "Backlog",
-    description: "Items priorizados por WSJF, listos para próximo sprint.",
+    description: "Items priorizados por WSJF. Asigná directo al sprint con un click.",
     Icon: ListOrdered, tone: "bg-emerald-500/10 text-emerald-500 border-emerald-500/30",
     gradient: "from-emerald-500/10 via-emerald-500/5 to-transparent",
     accent: "text-emerald-500 ring-emerald-500/30", category: "planificacion",
@@ -208,7 +217,8 @@ export function TeamScrumGuidedView(props: Props) {
       case "tablero":           return <SprintBoard items={props.sprintItems} activeSprints={props.activeSprints} onMove={props.onScrumStatusChange} />;
       case "daily":             return <DailyStandupPanel />;
       case "flujo":             return <FordLineView items={props.filteredItems} onMove={(item, status) => props.onScrumStatusChange(item, status)} title="Flujo del equipo" />;
-      case "backlog":           return <BacklogView items={props.backlog} hasActiveFilters={props.hasActiveFilters} onChangeStatus={props.onScrumStatusChange} />;
+      case "planner":           return <SprintPlanner backlog={props.backlog} sprintItems={props.sprintItems} activeSprints={props.activeSprints} />;
+      case "backlog":           return <BacklogView items={props.backlog} hasActiveFilters={props.hasActiveFilters} onChangeStatus={props.onScrumStatusChange} activeSprints={props.activeSprints} />;
       case "estrategia":        return <SVAStrategyPanel />;
       case "sprints":           return <SprintManager />;
       case "reportes":          return (
