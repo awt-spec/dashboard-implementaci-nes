@@ -134,13 +134,80 @@ export function ExecutiveOverview() {
     fontSize: 12,
   };
 
+  // ─── Pulso del día — insights accionables ───
+  const now = new Date();
+  const greeting = now.getHours() < 12 ? "Buenos días" : now.getHours() < 19 ? "Buenas tardes" : "Buenas noches";
+  const criticalSupportOpen = supportTickets.filter(t =>
+    /critica/i.test(t.prioridad || "") && !["CERRADA", "ANULADA"].includes(t.estado)
+  ).length;
+  const dueSoonDeliverables = allDeliverables.filter(d => {
+    if (d.status === "aprobado" || d.status === "entregado") return false;
+    if (!d.dueDate) return false;
+    const days = (new Date(d.dueDate).getTime() - now.getTime()) / 86400000;
+    return days >= 0 && days <= 7;
+  }).length;
+  const overdueDeliverables = allDeliverables.filter(d => {
+    if (d.status === "aprobado" || d.status === "entregado") return false;
+    if (!d.dueDate) return false;
+    return new Date(d.dueDate).getTime() < now.getTime();
+  }).length;
+
   return (
     <div className="space-y-6">
-      {/* Presentation button */}
-      <div className="flex justify-end">
-        <Button onClick={() => setShowPresentation(true)} className="gap-2">
-          <Presentation className="h-4 w-4" /> Presentación Ejecutiva
-        </Button>
+      {/* ════ HERO: Pulso del día ════ */}
+      <div className="relative overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/5 via-card to-card p-6">
+        <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+        <div className="relative flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex-1 min-w-[280px]">
+            <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-primary mb-1">
+              Resumen ejecutivo · {now.toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" })}
+            </p>
+            <h1 className="text-2xl md:text-3xl font-black leading-tight">{greeting}.</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              {atRisk > 0 ? `Hay ${atRisk} cliente${atRisk === 1 ? "" : "s"} en riesgo` :
+               criticalSupportOpen > 0 ? `${criticalSupportOpen} caso${criticalSupportOpen === 1 ? "" : "s"} crítico${criticalSupportOpen === 1 ? "" : "s"} sin cerrar` :
+               overdueDeliverables > 0 ? `${overdueDeliverables} entregable${overdueDeliverables === 1 ? "" : "s"} vencido${overdueDeliverables === 1 ? "" : "s"}` :
+               "Todo bajo control 🚀"}
+            </p>
+
+            {/* Insights inline accionables */}
+            <div className="flex items-center gap-2 mt-4 flex-wrap">
+              {atRisk > 0 && (
+                <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-destructive/10 text-destructive border border-destructive/30 text-xs font-semibold">
+                  <AlertOctagon className="h-3 w-3" /> {atRisk} en riesgo
+                </span>
+              )}
+              {criticalSupportOpen > 0 && (
+                <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-destructive/10 text-destructive border border-destructive/30 text-xs font-semibold">
+                  <ShieldAlert className="h-3 w-3" /> {criticalSupportOpen} críticos abiertos
+                </span>
+              )}
+              {overdueDeliverables > 0 && (
+                <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-warning/10 text-warning border border-warning/30 text-xs font-semibold">
+                  <AlertTriangle className="h-3 w-3" /> {overdueDeliverables} entregables vencidos
+                </span>
+              )}
+              {dueSoonDeliverables > 0 && (
+                <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-info/10 text-info border border-info/30 text-xs font-semibold">
+                  <Clock className="h-3 w-3" /> {dueSoonDeliverables} vencen en 7 días
+                </span>
+              )}
+              {totalRisks > 0 && (
+                <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-muted text-muted-foreground border border-border text-xs font-semibold">
+                  <FileCheck className="h-3 w-3" /> {totalRisks} alertas activas
+                </span>
+              )}
+              {atRisk === 0 && criticalSupportOpen === 0 && overdueDeliverables === 0 && totalRisks === 0 && (
+                <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-success/10 text-success border border-success/30 text-xs font-semibold">
+                  <CheckCircle className="h-3 w-3" /> Sin alertas
+                </span>
+              )}
+            </div>
+          </div>
+          <Button onClick={() => setShowPresentation(true)} className="gap-2 shrink-0">
+            <Presentation className="h-4 w-4" /> Presentación
+          </Button>
+        </div>
       </div>
       <ExecutivePresentation clients={clients} supportTickets={supportTickets} supportClients={supportClients} open={showPresentation} onClose={() => setShowPresentation(false)} />
 

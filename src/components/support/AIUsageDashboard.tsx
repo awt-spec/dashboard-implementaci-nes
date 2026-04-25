@@ -24,12 +24,25 @@ function ClassificationTab() {
   const classified = useMemo(() => tickets.filter(t => t.ai_classification), [tickets]);
   const unclassified = useMemo(() => tickets.filter(t => !t.ai_classification), [tickets]);
   const classificationRate = tickets.length > 0 ? Math.round((classified.length / tickets.length) * 100) : 0;
+  const criticalCount = classified.filter(t => t.ai_risk_level === "critical").length;
 
-  const categoryData = useMemo(() => {
-    const counts: Record<string, number> = {};
-    classified.forEach(t => { counts[t.ai_classification!] = (counts[t.ai_classification!] || 0) + 1; });
-    return Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  // Categorías con ejemplos de tickets (top 3 por categoría)
+  const categoriesWithSamples = useMemo(() => {
+    const grouped = new Map<string, { count: number; samples: any[]; risk: Record<string, number> }>();
+    classified.forEach(t => {
+      const cat = t.ai_classification!;
+      if (!grouped.has(cat)) grouped.set(cat, { count: 0, samples: [], risk: {} });
+      const g = grouped.get(cat)!;
+      g.count++;
+      if (g.samples.length < 3) g.samples.push(t);
+      if (t.ai_risk_level) g.risk[t.ai_risk_level] = (g.risk[t.ai_risk_level] || 0) + 1;
+    });
+    return Array.from(grouped.entries())
+      .map(([name, v]) => ({ name, ...v }))
+      .sort((a, b) => b.count - a.count);
   }, [classified]);
+
+  const categoryData = categoriesWithSamples.map(c => ({ name: c.name, value: c.count }));
 
   const riskData = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -53,34 +66,74 @@ function ClassificationTab() {
     }).filter(c => c.total > 0).sort((a, b) => b.total - a.total);
   }, [clients, tickets]);
 
-  const kpis = [
-    { label: "Total Tickets", value: tickets.length, icon: Activity, color: "text-blue-400" },
-    { label: "IA Clasificados", value: classified.length, icon: Brain, color: "text-violet-400" },
-    { label: "Sin Clasificar", value: unclassified.length, icon: Clock, color: "text-amber-400" },
-    { label: "Cobertura IA", value: `${classificationRate}%`, icon: Sparkles, color: "text-emerald-400" },
-    { label: "Categorías", value: categoryData.length, icon: Zap, color: "text-primary" },
-    { label: "Críticos IA", value: classified.filter(t => t.ai_risk_level === "critical").length, icon: AlertTriangle, color: "text-destructive" },
-  ];
+  const topCategoryName = categoriesWithSamples[0]?.name || "—";
+  const lowCoverageClients = clientCoverage.filter(c => c.pct < 50 && c.total > 2).length;
+
+  const riskColor = (risk: string) => {
+    if (risk === "critical") return "text-destructive bg-destructive/10 border-destructive/30";
+    if (risk === "high")     return "text-warning bg-warning/10 border-warning/30";
+    if (risk === "medium")   return "text-info bg-info/10 border-info/30";
+    return "text-success bg-success/10 border-success/30";
+  };
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {kpis.map((kpi, i) => (
-          <motion.div key={kpi.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-            <Card className="border-border/50">
-              <CardContent className="p-3 flex items-center gap-3">
-                <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
-                </div>
-                <div>
-                  <p className="text-xl font-black text-foreground">{kpi.value}</p>
-                  <p className="text-[9px] text-muted-foreground uppercase tracking-wide leading-tight">{kpi.label}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
+      {/* ════ HERO: cobertura visual + insight ════ */}
+      <Card className="relative overflow-hidden border-violet-500/20 bg-gradient-to-br from-violet-500/5 via-card to-card">
+        <div className="absolute -top-12 -right-12 h-40 w-40 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+        <CardContent className="p-5 relative">
+          <div className="flex items-start gap-5 flex-wrap">
+            {/* Donut cobertura */}
+            <div className="relative h-28 w-28 shrink-0">
+              <svg viewBox="0 0 100 100" className="transform -rotate-90 h-full w-full">
+                <circle cx="50" cy="50" r="42" stroke="hsl(var(--muted))" strokeWidth="9" fill="none" />
+                <motion.circle
+                  cx="50" cy="50" r="42" stroke="hsl(280 60% 60%)" strokeWidth="9" fill="none" strokeLinecap="round"
+                  strokeDasharray={`${2 * Math.PI * 42}`}
+                  initial={{ strokeDashoffset: 2 * Math.PI * 42 }}
+                  animate={{ strokeDashoffset: 2 * Math.PI * 42 * (1 - classificationRate / 100) }}
+                  transition={{ duration: 1, ease: "easeOut" }}
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-2xl font-black tabular-nums leading-none">{classificationRate}%</span>
+                <span className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">cobertura</span>
+              </div>
+            </div>
+
+            {/* Stats + insight */}
+            <div className="flex-1 min-w-[260px]">
+              <div className="flex items-center gap-2 mb-1">
+                <Brain className="h-4 w-4 text-violet-400" />
+                <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-violet-400">Clasificación IA</p>
+              </div>
+              <p className="text-base font-bold leading-tight">
+                {classified.length} de {tickets.length} casos analizados
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {classificationRate >= 80 ? "Cobertura excelente" :
+                 classificationRate >= 50 ? "Buena cobertura, podés clasificar el resto" :
+                 unclassified.length > 0 ? `${unclassified.length} casos pendientes — clasificá desde Soporte` :
+                 "Sin tickets para clasificar"}
+              </p>
+
+              <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-border/40">
+                <ClassKpi label="Categorías detectadas" value={categoriesWithSamples.length} sub={topCategoryName !== "—" ? `Top: ${topCategoryName}` : ""} />
+                <ClassKpi label="Casos críticos" value={criticalCount} tone={criticalCount > 0 ? "text-destructive" : "text-muted-foreground"} sub={criticalCount > 0 ? "Atención inmediata" : "Sin críticos"} />
+                <ClassKpi label="Sin clasificar" value={unclassified.length} tone={unclassified.length > 0 ? "text-warning" : "text-success"} sub={unclassified.length > 0 ? "Pendientes" : "Al día"} />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Alerta si hay clientes con baja cobertura */}
+      {lowCoverageClients > 0 && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-warning/10 border border-warning/30 text-xs">
+          <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0" />
+          <span><span className="font-bold">{lowCoverageClients} clientes</span> tienen menos del 50% de sus tickets clasificados. Andá a Soporte → "Clasificar con IA".</span>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
@@ -172,6 +225,60 @@ function ClassificationTab() {
           </div>
         </CardContent>
       </Card>
+
+      {/* ════ TOP CATEGORÍAS con ejemplos reales ════ */}
+      {categoriesWithSamples.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-violet-400" />
+              Qué está detectando la IA
+              <Badge variant="outline" className="text-[10px]">Top {Math.min(6, categoriesWithSamples.length)}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {categoriesWithSamples.slice(0, 6).map(cat => {
+              const total = cat.count;
+              const critPct = total > 0 ? Math.round(((cat.risk.critical || 0) / total) * 100) : 0;
+              return (
+                <div key={cat.name} className="rounded-xl border border-border p-3 bg-card hover:border-violet-500/30 transition-colors">
+                  <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="h-7 w-7 rounded-lg bg-violet-500/10 flex items-center justify-center shrink-0">
+                        <Brain className="h-3.5 w-3.5 text-violet-400" />
+                      </div>
+                      <p className="text-sm font-bold truncate">{cat.name}</p>
+                      <Badge variant="outline" className="text-[10px] tabular-nums shrink-0">{total} casos</Badge>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {(["critical", "high", "medium", "low"] as const).map(r => {
+                        const n = cat.risk[r] || 0;
+                        if (!n) return null;
+                        return (
+                          <Badge key={r} variant="outline" className={`text-[9px] h-5 ${riskColor(r)}`}>
+                            {riskLabels[r]} {n}
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="space-y-1 pl-9">
+                    {cat.samples.map(s => (
+                      <div key={s.id} className="text-[11px] text-muted-foreground line-clamp-1">
+                        <code className="font-mono text-foreground/70 mr-1">{s.ticket_id}</code>
+                        <span>{s.asunto}</span>
+                      </div>
+                    ))}
+                    {total > cat.samples.length && (
+                      <p className="text-[10px] text-muted-foreground/70 italic">+{total - cat.samples.length} más</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
@@ -327,6 +434,16 @@ function SecurityTab() {
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function ClassKpi({ label, value, sub, tone = "text-foreground" }: { label: string; value: number | string; sub?: string; tone?: string }) {
+  return (
+    <div>
+      <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">{label}</p>
+      <p className={`text-xl font-black tabular-nums leading-tight mt-0.5 ${tone}`}>{value}</p>
+      {sub && <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>}
     </div>
   );
 }
