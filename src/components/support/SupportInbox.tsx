@@ -7,7 +7,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import {
   Inbox, Building2, Clock, Lock, AlertTriangle, Flame, User,
   ChevronDown, ChevronRight, CheckCheck, Eye, RefreshCw, Radio, Zap,
-  Search, X, ArrowUpDown, SlidersHorizontal,
+  Search, X, ArrowUpDown, SlidersHorizontal, Plus,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -65,11 +65,13 @@ interface Props {
   /** Si se especifica, solo muestra tickets de ese cliente. */
   clientId?: string;
   onOpenTicket?: (ticket: SupportTicket) => void;
+  /** Callback opcional para crear un nuevo caso (botón en header). */
+  onNewTicket?: () => void;
 }
 
 // ─── Componente principal ───────────────────────────────────────────────
 
-export function SupportInbox({ clientId, onOpenTicket }: Props) {
+export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
   const { data: tickets = [], isLoading, refetch } = useInboxTickets();
   const { data: clients = [] } = useSupportClients();
   const update = useUpdateSupportTicket();
@@ -413,6 +415,11 @@ export function SupportInbox({ clientId, onOpenTicket }: Props) {
           <Button size="sm" variant="ghost" onClick={() => refetch()} className="h-8 gap-1 text-xs">
             <RefreshCw className="h-3.5 w-3.5" /> Refrescar
           </Button>
+          {onNewTicket && (
+            <Button size="sm" onClick={onNewTicket} className="h-8 gap-1.5 text-xs">
+              <Plus className="h-3.5 w-3.5" /> Nuevo caso
+            </Button>
+          )}
         </div>
       </div>
 

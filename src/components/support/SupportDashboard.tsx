@@ -93,6 +93,7 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
   const [transferring, setTransferring] = useState(false);
   const [newTicketOpen, setNewTicketOpen] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>("inbox");
 
   const isClientView = !!initialClientId;
 
@@ -321,7 +322,10 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
         </motion.div>
       )}
 
-      {/* KPI Cards - scoped */}
+      {/* KPI Cards + Filtros — ocultos en Bandeja (que tiene su propio header
+          dedicado y se beneficia de menos ruido visual). Visibles en Explorar. */}
+      {activeTab !== "inbox" && (
+      <>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
           { label: "Casos Activos", value: totalActive, icon: Ticket, color: "text-blue-400" },
@@ -408,6 +412,8 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
           <Settings className="h-3.5 w-3.5" />
         </Button>
       </div>
+      </>
+      )}
 
       <NewTicketForm
         open={newTicketOpen}
@@ -416,7 +422,7 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
         mode="admin"
       />
 
-      <Tabs defaultValue="inbox">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="flex-wrap">
           <TabsTrigger value="inbox" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Inbox className="h-3.5 w-3.5" /> Bandeja
@@ -439,6 +445,7 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
         <TabsContent value="inbox" className="mt-4">
           <SupportInbox
             clientId={isClientView ? initialClientId : (selectedClient !== "all" ? selectedClient : undefined)}
+            onNewTicket={() => setNewTicketOpen(true)}
           />
         </TabsContent>
 
