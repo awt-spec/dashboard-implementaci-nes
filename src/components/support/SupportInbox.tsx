@@ -85,6 +85,7 @@ export function SupportInbox({ clientId, onOpenTicket }: Props) {
   const [quickFilter, setQuickFilter] = useState<"all" | "critical" | "new24h" | "cliente" | "pendiente" | "enatencion">("all");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"priority" | "age" | "client">("priority");
+  const [groupBy, setGroupBy] = useState<"cliente" | "prioridad" | "estado" | "antiguedad" | "flat">("cliente");
 
   // Re-lookup desde la lista para que los cambios optimistic (via useUpdateSupportTicket)
   // se reflejen sin cerrar/reabrir el sheet.
@@ -115,50 +116,146 @@ export function SupportInbox({ clientId, onOpenTicket }: Props) {
     });
   }, [scopedTickets, quickFilter, search]);
 
-  // ── Agrupar por cliente ──
+  // ── Grouping + sorting genérico ──
   const grouped = useMemo(() => {
-    const byClient = new Map<string, SupportTicket[]>();
-    filteredTickets.forEach(t => {
-      if (!byClient.has(t.client_id)) byClient.set(t.client_id, []);
-      byClient.get(t.client_id)!.push(t);
-    });
+    interface Group {
+      key: string;
+      label: string;
+      sublabel?: string;
+      IconTag: any;
+      iconTone: string;
+      items: SupportTicket[];
+      critical: number;
+      fromClient: number;
+      pending: number;
+      total: number;
+      /** Peso numérico para orden relativo (menor = arriba). */
+      weight: number;
+    }
 
-    return Array.from(byClient.entries())
-      .map(([id, items]) => {
+    // Helper: enriquece items de un grupo con contadores
+    const makeGroup = (partial: Omit<Group, "critical" | "fromClient" | "pending" | "total">): Group => {
+      const critical = partial.items.filter(t => /critica/i.test(t.prioridad || "")).length;
+      const fromClient = partial.items.filter(t => t.fuente === "cliente").length;
+      const pending = partial.items.filter(t => t.estado === "PENDIENTE").length;
+      return { ...partial, critical, fromClient, pending, total: partial.items.length };
+    };
+
+    // Sort interno de items dentro de cada grupo
+    const sortItems = (items: SupportTicket[]) =>
+      items.sort((a, b) => {
+        if (a.estado === "PENDIENTE" && b.estado !== "PENDIENTE") return -1;
+        if (b.estado === "PENDIENTE" && a.estado !== "PENDIENTE") return 1;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+
+    let groups: Group[] = [];
+
+    if (groupBy === "flat") {
+      groups = [makeGroup({
+        key: "all", label: "Todos los casos", IconTag: Inbox, iconTone: "text-primary bg-primary/10",
+        items: sortItems([...filteredTickets]),
+        weight: 0,
+      })];
+    } else if (groupBy === "prioridad") {
+      const buckets = [
+        { key: "critica", label: "Crítica", match: (t: SupportTicket) => /critica/i.test(t.prioridad || ""), IconTag: Flame, iconTone: "text-destructive bg-destructive/10", weight: 0 },
+        { key: "alta",    label: "Alta",    match: (t: SupportTicket) => t.prioridad === "Alta",             IconTag: AlertTriangle, iconTone: "text-warning bg-warning/10", weight: 1 },
+        { key: "media",   label: "Media",   match: (t: SupportTicket) => t.prioridad === "Media",            IconTag: Clock, iconTone: "text-info bg-info/10", weight: 2 },
+        { key: "baja",    label: "Baja",    match: (t: SupportTicket) => t.prioridad === "Baja",             IconTag: Clock, iconTone: "text-muted-foreground bg-muted/40", weight: 3 },
+      ];
+      groups = buckets
+        .map(b => makeGroup({ ...b, items: sortItems(filteredTickets.filter(b.match)) }))
+        .filter(g => g.total > 0);
+    } else if (groupBy === "estado") {
+      const buckets = [
+        { key: "PENDIENTE",    label: "PENDIENTE",    IconTag: Clock,         iconTone: "text-warning bg-warning/10", weight: 0 },
+        { key: "EN ATENCIÓN",  label: "EN ATENCIÓN",  IconTag: AlertTriangle, iconTone: "text-info bg-info/10",        weight: 1 },
+      ];
+      groups = buckets
+        .map(b => makeGroup({
+          key: b.key, label: b.label, IconTag: b.IconTag, iconTone: b.iconTone, weight: b.weight,
+          items: sortItems(filteredTickets.filter(t => t.estado === b.key)),
+        }))
+        .filter(g => g.total > 0);
+    } else if (groupBy === "antiguedad") {
+      const now = Date.now();
+      const dayMs = 24 * 60 * 60 * 1000;
+      const buckets = [
+        { key: "hoy",     label: "Hoy",              min: 0,         max: 1,      IconTag: Zap,           iconTone: "text-primary bg-primary/10",          weight: 0 },
+        { key: "semana",  label: "Esta semana",      min: 1,         max: 7,      IconTag: Clock,         iconTone: "text-info bg-info/10",                weight: 1 },
+        { key: "mes",     label: "Este mes",         min: 7,         max: 30,     IconTag: Clock,         iconTone: "text-warning bg-warning/10",          weight: 2 },
+        { key: "viejos",  label: "Más de un mes",    min: 30,        max: Infinity, IconTag: AlertTriangle, iconTone: "text-destructive bg-destructive/10", weight: 3 },
+      ];
+      groups = buckets
+        .map(b => {
+          const items = filteredTickets.filter(t => {
+            const daysOld = (now - new Date(t.created_at).getTime()) / dayMs;
+            return daysOld >= b.min && daysOld < b.max;
+          });
+          return makeGroup({ key: b.key, label: b.label, IconTag: b.IconTag, iconTone: b.iconTone, weight: b.weight, items: sortItems(items) });
+        })
+        .filter(g => g.total > 0);
+    } else {
+      // cliente (default)
+      const byClient = new Map<string, SupportTicket[]>();
+      filteredTickets.forEach(t => {
+        if (!byClient.has(t.client_id)) byClient.set(t.client_id, []);
+        byClient.get(t.client_id)!.push(t);
+      });
+      groups = Array.from(byClient.entries()).map(([id, items]) => {
         const client = clients.find(c => c.id === id);
-        const critical = items.filter(t => /critica/i.test(t.prioridad || "")).length;
-        const fromClient = items.filter(t => t.fuente === "cliente").length;
-        const pending = items.filter(t => t.estado === "PENDIENTE").length;
-        return {
-          clientId: id,
-          clientName: client?.name || id,
-          nivelServicio: client?.nivel_servicio || "Base",
-          items: items.sort((a, b) => {
-            // pendientes primero, luego por fecha desc
-            if (a.estado === "PENDIENTE" && b.estado !== "PENDIENTE") return -1;
-            if (b.estado === "PENDIENTE" && a.estado !== "PENDIENTE") return 1;
-            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-          }),
-          critical,
-          fromClient,
-          pending,
-          total: items.length,
-        };
-      })
-      .sort((a, b) => {
-        // Orden por sortBy user-selected, fallback a críticos > cliente > pending
-        if (sortBy === "client") return a.clientName.localeCompare(b.clientName);
+        return makeGroup({
+          key: id,
+          label: client?.name || id,
+          sublabel: client?.nivel_servicio || "Base",
+          IconTag: Building2,
+          iconTone: "text-primary bg-primary/10",
+          items: sortItems(items),
+          weight: 0, // se usa sortBy abajo para orden entre grupos
+        });
+      });
+    }
+
+    // Orden entre grupos según sortBy (aplica cuando groupBy = cliente). Para
+    // otros agrupadores, respetamos el weight (orden natural: críticos primero, etc.)
+    if (groupBy === "cliente") {
+      groups.sort((a, b) => {
+        if (sortBy === "client") return a.label.localeCompare(b.label);
         if (sortBy === "age") {
           const oldestA = Math.min(...a.items.map(t => new Date(t.created_at).getTime()));
           const oldestB = Math.min(...b.items.map(t => new Date(t.created_at).getTime()));
-          return oldestA - oldestB; // más viejos primero
+          return oldestA - oldestB;
         }
-        // priority (default)
+        // priority
         if (a.critical !== b.critical) return b.critical - a.critical;
         if (a.fromClient !== b.fromClient) return b.fromClient - a.fromClient;
         return b.pending - a.pending;
       });
-  }, [filteredTickets, clients, sortBy]);
+    } else {
+      groups.sort((a, b) => a.weight - b.weight);
+    }
+
+    return groups;
+  }, [filteredTickets, clients, sortBy, groupBy]);
+
+  // ── Urgent spotlight: top 3 tickets más críticos globalmente ──
+  const urgentSpotlight = useMemo(() => {
+    const now = Date.now();
+    const score = (t: SupportTicket) => {
+      const hoursOld = (now - new Date(t.created_at).getTime()) / (1000 * 60 * 60);
+      const isCritical = /critica/i.test(t.prioridad || "") ? 100 : 0;
+      const isHigh = t.prioridad === "Alta" ? 40 : 0;
+      const isPending = t.estado === "PENDIENTE" ? 30 : 0;
+      const fromClient = t.fuente === "cliente" ? 20 : 0;
+      const ageBonus = Math.min(hoursOld / 24, 10) * 2; // +2 por día, max +20
+      return isCritical + isHigh + isPending + fromClient + ageBonus;
+    };
+    return [...scopedTickets]
+      .sort((a, b) => score(b) - score(a))
+      .slice(0, 3)
+      .filter(t => score(t) >= 50); // solo si realmente es urgente
+  }, [scopedTickets]);
 
   // ── Realtime subscription: escucha INSERT + UPDATE para refrescar sin polling ──
   useEffect(() => {
@@ -286,18 +383,33 @@ export function SupportInbox({ clientId, onOpenTicket }: Props) {
             </p>
           </div>
         </div>
-        <div className="ml-auto flex items-center gap-2">
-          <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
+        <div className="ml-auto flex items-center gap-2 flex-wrap">
+          <Select value={groupBy} onValueChange={(v) => setGroupBy(v as any)}>
             <SelectTrigger className="h-8 w-[170px] text-xs">
-              <ArrowUpDown className="h-3 w-3 mr-1.5" />
+              <SlidersHorizontal className="h-3 w-3 mr-1.5" />
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="priority" className="text-xs">Por prioridad</SelectItem>
-              <SelectItem value="age" className="text-xs">Más antiguos primero</SelectItem>
-              <SelectItem value="client" className="text-xs">Por cliente A-Z</SelectItem>
+              <SelectItem value="cliente" className="text-xs">Agrupar por cliente</SelectItem>
+              <SelectItem value="prioridad" className="text-xs">Agrupar por prioridad</SelectItem>
+              <SelectItem value="estado" className="text-xs">Agrupar por estado</SelectItem>
+              <SelectItem value="antiguedad" className="text-xs">Agrupar por antigüedad</SelectItem>
+              <SelectItem value="flat" className="text-xs">Lista plana (sin grupos)</SelectItem>
             </SelectContent>
           </Select>
+          {groupBy === "cliente" && (
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
+              <SelectTrigger className="h-8 w-[170px] text-xs">
+                <ArrowUpDown className="h-3 w-3 mr-1.5" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="priority" className="text-xs">Prioridad</SelectItem>
+                <SelectItem value="age" className="text-xs">Más antiguos</SelectItem>
+                <SelectItem value="client" className="text-xs">Alfabético</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
           <Button size="sm" variant="ghost" onClick={() => refetch()} className="h-8 gap-1 text-xs">
             <RefreshCw className="h-3.5 w-3.5" /> Refrescar
           </Button>
@@ -320,6 +432,50 @@ export function SupportInbox({ clientId, onOpenTicket }: Props) {
           </Card>
         ))}
       </div>
+
+      {/* Urgent spotlight — top 3 más urgentes globalmente */}
+      {urgentSpotlight.length > 0 && (
+        <Card className="border-destructive/40 bg-gradient-to-r from-destructive/5 to-transparent">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="h-6 w-6 rounded-lg bg-destructive/15 flex items-center justify-center">
+                <Flame className="h-3.5 w-3.5 text-destructive" />
+              </div>
+              <p className="text-xs font-bold">Atención inmediata</p>
+              <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/30">
+                {urgentSpotlight.length}
+              </Badge>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              {urgentSpotlight.map(t => {
+                const s = priorityStyle(t.prioridad);
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => { setSelectedTicketId(t.id); setDetailOpen(true); }}
+                    className={cn(
+                      "text-left p-2.5 rounded-lg border transition-colors hover:bg-muted/30",
+                      s.border, "bg-card"
+                    )}
+                  >
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <s.Icon className={cn("h-3 w-3", s.text)} />
+                      <code className="text-[10px] font-mono font-bold text-muted-foreground">{t.ticket_id}</code>
+                      <Badge variant="outline" className="text-[9px] h-4 ml-auto">
+                        {t.estado}
+                      </Badge>
+                    </div>
+                    <p className="text-xs font-semibold line-clamp-2 leading-snug">{t.asunto}</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      {formatDistanceToNow(new Date(t.created_at), { addSuffix: true, locale: es })}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filtros rápidos + búsqueda */}
       <div className="flex items-center gap-2 flex-wrap">
@@ -408,27 +564,30 @@ export function SupportInbox({ clientId, onOpenTicket }: Props) {
       ) : (
         <div className="space-y-3">
           {grouped.map(group => {
-            const isOpen = !collapsed.has(group.clientId);
+            const isOpen = !collapsed.has(group.key);
+            const Icon = group.IconTag;
             return (
-              <Card key={group.clientId} className={group.critical > 0 ? "border-destructive/40" : ""}>
-                <Collapsible open={isOpen} onOpenChange={() => toggleGroup(group.clientId)}>
+              <Card key={group.key} className={group.critical > 0 ? "border-destructive/40" : ""}>
+                <Collapsible open={isOpen} onOpenChange={() => toggleGroup(group.key)}>
                   <CollapsibleTrigger className="w-full">
                     <CardHeader className="pb-3">
                       <div className="flex items-center gap-3 flex-wrap">
                         {isOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                        <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                          <Building2 className="h-4 w-4 text-primary" />
+                        <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center shrink-0", group.iconTone)}>
+                          <Icon className="h-4 w-4" />
                         </div>
                         <div className="flex-1 text-left min-w-0">
                           <CardTitle className="text-sm flex items-center gap-2">
-                            <span className="truncate">{group.clientName}</span>
-                            <Badge variant="outline" className="text-[10px]">
-                              {group.nivelServicio}
-                            </Badge>
+                            <span className="truncate">{group.label}</span>
+                            {group.sublabel && (
+                              <Badge variant="outline" className="text-[10px]">
+                                {group.sublabel}
+                              </Badge>
+                            )}
                           </CardTitle>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
-                          {group.critical > 0 && (
+                          {groupBy !== "prioridad" && group.critical > 0 && (
                             <Badge className="bg-destructive/15 text-destructive border-destructive/30 text-[10px] gap-0.5">
                               <Flame className="h-3 w-3" /> {group.critical}
                             </Badge>
