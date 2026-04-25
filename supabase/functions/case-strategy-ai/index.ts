@@ -1,6 +1,10 @@
 import { corsHeaders, corsPreflight, anthropicTool, AiError, resolvedModel } from "../_shared/cors.ts";
 import { AuthError, authErrorResponse, requireAuth, requireRole } from "../_shared/auth.ts";
 import { isTicketClosed } from "../_shared/ticketStatus.ts";
+import {
+  redactConfidentialTicket, redactConfidentialTickets,
+  logAiCall, checkRateLimit, assertNotCliente,
+} from "../_shared/aiSafety.ts";
 
 /**
  * case-strategy-ai
@@ -20,9 +24,15 @@ Deno.serve(async (req) => {
   if (pre) return pre;
   const cors = corsHeaders(req);
 
+  let ctx: any = null;
+  let ticket_id_for_log: string | null = null;
+  let was_redacted = false;
+  let client_id_for_log: string | null = null;
   try {
-    const ctx = await requireAuth(req);
+    ctx = await requireAuth(req);
+    await assertNotCliente(ctx);  // Cliente role bloqueado en TODA función IA
     await requireRole(ctx, ["admin", "pm", "gerente", "colaborador"]);
+    await checkRateLimit(ctx.adminClient, ctx.userId, FUNCTION_NAME, 30); // 30/hora
 
     const { ticket_id } = await req.json().catch(() => ({}));
     if (!ticket_id || typeof ticket_id !== "string") {
@@ -30,20 +40,24 @@ Deno.serve(async (req) => {
         status: 400, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
+    ticket_id_for_log = ticket_id;
 
     const db = ctx.adminClient;
 
-    // ─── 1. Ticket objetivo ──────────────────────────────────────────────
-    const { data: ticket, error: ticketErr } = await db
+    // ─── 1. Ticket objetivo (redactado si confidencial) ──────────────────
+    const { data: rawTicket, error: ticketErr } = await db
       .from("support_tickets")
       .select("*")
       .eq("id", ticket_id)
       .single();
-    if (ticketErr || !ticket) {
+    if (ticketErr || !rawTicket) {
       return new Response(JSON.stringify({ error: "Caso no encontrado" }), {
         status: 404, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
+    client_id_for_log = rawTicket.client_id ?? null;
+    const { ticket, redacted: redactedMain } = redactConfidentialTicket(rawTicket);
+    was_redacted = redactedMain;
 
     // ─── 2. Cliente + contrato + SLA ─────────────────────────────────────
     const [clientR, contractsR, slasR, financialsR] = await Promise.all([
@@ -265,40 +279,59 @@ Deno.serve(async (req) => {
       model: MODEL,
     }).select().single();
 
-    await db.from("ai_usage_logs").insert({
+    // Audit log unificado (incluye user_id + scope + redacted flag)
+    await logAiCall(db, {
       function_name: FUNCTION_NAME,
       model: resolvedModel(MODEL),
+      user_id: ctx.userId,
+      scope: ticket_id,
+      client_id: ticket.client_id,
+      redacted: was_redacted,
+      status: "success",
       prompt_tokens: usage.input_tokens,
       completion_tokens: usage.output_tokens,
       total_tokens: usage.total_tokens,
-      status: "success",
-      client_id: ticket.client_id,
-      metadata: { ticket_id: ticket.ticket_id, scope: ticket_id },
+      metadata: { ticket_id: ticket.ticket_id },
     });
 
     return new Response(JSON.stringify({ success: true, analysis, id: saved?.id }), {
       headers: { ...cors, "Content-Type": "application/json" },
     });
   } catch (e: any) {
-    if (e instanceof AuthError) return authErrorResponse(e, cors);
+    if (e instanceof AuthError) {
+      // Loggear rate-limit / unauthorized también (señal útil para admin)
+      if (ctx?.adminClient) {
+        await logAiCall(ctx.adminClient, {
+          function_name: FUNCTION_NAME, model: MODEL,
+          user_id: ctx.userId, scope: ticket_id_for_log, client_id: client_id_for_log,
+          redacted: was_redacted,
+          status: e.status === 429 ? "rate_limited" : "error",
+          error_message: e.message,
+        });
+      }
+      return authErrorResponse(e, cors);
+    }
     if (e instanceof AiError) {
+      if (ctx?.adminClient) {
+        await logAiCall(ctx.adminClient, {
+          function_name: FUNCTION_NAME, model: MODEL,
+          user_id: ctx.userId, scope: ticket_id_for_log, client_id: client_id_for_log,
+          redacted: was_redacted, status: "error", error_message: e.message,
+        });
+      }
       return new Response(JSON.stringify({ error: e.message }), {
         status: e.status, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
     console.error("case-strategy-ai error:", e);
-    // Intentar loggear el fallo (best-effort)
-    try {
-      const ctx = await requireAuth(req).catch(() => null);
-      if (ctx) {
-        await ctx.adminClient.from("ai_usage_logs").insert({
-          function_name: FUNCTION_NAME,
-          model: MODEL,
-          status: "error",
-          error_message: String(e?.message ?? e).slice(0, 500),
-        });
-      }
-    } catch { /* ignore */ }
+    if (ctx?.adminClient) {
+      await logAiCall(ctx.adminClient, {
+        function_name: FUNCTION_NAME, model: MODEL,
+        user_id: ctx.userId, scope: ticket_id_for_log, client_id: client_id_for_log,
+        redacted: was_redacted, status: "error",
+        error_message: String(e?.message ?? e).slice(0, 500),
+      });
+    }
     return new Response(JSON.stringify({ error: e?.message ?? "Error desconocido" }), {
       status: 500, headers: { ...cors, "Content-Type": "application/json" },
     });
