@@ -9,6 +9,13 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from "@/components/ui/dialog";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuCheckboxItem,
+} from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -18,7 +25,8 @@ import { useToast } from "@/hooks/use-toast";
 import {
   UserPlus, Shield, Briefcase, Eye, Trash2, KeyRound, Link2, Mail, User,
   Loader2, Users2, KeySquare, AlertCircle, Search, X, Copy, RefreshCw, Sparkles,
-  CheckCircle2, ShieldAlert,
+  CheckCircle2, ShieldAlert, ArrowUpDown, LayoutGrid, List, Filter,
+  ChevronDown, MailX, UserX,
 } from "lucide-react";
 import { GerenteAssignmentsDialog } from "./GerenteAssignmentsDialog";
 import { motion, AnimatePresence } from "framer-motion";
@@ -27,6 +35,9 @@ import { cn } from "@/lib/utils";
 // ─── Tipos ────────────────────────────────────────────────────────────────
 
 type StaffRole = "admin" | "pm" | "gerente" | "colaborador";
+type SortMode = "name_asc" | "name_desc" | "role" | "email";
+type ViewMode = "comfortable" | "compact";
+type TeamFilter = "all" | "with_access" | "no_access" | "inactive" | "no_email";
 
 interface UserRow {
   user_id: string;
@@ -47,30 +58,30 @@ interface SysdeTeamRow {
 
 // ─── Meta de roles ─────────────────────────────────────────────────────────
 
-const ROLE_META: Record<StaffRole, { label: string; short: string; hint: string; Icon: typeof Shield; tone: string; gradient: string }> = {
+const ROLE_META: Record<StaffRole, { label: string; short: string; hint: string; Icon: typeof Shield; tone: string; gradient: string; ring: string }> = {
   admin: {
     label: "Administrador", short: "Admin",
     hint: "Acceso total: usuarios, RBAC, configuración del sistema, IA.",
     Icon: ShieldAlert, tone: "bg-destructive/15 text-destructive border-destructive/30",
-    gradient: "from-destructive/20 to-destructive/5",
+    gradient: "from-destructive/20 to-destructive/5", ring: "ring-destructive/40",
   },
   pm: {
     label: "Project Manager", short: "PM",
     hint: "Gestiona clientes, sprints, equipo y backlog. Sin admin de sistema.",
     Icon: Briefcase, tone: "bg-primary/15 text-primary border-primary/30",
-    gradient: "from-primary/20 to-primary/5",
+    gradient: "from-primary/20 to-primary/5", ring: "ring-primary/40",
   },
   gerente: {
     label: "Gerente (Cliente)", short: "Gerente",
     hint: "Gerente del lado cliente — ve clientes asignados, no edita.",
     Icon: Eye, tone: "bg-amber-500/15 text-amber-500 border-amber-500/30",
-    gradient: "from-amber-500/20 to-amber-500/5",
+    gradient: "from-amber-500/20 to-amber-500/5", ring: "ring-amber-500/40",
   },
   colaborador: {
     label: "Colaborador SYSDE", short: "Colab",
     hint: "Equipo SYSDE — registra horas, atiende casos, daily, scrum.",
     Icon: User, tone: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30",
-    gradient: "from-emerald-500/20 to-emerald-500/5",
+    gradient: "from-emerald-500/20 to-emerald-500/5", ring: "ring-emerald-500/40",
   },
 };
 
@@ -106,6 +117,8 @@ function generatePassword(): string {
   return pwd;
 }
 
+const ROLE_ORDER: Record<string, number> = { admin: 0, pm: 1, gerente: 2, colaborador: 3, "sin rol": 99 };
+
 // ═══════════════════════════════════════════════════════════════════════════
 // COMPONENTE PRINCIPAL
 // ═══════════════════════════════════════════════════════════════════════════
@@ -114,8 +127,19 @@ export function SystemUsersTab() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [team, setTeam] = useState<SysdeTeamRow[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Filtros para usuarios
   const [search, setSearch] = useState("");
-  const [filterRole, setFilterRole] = useState<StaffRole | "all">("all");
+  const [roleFilter, setRoleFilter] = useState<Set<StaffRole>>(new Set());
+  const [showNoRole, setShowNoRole] = useState(false);
+  const [sort, setSort] = useState<SortMode>("name_asc");
+  const [view, setView] = useState<ViewMode>("comfortable");
+
+  // Filtros para equipo SYSDE
+  const [teamSearch, setTeamSearch] = useState("");
+  const [teamFilter, setTeamFilter] = useState<TeamFilter>("all");
+
+  // Dialogs
   const [assignUserId, setAssignUserId] = useState<string | null>(null);
   const [accessMember, setAccessMember] = useState<SysdeTeamRow | null>(null);
   const { toast } = useToast();
@@ -146,7 +170,8 @@ export function SystemUsersTab() {
 
   useEffect(() => { fetchUsers(); }, []);
 
-  // Mutaciones
+  // ─── Mutaciones ─────────────────────────────────────────────────────────
+
   const handleCreate = async (args: { name: string; email: string; password: string; role: StaffRole }) => {
     const res = await supabase.functions.invoke("manage-users", {
       body: { action: "create", email: args.email, password: args.password, full_name: args.name, role: args.role },
@@ -217,27 +242,98 @@ export function SystemUsersTab() {
     fetchUsers();
   };
 
-  // Stats por rol
+  // ─── Stats / filtros derivados ─────────────────────────────────────────
+
   const stats = useMemo(() => {
-    const c = { admin: 0, pm: 0, gerente: 0, colaborador: 0, otros: 0 };
+    const c = { admin: 0, pm: 0, gerente: 0, colaborador: 0, sin_rol: 0 };
     users.forEach((u) => {
-      if (u.role in c) (c as any)[u.role] = ((c as any)[u.role] || 0) + 1;
-      else c.otros += 1;
+      if (u.role === "admin" || u.role === "pm" || u.role === "gerente" || u.role === "colaborador") {
+        c[u.role] = (c[u.role] || 0) + 1;
+      } else {
+        c.sin_rol += 1;
+      }
     });
     return c;
   }, [users]);
 
-  // Filtrado + búsqueda
+  const teamStats = useMemo(() => {
+    const c = { total: team.length, with_access: 0, no_access: 0, inactive: 0, no_email: 0 };
+    team.forEach((m) => {
+      if (m.user_id) c.with_access += 1;
+      else if (!m.is_active) c.inactive += 1;
+      else c.no_access += 1;
+      if (!m.email) c.no_email += 1;
+    });
+    return c;
+  }, [team]);
+
   const filteredUsers = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return users.filter((u) => {
-      if (filterRole !== "all" && u.role !== filterRole) return false;
+    let list = users.filter((u) => {
+      // filtro por rol — si hay roles seleccionados, mostrar sólo esos
+      const isNoRole = u.role === "sin rol" || !ROLE_META[u.role as StaffRole];
+      if (roleFilter.size > 0 && !showNoRole) {
+        if (isNoRole || !roleFilter.has(u.role as StaffRole)) return false;
+      } else if (showNoRole && roleFilter.size === 0) {
+        if (!isNoRole) return false;
+      } else if (showNoRole && roleFilter.size > 0) {
+        if (!isNoRole && !roleFilter.has(u.role as StaffRole)) return false;
+      }
       if (!q) return true;
       const name = (u.full_name || "").toLowerCase();
       const email = (u.email || "").toLowerCase();
       return name.includes(q) || email.includes(q);
     });
-  }, [users, search, filterRole]);
+
+    list = [...list].sort((a, b) => {
+      switch (sort) {
+        case "name_asc":
+          return (a.full_name || a.email || "").localeCompare(b.full_name || b.email || "");
+        case "name_desc":
+          return (b.full_name || b.email || "").localeCompare(a.full_name || a.email || "");
+        case "role":
+          return (ROLE_ORDER[a.role] ?? 50) - (ROLE_ORDER[b.role] ?? 50)
+            || (a.full_name || "").localeCompare(b.full_name || "");
+        case "email":
+          return (a.email || "").localeCompare(b.email || "");
+      }
+    });
+
+    return list;
+  }, [users, search, roleFilter, showNoRole, sort]);
+
+  const filteredTeam = useMemo(() => {
+    const q = teamSearch.trim().toLowerCase();
+    return team.filter((m) => {
+      // filtro por estado
+      if (teamFilter === "with_access" && !m.user_id) return false;
+      if (teamFilter === "no_access" && (m.user_id || !m.is_active)) return false;
+      if (teamFilter === "inactive" && m.is_active) return false;
+      if (teamFilter === "no_email" && m.email) return false;
+      if (!q) return true;
+      const name = m.name.toLowerCase();
+      const email = (m.email || "").toLowerCase();
+      const dept = (m.department || "").toLowerCase();
+      return name.includes(q) || email.includes(q) || dept.includes(q);
+    });
+  }, [team, teamSearch, teamFilter]);
+
+  const toggleRoleFilter = (role: StaffRole) => {
+    setRoleFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(role)) next.delete(role);
+      else next.add(role);
+      return next;
+    });
+  };
+
+  const clearAllFilters = () => {
+    setSearch("");
+    setRoleFilter(new Set());
+    setShowNoRole(false);
+  };
+
+  const hasActiveFilters = search || roleFilter.size > 0 || showNoRole;
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -273,42 +369,78 @@ export function SystemUsersTab() {
               {(["admin", "pm", "gerente", "colaborador"] as StaffRole[]).map((r) => {
                 const m = ROLE_META[r];
                 const n = (stats as any)[r] || 0;
-                const active = filterRole === r;
+                const active = roleFilter.has(r);
+                const pct = users.length > 0 ? Math.round((n / users.length) * 100) : 0;
                 return (
                   <button
                     key={r}
-                    onClick={() => setFilterRole(active ? "all" : r)}
+                    onClick={() => toggleRoleFilter(r)}
                     className={cn(
-                      "flex items-center gap-2.5 p-2.5 rounded-xl border text-left transition-all",
+                      "group relative flex items-center gap-2.5 p-2.5 rounded-xl border text-left transition-all overflow-hidden",
                       active
-                        ? "border-primary bg-primary/[0.06] ring-2 ring-primary/30"
+                        ? "border-primary bg-primary/[0.06] ring-2 ring-primary/30 shadow-sm"
                         : "border-border/50 hover:border-primary/40 hover:bg-muted/20"
                     )}
                   >
-                    <div className={cn("h-9 w-9 rounded-lg flex items-center justify-center shrink-0 border", m.tone)}>
+                    {/* Progress bar de fondo sutil */}
+                    {n > 0 && (
+                      <div
+                        className={cn("absolute inset-y-0 left-0 bg-gradient-to-r opacity-10 transition-opacity group-hover:opacity-20", m.gradient)}
+                        style={{ width: `${pct}%` }}
+                      />
+                    )}
+                    <div className={cn("relative h-9 w-9 rounded-lg flex items-center justify-center shrink-0 border", m.tone)}>
                       <m.Icon className="h-4 w-4" />
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-2xl font-black tabular-nums leading-none">{n}</p>
+                    <div className="relative min-w-0 flex-1">
+                      <div className="flex items-baseline gap-1.5">
+                        <p className="text-2xl font-black tabular-nums leading-none">{n}</p>
+                        <span className="text-[10px] text-muted-foreground tabular-nums">{pct}%</span>
+                      </div>
                       <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1 truncate">{m.short}</p>
                     </div>
+                    {active && (
+                      <CheckCircle2 className="absolute top-1.5 right-1.5 h-3.5 w-3.5 text-primary" />
+                    )}
                   </button>
                 );
               })}
             </div>
           )}
+
+          {/* Alert "sin rol" */}
+          {stats.sin_rol > 0 && (
+            <button
+              onClick={() => setShowNoRole((v) => !v)}
+              className={cn(
+                "mt-3 w-full flex items-center gap-2 text-xs px-3 py-2 rounded-lg border transition-all",
+                showNoRole
+                  ? "border-amber-500 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                  : "border-amber-500/30 bg-amber-500/5 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+              )}
+            >
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+              <span className="flex-1 text-left font-semibold">
+                {stats.sin_rol} {stats.sin_rol === 1 ? "usuario sin rol asignado" : "usuarios sin rol asignado"}
+              </span>
+              <span className="text-[10px] font-bold uppercase tracking-wider">
+                {showNoRole ? "Mostrando" : "Ver →"}
+              </span>
+            </button>
+          )}
         </div>
 
-        {/* ════════ BÚSQUEDA ════════ */}
-        {users.length > 4 && (
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
+        {/* ════════ TOOLBAR DE FILTROS ════════ */}
+        {users.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Search */}
+            <div className="relative flex-1 min-w-[220px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="Buscar por nombre o email…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 h-9 text-sm"
+                className="pl-9 pr-9 h-9 text-sm"
               />
               {search && (
                 <button
@@ -319,9 +451,135 @@ export function SystemUsersTab() {
                 </button>
               )}
             </div>
-            {filterRole !== "all" && (
-              <Badge variant="outline" className="gap-1 h-9 px-2 cursor-pointer" onClick={() => setFilterRole("all")}>
-                {ROLE_META[filterRole].short} <X className="h-3 w-3" />
+
+            {/* Role filter dropdown — multi-select */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 gap-1.5 text-xs">
+                  <Filter className="h-3.5 w-3.5" />
+                  Roles
+                  {roleFilter.size > 0 && (
+                    <Badge variant="secondary" className="h-4 px-1 text-[9px] tabular-nums">
+                      {roleFilter.size}
+                    </Badge>
+                  )}
+                  <ChevronDown className="h-3 w-3 opacity-60" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Filtrar por rol
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {(Object.keys(ROLE_META) as StaffRole[]).map((k) => {
+                  const m = ROLE_META[k];
+                  const n = (stats as any)[k] || 0;
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={k}
+                      checked={roleFilter.has(k)}
+                      onCheckedChange={() => toggleRoleFilter(k)}
+                      className="text-xs gap-2"
+                    >
+                      <div className={cn("h-5 w-5 rounded flex items-center justify-center border", m.tone)}>
+                        <m.Icon className="h-2.5 w-2.5" />
+                      </div>
+                      <span className="flex-1">{m.label}</span>
+                      <span className="text-[10px] text-muted-foreground tabular-nums">{n}</span>
+                    </DropdownMenuCheckboxItem>
+                  );
+                })}
+                {stats.sin_rol > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuCheckboxItem
+                      checked={showNoRole}
+                      onCheckedChange={(v) => setShowNoRole(!!v)}
+                      className="text-xs gap-2"
+                    >
+                      <div className="h-5 w-5 rounded flex items-center justify-center border bg-amber-500/15 text-amber-500 border-amber-500/30">
+                        <AlertCircle className="h-2.5 w-2.5" />
+                      </div>
+                      <span className="flex-1">Sin rol asignado</span>
+                      <span className="text-[10px] text-muted-foreground tabular-nums">{stats.sin_rol}</span>
+                    </DropdownMenuCheckboxItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Sort */}
+            <Select value={sort} onValueChange={(v) => setSort(v as SortMode)}>
+              <SelectTrigger className="h-9 w-auto gap-1.5 text-xs">
+                <ArrowUpDown className="h-3.5 w-3.5" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name_asc" className="text-xs">Nombre A → Z</SelectItem>
+                <SelectItem value="name_desc" className="text-xs">Nombre Z → A</SelectItem>
+                <SelectItem value="role" className="text-xs">Por rol</SelectItem>
+                <SelectItem value="email" className="text-xs">Por email</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* View density */}
+            <ToggleGroup
+              type="single"
+              value={view}
+              onValueChange={(v) => v && setView(v as ViewMode)}
+              className="border rounded-md h-9 p-0.5"
+            >
+              <ToggleGroupItem value="comfortable" className="h-8 w-8 p-0" title="Vista cómoda">
+                <LayoutGrid className="h-3.5 w-3.5" />
+              </ToggleGroupItem>
+              <ToggleGroupItem value="compact" className="h-8 w-8 p-0" title="Vista compacta">
+                <List className="h-3.5 w-3.5" />
+              </ToggleGroupItem>
+            </ToggleGroup>
+
+            {/* Clear filters */}
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearAllFilters}
+                className="h-9 text-xs text-muted-foreground gap-1"
+              >
+                <X className="h-3 w-3" />
+                Limpiar
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* Active filter chips */}
+        {(roleFilter.size > 0 || showNoRole) && (
+          <div className="flex items-center gap-1.5 flex-wrap -mt-3">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Filtros:</span>
+            {Array.from(roleFilter).map((r) => {
+              const m = ROLE_META[r];
+              return (
+                <Badge
+                  key={r}
+                  variant="outline"
+                  className={cn("gap-1 h-6 cursor-pointer hover:opacity-70 transition-opacity", m.tone)}
+                  onClick={() => toggleRoleFilter(r)}
+                >
+                  <m.Icon className="h-2.5 w-2.5" />
+                  {m.short}
+                  <X className="h-2.5 w-2.5 ml-0.5" />
+                </Badge>
+              );
+            })}
+            {showNoRole && (
+              <Badge
+                variant="outline"
+                className="gap-1 h-6 cursor-pointer hover:opacity-70 transition-opacity bg-amber-500/15 text-amber-500 border-amber-500/30"
+                onClick={() => setShowNoRole(false)}
+              >
+                <AlertCircle className="h-2.5 w-2.5" />
+                Sin rol
+                <X className="h-2.5 w-2.5 ml-0.5" />
               </Badge>
             )}
           </div>
@@ -351,134 +609,57 @@ export function SystemUsersTab() {
           <Card>
             <CardContent className="py-10 text-center space-y-2">
               <Search className="h-8 w-8 text-muted-foreground mx-auto" />
-              <p className="text-sm font-semibold">Sin resultados</p>
-              <Button size="sm" variant="outline" onClick={() => { setSearch(""); setFilterRole("all"); }} className="h-7 text-xs">
-                Limpiar filtros
+              <p className="text-sm font-semibold">Sin resultados con esos filtros</p>
+              <p className="text-xs text-muted-foreground">{users.length} usuarios totales</p>
+              <Button size="sm" variant="outline" onClick={clearAllFilters} className="h-7 text-xs">
+                Limpiar todos los filtros
               </Button>
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <AnimatePresence>
-              {filteredUsers.map((u) => {
-                const meta = ROLE_META[u.role as StaffRole];
-                const seed = u.email || u.user_id;
-                const avColor = avatarColor(seed);
-                const displayName = u.full_name || u.email?.split("@")[0] || "Usuario";
+          <>
+            {/* Resultado count */}
+            <div className="flex items-center justify-between text-[11px] text-muted-foreground -mt-2">
+              <span>
+                Mostrando <span className="font-bold text-foreground">{filteredUsers.length}</span>
+                {filteredUsers.length !== users.length && <> de {users.length}</>}
+              </span>
+            </div>
 
-                return (
-                  <motion.div
-                    key={u.user_id}
-                    layout
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                  >
-                    <Card className="group relative overflow-hidden border-border hover:border-primary/40 transition-all hover:shadow-lg">
-                      {/* Accent stripe por rol */}
-                      <div className={cn("absolute top-0 left-0 right-0 h-1 bg-gradient-to-r", meta?.gradient || "from-muted to-transparent")} />
-
-                      <CardContent className="p-4 pt-5">
-                        <div className="flex items-start gap-3">
-                          <div className={cn(
-                            "h-12 w-12 rounded-2xl bg-gradient-to-br text-white text-sm font-black flex items-center justify-center shrink-0 shadow-md",
-                            avColor
-                          )}>
-                            {initials(u.full_name, u.email, u.user_id)}
-                          </div>
-
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <p className="text-sm font-bold truncate">{displayName}</p>
-                              {meta ? (
-                                <Badge variant="outline" className={cn("gap-1 text-[10px]", meta.tone)}>
-                                  <meta.Icon className="h-3 w-3" />
-                                  {meta.short}
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline" className="text-[10px] text-muted-foreground">
-                                  {u.role}
-                                </Badge>
-                              )}
-                            </div>
-                            {u.email && (
-                              <button
-                                onClick={() => {
-                                  navigator.clipboard.writeText(u.email);
-                                  toast({ title: "Email copiado" });
-                                }}
-                                className="text-[11px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 mt-0.5 group/email"
-                                title="Click para copiar"
-                              >
-                                <Mail className="h-2.5 w-2.5" />
-                                <span className="truncate">{u.email}</span>
-                                <Copy className="h-2.5 w-2.5 opacity-0 group-hover/email:opacity-100 transition-opacity" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Role picker visual */}
-                        <div className="mt-4">
-                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5">Rol</p>
-                          <ToggleGroup
-                            type="single"
-                            value={u.role}
-                            onValueChange={(v) => {
-                              if (v && v !== u.role) handleUpdateRole(u.user_id, v);
-                            }}
-                            className="gap-1 w-full grid grid-cols-4"
-                          >
-                            {(Object.keys(ROLE_META) as StaffRole[]).map((k) => {
-                              const m = ROLE_META[k];
-                              return (
-                                <Tooltip key={k}>
-                                  <TooltipTrigger asChild>
-                                    <ToggleGroupItem
-                                      value={k}
-                                      className="h-8 text-[10px] gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-                                    >
-                                      <m.Icon className="h-3 w-3" />
-                                      <span className="hidden sm:inline">{m.short}</span>
-                                    </ToggleGroupItem>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="bottom" className="text-[10px] max-w-[200px]">
-                                    {m.hint}
-                                  </TooltipContent>
-                                </Tooltip>
-                              );
-                            })}
-                          </ToggleGroup>
-                        </div>
-
-                        {/* Acciones */}
-                        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/60">
-                          <PasswordResetDialog
-                            userEmail={u.email || u.user_id.slice(0, 8)}
-                            onSubmit={(pwd) => handleResetPassword(u.user_id, pwd)}
-                          />
-                          {u.role === "gerente" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 gap-1 text-[11px] border-amber-500/30 text-amber-500 hover:bg-amber-500/5"
-                              onClick={() => setAssignUserId(u.user_id)}
-                            >
-                              <Link2 className="h-3 w-3" /> Clientes
-                            </Button>
-                          )}
-                          <DeleteUserDialog
-                            userEmail={u.email || displayName}
-                            onSubmit={() => handleDelete(u.user_id)}
-                          />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          </div>
+            {view === "comfortable" ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <AnimatePresence mode="popLayout">
+                  {filteredUsers.map((u) => (
+                    <UserCardComfortable
+                      key={u.user_id}
+                      user={u}
+                      onChangeRole={(role) => handleUpdateRole(u.user_id, role)}
+                      onResetPassword={(pwd) => handleResetPassword(u.user_id, pwd)}
+                      onDelete={() => handleDelete(u.user_id)}
+                      onAssignClients={() => setAssignUserId(u.user_id)}
+                    />
+                  ))}
+                </AnimatePresence>
+              </div>
+            ) : (
+              <Card className="overflow-hidden">
+                <div className="divide-y divide-border/60">
+                  <AnimatePresence mode="popLayout">
+                    {filteredUsers.map((u) => (
+                      <UserRowCompact
+                        key={u.user_id}
+                        user={u}
+                        onChangeRole={(role) => handleUpdateRole(u.user_id, role)}
+                        onResetPassword={(pwd) => handleResetPassword(u.user_id, pwd)}
+                        onDelete={() => handleDelete(u.user_id)}
+                        onAssignClients={() => setAssignUserId(u.user_id)}
+                      />
+                    ))}
+                  </AnimatePresence>
+                </div>
+              </Card>
+            )}
+          </>
         )}
 
         {/* ════════ EQUIPO SYSDE ════════ */}
@@ -492,17 +673,59 @@ export function SystemUsersTab() {
                 Miembros del equipo registrados — creá accesos individuales o usá "Acceso en bloque".
               </p>
             </div>
-            <div className="flex items-center gap-1.5">
-              <Badge variant="outline" className="gap-1 text-[10px] bg-emerald-500/5 text-emerald-500 border-emerald-500/30">
-                <CheckCircle2 className="h-3 w-3" />
-                {team.filter((t) => t.user_id).length} con acceso
-              </Badge>
-              <Badge variant="outline" className="gap-1 text-[10px] bg-amber-500/5 text-amber-500 border-amber-500/30">
-                <KeySquare className="h-3 w-3" />
-                {team.filter((t) => !t.user_id && t.is_active).length} sin acceso
-              </Badge>
-            </div>
           </div>
+
+          {/* Toolbar SYSDE */}
+          {team.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar miembro…"
+                  value={teamSearch}
+                  onChange={(e) => setTeamSearch(e.target.value)}
+                  className="pl-9 pr-9 h-9 text-sm"
+                />
+                {teamSearch && (
+                  <button
+                    onClick={() => setTeamSearch("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 rounded hover:bg-muted/60 flex items-center justify-center"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+
+              {/* Quick filter chips */}
+              <div className="flex items-center gap-1 flex-wrap">
+                {[
+                  { key: "all" as TeamFilter, label: "Todos", n: teamStats.total, Icon: Users2, tone: "" },
+                  { key: "with_access" as TeamFilter, label: "Con acceso", n: teamStats.with_access, Icon: CheckCircle2, tone: "text-emerald-500 border-emerald-500/30 bg-emerald-500/5" },
+                  { key: "no_access" as TeamFilter, label: "Sin acceso", n: teamStats.no_access, Icon: KeySquare, tone: "text-amber-500 border-amber-500/30 bg-amber-500/5" },
+                  { key: "no_email" as TeamFilter, label: "Sin email", n: teamStats.no_email, Icon: MailX, tone: "text-rose-500 border-rose-500/30 bg-rose-500/5" },
+                  { key: "inactive" as TeamFilter, label: "Inactivos", n: teamStats.inactive, Icon: UserX, tone: "text-muted-foreground border-border bg-muted/30" },
+                ].map((f) => {
+                  const active = teamFilter === f.key;
+                  return (
+                    <button
+                      key={f.key}
+                      onClick={() => setTeamFilter(f.key)}
+                      className={cn(
+                        "flex items-center gap-1 h-8 px-2 rounded-md border text-[11px] font-semibold transition-all",
+                        active
+                          ? "ring-2 ring-primary/40 bg-primary/10 border-primary/30 text-primary"
+                          : f.tone || "border-border hover:border-primary/30 bg-card"
+                      )}
+                    >
+                      <f.Icon className="h-3 w-3" />
+                      {f.label}
+                      <span className="tabular-nums opacity-80">{f.n}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {team.length === 0 ? (
             <Card className="border-dashed">
@@ -511,9 +734,24 @@ export function SystemUsersTab() {
                 <p className="text-xs">No hay miembros en el Equipo SYSDE</p>
               </CardContent>
             </Card>
+          ) : filteredTeam.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                <Search className="h-6 w-6 mb-2 opacity-50" />
+                <p className="text-xs">Sin resultados con ese filtro</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-[11px] mt-2"
+                  onClick={() => { setTeamSearch(""); setTeamFilter("all"); }}
+                >
+                  Limpiar
+                </Button>
+              </CardContent>
+            </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {team.map((m) => {
+              {filteredTeam.map((m) => {
                 const hasAccess = !!m.user_id;
                 const noEmail = !m.email;
                 const seed = m.email || m.id;
@@ -525,10 +763,15 @@ export function SystemUsersTab() {
                   )}>
                     <CardContent className="p-3 flex items-center gap-3">
                       <div className={cn(
-                        "h-10 w-10 rounded-xl bg-gradient-to-br text-white text-xs font-black flex items-center justify-center shrink-0 shadow-sm",
+                        "h-10 w-10 rounded-xl bg-gradient-to-br text-white text-xs font-black flex items-center justify-center shrink-0 shadow-sm relative",
                         avColor
                       )}>
                         {initials(m.name, m.email, m.id)}
+                        {hasAccess && (
+                          <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-emerald-500 border-2 border-background flex items-center justify-center">
+                            <CheckCircle2 className="h-2 w-2 text-white" />
+                          </div>
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-bold truncate">{m.name}</p>
@@ -572,14 +815,12 @@ export function SystemUsersTab() {
           )}
         </div>
 
-        {/* Dialog de acceso individual */}
+        {/* Dialogs */}
         <IndividualAccessDialog
           member={accessMember}
           onClose={() => setAccessMember(null)}
           onSubmit={(pwd) => handleCreateAccess(accessMember!, pwd)}
         />
-
-        {/* Dialog de asignaciones de gerente */}
         {assignUserId && (
           <GerenteAssignmentsDialog
             userId={assignUserId}
@@ -590,6 +831,240 @@ export function SystemUsersTab() {
         )}
       </div>
     </TooltipProvider>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// USER CARD — Vista cómoda
+// ═══════════════════════════════════════════════════════════════════════════
+
+function UserCardComfortable({
+  user: u,
+  onChangeRole,
+  onResetPassword,
+  onDelete,
+  onAssignClients,
+}: {
+  user: UserRow;
+  onChangeRole: (role: string) => void;
+  onResetPassword: (pwd: string) => Promise<void>;
+  onDelete: () => void;
+  onAssignClients: () => void;
+}) {
+  const meta = ROLE_META[u.role as StaffRole];
+  const seed = u.email || u.user_id;
+  const avColor = avatarColor(seed);
+  const displayName = u.full_name || u.email?.split("@")[0] || "Usuario";
+  const { toast } = useToast();
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.18 }}
+    >
+      <Card className="group relative overflow-hidden border-border hover:border-primary/40 transition-all hover:shadow-lg">
+        <div className={cn("absolute top-0 left-0 right-0 h-1 bg-gradient-to-r", meta?.gradient || "from-muted to-transparent")} />
+
+        <CardContent className="p-4 pt-5">
+          <div className="flex items-start gap-3">
+            <div className={cn(
+              "h-12 w-12 rounded-2xl bg-gradient-to-br text-white text-sm font-black flex items-center justify-center shrink-0 shadow-md",
+              avColor
+            )}>
+              {initials(u.full_name, u.email, u.user_id)}
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <p className="text-sm font-bold truncate">{displayName}</p>
+                {meta ? (
+                  <Badge variant="outline" className={cn("gap-1 text-[10px]", meta.tone)}>
+                    <meta.Icon className="h-3 w-3" />
+                    {meta.short}
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-[10px] gap-1 bg-amber-500/15 text-amber-500 border-amber-500/30">
+                    <AlertCircle className="h-3 w-3" />
+                    Sin rol
+                  </Badge>
+                )}
+              </div>
+              {u.email && (
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(u.email);
+                    toast({ title: "Email copiado" });
+                  }}
+                  className="text-[11px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 mt-0.5 group/email"
+                  title="Click para copiar"
+                >
+                  <Mail className="h-2.5 w-2.5" />
+                  <span className="truncate">{u.email}</span>
+                  <Copy className="h-2.5 w-2.5 opacity-0 group-hover/email:opacity-100 transition-opacity" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Role picker visual */}
+          <div className="mt-4">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5">Rol</p>
+            <ToggleGroup
+              type="single"
+              value={u.role}
+              onValueChange={(v) => { if (v && v !== u.role) onChangeRole(v); }}
+              className="gap-1 w-full grid grid-cols-4"
+            >
+              {(Object.keys(ROLE_META) as StaffRole[]).map((k) => {
+                const m = ROLE_META[k];
+                return (
+                  <Tooltip key={k}>
+                    <TooltipTrigger asChild>
+                      <ToggleGroupItem
+                        value={k}
+                        className="h-8 text-[10px] gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                      >
+                        <m.Icon className="h-3 w-3" />
+                        <span className="hidden sm:inline">{m.short}</span>
+                      </ToggleGroupItem>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-[10px] max-w-[200px]">
+                      {m.hint}
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })}
+            </ToggleGroup>
+          </div>
+
+          {/* Acciones */}
+          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/60">
+            <PasswordResetDialog
+              userEmail={u.email || u.user_id.slice(0, 8)}
+              onSubmit={onResetPassword}
+            />
+            {u.role === "gerente" && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 gap-1 text-[11px] border-amber-500/30 text-amber-500 hover:bg-amber-500/5"
+                onClick={onAssignClients}
+              >
+                <Link2 className="h-3 w-3" /> Clientes
+              </Button>
+            )}
+            <DeleteUserDialog userEmail={u.email || displayName} onSubmit={onDelete} />
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// USER ROW — Vista compacta (lista densa)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function UserRowCompact({
+  user: u,
+  onChangeRole,
+  onResetPassword,
+  onDelete,
+  onAssignClients,
+}: {
+  user: UserRow;
+  onChangeRole: (role: string) => void;
+  onResetPassword: (pwd: string) => Promise<void>;
+  onDelete: () => void;
+  onAssignClients: () => void;
+}) {
+  const meta = ROLE_META[u.role as StaffRole];
+  const seed = u.email || u.user_id;
+  const avColor = avatarColor(seed);
+  const displayName = u.full_name || u.email?.split("@")[0] || "Usuario";
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
+      className="group flex items-center gap-3 p-3 hover:bg-muted/30 transition-colors"
+    >
+      <div className={cn(
+        "h-9 w-9 rounded-xl bg-gradient-to-br text-white text-xs font-black flex items-center justify-center shrink-0 shadow-sm",
+        avColor
+      )}>
+        {initials(u.full_name, u.email, u.user_id)}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-bold truncate leading-tight">{displayName}</p>
+        {u.email && (
+          <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1 mt-0.5">
+            <Mail className="h-2.5 w-2.5 shrink-0" />
+            <span className="truncate">{u.email}</span>
+          </p>
+        )}
+      </div>
+
+      {/* Role select compacto */}
+      <Select value={u.role} onValueChange={onChangeRole}>
+        <SelectTrigger className={cn(
+          "h-8 w-auto gap-1.5 text-xs border",
+          meta ? meta.tone : "bg-amber-500/15 text-amber-500 border-amber-500/30"
+        )}>
+          {meta ? (
+            <span className="flex items-center gap-1.5">
+              <meta.Icon className="h-3 w-3" />
+              <span className="hidden sm:inline">{meta.short}</span>
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5">
+              <AlertCircle className="h-3 w-3" />
+              <span className="hidden sm:inline">Sin rol</span>
+            </span>
+          )}
+        </SelectTrigger>
+        <SelectContent>
+          {(Object.keys(ROLE_META) as StaffRole[]).map((k) => {
+            const m = ROLE_META[k];
+            return (
+              <SelectItem key={k} value={k} className="text-xs">
+                <span className="flex items-center gap-2">
+                  <m.Icon className={cn("h-3 w-3", m.tone.split(" ").find(s => s.startsWith("text-")))} />
+                  {m.label}
+                </span>
+              </SelectItem>
+            );
+          })}
+        </SelectContent>
+      </Select>
+
+      {/* Acciones inline */}
+      <div className="flex items-center gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
+        <PasswordResetDialog
+          userEmail={u.email || u.user_id.slice(0, 8)}
+          onSubmit={onResetPassword}
+          iconOnly
+        />
+        {u.role === "gerente" && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onAssignClients}>
+                <Link2 className="h-3.5 w-3.5 text-amber-500" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Asignar clientes</TooltipContent>
+          </Tooltip>
+        )}
+        <DeleteUserDialog userEmail={u.email || displayName} onSubmit={onDelete} iconOnly />
+      </div>
+    </motion.div>
   );
 }
 
@@ -656,7 +1131,6 @@ function InviteDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Identidad */}
           <div className="space-y-2">
             <Label htmlFor="su-name" className="text-[11px] uppercase tracking-wider font-bold text-muted-foreground">Nombre completo *</Label>
             <Input id="su-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej: Juan Pérez" className="text-sm h-10" />
@@ -666,15 +1140,10 @@ function InviteDialog({
             <Input id="su-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="juan@empresa.com" className="text-sm h-10" />
           </div>
 
-          {/* Password con generador */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="su-pwd" className="text-[11px] uppercase tracking-wider font-bold text-muted-foreground">Contraseña inicial *</Label>
-              <button
-                type="button"
-                onClick={handleGenerate}
-                className="text-[10px] text-primary hover:underline flex items-center gap-1"
-              >
+              <button type="button" onClick={handleGenerate} className="text-[10px] text-primary hover:underline flex items-center gap-1">
                 <RefreshCw className="h-2.5 w-2.5" /> Generar segura
               </button>
             </div>
@@ -688,21 +1157,11 @@ function InviteDialog({
                 className="text-sm h-10 font-mono pr-20"
               />
               <div className="absolute right-1 top-1 flex items-center gap-0.5">
-                <button
-                  type="button"
-                  onClick={() => setShowPwd((s) => !s)}
-                  className="h-8 w-8 rounded hover:bg-muted/60 flex items-center justify-center"
-                  title={showPwd ? "Ocultar" : "Ver"}
-                >
+                <button type="button" onClick={() => setShowPwd((s) => !s)} className="h-8 w-8 rounded hover:bg-muted/60 flex items-center justify-center" title={showPwd ? "Ocultar" : "Ver"}>
                   <Eye className="h-3.5 w-3.5 text-muted-foreground" />
                 </button>
                 {password && (
-                  <button
-                    type="button"
-                    onClick={() => { navigator.clipboard.writeText(password); toast({ title: "Contraseña copiada" }); }}
-                    className="h-8 w-8 rounded hover:bg-muted/60 flex items-center justify-center"
-                    title="Copiar"
-                  >
+                  <button type="button" onClick={() => { navigator.clipboard.writeText(password); toast({ title: "Contraseña copiada" }); }} className="h-8 w-8 rounded hover:bg-muted/60 flex items-center justify-center" title="Copiar">
                     <Copy className="h-3.5 w-3.5 text-muted-foreground" />
                   </button>
                 )}
@@ -713,7 +1172,6 @@ function InviteDialog({
             </p>
           </div>
 
-          {/* Role picker visual */}
           <div className="space-y-2">
             <Label className="text-[11px] uppercase tracking-wider font-bold text-muted-foreground">Rol del sistema</Label>
             <div className="grid grid-cols-1 gap-1.5">
@@ -821,11 +1279,7 @@ function BulkAccessDialog({ onSubmit }: { onSubmit: (password: string) => Promis
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label className="text-[11px] uppercase tracking-wider font-bold text-muted-foreground">Contraseña común *</Label>
-              <button
-                type="button"
-                onClick={handleGenerate}
-                className="text-[10px] text-primary hover:underline flex items-center gap-1"
-              >
+              <button type="button" onClick={handleGenerate} className="text-[10px] text-primary hover:underline flex items-center gap-1">
                 <RefreshCw className="h-2.5 w-2.5" /> Generar
               </button>
             </div>
@@ -838,19 +1292,11 @@ function BulkAccessDialog({ onSubmit }: { onSubmit: (password: string) => Promis
                 className="text-sm h-10 font-mono pr-20"
               />
               <div className="absolute right-1 top-1 flex items-center gap-0.5">
-                <button
-                  type="button"
-                  onClick={() => setShowPwd((s) => !s)}
-                  className="h-8 w-8 rounded hover:bg-muted/60 flex items-center justify-center"
-                >
+                <button type="button" onClick={() => setShowPwd((s) => !s)} className="h-8 w-8 rounded hover:bg-muted/60 flex items-center justify-center">
                   <Eye className="h-3.5 w-3.5 text-muted-foreground" />
                 </button>
                 {pwd && (
-                  <button
-                    type="button"
-                    onClick={() => { navigator.clipboard.writeText(pwd); toast({ title: "Copiada" }); }}
-                    className="h-8 w-8 rounded hover:bg-muted/60 flex items-center justify-center"
-                  >
+                  <button type="button" onClick={() => { navigator.clipboard.writeText(pwd); toast({ title: "Copiada" }); }} className="h-8 w-8 rounded hover:bg-muted/60 flex items-center justify-center">
                     <Copy className="h-3.5 w-3.5 text-muted-foreground" />
                   </button>
                 )}
@@ -872,7 +1318,7 @@ function BulkAccessDialog({ onSubmit }: { onSubmit: (password: string) => Promis
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// INDIVIDUAL ACCESS DIALOG (member del equipo SYSDE)
+// INDIVIDUAL ACCESS DIALOG
 // ═══════════════════════════════════════════════════════════════════════════
 
 function IndividualAccessDialog({
@@ -940,11 +1386,7 @@ function IndividualAccessDialog({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-[11px] uppercase tracking-wider font-bold text-muted-foreground">Contraseña inicial *</Label>
-                <button
-                  type="button"
-                  onClick={handleGenerate}
-                  className="text-[10px] text-primary hover:underline flex items-center gap-1"
-                >
+                <button type="button" onClick={handleGenerate} className="text-[10px] text-primary hover:underline flex items-center gap-1">
                   <RefreshCw className="h-2.5 w-2.5" /> Generar
                 </button>
               </div>
@@ -957,19 +1399,11 @@ function IndividualAccessDialog({
                   className="text-sm h-10 font-mono pr-20"
                 />
                 <div className="absolute right-1 top-1 flex items-center gap-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setShowPwd((s) => !s)}
-                    className="h-8 w-8 rounded hover:bg-muted/60 flex items-center justify-center"
-                  >
+                  <button type="button" onClick={() => setShowPwd((s) => !s)} className="h-8 w-8 rounded hover:bg-muted/60 flex items-center justify-center">
                     <Eye className="h-3.5 w-3.5 text-muted-foreground" />
                   </button>
                   {pwd && (
-                    <button
-                      type="button"
-                      onClick={() => { navigator.clipboard.writeText(pwd); toast({ title: "Copiada" }); }}
-                      className="h-8 w-8 rounded hover:bg-muted/60 flex items-center justify-center"
-                    >
+                    <button type="button" onClick={() => { navigator.clipboard.writeText(pwd); toast({ title: "Copiada" }); }} className="h-8 w-8 rounded hover:bg-muted/60 flex items-center justify-center">
                       <Copy className="h-3.5 w-3.5 text-muted-foreground" />
                     </button>
                   )}
@@ -998,9 +1432,11 @@ function IndividualAccessDialog({
 function PasswordResetDialog({
   userEmail,
   onSubmit,
+  iconOnly,
 }: {
   userEmail: string;
   onSubmit: (password: string) => Promise<void>;
+  iconOnly?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [pwd, setPwd] = useState("");
@@ -1032,9 +1468,20 @@ function PasswordResetDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline" className="h-7 gap-1 text-[11px]">
-          <KeyRound className="h-3 w-3" /> Contraseña
-        </Button>
+        {iconOnly ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7">
+                <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Resetear contraseña</TooltipContent>
+          </Tooltip>
+        ) : (
+          <Button size="sm" variant="outline" className="h-7 gap-1 text-[11px]">
+            <KeyRound className="h-3 w-3" /> Contraseña
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-w-sm">
         <DialogHeader>
@@ -1046,11 +1493,7 @@ function PasswordResetDialog({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label className="text-[11px] uppercase tracking-wider font-bold text-muted-foreground">Nueva contraseña *</Label>
-            <button
-              type="button"
-              onClick={handleGenerate}
-              className="text-[10px] text-primary hover:underline flex items-center gap-1"
-            >
+            <button type="button" onClick={handleGenerate} className="text-[10px] text-primary hover:underline flex items-center gap-1">
               <RefreshCw className="h-2.5 w-2.5" /> Generar
             </button>
           </div>
@@ -1063,19 +1506,11 @@ function PasswordResetDialog({
               className="text-sm h-10 font-mono pr-20"
             />
             <div className="absolute right-1 top-1 flex items-center gap-0.5">
-              <button
-                type="button"
-                onClick={() => setShowPwd((s) => !s)}
-                className="h-8 w-8 rounded hover:bg-muted/60 flex items-center justify-center"
-              >
+              <button type="button" onClick={() => setShowPwd((s) => !s)} className="h-8 w-8 rounded hover:bg-muted/60 flex items-center justify-center">
                 <Eye className="h-3.5 w-3.5 text-muted-foreground" />
               </button>
               {pwd && (
-                <button
-                  type="button"
-                  onClick={() => { navigator.clipboard.writeText(pwd); toast({ title: "Copiada" }); }}
-                  className="h-8 w-8 rounded hover:bg-muted/60 flex items-center justify-center"
-                >
+                <button type="button" onClick={() => { navigator.clipboard.writeText(pwd); toast({ title: "Copiada" }); }} className="h-8 w-8 rounded hover:bg-muted/60 flex items-center justify-center">
                   <Copy className="h-3.5 w-3.5 text-muted-foreground" />
                 </button>
               )}
@@ -1100,9 +1535,11 @@ function PasswordResetDialog({
 function DeleteUserDialog({
   userEmail,
   onSubmit,
+  iconOnly,
 }: {
   userEmail: string;
   onSubmit: () => Promise<void>;
+  iconOnly?: boolean;
 }) {
   const [submitting, setSubmitting] = useState(false);
 
@@ -1114,9 +1551,20 @@ function DeleteUserDialog({
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button size="sm" variant="outline" className="h-7 gap-1 text-[11px] text-destructive hover:text-destructive ml-auto">
-          <Trash2 className="h-3 w-3" /> Eliminar
-        </Button>
+        {iconOnly ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-destructive/10">
+                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Eliminar usuario</TooltipContent>
+          </Tooltip>
+        ) : (
+          <Button size="sm" variant="outline" className="h-7 gap-1 text-[11px] text-destructive hover:text-destructive ml-auto">
+            <Trash2 className="h-3 w-3" /> Eliminar
+          </Button>
+        )}
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
