@@ -129,6 +129,20 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
   const criticos = activeTickets.filter(t => t.prioridad === "Critica, Impacto Negocio").length;
   const cerradas = scopedTickets.filter(t => ["CERRADA", "ANULADA"].includes(t.estado)).length;
   const classifiedCount = scopedTickets.filter(t => t.ai_classification).length;
+  const sinCausaRaiz = scopedTickets.filter(t => !t.ai_classification).length;
+
+  // Top causas raíz (categorías detectadas por IA)
+  const topCausasRaiz = useMemo(() => {
+    const counts: Record<string, number> = {};
+    scopedTickets.forEach(t => {
+      if (!t.ai_classification) return;
+      counts[t.ai_classification] = (counts[t.ai_classification] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  }, [scopedTickets]);
 
   // Charts data — fallback to all tickets when no active ones exist
   const chartTickets = useMemo(() => filteredActive.length > 0 ? filteredActive : tickets, [filteredActive, tickets]);
@@ -342,7 +356,11 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
           { label: ">365 Días", value: mayores365, icon: AlertTriangle, color: "text-red-400", iconBg: "bg-primary/10" },
           { label: "Críticos Negocio", value: criticos, icon: Flame, color: "text-rose-500", iconBg: "bg-primary/10" },
           { label: "Cerradas Total", value: cerradas, icon: CheckCircle2, color: "text-emerald-400", iconBg: "bg-primary/10" },
-          { label: "IA Clasificados", value: classifiedCount, icon: Brain, color: "text-violet-400", iconBg: "bg-primary/10" },
+          {
+            label: "Con Causa Raíz", value: classifiedCount, icon: Brain,
+            color: "text-violet-400", iconBg: "bg-violet-500/10",
+            hint: sinCausaRaiz > 0 ? `${classifiedCount} con análisis · ${sinCausaRaiz} sin clasificar` : "Tickets clasificados por IA",
+          },
         ].map((kpi, i) => {
           const Wrapper: any = (kpi as any).onClick ? "button" : "div";
           return (
@@ -352,20 +370,20 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
                 className={(kpi as any).onClick ? "w-full text-left" : ""}
                 title={(kpi as any).hint}
               >
-                <Card className={`border-border/50 transition-all ${
+                <Card className={`border-border/50 transition-all h-full ${
                   (kpi as any).highlight ? "border-amber-500/40 bg-amber-500/[0.04] hover:border-amber-500/60 hover:shadow-md" :
                   (kpi as any).onClick ? "hover:border-primary/40 hover:shadow-sm" : ""
                 }`}>
-                  <CardContent className="p-3 flex items-center gap-3">
+                  <CardContent className="p-3 flex items-center gap-2.5 min-w-0">
                     <div className={`h-9 w-9 rounded-lg ${kpi.iconBg} flex items-center justify-center shrink-0 relative`}>
                       <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
                       {(kpi as any).highlight && (
                         <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
                       )}
                     </div>
-                    <div className="min-w-0">
-                      <p className={`text-xl font-black ${(kpi as any).highlight ? "text-amber-500" : "text-foreground"}`}>{kpi.value}</p>
-                      <p className="text-[9px] text-muted-foreground uppercase tracking-wide leading-tight">{kpi.label}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-xl font-black tabular-nums truncate ${(kpi as any).highlight ? "text-amber-500" : "text-foreground"}`}>{kpi.value}</p>
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-wide leading-tight truncate">{kpi.label}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -374,6 +392,53 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
           );
         })}
       </div>
+
+      {/* ════ Mini-banda de TOP CAUSAS RAÍZ — sólo si hay clasificaciones IA ════ */}
+      {topCausasRaiz.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+          <Card className="border-violet-500/20 bg-gradient-to-br from-violet-500/[0.04] via-card to-card">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Brain className="h-3.5 w-3.5 text-violet-400" />
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">
+                    Top causas raíz
+                  </span>
+                  <Badge variant="outline" className="text-[9px] h-4 px-1 tabular-nums border-violet-500/30 text-violet-400 bg-violet-500/10">
+                    IA
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
+                  {topCausasRaiz.map((c) => {
+                    const pct = classifiedCount > 0 ? Math.round((c.count / classifiedCount) * 100) : 0;
+                    return (
+                      <div
+                        key={c.name}
+                        className="inline-flex items-center gap-1.5 h-7 px-2 rounded-md border border-violet-500/20 bg-violet-500/[0.06] text-xs"
+                        title={`${c.count} de ${classifiedCount} con causa raíz · ${pct}%`}
+                      >
+                        <span className="font-semibold text-foreground truncate max-w-[120px]">{c.name}</span>
+                        <span className="text-violet-400 font-black tabular-nums">{c.count}</span>
+                        <span className="text-muted-foreground tabular-nums text-[10px]">· {pct}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                {sinCausaRaiz > 0 && (
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] gap-1 border-amber-500/30 text-amber-500 bg-amber-500/[0.06] shrink-0 tabular-nums"
+                    title="Tickets sin clasificación IA — corre 'Clasificar pendientes' para asignarles una causa raíz"
+                  >
+                    <AlertTriangle className="h-2.5 w-2.5" />
+                    {sinCausaRaiz} sin causa raíz
+                  </Badge>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2 items-center">

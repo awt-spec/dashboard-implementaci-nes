@@ -450,10 +450,10 @@ function ClassKpi({ label, value, sub, tone = "text-foreground" }: { label: stri
 
 function SecurityKPI({ label, value, sub, tone = "text-foreground" }: { label: string; value: number | string; sub?: string; tone?: string }) {
   return (
-    <div>
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{label}</p>
-      <p className={`text-2xl font-black tabular-nums leading-tight mt-0.5 ${tone}`}>{value}</p>
-      {sub && <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>}
+    <div className="min-w-0">
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold truncate">{label}</p>
+      <p className={`text-2xl font-black tabular-nums leading-tight mt-0.5 truncate ${tone}`}>{value}</p>
+      {sub && <p className="text-[10px] text-muted-foreground mt-0.5 truncate" title={sub}>{sub}</p>}
     </div>
   );
 }
@@ -524,17 +524,20 @@ export function UsageStatsTab() {
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      {/* KPIs — grid responsivo que NO se desborda en contenedores estrechos */}
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5">
         {kpis.map((kpi, i) => (
           <motion.div key={kpi.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-            <Card className="border-border/50">
-              <CardContent className="p-3 flex items-center gap-3">
+            <Card className="border-border/50 h-full">
+              <CardContent className="p-3 flex items-center gap-2.5 min-w-0">
                 <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                   <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
                 </div>
-                <div>
-                  <p className="text-lg font-black text-foreground">{kpi.value}</p>
-                  <p className="text-[9px] text-muted-foreground uppercase tracking-wide leading-tight">{kpi.label}</p>
+                <div className="min-w-0 flex-1">
+                  <p className={`font-black text-foreground tabular-nums truncate ${
+                    String(kpi.value).length > 6 ? "text-base" : "text-lg"
+                  }`}>{kpi.value}</p>
+                  <p className="text-[9px] text-muted-foreground uppercase tracking-wide leading-tight truncate">{kpi.label}</p>
                 </div>
               </CardContent>
             </Card>
@@ -548,21 +551,29 @@ export function UsageStatsTab() {
           <CardContent>
             {stats.byFunction.length > 0 ? (
               <div className="space-y-3">
-                {stats.byFunction.map((fn, i) => (
-                  <div key={fn.name} className="p-3 rounded-lg border border-border/50 bg-muted/20">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <div className="h-7 w-7 rounded-md bg-violet-500/10 flex items-center justify-center">
-                          <Brain className="h-3.5 w-3.5 text-violet-400" />
-                        </div>
-                        <span className="text-xs font-bold">{fn.name}</span>
+                {stats.byFunction.map((fn) => (
+                  <div key={fn.name} className="p-3 rounded-lg border border-border/50 bg-muted/20 min-w-0">
+                    {/* Header — título + badges en columnas seguras (sin colision) */}
+                    <div className="flex items-start gap-2 mb-2">
+                      <div className="h-7 w-7 rounded-md bg-violet-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                        <Brain className="h-3.5 w-3.5 text-violet-400" />
                       </div>
-                      <div className="flex items-center gap-2">
-                        {fn.errors > 0 && <Badge variant="destructive" className="text-[9px] h-4 px-1.5">{fn.errors} errores</Badge>}
-                        <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/30 text-[9px] h-4 px-1.5">{fn.calls} llamadas</Badge>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold leading-snug break-words">{fn.name}</p>
+                        {/* Badges DEBAJO del nombre — flex-wrap para no colisionar */}
+                        <div className="flex flex-wrap items-center gap-1 mt-1">
+                          <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/30 text-[9px] h-4 px-1.5 tabular-nums">
+                            {fn.calls.toLocaleString()} llamada{fn.calls === 1 ? "" : "s"}
+                          </Badge>
+                          {fn.errors > 0 && (
+                            <Badge variant="destructive" className="text-[9px] h-4 px-1.5 tabular-nums">
+                              {fn.errors} error{fn.errors === 1 ? "" : "es"}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex gap-4 text-[10px] text-muted-foreground">
+                    <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground tabular-nums">
                       <span><Hash className="h-3 w-3 inline mr-0.5" />{fn.tokens.toLocaleString()} tokens</span>
                       <span>Prom: {fn.calls > 0 ? Math.round(fn.tokens / fn.calls).toLocaleString() : 0} tokens/llamada</span>
                     </div>
@@ -580,24 +591,22 @@ export function UsageStatsTab() {
           <CardContent>
             {stats.byModel.length > 0 ? (
               <div className="space-y-3">
-                {stats.byModel.map((m, i) => (
-                  <div key={m.fullName} className="p-3 rounded-lg border border-border/50 bg-muted/20">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <div className="h-7 w-7 rounded-md bg-blue-500/10 flex items-center justify-center">
-                          <Zap className="h-3.5 w-3.5 text-blue-400" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold">{m.name}</p>
-                          <p className="text-[9px] text-muted-foreground font-mono">{m.fullName}</p>
-                        </div>
+                {stats.byModel.map((m) => (
+                  <div key={m.fullName} className="p-3 rounded-lg border border-border/50 bg-muted/20 min-w-0">
+                    <div className="flex items-start gap-2 mb-2">
+                      <div className="h-7 w-7 rounded-md bg-blue-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                        <Zap className="h-3.5 w-3.5 text-blue-400" />
                       </div>
-                      <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-[9px] h-4 px-1.5">{m.calls} usos</Badge>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold truncate">{m.name}</p>
+                        <p className="text-[9px] text-muted-foreground font-mono truncate">{m.fullName}</p>
+                      </div>
+                      <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-[9px] h-4 px-1.5 shrink-0 tabular-nums">{m.calls} usos</Badge>
                     </div>
                     <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
                       <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${stats.totalCalls > 0 ? (m.calls / stats.totalCalls) * 100 : 0}%` }} />
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-1">{m.tokens.toLocaleString()} tokens consumidos</p>
+                    <p className="text-[10px] text-muted-foreground mt-1 tabular-nums">{m.tokens.toLocaleString()} tokens consumidos</p>
                   </div>
                 ))}
               </div>
