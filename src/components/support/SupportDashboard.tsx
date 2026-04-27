@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   AlertTriangle, Search, Ticket, Clock, CheckCircle2,
   Flame, Activity, Filter, Brain, Loader2, Sparkles, RefreshCw,
-  ArrowLeft, Building2, MapPin, Mail, User, FileText, ArrowRightLeft
+  ArrowLeft, Building2, MapPin, Mail, User, FileText, ArrowRightLeft, UserX
 } from "lucide-react";
 import { motion } from "framer-motion";
 import {
@@ -123,6 +123,7 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
 
   // Stats - always scoped to scopedTickets (which respects client selection)
   const totalActive = activeTickets.length;
+  const sinAtencion = activeTickets.filter(t => t.estado === "PENDIENTE" && !t.responsable).length;
   const entregadaSinCierre = activeTickets.filter(t => t.estado === "ENTREGADA").length;
   const mayores365 = activeTickets.filter(t => t.dias_antiguedad > 365).length;
   const criticos = activeTickets.filter(t => t.prioridad === "Critica, Impacto Negocio").length;
@@ -326,29 +327,52 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
           dedicado y se beneficia de menos ruido visual). Visibles en Explorar. */}
       {activeTab !== "inbox" && (
       <>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
         {[
-          { label: "Casos Activos", value: totalActive, icon: Ticket, color: "text-blue-400" },
-          { label: "Entregada S/Cierre", value: entregadaSinCierre, icon: Clock, color: "text-amber-400" },
-          { label: ">365 Días", value: mayores365, icon: AlertTriangle, color: "text-red-400" },
-          { label: "Críticos Negocio", value: criticos, icon: Flame, color: "text-rose-500" },
-          { label: "Cerradas Total", value: cerradas, icon: CheckCircle2, color: "text-emerald-400" },
-          { label: "IA Clasificados", value: classifiedCount, icon: Brain, color: "text-violet-400" },
-        ].map((kpi, i) => (
-          <motion.div key={kpi.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-            <Card className="border-border/50">
-              <CardContent className="p-3 flex items-center gap-3">
-                <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
-                </div>
-                <div>
-                  <p className="text-xl font-black text-foreground">{kpi.value}</p>
-                  <p className="text-[9px] text-muted-foreground uppercase tracking-wide leading-tight">{kpi.label}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
+          { label: "Casos Activos", value: totalActive, icon: Ticket, color: "text-blue-400", iconBg: "bg-primary/10" },
+          {
+            label: "Sin Atención", value: sinAtencion, icon: UserX,
+            color: "text-amber-500",
+            iconBg: "bg-amber-500/15",
+            highlight: sinAtencion > 0,
+            hint: "PENDIENTE sin responsable asignado · click para ir a la Bandeja",
+            onClick: () => setActiveTab("inbox"),
+          },
+          { label: "Entregada S/Cierre", value: entregadaSinCierre, icon: Clock, color: "text-amber-400", iconBg: "bg-primary/10" },
+          { label: ">365 Días", value: mayores365, icon: AlertTriangle, color: "text-red-400", iconBg: "bg-primary/10" },
+          { label: "Críticos Negocio", value: criticos, icon: Flame, color: "text-rose-500", iconBg: "bg-primary/10" },
+          { label: "Cerradas Total", value: cerradas, icon: CheckCircle2, color: "text-emerald-400", iconBg: "bg-primary/10" },
+          { label: "IA Clasificados", value: classifiedCount, icon: Brain, color: "text-violet-400", iconBg: "bg-primary/10" },
+        ].map((kpi, i) => {
+          const Wrapper: any = (kpi as any).onClick ? "button" : "div";
+          return (
+            <motion.div key={kpi.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+              <Wrapper
+                onClick={(kpi as any).onClick}
+                className={(kpi as any).onClick ? "w-full text-left" : ""}
+                title={(kpi as any).hint}
+              >
+                <Card className={`border-border/50 transition-all ${
+                  (kpi as any).highlight ? "border-amber-500/40 bg-amber-500/[0.04] hover:border-amber-500/60 hover:shadow-md" :
+                  (kpi as any).onClick ? "hover:border-primary/40 hover:shadow-sm" : ""
+                }`}>
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <div className={`h-9 w-9 rounded-lg ${kpi.iconBg} flex items-center justify-center shrink-0 relative`}>
+                      <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
+                      {(kpi as any).highlight && (
+                        <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className={`text-xl font-black ${(kpi as any).highlight ? "text-amber-500" : "text-foreground"}`}>{kpi.value}</p>
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-wide leading-tight">{kpi.label}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Wrapper>
+            </motion.div>
+          );
+        })}
       </div>
 
       {/* Filters */}

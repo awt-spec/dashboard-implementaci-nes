@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useClients } from "@/hooks/useClients";
 import { useAllSupportTickets, useSupportClients } from "@/hooks/useSupportTickets";
 // DB is the single source of truth — no static fallback
-import { TrendingUp, CheckCircle, AlertTriangle, Users, Clock, ShieldAlert, Filter, BarChart3, Target, FileCheck, Layers, Loader2, Presentation, AlertOctagon } from "lucide-react";
+import { TrendingUp, CheckCircle, AlertTriangle, Users, Clock, ShieldAlert, Filter, BarChart3, Target, FileCheck, Layers, Loader2, Presentation, AlertOctagon, UserX } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
@@ -161,6 +161,10 @@ export function ExecutiveOverview() {
   const criticalSupportOpen = supportTickets.filter(t =>
     /critica/i.test(t.prioridad || "") && !["CERRADA", "ANULADA"].includes(t.estado)
   ).length;
+  // Casos sin atención = PENDIENTE sin responsable asignado
+  const unattendedSupport = supportTickets.filter(t =>
+    t.estado === "PENDIENTE" && !t.responsable
+  ).length;
   const dueSoonDeliverables = allDeliverables.filter(d => {
     if (d.status === "aprobado" || d.status === "entregado") return false;
     if (!d.dueDate) return false;
@@ -198,6 +202,7 @@ export function ExecutiveOverview() {
             <p className="text-sm text-muted-foreground mt-1">
               {atRisk > 0 ? `Hay ${atRisk} cliente${atRisk === 1 ? "" : "s"} en riesgo` :
                criticalSupportOpen > 0 ? `${criticalSupportOpen} caso${criticalSupportOpen === 1 ? "" : "s"} crítico${criticalSupportOpen === 1 ? "" : "s"} sin cerrar` :
+               unattendedSupport > 0 ? `${unattendedSupport} caso${unattendedSupport === 1 ? "" : "s"} sin atender — esperan asignación` :
                overdueDeliverables > 0 ? `${overdueDeliverables} entregable${overdueDeliverables === 1 ? "" : "s"} vencido${overdueDeliverables === 1 ? "" : "s"}` :
                "Todo bajo control 🚀"}
             </p>
@@ -212,6 +217,13 @@ export function ExecutiveOverview() {
               {criticalSupportOpen > 0 && (
                 <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-destructive/10 text-destructive border border-destructive/30 text-xs font-semibold">
                   <ShieldAlert className="h-3 w-3" /> {criticalSupportOpen} críticos abiertos
+                </span>
+              )}
+              {unattendedSupport > 0 && (
+                <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/30 text-xs font-semibold">
+                  <UserX className="h-3 w-3" />
+                  {unattendedSupport} sin atender
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse ml-0.5" />
                 </span>
               )}
               {overdueDeliverables > 0 && (
@@ -229,7 +241,7 @@ export function ExecutiveOverview() {
                   <FileCheck className="h-3 w-3" /> {totalRisks} alertas activas
                 </span>
               )}
-              {atRisk === 0 && criticalSupportOpen === 0 && overdueDeliverables === 0 && totalRisks === 0 && (
+              {atRisk === 0 && criticalSupportOpen === 0 && unattendedSupport === 0 && overdueDeliverables === 0 && totalRisks === 0 && (
                 <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-success/10 text-success border border-success/30 text-xs font-semibold">
                   <CheckCircle className="h-3 w-3" /> Sin alertas
                 </span>
