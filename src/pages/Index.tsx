@@ -10,6 +10,7 @@ import { ClientDetail } from "@/components/clients/ClientDetail";
 import TeamScrumDashboard from "@/pages/TeamScrumDashboard";
 import { SupportDashboard } from "@/components/support/SupportDashboard";
 import ColaboradorDashboard from "@/pages/ColaboradorDashboard";
+import { CEODashboard } from "@/components/dashboard/CEODashboard";
 import { ClientPortalDashboard } from "@/components/dashboard/ClientPortalDashboard";
 import { ConfigurationHub } from "@/components/settings/ConfigurationHub";
 import { useClients } from "@/hooks/useClients";
@@ -70,6 +71,11 @@ const Index = () => {
   // Cliente externo: portal dedicado con su empresa scopeada
   if (role === "cliente") {
     return <ClientPortalDashboard />;
+  }
+
+  // CEO: dashboard ejecutivo super-administrativo (read-only de todo el sistema)
+  if (role === "ceo") {
+    return <CEODashboard />;
   }
 
   const clientData = clients || [];

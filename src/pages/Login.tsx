@@ -5,12 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { LogIn, Eye, EyeOff, Shield, Briefcase, Headphones } from "lucide-react";
+import { LogIn, Eye, EyeOff, Shield, Briefcase, Headphones, Crown } from "lucide-react";
 import sysdelogo from "@/assets/logo-sysde.png";
 
 type DemoAccount = { label: string; email: string; pw: string };
 
 const SYSDE_USERS: DemoAccount[] = [
+  { label: "CEO (vista ejecutiva)", email: "ceo@sysde.com", pw: "CeoSysde2026!" },
   { label: "Admin", email: "admin@sysde.com", pw: "AdminSysde2026!" },
   { label: "PM", email: "pm@sysde.com", pw: "PmFernando2026!" },
   { label: "Soporte (Hellen)", email: "hellen.calvo@sysde.com", pw: "HellenCalvo2026!" },
