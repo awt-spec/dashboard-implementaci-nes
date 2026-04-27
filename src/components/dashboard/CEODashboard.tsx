@@ -1,7 +1,8 @@
 /**
- * CEO Dashboard — Lovable-style cockpit ejecutivo.
- * Estética: glass-morphism, gradient text, cinematic hero, generous spacing,
- * vibrant accent glows, dramatic typography hierarchy.
+ * CEO Dashboard — estilo Lovable: industrial, técnico, sharp.
+ * Inspirado en Linear / Vercel / Resend / Lovable.dev.
+ * Características: monospace tech, hairline borders, geometric grid bg,
+ * angular cards, single accent (lime), high contrast, dense data.
  */
 import { useMemo, useState, useEffect } from "react";
 import { useClients } from "@/hooks/useClients";
@@ -9,16 +10,15 @@ import { useAllSupportTickets, useSupportClients } from "@/hooks/useSupportTicke
 import { useAIUsageLogs } from "@/hooks/useAIUsageLogs";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Crown, Building2, Headset, Brain, ShieldAlert,
-  TrendingUp, TrendingDown, DollarSign, Activity,
+  ArrowUp, ArrowDown, DollarSign, Activity,
   Sparkles, Layers, Target, Flame, AlertOctagon, Moon, Sun,
-  LogOut, ArrowUpRight, UserX, Zap,
+  LogOut, ArrowUpRight, UserX, Zap, Minus,
 } from "lucide-react";
 import {
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis,
-  CartesianGrid, Tooltip as ReTooltip, PieChart, Pie, Cell, LineChart, Line,
+  CartesianGrid, Tooltip as ReTooltip, LineChart, Line,
 } from "recharts";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,27 +38,7 @@ function fmtNumber(n: number): string {
   return n.toLocaleString();
 }
 
-const COLORS_PIE: Record<string, string> = {
-  "ENTREGADA": "hsl(150,70%,55%)",
-  "EN ATENCIÓN": "hsl(199,89%,60%)",
-  "PENDIENTE": "hsl(0,75%,65%)",
-  "POR CERRAR": "hsl(31,95%,60%)",
-  "COTIZADA": "hsl(43,95%,60%)",
-  "VALORACIÓN": "hsl(270,80%,70%)",
-  "ON HOLD": "hsl(220,15%,55%)",
-  "APROBADA": "hsl(150,60%,70%)",
-  "CERRADA": "hsl(220,15%,50%)",
-  "ANULADA": "hsl(0,30%,40%)",
-};
-
-const PRODUCT_COLORS = [
-  "hsl(217,91%,60%)",   // blue
-  "hsl(280,80%,65%)",   // violet
-  "hsl(150,65%,55%)",   // emerald
-  "hsl(38,95%,60%)",    // amber
-  "hsl(0,75%,65%)",     // rose
-  "hsl(199,89%,60%)",   // sky
-];
+const ACCENT = "hsl(82,84%,55%)"; // lime-400 — único accent color
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CEO DASHBOARD
@@ -71,8 +51,11 @@ export function CEODashboard() {
   const { data: supportClients = [] } = useSupportClients();
   const { data: aiLogs = [] } = useAIUsageLogs();
 
-  const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
-  useEffect(() => { document.documentElement.classList.toggle("dark", dark); }, [dark]);
+  // Forzar dark mode al montar (estilo Lovable)
+  const [dark, setDark] = useState(true);
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", dark);
+  }, [dark]);
 
   const [financials, setFinancials] = useState<any[]>([]);
   useEffect(() => {
@@ -81,7 +64,7 @@ export function CEODashboard() {
 
   const now = new Date();
   const greeting = now.getHours() < 12 ? "Buenos días" : now.getHours() < 19 ? "Buenas tardes" : "Buenas noches";
-  const formattedDate = now.toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const ts = now.toLocaleString("es", { weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).toUpperCase();
 
   // ─── Cálculos ───────────────────────────────────────────────────────────
   const allClients = clients as any[];
@@ -143,13 +126,12 @@ export function CEODashboard() {
   const estimatedAICost = (totalAITokens / 1000) * 0.000075;
 
   const aiTrend = useMemo(() => {
-    const byDay: Record<string, { date: string; calls: number; tokens: number }> = {};
+    const byDay: Record<string, { date: string; calls: number }> = {};
     const last14 = Date.now() - 14 * 86400000;
     aiLogs.filter(l => new Date(l.created_at).getTime() >= last14).forEach(l => {
       const d = l.created_at.split("T")[0];
-      if (!byDay[d]) byDay[d] = { date: d.slice(5), calls: 0, tokens: 0 };
+      if (!byDay[d]) byDay[d] = { date: d.slice(5), calls: 0 };
       byDay[d].calls++;
-      byDay[d].tokens += l.total_tokens || 0;
     });
     return Object.values(byDay).sort((a, b) => a.date.localeCompare(b.date));
   }, [aiLogs]);
@@ -185,714 +167,651 @@ export function CEODashboard() {
     return Math.max(0, score);
   }, [atRisk, criticos, sinAtencion, totalPending, totalContractValue, utilizationPct]);
 
-  const healthLabel = healthScore >= 80 ? "Excelente" : healthScore >= 60 ? "Estable" : "Atención";
-  const healthGradient = healthScore >= 80
-    ? "from-emerald-500 to-teal-400"
-    : healthScore >= 60
-    ? "from-amber-500 to-orange-400"
-    : "from-rose-500 to-red-400";
-
-  const heroSubtitle =
-    atRisk > 0 ? `${atRisk} ${atRisk === 1 ? "cliente requiere atención" : "clientes requieren atención"}` :
-    criticos > 0 ? `${criticos} ${criticos === 1 ? "caso crítico abierto" : "casos críticos abiertos"}` :
-    sinAtencion > 0 ? `${sinAtencion} ${sinAtencion === 1 ? "boleta esperando asignación" : "boletas esperando asignación"}` :
-    "Todo bajo control. El negocio funciona como un reloj.";
+  const healthState = healthScore >= 80 ? "OPTIMAL" : healthScore >= 60 ? "STABLE" : "ATTENTION";
+  const healthColor = healthScore >= 80 ? "text-lime-400" : healthScore >= 60 ? "text-amber-400" : "text-rose-400";
+  const healthBg = healthScore >= 80 ? "border-lime-500/40 bg-lime-500/5" : healthScore >= 60 ? "border-amber-500/40 bg-amber-500/5" : "border-rose-500/40 bg-rose-500/5";
 
   return (
-    <TooltipProvider delayDuration={150}>
-      <div className="relative min-h-screen overflow-x-hidden">
-        {/* ════════════════════════════════════════════════════════════════
-            BACKGROUND: gradient + animated orbs (Lovable signature)
-        ════════════════════════════════════════════════════════════════ */}
-        <div className="fixed inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-background" />
-          <div className="absolute top-0 -left-32 h-[500px] w-[500px] rounded-full bg-amber-500/10 blur-[120px] animate-pulse" style={{ animationDuration: "8s" }} />
-          <div className="absolute top-1/3 -right-32 h-[600px] w-[600px] rounded-full bg-violet-500/10 blur-[140px] animate-pulse" style={{ animationDuration: "11s", animationDelay: "2s" }} />
-          <div className="absolute bottom-0 left-1/3 h-[400px] w-[400px] rounded-full bg-blue-500/8 blur-[100px] animate-pulse" style={{ animationDuration: "10s", animationDelay: "4s" }} />
-        </div>
+    <div className="relative min-h-screen bg-[#0a0a0a] text-white overflow-x-hidden">
+      {/* ════════════════════════════════════════════════════════════════
+          GEOMETRIC GRID BG
+      ════════════════════════════════════════════════════════════════ */}
+      <div
+        className="fixed inset-0 pointer-events-none opacity-[0.04]"
+        style={{
+          backgroundImage: `
+            linear-gradient(to right, white 1px, transparent 1px),
+            linear-gradient(to bottom, white 1px, transparent 1px)
+          `,
+          backgroundSize: "64px 64px",
+        }}
+      />
+      {/* Subtle ambient glow — solo uno, contenido */}
+      <div className="fixed top-0 right-0 h-[600px] w-[600px] rounded-full bg-lime-500/[0.04] blur-[120px] pointer-events-none" />
 
-        {/* ════════════════════════════════════════════════════════════════
-            STICKY GLASS TOPBAR
-        ════════════════════════════════════════════════════════════════ */}
-        <header className="sticky top-0 z-40 backdrop-blur-2xl bg-background/40 border-b border-border/30">
-          <div className="max-w-[1400px] mx-auto px-6 lg:px-10 py-4 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl blur-md opacity-60" />
-                <div className="relative h-10 w-10 rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 flex items-center justify-center shadow-2xl shadow-amber-500/40">
-                  <Crown className="h-5 w-5 text-white" />
-                </div>
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-[0.25em] font-bold bg-gradient-to-r from-amber-500 to-orange-400 bg-clip-text text-transparent">
-                  CEO Cockpit
-                </p>
-                <p className="text-sm font-bold leading-none mt-0.5 truncate">{profile?.full_name || "Director Ejecutivo"}</p>
-              </div>
+      {/* ════════════════════════════════════════════════════════════════
+          STICKY TOPBAR — sharp
+      ════════════════════════════════════════════════════════════════ */}
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0a0a0a]/80 backdrop-blur-md">
+        <div className="max-w-[1400px] mx-auto px-6 lg:px-10 h-14 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            {/* Logo cuadrado, no redondeado */}
+            <div className="relative h-8 w-8 bg-lime-400 flex items-center justify-center">
+              <Crown className="h-4 w-4 text-black" strokeWidth={2.5} />
+              <div className="absolute inset-0 bg-lime-400 blur-sm opacity-50 -z-10" />
             </div>
-            <div className="flex items-center gap-1.5">
-              <Button variant="ghost" size="icon" onClick={() => setDark(!dark)} className="h-9 w-9 rounded-xl hover:bg-foreground/5">
-                {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </Button>
-              <Button variant="ghost" size="sm" onClick={signOut} className="gap-2 h-9 px-3 rounded-xl text-xs font-semibold hover:bg-destructive/10 hover:text-destructive">
-                <LogOut className="h-3.5 w-3.5" /> Cerrar sesión
-              </Button>
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/50">
+                ceo / cockpit
+              </span>
+              <span className="text-white/20">/</span>
+              <span className="text-sm font-semibold truncate">{profile?.full_name || "Director Ejecutivo"}</span>
             </div>
           </div>
-        </header>
 
-        <main className="relative max-w-[1400px] mx-auto px-6 lg:px-10 pt-10 pb-20 space-y-12">
-          {/* ════════════════════════════════════════════════════════════════
-              HERO: dramatic greeting + health pulse
-          ════════════════════════════════════════════════════════════════ */}
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            className="relative"
-          >
-            <p className="text-xs uppercase tracking-[0.3em] font-bold text-muted-foreground mb-3">
-              {formattedDate}
-            </p>
-            <h1 className="text-5xl md:text-7xl font-black leading-[0.95] tracking-tight">
-              {greeting},
-              <br />
-              <span className="bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 bg-clip-text text-transparent">
-                {profile?.full_name?.split(" ")[0] || "Director"}.
+          <div className="flex items-center gap-2">
+            {/* Live indicator */}
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 border border-white/10 font-mono text-[10px] uppercase tracking-wider text-white/60">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full bg-lime-400 opacity-75" />
+                <span className="relative inline-flex h-1.5 w-1.5 bg-lime-400" />
               </span>
-            </h1>
-            <p className="mt-6 text-base md:text-lg text-muted-foreground max-w-2xl leading-relaxed">
-              {heroSubtitle}
-            </p>
+              live
+            </div>
+            <span className="hidden md:inline font-mono text-[10px] text-white/40 tracking-wider">{ts}</span>
+            <Button variant="ghost" size="icon" onClick={() => setDark(!dark)} className="h-8 w-8 rounded-none hover:bg-white/5">
+              {dark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={signOut} className="gap-1.5 h-8 px-3 rounded-none text-xs font-mono uppercase tracking-wider text-white/60 hover:text-white hover:bg-white/5">
+              <LogOut className="h-3 w-3" /> exit
+            </Button>
+          </div>
+        </div>
+      </header>
 
-            {/* Health pulse — gradient pill */}
-            <div className="mt-8 flex items-center gap-3 flex-wrap">
-              <div className={cn(
-                "inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-gradient-to-r text-white shadow-2xl",
-                healthGradient
-              )}>
-                <div className="relative">
-                  <div className="absolute inset-0 bg-white rounded-full blur-sm opacity-50 animate-pulse" />
-                  <Activity className="relative h-4 w-4" />
-                </div>
-                <div>
-                  <span className="text-2xl font-black tabular-nums">{healthScore}</span>
-                  <span className="text-xs font-semibold ml-1 opacity-90">/ 100</span>
-                </div>
-                <span className="text-xs font-bold uppercase tracking-wider opacity-90">{healthLabel}</span>
+      <main className="relative max-w-[1400px] mx-auto px-6 lg:px-10 pt-16 pb-24 space-y-16">
+        {/* ════════════════════════════════════════════════════════════════
+            HERO — flat, dramatic typography
+        ════════════════════════════════════════════════════════════════ */}
+        <motion.section
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+          className="relative"
+        >
+          {/* Marker line */}
+          <div className="flex items-center gap-3 mb-8">
+            <div className="h-px w-16 bg-lime-400" />
+            <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-lime-400">
+              Executive Overview · {ts.split(" ").slice(0, 3).join(" ")}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-8 items-end">
+            <div>
+              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-[0.95] tracking-tighter">
+                {greeting},
+                <br />
+                <span className="text-white/30">{profile?.full_name?.split(" ")[0] || "Director"}</span>
+                <span className="text-lime-400">.</span>
+              </h1>
+              <p className="mt-6 font-mono text-xs text-white/50 uppercase tracking-wider max-w-md">
+                {atRisk > 0 ? `> ${atRisk} clients at risk · action required` :
+                 criticos > 0 ? `> ${criticos} critical cases open · review needed` :
+                 sinAtencion > 0 ? `> ${sinAtencion} tickets unassigned` :
+                 "> all systems nominal · business operating normally"}
+              </p>
+            </div>
+
+            {/* Health monolith — bloque industrial */}
+            <div className={cn(
+              "border bg-black/40 p-5 min-w-[200px]",
+              healthBg
+            )}>
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/50 mb-2">
+                Health Score
+              </p>
+              <div className="flex items-baseline gap-2">
+                <span className={cn("text-6xl font-bold tabular-nums tracking-tighter leading-none", healthColor)}>
+                  {healthScore}
+                </span>
+                <span className="font-mono text-sm text-white/40">/100</span>
               </div>
-              <span className="text-xs text-muted-foreground">Salud global del negocio</span>
+              <div className="mt-3 flex items-center gap-2">
+                <div className={cn("h-1 flex-1", healthScore >= 80 ? "bg-lime-400" : healthScore >= 60 ? "bg-amber-400" : "bg-rose-400")} style={{ width: `${healthScore}%` }} />
+                <span className={cn("font-mono text-[10px] uppercase tracking-wider font-bold", healthColor)}>
+                  {healthState}
+                </span>
+              </div>
+            </div>
+          </div>
+        </motion.section>
+
+        {/* ════════════════════════════════════════════════════════════════
+            METRICS GRID — flat industrial cards
+        ════════════════════════════════════════════════════════════════ */}
+        <section>
+          <SectionLabel num="01" title="Pulse" subtitle="Real-time business metrics" />
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 border border-white/10 divide-x divide-y lg:divide-y-0 divide-white/10">
+            <Metric
+              label="Active Clients"
+              value={activos.toString()}
+              sub={`${implClients.length} impl · ${soporteClients.length} support`}
+              Icon={Building2}
+              trend={atRisk > 0 ? { dir: "down", text: `${atRisk} at risk` } : { dir: "up", text: "Stable" }}
+              accent="lime"
+              delay={0.1}
+            />
+            <Metric
+              label="Active Tickets"
+              value={ticketsActivos.length.toString()}
+              sub={`${ticketsCerrados.length} closed · ${supportTickets.length} total`}
+              Icon={Headset}
+              trend={sinAtencion > 0 ? { dir: "down", text: `${sinAtencion} unassigned` } : null}
+              accent="cyan"
+              delay={0.15}
+            />
+            <Metric
+              label="Annual Contracts"
+              value={fmtMoney(totalContractValue)}
+              sub={`${fmtMoney(totalPaid)} collected · ${collectionRate}%`}
+              Icon={DollarSign}
+              trend={collectionRate >= 70 ? { dir: "up", text: "Healthy" } : { dir: "down", text: "Watch" }}
+              accent="emerald"
+              delay={0.2}
+            />
+            <Metric
+              label="AI Cost · 30d"
+              value={fmtMoney(estimatedAICost)}
+              sub={`${fmtNumber(totalAITokens)} tk · ${totalAICalls} calls`}
+              Icon={Brain}
+              trend={null}
+              accent="violet"
+              delay={0.25}
+            />
+          </div>
+        </section>
+
+        {/* ════════════════════════════════════════════════════════════════
+            ALERTS — sharp red accent
+        ════════════════════════════════════════════════════════════════ */}
+        {(atRisk > 0 || criticos > 0 || sinAtencion > 0) && (
+          <motion.section
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4 }}
+          >
+            <SectionLabel num="02" title="Action Required" subtitle="Critical issues open" tone="alert" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-white/10">
+              {atRisk > 0 && (
+                <AlertBlock
+                  Icon={ShieldAlert}
+                  n={atRisk}
+                  label={atRisk === 1 ? "client at risk" : "clients at risk"}
+                  hint={allClients.filter(c => c.status === "en-riesgo").map((c: any) => c.name).slice(0, 3).join(" / ") || "—"}
+                  tone="rose"
+                />
+              )}
+              {criticos > 0 && (
+                <AlertBlock
+                  Icon={Flame}
+                  n={criticos}
+                  label={criticos === 1 ? "critical case" : "critical cases"}
+                  hint="Priority: Critical / Business Impact"
+                  tone="rose"
+                />
+              )}
+              {sinAtencion > 0 && (
+                <AlertBlock
+                  Icon={UserX}
+                  n={sinAtencion}
+                  label={sinAtencion === 1 ? "unassigned ticket" : "unassigned tickets"}
+                  hint="Status: PENDIENTE without assignee"
+                  tone="amber"
+                />
+              )}
             </div>
           </motion.section>
+        )}
 
-          {/* ════════════════════════════════════════════════════════════════
-              HERO METRICS — 4 big cards with glow
-          ════════════════════════════════════════════════════════════════ */}
-          <section>
-            <SectionLabel kicker="01" title="Pulso del negocio" subtitle="Métricas clave en tiempo real" />
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
-              <HeroMetric
-                label="Clientes activos"
-                value={activos.toString()}
-                sub={`${implClients.length} implementación · ${soporteClients.length} soporte`}
-                Icon={Building2}
-                gradient="from-blue-500 to-cyan-400"
-                trend={atRisk > 0 ? { dir: "down", text: `${atRisk} en riesgo` } : { dir: "up", text: "Estable" }}
-                delay={0.1}
-              />
-              <HeroMetric
-                label="Boletas activas"
-                value={ticketsActivos.length.toString()}
-                sub={`${ticketsCerrados.length} cerradas · ${supportTickets.length} total`}
-                Icon={Headset}
-                gradient="from-violet-500 to-fuchsia-400"
-                trend={sinAtencion > 0 ? { dir: "down", text: `${sinAtencion} sin asignar` } : null}
-                delay={0.2}
-              />
-              <HeroMetric
-                label="Contrato anual"
-                value={fmtMoney(totalContractValue)}
-                sub={`${fmtMoney(totalPaid)} cobrado · ${collectionRate}%`}
-                Icon={DollarSign}
-                gradient="from-emerald-500 to-teal-400"
-                trend={collectionRate >= 70 ? { dir: "up", text: "Cobranza sana" } : { dir: "down", text: "Atención" }}
-                delay={0.3}
-              />
-              <HeroMetric
-                label="Costo IA · 30d"
-                value={fmtMoney(estimatedAICost)}
-                sub={`${fmtNumber(totalAITokens)} tokens · ${totalAICalls} llamadas`}
-                Icon={Brain}
-                gradient="from-amber-500 to-orange-400"
-                trend={null}
-                delay={0.4}
-              />
-            </div>
-          </section>
-
-          {/* ════════════════════════════════════════════════════════════════
-              ALERTS BAND — solo si hay
-          ════════════════════════════════════════════════════════════════ */}
-          {(atRisk > 0 || criticos > 0 || sinAtencion > 0) && (
-            <motion.section
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
-            >
-              <SectionLabel kicker="02" title="Requieren tu atención" subtitle="Asuntos críticos abiertos" tone="destructive" />
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {atRisk > 0 && (
-                  <AlertCard
-                    Icon={ShieldAlert}
-                    n={atRisk}
-                    label={atRisk === 1 ? "cliente en riesgo" : "clientes en riesgo"}
-                    hint={allClients.filter(c => c.status === "en-riesgo").map((c: any) => c.name).slice(0, 3).join(" · ") || "—"}
-                    gradient="from-rose-500 to-red-500"
-                  />
-                )}
-                {criticos > 0 && (
-                  <AlertCard
-                    Icon={Flame}
-                    n={criticos}
-                    label={criticos === 1 ? "caso crítico" : "casos críticos"}
-                    hint="Prioridad: Crítica, Impacto Negocio"
-                    gradient="from-orange-500 to-rose-500"
-                  />
-                )}
-                {sinAtencion > 0 && (
-                  <AlertCard
-                    Icon={UserX}
-                    n={sinAtencion}
-                    label={sinAtencion === 1 ? "boleta sin asignar" : "boletas sin asignar"}
-                    hint="PENDIENTE sin responsable"
-                    gradient="from-amber-500 to-orange-500"
-                  />
-                )}
+        {/* ════════════════════════════════════════════════════════════════
+            FINANCIAL + TICKET FLOW
+        ════════════════════════════════════════════════════════════════ */}
+        <section>
+          <SectionLabel num="03" title="Operations" subtitle="Revenue, utilization & flow" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-px bg-white/10">
+            {/* Financial */}
+            <Panel>
+              <PanelHeader Icon={DollarSign} title="Financial" sub="Year-to-date · USD" />
+              <div className="grid grid-cols-2 gap-px bg-white/10 -mx-5 mt-5">
+                <div className="bg-[#0a0a0a] p-5">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/50">Collected</p>
+                  <p className="text-3xl font-bold tabular-nums text-lime-400 mt-2 tracking-tighter">{fmtMoney(totalPaid)}</p>
+                  <Bar pct={(totalPaid / Math.max(totalBilled, 1)) * 100} accent="lime" />
+                </div>
+                <div className="bg-[#0a0a0a] p-5">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/50">Pending</p>
+                  <p className="text-3xl font-bold tabular-nums text-amber-400 mt-2 tracking-tighter">{fmtMoney(totalPending)}</p>
+                  <Bar pct={(totalPending / Math.max(totalBilled, 1)) * 100} accent="amber" />
+                </div>
               </div>
-            </motion.section>
-          )}
+              <div className="grid grid-cols-3 gap-4 mt-5 pt-5 border-t border-white/10">
+                <DataPoint label="Billed" value={fmtMoney(totalBilled)} />
+                <DataPoint label="Contracts" value={financials.length.toString()} />
+                <DataPoint label="Util." value={`${utilizationPct}%`} highlight={utilizationPct > 90} />
+              </div>
+            </Panel>
 
-          {/* ════════════════════════════════════════════════════════════════
-              FINANCIAL + TICKETS TREND
-          ════════════════════════════════════════════════════════════════ */}
-          <section>
-            <SectionLabel kicker="03" title="Operación y finanzas" subtitle="Cobranza, utilización y flujo" />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              {/* Financiero */}
-              <GlassCard glow="emerald">
-                <div className="flex items-start justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <IconBubble Icon={DollarSign} gradient="from-emerald-500 to-teal-400" />
-                    <div>
-                      <h3 className="text-lg font-black">Financiero</h3>
-                      <p className="text-xs text-muted-foreground">Acumulado del año</p>
+            {/* Ticket flow */}
+            <Panel>
+              <PanelHeader Icon={Activity} title="Ticket Flow" sub="Last 30 days · new vs closed" />
+              <div className="h-[200px] mt-4">
+                {ticketTrend.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={ticketTrend} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="gNuevos" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="hsl(199,89%,60%)" stopOpacity={0.4} />
+                          <stop offset="100%" stopColor="hsl(199,89%,60%)" stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="gCerrados" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={ACCENT} stopOpacity={0.4} />
+                          <stop offset="100%" stopColor={ACCENT} stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.05)" />
+                      <XAxis dataKey="date" tick={{ fontSize: 9, fill: "rgba(255,255,255,0.4)" }} stroke="rgba(255,255,255,0.1)" tickLine={false} />
+                      <YAxis tick={{ fontSize: 9, fill: "rgba(255,255,255,0.4)" }} stroke="rgba(255,255,255,0.1)" tickLine={false} />
+                      <ReTooltip contentStyle={{ fontSize: 11, background: "#0a0a0a", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 0, fontFamily: "monospace" }} />
+                      <Area type="monotone" dataKey="nuevos" stroke="hsl(199,89%,60%)" fill="url(#gNuevos)" strokeWidth={1.5} />
+                      <Area type="monotone" dataKey="cerrados" stroke={ACCENT} fill="url(#gCerrados)" strokeWidth={1.5} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : <Empty label="No activity in last 30 days" />}
+              </div>
+              <div className="flex items-center gap-4 pt-4 mt-2 border-t border-white/10">
+                <Legend color="hsl(199,89%,60%)" label="new" />
+                <Legend color={ACCENT} label="closed" />
+              </div>
+            </Panel>
+          </div>
+        </section>
+
+        {/* ════════════════════════════════════════════════════════════════
+            DISTRIBUTION GRID
+        ════════════════════════════════════════════════════════════════ */}
+        <section>
+          <SectionLabel num="04" title="Intelligence" subtitle="Distribution, products & AI analysis" />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-px bg-white/10">
+            {/* Estados */}
+            <Panel>
+              <PanelHeader Icon={Layers} title="States" sub={`${supportTickets.length} tickets total`} />
+              <div className="space-y-2 mt-5">
+                {ticketsByEstado.length === 0 ? (
+                  <Empty label="No data" />
+                ) : ticketsByEstado.slice(0, 8).map((e, i) => {
+                  const max = ticketsByEstado[0].value;
+                  const pct = max > 0 ? Math.round((e.value / max) * 100) : 0;
+                  return (
+                    <div key={e.name}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="font-mono text-[10px] uppercase tracking-wider text-white/70">
+                          {e.name}
+                        </span>
+                        <span className="font-mono text-xs tabular-nums font-bold">{e.value}</span>
+                      </div>
+                      <div className="h-1.5 bg-white/[0.03] border border-white/5">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          whileInView={{ width: `${pct}%` }}
+                          viewport={{ once: true }}
+                          transition={{ duration: 0.6, delay: i * 0.04, ease: "easeOut" }}
+                          className="h-full"
+                          style={{ background: i === 0 ? ACCENT : `rgba(255,255,255,${0.6 - i * 0.07})` }}
+                        />
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-3xl font-black tabular-nums bg-gradient-to-r from-emerald-500 to-teal-400 bg-clip-text text-transparent">
-                      {collectionRate}%
-                    </p>
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">cobrado</p>
-                  </div>
-                </div>
+                  );
+                })}
+              </div>
+            </Panel>
 
-                <div className="grid grid-cols-2 gap-3 mb-5">
-                  <BigStat label="Cobrado" value={fmtMoney(totalPaid)} pct={(totalPaid / Math.max(totalBilled, 1)) * 100} gradient="from-emerald-500 to-teal-400" />
-                  <BigStat label="Pendiente" value={fmtMoney(totalPending)} pct={(totalPending / Math.max(totalBilled, 1)) * 100} gradient="from-amber-500 to-orange-400" />
-                </div>
+            {/* Productos */}
+            <Panel>
+              <PanelHeader Icon={Target} title="Products" sub={`${ticketsByProducto.length} product lines`} />
+              <div className="h-[200px] mt-5">
+                {ticketsByProducto.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={ticketsByProducto} layout="vertical" margin={{ left: 60, right: 20 }}>
+                      <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.05)" horizontal={false} />
+                      <XAxis type="number" tick={{ fontSize: 9, fill: "rgba(255,255,255,0.4)" }} stroke="rgba(255,255,255,0.1)" tickLine={false} />
+                      <YAxis dataKey="name" type="category" tick={{ fontSize: 9, fill: "rgba(255,255,255,0.6)", fontFamily: "monospace" }} stroke="rgba(255,255,255,0.1)" width={60} tickLine={false} />
+                      <ReTooltip contentStyle={{ fontSize: 11, background: "#0a0a0a", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 0, fontFamily: "monospace" }} />
+                      <Bar dataKey="value" fill={ACCENT} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : <Empty label="No data" />}
+              </div>
+            </Panel>
 
-                <div className="grid grid-cols-3 gap-2 pt-5 border-t border-border/30">
-                  <MicroStat label="Facturado" value={fmtMoney(totalBilled)} />
-                  <MicroStat label="Contratos" value={financials.length.toString()} />
-                  <MicroStat label="Util. horas" value={`${utilizationPct}%`} highlight={utilizationPct > 90} />
+            {/* Causas raíz */}
+            <Panel>
+              <PanelHeader Icon={Brain} title="Root Causes" sub={`${conCausaRaiz}/${supportTickets.length} classified · AI`} />
+              {conCausaRaiz === 0 ? (
+                <div className="h-[200px] flex flex-col items-center justify-center text-center px-2 mt-5">
+                  <Sparkles className="h-6 w-6 text-white/20 mb-3" />
+                  <p className="font-mono text-[10px] uppercase tracking-wider text-white/40 leading-relaxed">
+                    No AI classification yet
+                    <br />
+                    <span className="text-lime-400">→ run "Classify pending"</span>
+                  </p>
                 </div>
-              </GlassCard>
+              ) : (
+                <div className="space-y-3 mt-5">
+                  {topCausasRaiz.map((c, i) => {
+                    const pct = conCausaRaiz > 0 ? Math.round((c.count / conCausaRaiz) * 100) : 0;
+                    return (
+                      <div key={c.name}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-mono text-[10px] uppercase tracking-wider text-white/70 truncate">{c.name}</span>
+                          <span className="font-mono text-[10px] tabular-nums font-bold ml-2 shrink-0">
+                            {c.count} · {pct}%
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-white/[0.03] border border-white/5">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            whileInView={{ width: `${pct}%` }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.6, delay: i * 0.05 }}
+                            className="h-full bg-violet-400"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </Panel>
+          </div>
+        </section>
 
-              {/* Tickets trend */}
-              <GlassCard glow="info">
-                <div className="flex items-start justify-between mb-5">
-                  <div className="flex items-center gap-3">
-                    <IconBubble Icon={Activity} gradient="from-blue-500 to-cyan-400" />
-                    <div>
-                      <h3 className="text-lg font-black">Flujo de boletas</h3>
-                      <p className="text-xs text-muted-foreground">Últimos 30 días</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="h-[200px]">
-                  {ticketTrend.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={ticketTrend}>
-                        <defs>
-                          <linearGradient id="gNuevos" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="hsl(199,89%,60%)" stopOpacity={0.5} />
-                            <stop offset="100%" stopColor="hsl(199,89%,60%)" stopOpacity={0} />
-                          </linearGradient>
-                          <linearGradient id="gCerrados" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="hsl(150,70%,55%)" stopOpacity={0.4} />
-                            <stop offset="100%" stopColor="hsl(150,70%,55%)" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.2} />
-                        <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
-                        <ReTooltip contentStyle={{ fontSize: 11, background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px", backdropFilter: "blur(10px)" }} />
-                        <Area type="monotone" dataKey="nuevos" stroke="hsl(199,89%,60%)" fill="url(#gNuevos)" strokeWidth={2.5} />
-                        <Area type="monotone" dataKey="cerrados" stroke="hsl(150,70%,55%)" fill="url(#gCerrados)" strokeWidth={2.5} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <EmptyState text="Sin actividad en últimos 30 días" />
-                  )}
-                </div>
-                <div className="flex items-center gap-4 pt-3 mt-2 border-t border-border/30">
-                  <LegendDot color="hsl(199,89%,60%)" label="Nuevas" />
-                  <LegendDot color="hsl(150,70%,55%)" label="Cerradas" />
-                </div>
-              </GlassCard>
-            </div>
-          </section>
-
-          {/* ════════════════════════════════════════════════════════════════
-              DISTRIBUTION TRIO — estados / productos / causas
-          ════════════════════════════════════════════════════════════════ */}
-          <section>
-            <SectionLabel kicker="04" title="Inteligencia operativa" subtitle="Distribución, productos y análisis IA" />
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-              {/* Estados */}
-              <GlassCard glow="primary">
-                <div className="flex items-center gap-3 mb-5">
-                  <IconBubble Icon={Layers} gradient="from-blue-500 to-indigo-500" />
-                  <div>
-                    <h3 className="text-base font-black">Estados</h3>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{supportTickets.length} boletas</p>
-                  </div>
-                </div>
-                <div className="h-[180px] flex items-center justify-center">
-                  {ticketsByEstado.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={ticketsByEstado} cx="50%" cy="50%" innerRadius={45} outerRadius={75} dataKey="value" stroke="hsl(var(--background))" strokeWidth={3}>
-                          {ticketsByEstado.map((entry, i) => (
-                            <Cell key={i} fill={COLORS_PIE[entry.name] || PRODUCT_COLORS[i % PRODUCT_COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <ReTooltip contentStyle={{ fontSize: 11, background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px" }} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  ) : <EmptyState text="Sin datos" />}
-                </div>
-                <div className="space-y-1.5 mt-3">
-                  {ticketsByEstado.slice(0, 4).map(e => (
-                    <div key={e.name} className="flex items-center gap-2 text-xs">
-                      <span className="h-2 w-2 rounded-full shrink-0" style={{ background: COLORS_PIE[e.name] || "hsl(220,15%,50%)" }} />
-                      <span className="flex-1 truncate text-muted-foreground">{e.name}</span>
-                      <span className="font-black tabular-nums">{e.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </GlassCard>
-
-              {/* Productos */}
-              <GlassCard glow="violet">
-                <div className="flex items-center gap-3 mb-5">
-                  <IconBubble Icon={Target} gradient="from-violet-500 to-fuchsia-500" />
-                  <div>
-                    <h3 className="text-base font-black">Productos</h3>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{ticketsByProducto.length} líneas</p>
-                  </div>
-                </div>
-                <div className="h-[200px]">
-                  {ticketsByProducto.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={ticketsByProducto} layout="vertical" margin={{ left: 60 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.2} horizontal={false} />
-                        <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
-                        <YAxis dataKey="name" type="category" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" width={60} axisLine={false} tickLine={false} />
-                        <ReTooltip contentStyle={{ fontSize: 11, background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px" }} />
-                        <Bar dataKey="value" radius={[0, 8, 8, 0]}>
-                          {ticketsByProducto.map((_, i) => <Cell key={i} fill={PRODUCT_COLORS[i % PRODUCT_COLORS.length]} />)}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : <EmptyState text="Sin datos" />}
-                </div>
-              </GlassCard>
-
-              {/* Causas raíz */}
-              <GlassCard glow="amber">
-                <div className="flex items-center gap-3 mb-5">
-                  <IconBubble Icon={Brain} gradient="from-amber-500 to-orange-500" />
-                  <div>
-                    <h3 className="text-base font-black">Causas raíz</h3>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{conCausaRaiz} de {supportTickets.length} clasificadas</p>
-                  </div>
-                </div>
-                {conCausaRaiz === 0 ? (
-                  <div className="h-[200px] flex flex-col items-center justify-center text-center space-y-3 px-4">
-                    <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 flex items-center justify-center">
-                      <Sparkles className="h-6 w-6 text-amber-500" />
-                    </div>
-                    <p className="text-sm font-semibold">Sin clasificación IA aún</p>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Pedile al equipo PM que ejecute<br/>
-                      <span className="font-mono text-amber-500 font-bold">"Clasificar pendientes"</span> en Soporte
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {topCausasRaiz.map((c, i) => {
-                      const pct = conCausaRaiz > 0 ? Math.round((c.count / conCausaRaiz) * 100) : 0;
-                      return (
-                        <div key={c.name} className="space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold truncate flex-1 mr-2">{c.name}</span>
-                            <span className="text-[10px] tabular-nums text-muted-foreground font-bold shrink-0">
-                              <span className="text-amber-500">{c.count}</span> · {pct}%
+        {/* ════════════════════════════════════════════════════════════════
+            TOP CLIENTS + AI USAGE
+        ════════════════════════════════════════════════════════════════ */}
+        <section>
+          <SectionLabel num="05" title="Workload" subtitle="Top clients & AI consumption" />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-px bg-white/10">
+            <Panel className="lg:col-span-2">
+              <PanelHeader Icon={Building2} title="Top Clients" sub={`${topClientesByLoad.length}/${supportClients.length} clients ranked`} />
+              {topClientesByLoad.length === 0 ? (
+                <Empty label="No tickets yet" />
+              ) : (
+                <div className="mt-5 -mx-5">
+                  {topClientesByLoad.map((c, i) => {
+                    const max = topClientesByLoad[0].count;
+                    const pct = max > 0 ? Math.round((c.count / max) * 100) : 0;
+                    const total = supportTickets.length;
+                    const pctTotal = total > 0 ? Math.round((c.count / total) * 100) : 0;
+                    return (
+                      <motion.div
+                        key={c.name}
+                        initial={{ opacity: 0 }}
+                        whileInView={{ opacity: 1 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.3, delay: i * 0.04 }}
+                        className="flex items-center gap-4 px-5 py-3 border-t border-white/[0.06] hover:bg-white/[0.02] transition-colors"
+                      >
+                        <span className="font-mono text-[10px] tabular-nums text-white/40 w-6">
+                          {String(i + 1).padStart(2, "0")}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1.5 gap-2">
+                            <span className="text-sm font-semibold truncate">{c.name}</span>
+                            <span className="font-mono text-[10px] tabular-nums text-white/60 shrink-0">
+                              <span className="font-bold text-white">{c.count}</span> · {pctTotal}%
                             </span>
                           </div>
-                          <div className="h-2 rounded-full bg-amber-500/10 overflow-hidden">
+                          <div className="h-px bg-white/5">
                             <motion.div
                               initial={{ width: 0 }}
-                              animate={{ width: `${pct}%` }}
-                              transition={{ duration: 0.8, delay: i * 0.05, ease: "easeOut" }}
-                              className="h-full bg-gradient-to-r from-amber-500 to-orange-400 rounded-full"
+                              whileInView={{ width: `${pct}%` }}
+                              viewport={{ once: true }}
+                              transition={{ duration: 0.7, delay: i * 0.04 + 0.1 }}
+                              className="h-full bg-lime-400"
                             />
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </GlassCard>
-            </div>
-          </section>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+            </Panel>
 
-          {/* ════════════════════════════════════════════════════════════════
-              TOP CLIENTS + AI USAGE
-          ════════════════════════════════════════════════════════════════ */}
-          <section>
-            <SectionLabel kicker="05" title="Carga y consumo" subtitle="Top clientes y uso de inteligencia artificial" />
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-              {/* Top clients */}
-              <GlassCard glow="primary" className="lg:col-span-2">
-                <div className="flex items-center justify-between mb-5">
-                  <div className="flex items-center gap-3">
-                    <IconBubble Icon={Building2} gradient="from-blue-500 to-cyan-400" />
-                    <div>
-                      <h3 className="text-lg font-black">Top clientes por carga</h3>
-                      <p className="text-xs text-muted-foreground">Boletas activas + cerradas</p>
-                    </div>
-                  </div>
-                  <span className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground bg-muted/40 px-3 py-1.5 rounded-full">
-                    {topClientesByLoad.length} de {supportClients.length}
-                  </span>
+            <Panel>
+              <PanelHeader Icon={Zap} title="AI Usage" sub="Last 14 days" />
+              <div className="h-[140px] mt-5 -mx-2">
+                {aiTrend.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={aiTrend} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.05)" />
+                      <XAxis dataKey="date" tick={{ fontSize: 9, fill: "rgba(255,255,255,0.4)" }} stroke="rgba(255,255,255,0.1)" tickLine={false} />
+                      <YAxis tick={{ fontSize: 9, fill: "rgba(255,255,255,0.4)" }} stroke="rgba(255,255,255,0.1)" tickLine={false} width={28} />
+                      <ReTooltip contentStyle={{ fontSize: 11, background: "#0a0a0a", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 0, fontFamily: "monospace" }} />
+                      <Line type="monotone" dataKey="calls" stroke="hsl(280,80%,70%)" strokeWidth={1.5} dot={{ r: 2.5, fill: "hsl(280,80%,70%)", strokeWidth: 0 }} activeDot={{ r: 4 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : <Empty label="No AI activity" />}
+              </div>
+              <div className="grid grid-cols-2 gap-px bg-white/10 mt-5 -mx-5 -mb-5">
+                <div className="bg-[#0a0a0a] p-4">
+                  <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-white/50">Tokens 30d</p>
+                  <p className="text-base font-bold tabular-nums mt-1 tracking-tight">{fmtNumber(totalAITokens)}</p>
                 </div>
-                {topClientesByLoad.length === 0 ? (
-                  <EmptyState text="Sin tickets aún" />
-                ) : (
-                  <div className="space-y-3">
-                    {topClientesByLoad.map((c, i) => {
-                      const max = topClientesByLoad[0].count;
-                      const pct = max > 0 ? Math.round((c.count / max) * 100) : 0;
-                      const total = supportTickets.length;
-                      const pctTotal = total > 0 ? Math.round((c.count / total) * 100) : 0;
-                      return (
-                        <motion.div
-                          key={c.name}
-                          initial={{ opacity: 0, x: -10 }}
-                          whileInView={{ opacity: 1, x: 0 }}
-                          viewport={{ once: true }}
-                          transition={{ duration: 0.4, delay: i * 0.06 }}
-                          className="flex items-center gap-4"
-                        >
-                          <div className={cn(
-                            "h-9 w-9 rounded-xl flex items-center justify-center shrink-0 border bg-gradient-to-br text-white font-black text-xs shadow-lg",
-                            i === 0 ? "from-amber-400 to-orange-500 shadow-amber-500/30 border-amber-500/40" :
-                            i === 1 ? "from-slate-300 to-slate-400 shadow-slate-400/30 border-slate-400/40" :
-                            i === 2 ? "from-orange-700 to-amber-700 shadow-orange-700/30 border-orange-700/40" :
-                            "from-muted/60 to-muted/40 border-border text-muted-foreground"
-                          )}>
-                            {i + 1}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-1.5">
-                              <span className="text-sm font-bold truncate">{c.name}</span>
-                              <span className="text-[10px] tabular-nums text-muted-foreground ml-2 shrink-0 font-semibold">
-                                <span className="text-foreground font-black">{c.count}</span> boletas · {pctTotal}%
-                              </span>
-                            </div>
-                            <div className="h-2 rounded-full bg-muted/30 overflow-hidden">
-                              <motion.div
-                                initial={{ width: 0 }}
-                                whileInView={{ width: `${pct}%` }}
-                                viewport={{ once: true }}
-                                transition={{ duration: 0.8, delay: i * 0.05 + 0.2, ease: "easeOut" }}
-                                className="h-full rounded-full bg-gradient-to-r"
-                                style={{ background: `linear-gradient(to right, ${PRODUCT_COLORS[i % PRODUCT_COLORS.length]}, ${PRODUCT_COLORS[(i + 1) % PRODUCT_COLORS.length]})` }}
-                              />
-                            </div>
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-                )}
-              </GlassCard>
+                <div className="bg-[#0a0a0a] p-4">
+                  <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-white/50">Est. Cost</p>
+                  <p className="text-base font-bold tabular-nums mt-1 tracking-tight text-violet-300">{fmtMoney(estimatedAICost)}</p>
+                </div>
+              </div>
+            </Panel>
+          </div>
+        </section>
 
-              {/* AI usage */}
-              <GlassCard glow="violet">
-                <div className="flex items-center gap-3 mb-5">
-                  <IconBubble Icon={Zap} gradient="from-violet-500 to-fuchsia-500" />
-                  <div>
-                    <h3 className="text-base font-black">Inteligencia artificial</h3>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Últimos 14 días</p>
-                  </div>
-                </div>
-                <div className="h-[140px] -mx-2">
-                  {aiTrend.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={aiTrend}>
-                        <defs>
-                          <linearGradient id="lineAI" x1="0" y1="0" x2="1" y2="0">
-                            <stop offset="0%" stopColor="hsl(280,80%,65%)" />
-                            <stop offset="100%" stopColor="hsl(310,80%,70%)" />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.2} />
-                        <XAxis dataKey="date" tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} width={28} />
-                        <ReTooltip contentStyle={{ fontSize: 11, background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px" }} />
-                        <Line type="monotone" dataKey="calls" stroke="url(#lineAI)" strokeWidth={3} dot={{ r: 4, fill: "hsl(280,80%,65%)" }} activeDot={{ r: 6 }} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : <EmptyState text="Sin actividad IA" />}
-                </div>
-                <div className="grid grid-cols-2 gap-3 pt-4 border-t border-border/30">
-                  <MicroStat label="Tokens · 30d" value={fmtNumber(totalAITokens)} />
-                  <MicroStat label="Costo est." value={fmtMoney(estimatedAICost)} />
-                </div>
-              </GlassCard>
-            </div>
-          </section>
-
-          {/* ════════════════════════════════════════════════════════════════
-              FOOTER — live indicator
-          ════════════════════════════════════════════════════════════════ */}
-          <footer className="text-center text-xs text-muted-foreground pt-8 border-t border-border/30">
-            <div className="flex items-center justify-center gap-3 flex-wrap">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                </span>
-                <span className="font-semibold">Datos en vivo</span>
+        {/* ════════════════════════════════════════════════════════════════
+            FOOTER — minimal, technical
+        ════════════════════════════════════════════════════════════════ */}
+        <footer className="pt-8 border-t border-white/10">
+          <div className="flex items-center justify-between flex-wrap gap-3 font-mono text-[10px] uppercase tracking-wider text-white/40">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 bg-lime-400 animate-pulse" />
+                live data
               </span>
-              <span>·</span>
-              <span>Actualizado {now.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })}</span>
-              <span>·</span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/30 font-bold text-[10px] uppercase tracking-wider">
-                <Crown className="h-2.5 w-2.5" /> Vista CEO · Read-only
-              </span>
+              <span>/</span>
+              <span>{ts}</span>
             </div>
-          </footer>
-        </main>
-      </div>
-    </TooltipProvider>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 border border-amber-500/40 bg-amber-500/5">
+              <Crown className="h-2.5 w-2.5 text-amber-400" />
+              <span className="text-amber-400">CEO · READ-ONLY</span>
+            </div>
+          </div>
+        </footer>
+      </main>
+    </div>
   );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SUB-COMPONENTES (estilo Lovable)
+// SUB-COMPONENTES (industrial style)
 // ═══════════════════════════════════════════════════════════════════════════
 
-function SectionLabel({ kicker, title, subtitle, tone }: { kicker: string; title: string; subtitle: string; tone?: "default" | "destructive" }) {
+function SectionLabel({ num, title, subtitle, tone }: { num: string; title: string; subtitle: string; tone?: "default" | "alert" }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 8 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      transition={{ duration: 0.5 }}
+      transition={{ duration: 0.4 }}
       className="mb-6"
     >
-      <div className="flex items-baseline gap-3">
+      <div className="flex items-center gap-3">
         <span className={cn(
-          "text-xs font-mono font-bold tracking-wider px-2 py-0.5 rounded",
-          tone === "destructive" ? "bg-destructive/10 text-destructive" : "bg-muted/50 text-muted-foreground"
+          "font-mono text-[10px] font-bold tracking-[0.2em] px-2 py-0.5 border",
+          tone === "alert" ? "border-rose-500/40 text-rose-400 bg-rose-500/5" : "border-white/15 text-white/50"
         )}>
-          {kicker}
+          {num}
         </span>
-        <h2 className="text-2xl md:text-3xl font-black tracking-tight">{title}</h2>
+        <h2 className="text-2xl md:text-3xl font-bold tracking-tighter">{title}</h2>
+        <div className="h-px flex-1 bg-white/10 ml-2" />
       </div>
-      <p className="text-sm text-muted-foreground mt-1.5 ml-12">{subtitle}</p>
+      <p className="font-mono text-[10px] uppercase tracking-wider text-white/40 mt-2 ml-12">{subtitle}</p>
     </motion.div>
   );
 }
 
-function GlassCard({ children, glow = "primary", className }: { children: React.ReactNode; glow?: "primary" | "info" | "emerald" | "violet" | "amber"; className?: string }) {
-  const glowColors = {
-    primary: "before:bg-primary/10",
-    info: "before:bg-blue-500/10",
-    emerald: "before:bg-emerald-500/10",
-    violet: "before:bg-violet-500/10",
-    amber: "before:bg-amber-500/10",
-  };
+function Panel({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 12 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-50px" }}
-      transition={{ duration: 0.5, ease: "easeOut" }}
-      className={cn(
-        "relative rounded-3xl border border-border/40 bg-card/60 backdrop-blur-xl p-6 lg:p-7 shadow-xl overflow-hidden",
-        "before:absolute before:-top-24 before:-right-24 before:h-48 before:w-48 before:rounded-full before:blur-3xl before:opacity-50 before:pointer-events-none",
-        glowColors[glow],
-        className
-      )}
+      transition={{ duration: 0.4 }}
+      className={cn("relative bg-[#0a0a0a] p-5 lg:p-6", className)}
     >
-      <div className="relative">{children}</div>
+      {children}
     </motion.div>
   );
 }
 
-function HeroMetric({
-  label, value, sub, Icon, gradient, trend, delay = 0,
+function PanelHeader({ Icon, title, sub }: { Icon: typeof Crown; title: string; sub: string }) {
+  return (
+    <div className="flex items-center gap-3 pb-4 border-b border-white/[0.06]">
+      <div className="h-7 w-7 border border-white/15 bg-white/[0.02] flex items-center justify-center">
+        <Icon className="h-3.5 w-3.5" strokeWidth={1.8} />
+      </div>
+      <div className="min-w-0">
+        <p className="text-sm font-bold tracking-tight">{title}</p>
+        <p className="font-mono text-[9px] uppercase tracking-wider text-white/40 truncate">{sub}</p>
+      </div>
+    </div>
+  );
+}
+
+function Metric({
+  label, value, sub, Icon, trend, accent, delay = 0,
 }: {
   label: string;
   value: string;
   sub: string;
   Icon: typeof Crown;
-  gradient: string;
   trend: { dir: "up" | "down"; text: string } | null;
+  accent: "lime" | "cyan" | "emerald" | "violet";
   delay?: number;
 }) {
+  const accentClasses = {
+    lime: "text-lime-400",
+    cyan: "text-cyan-400",
+    emerald: "text-emerald-400",
+    violet: "text-violet-400",
+  };
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.97 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.5, delay, ease: "easeOut" }}
-      whileHover={{ y: -4, transition: { duration: 0.2 } }}
-      className="group relative"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay }}
+      className="group relative bg-[#0a0a0a] p-5 lg:p-6 hover:bg-white/[0.02] transition-colors"
     >
-      {/* Glow on hover */}
-      <div className={cn("absolute inset-0 rounded-3xl bg-gradient-to-br opacity-0 group-hover:opacity-30 blur-xl transition-opacity duration-500", gradient)} />
-
-      <div className="relative h-full rounded-3xl border border-border/40 bg-card/70 backdrop-blur-xl p-6 overflow-hidden">
-        {/* Animated gradient line top */}
-        <div className={cn("absolute top-0 inset-x-0 h-px bg-gradient-to-r opacity-60", gradient)} />
-
-        <div className="flex items-start justify-between gap-2 mb-4">
+      <div className="flex items-start justify-between gap-2 mb-5">
+        <div className="h-8 w-8 border border-white/15 bg-white/[0.02] flex items-center justify-center">
+          <Icon className="h-4 w-4 text-white/70" strokeWidth={1.8} />
+        </div>
+        {trend ? (
           <div className={cn(
-            "relative h-12 w-12 rounded-2xl bg-gradient-to-br flex items-center justify-center shadow-lg",
-            gradient
+            "inline-flex items-center gap-1 px-2 py-0.5 border font-mono text-[9px] uppercase tracking-wider font-bold",
+            trend.dir === "up" ? "border-lime-500/40 text-lime-400 bg-lime-500/5" : "border-rose-500/40 text-rose-400 bg-rose-500/5"
           )}>
-            <Icon className="h-5 w-5 text-white" />
-            <div className={cn("absolute inset-0 rounded-2xl bg-gradient-to-br blur-md opacity-50 -z-10", gradient)} />
+            {trend.dir === "up" ? <ArrowUp className="h-2.5 w-2.5" strokeWidth={2.5} /> : <ArrowDown className="h-2.5 w-2.5" strokeWidth={2.5} />}
+            <span className="truncate max-w-[80px]">{trend.text}</span>
           </div>
-          {trend && (
-            <div className={cn(
-              "inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
-              trend.dir === "up" ? "bg-emerald-500/15 text-emerald-500" : "bg-rose-500/15 text-rose-500"
-            )}>
-              {trend.dir === "up" ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
-              <span className="truncate max-w-[90px]">{trend.text}</span>
-            </div>
-          )}
-        </div>
-
-        <p className={cn("text-4xl md:text-5xl font-black tabular-nums tracking-tight bg-gradient-to-br bg-clip-text text-transparent leading-none", gradient)}>
-          {value}
-        </p>
-        <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold mt-3">{label}</p>
-        <p className="text-[11px] text-muted-foreground mt-1 truncate" title={sub}>{sub}</p>
-
-        <ArrowUpRight className="absolute top-4 right-4 h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-foreground group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+        ) : (
+          <div className="inline-flex items-center gap-1 px-2 py-0.5 border border-white/10 font-mono text-[9px] uppercase tracking-wider text-white/40">
+            <Minus className="h-2.5 w-2.5" />
+            stable
+          </div>
+        )}
       </div>
+
+      <p className={cn("text-4xl md:text-5xl font-bold tabular-nums tracking-tighter leading-[0.9]", accentClasses[accent])}>
+        {value}
+      </p>
+      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/50 mt-3 font-bold">{label}</p>
+      <p className="text-[11px] text-white/40 mt-1 truncate" title={sub}>{sub}</p>
+
+      <ArrowUpRight className="absolute top-5 right-5 h-3 w-3 text-white/20 group-hover:text-white/60 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all opacity-0 group-hover:opacity-100" />
     </motion.div>
   );
 }
 
-function AlertCard({ Icon, n, label, hint, gradient }: { Icon: typeof Crown; n: number; label: string; hint: string; gradient: string }) {
+function AlertBlock({ Icon, n, label, hint, tone }: { Icon: typeof Crown; n: number; label: string; hint: string; tone: "rose" | "amber" }) {
+  const toneClass = tone === "rose" ? "text-rose-400" : "text-amber-400";
+  const borderClass = tone === "rose" ? "border-rose-500/40" : "border-amber-500/40";
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      whileInView={{ opacity: 1, scale: 1 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.4 }}
-      whileHover={{ y: -2 }}
-      className="group relative"
-    >
-      <div className={cn("absolute inset-0 rounded-2xl bg-gradient-to-br opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-500", gradient)} />
-      <div className="relative rounded-2xl border border-border/40 bg-card/60 backdrop-blur-xl p-4 flex items-center gap-3">
-        <div className={cn("h-11 w-11 rounded-xl bg-gradient-to-br flex items-center justify-center shadow-lg shrink-0", gradient)}>
-          <Icon className="h-5 w-5 text-white" />
+    <div className="bg-[#0a0a0a] p-5 group hover:bg-white/[0.02] transition-colors">
+      <div className="flex items-center gap-3 mb-4">
+        <div className={cn("h-7 w-7 border bg-black flex items-center justify-center", borderClass)}>
+          <Icon className={cn("h-3.5 w-3.5", toneClass)} strokeWidth={1.8} />
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-2xl font-black tabular-nums leading-none">
-            <span className={cn("bg-gradient-to-br bg-clip-text text-transparent", gradient)}>{n}</span>
-          </p>
-          <p className="text-xs text-foreground font-semibold mt-1 leading-tight">{label}</p>
-          <p className="text-[10px] text-muted-foreground truncate mt-0.5" title={hint}>{hint}</p>
-        </div>
-        <AlertOctagon className="h-4 w-4 text-muted-foreground/40 shrink-0" />
+        <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-white/50">Alert</span>
+        <AlertOctagon className="h-3 w-3 text-white/20 ml-auto" />
       </div>
-    </motion.div>
-  );
-}
-
-function IconBubble({ Icon, gradient }: { Icon: typeof Crown; gradient: string }) {
-  return (
-    <div className={cn(
-      "relative h-10 w-10 rounded-xl bg-gradient-to-br flex items-center justify-center shadow-lg shrink-0",
-      gradient
-    )}>
-      <Icon className="h-4 w-4 text-white" />
-      <div className={cn("absolute inset-0 rounded-xl bg-gradient-to-br blur-md opacity-40 -z-10", gradient)} />
+      <p className="flex items-baseline gap-2">
+        <span className={cn("text-4xl font-bold tabular-nums tracking-tighter leading-none", toneClass)}>{n}</span>
+        <span className="text-xs text-white/70 font-medium">{label}</span>
+      </p>
+      <p className="font-mono text-[10px] uppercase tracking-wider text-white/40 mt-3 truncate" title={hint}>{hint}</p>
     </div>
   );
 }
 
-function BigStat({ label, value, pct, gradient }: { label: string; value: string; pct: number; gradient: string }) {
+function Bar({ pct, accent }: { pct: number; accent: "lime" | "amber" }) {
   return (
-    <div className="relative rounded-2xl border border-border/40 bg-background/40 backdrop-blur p-4 overflow-hidden">
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">{label}</p>
-      <p className={cn("text-3xl font-black tabular-nums mt-1 bg-gradient-to-r bg-clip-text text-transparent", gradient)}>{value}</p>
-      <div className="h-1 rounded-full bg-muted/40 overflow-hidden mt-3">
-        <motion.div
-          initial={{ width: 0 }}
-          whileInView={{ width: `${Math.min(pct, 100)}%` }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className={cn("h-full rounded-full bg-gradient-to-r", gradient)}
-        />
-      </div>
+    <div className="h-1 bg-white/5 mt-4">
+      <motion.div
+        initial={{ width: 0 }}
+        whileInView={{ width: `${Math.min(pct, 100)}%` }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className={cn("h-full", accent === "lime" ? "bg-lime-400" : "bg-amber-400")}
+      />
     </div>
   );
 }
 
-function MicroStat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+function DataPoint({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <div className="min-w-0">
-      <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold truncate">{label}</p>
-      <p className={cn("text-base font-black tabular-nums truncate mt-0.5", highlight && "text-amber-500")}>{value}</p>
+    <div>
+      <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-white/50">{label}</p>
+      <p className={cn("text-base font-bold tabular-nums tracking-tight mt-1", highlight && "text-amber-400")}>{value}</p>
     </div>
   );
 }
 
-function LegendDot({ color, label }: { color: string; label: string }) {
+function Legend({ color, label }: { color: string; label: string }) {
   return (
-    <div className="inline-flex items-center gap-1.5 text-[10px] text-muted-foreground font-semibold">
-      <span className="h-2 w-2 rounded-full" style={{ background: color }} />
+    <div className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-white/50">
+      <span className="h-1.5 w-3" style={{ background: color }} />
       {label}
     </div>
   );
 }
 
-function EmptyState({ text }: { text: string }) {
+function Empty({ label }: { label: string }) {
   return (
-    <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
-      {text}
+    <div className="h-full min-h-[120px] flex items-center justify-center font-mono text-[10px] uppercase tracking-wider text-white/30">
+      {label}
     </div>
   );
 }
