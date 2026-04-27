@@ -17,7 +17,7 @@ const riskLabels: Record<string, string> = {
   critical: "Crítico", high: "Alto", medium: "Medio", low: "Bajo",
 };
 
-function ClassificationTab() {
+export function ClassificationTab() {
   const { data: tickets = [] } = useAllSupportTickets();
   const { data: clients = [] } = useSupportClients();
 
@@ -283,7 +283,7 @@ function ClassificationTab() {
   );
 }
 
-function SecurityTab() {
+export function SecurityTab() {
   const { data: logs = [] } = useAIUsageLogs();
 
   // Métricas reales últimos 7 días
@@ -458,7 +458,7 @@ function SecurityKPI({ label, value, sub, tone = "text-foreground" }: { label: s
   );
 }
 
-function UsageStatsTab() {
+export function UsageStatsTab() {
   const { data: logs = [], isLoading } = useAIUsageLogs();
 
   const stats = useMemo(() => {
