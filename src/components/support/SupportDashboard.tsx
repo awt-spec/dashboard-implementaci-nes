@@ -36,6 +36,7 @@ import { NewTicketForm } from "./NewTicketForm";
 import { SupportInbox } from "./SupportInbox";
 import { ExportTicketsMenu } from "./ExportTicketsMenu";
 import { Plus, Inbox, Settings, BarChart3, Database, Briefcase } from "lucide-react";
+import { ActivePolicyBar } from "@/components/policy/ActivePolicyBar";
 
 const prioridadColors: Record<string, string> = {
   "Critica, Impacto Negocio": "bg-red-600 text-white",
@@ -509,6 +510,13 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
         onOpenChange={setNewTicketOpen}
         defaultClientId={isClientView ? initialClientId : (selectedClient !== "all" ? selectedClient : undefined)}
         mode="admin"
+      />
+
+      {/* Política activa v4.5 — siempre visible en cancha (SLA + checklist) */}
+      <ActivePolicyBar
+        ruleTypes={["sla", "checklist", "signature"]}
+        compact
+        title="Política v4.5 aplicada a esta operación"
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>

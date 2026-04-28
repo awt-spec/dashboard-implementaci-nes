@@ -14,8 +14,17 @@ import { ProjectKPIs } from "./ProjectKPIs";
 import { UpcomingDeliverables } from "./UpcomingDeliverables";
 import { ExecutiveComposer, type WidgetDef } from "./ExecutiveComposer";
 import { ExecutiveAIChat } from "./ExecutiveAIChat";
+import { ActionQueue } from "./ActionQueue";
+import { ActivePolicyBar } from "@/components/policy/ActivePolicyBar";
+
+interface ExecutiveOverviewProps {
+  /** Callback opcional para navegar desde la ActionQueue */
+  onNavigate?: (section: string) => void;
+}
 
 const WIDGETS: WidgetDef[] = [
+  { key: "actions",     label: "Acciones del día",     description: "Decisiones priorizadas con botones one-click",                  group: "salud", defaultOn: true },
+  { key: "policy",      label: "Política activa v4.5", description: "Reglas vigentes: SLA, checklist de cierre, métricas",          group: "salud", defaultOn: true },
   { key: "pulso",       label: "Pulso del día",        description: "Saludo + insights más urgentes (críticos, vencidos, alertas)", group: "salud", defaultOn: true },
   { key: "kpis",        label: "KPIs principales",     description: "8 indicadores: clientes, tareas, riesgos, equipo",            group: "salud", defaultOn: true },
   { key: "status_pie",  label: "Estado de Clientes",   description: "Pie chart: activos, en riesgo, completados, pausados",         group: "salud", defaultOn: true },
@@ -29,7 +38,7 @@ const WIDGETS: WidgetDef[] = [
   { key: "upcoming",    label: "Próximos entregables", description: "Calendario de lo que vence pronto",                            group: "tareas", defaultOn: true },
 ];
 
-export function ExecutiveOverview() {
+export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
   const { data: clientsData, isLoading } = useClients();
   const { data: allSupportTickets } = useAllSupportTickets();
   const { data: supportClientsData } = useSupportClients();
@@ -188,6 +197,19 @@ export function ExecutiveOverview() {
 
       {/* Botón flotante de chat IA — abre Sheet con asistente conversacional */}
       <ExecutiveAIChat />
+
+      {/* ════ ACCIONES DEL DÍA — vista accionable, one-click ════ */}
+      {show("actions") && (
+        <ActionQueue onNavigate={onNavigate} />
+      )}
+
+      {/* ════ POLÍTICA ACTIVA — reglas v4.5 visibles en cancha ════ */}
+      {show("policy") && (
+        <ActivePolicyBar
+          ruleTypes={["sla", "checklist", "metric"]}
+          title="Política activa v4.5 · reglas en operación"
+        />
+      )}
 
       {/* ════ HERO: Pulso del día ════ */}
       {show("pulso") && (

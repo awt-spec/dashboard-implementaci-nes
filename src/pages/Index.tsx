@@ -157,7 +157,7 @@ const Index = () => {
                   <p className="text-sm text-muted-foreground text-center py-12">No tiene un proyecto asignado. Contacte al administrador.</p>
                 )
               )}
-              {activeSection === "overview" && role !== "gerente" && <ExecutiveOverview />}
+              {activeSection === "overview" && role !== "gerente" && <ExecutiveOverview onNavigate={setActiveSection} />}
               {activeSection === "team-scrum" && <TeamScrumDashboard />}
               {activeSection === "soporte" && <SupportDashboard />}
               {selectedSupportClientId && <SupportDashboard initialClientId={selectedSupportClientId} onBack={() => setActiveSection("soporte")} />}

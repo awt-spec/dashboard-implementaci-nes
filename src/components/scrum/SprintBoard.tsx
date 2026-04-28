@@ -11,6 +11,7 @@ import { normalizePrioridad } from "@/lib/ticketStatus";
 import type { ScrumWorkItem, UnifiedSprint } from "@/hooks/useTeamScrum";
 import { useClients } from "@/hooks/useClients";
 import { useUpdateWorkItemScrum } from "@/hooks/useTeamScrum";
+import { ActivePolicyBar } from "@/components/policy/ActivePolicyBar";
 import { toast } from "sonner";
 
 // ─── Columnas del tablero ────────────────────────────────────────────────
@@ -188,6 +189,13 @@ export function SprintBoard({ items, activeSprints, onMove }: Props) {
 
   return (
     <div className="space-y-3">
+      {/* Política v4.5 — métricas + cierre semanal aplicables al sprint */}
+      <ActivePolicyBar
+        ruleTypes={["metric", "weekly", "checklist"]}
+        compact
+        title="Política v4.5 · reglas del sprint"
+      />
+
       {/* Sprints activos — con cliente, progreso y días restantes */}
       <div className="space-y-1.5">
         <p className="text-[11px] uppercase tracking-wide font-bold text-muted-foreground flex items-center gap-1.5">
