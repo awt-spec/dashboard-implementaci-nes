@@ -9,8 +9,7 @@
 import { useMemo } from "react";
 import { useClients } from "@/hooks/useClients";
 import { useAllSupportTickets } from "@/hooks/useSupportTickets";
-import { useBusinessRules } from "@/hooks/useBusinessRules";
-import { computeSLAStatus } from "@/components/policy/ActivePolicyBar";
+import { useTicketsSLAStatus } from "@/hooks/useTicketsSLAStatus";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -47,28 +46,51 @@ function askAI(question: string) {
 export function ActionQueue({ onNavigate }: Props) {
   const { data: clients = [] } = useClients();
   const { data: tickets = [] } = useAllSupportTickets();
-  const { data: rules = [] } = useBusinessRules();
+  // Server-side SLA con fuente (policy vs client_override) para etiquetar correctamente
+  const { byId: slaByTicketId } = useTicketsSLAStatus();
 
   const actions = useMemo<Action[]>(() => {
     const list: Action[] = [];
 
-    // 1. Boletas vencidas según SLA política v4.5
-    const overdue = tickets.filter(t => {
-      const s = computeSLAStatus(t as any, rules as any);
-      return s && s.status === "overdue";
+    // 1. Boletas vencidas — separadas por fuente del plazo (política vs SLA cliente)
+    let overduePolicy = 0;
+    let overdueClient = 0;
+    tickets.forEach(t => {
+      const s = slaByTicketId.get(t.id);
+      if (!s || s.status !== "overdue") return;
+      if (s.source === "client_override") overdueClient++;
+      else overduePolicy++;
     });
-    if (overdue.length > 0) {
+
+    // Acción para vencidos según POLÍTICA (regla global v4.5)
+    if (overduePolicy > 0) {
       list.push({
-        id: "sla-overdue",
+        id: "policy-overdue",
         priority: 1,
-        title: `${overdue.length} boleta${overdue.length === 1 ? "" : "s"} fuera de SLA`,
+        title: `${overduePolicy} boleta${overduePolicy === 1 ? "" : "s"} fuera de Política`,
         detail: `Pasaron el plazo de la política activa v4.5`,
-        count: overdue.length,
+        count: overduePolicy,
         Icon: Clock,
         tone: "destructive",
         cta: "Resolver ahora",
         onAction: () => onNavigate?.("soporte"),
-        aiPrompt: `Listáme las boletas que están fuera de SLA según la política v4.5. Para cada una: cliente, antigüedad, prioridad, y qué acción tomar AHORA.`,
+        aiPrompt: `Listáme las boletas que pasaron el plazo de la política v4.5 (sin override de cliente). Para cada una: cliente, antigüedad, prioridad, y qué acción tomar AHORA.`,
+      });
+    }
+
+    // Acción para vencidos según SLA del CLIENTE (contrato override)
+    if (overdueClient > 0) {
+      list.push({
+        id: "client-sla-overdue",
+        priority: 1,
+        title: `${overdueClient} boleta${overdueClient === 1 ? "" : "s"} fuera de SLA Cliente`,
+        detail: `Pasaron el plazo del contrato del cliente (override)`,
+        count: overdueClient,
+        Icon: Clock,
+        tone: "destructive",
+        cta: "Resolver ahora",
+        onAction: () => onNavigate?.("soporte"),
+        aiPrompt: `Listáme las boletas que pasaron el SLA del contrato del cliente (override del v4.5 estándar). Para cada una: cliente, plazo del contrato, días excedidos, y qué acción tomar.`,
       });
     }
 
@@ -149,7 +171,7 @@ export function ActionQueue({ onNavigate }: Props) {
     }
 
     return list.sort((a, b) => a.priority - b.priority || b.count - a.count);
-  }, [tickets, clients, rules, onNavigate]);
+  }, [tickets, clients, slaByTicketId, onNavigate]);
 
   if (actions.length === 0) {
     return (

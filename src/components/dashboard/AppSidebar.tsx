@@ -174,11 +174,11 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
           <SidebarGroupContent>
             <SidebarMenu>
               {mainNav.map(item => {
-                // Badge rojo en "Soporte" cuando hay casos fuera de SLA
+                // Badge rojo en "Soporte" cuando hay casos vencidos (Política + SLA Cliente)
                 // Visible aunque el usuario esté en otra sección — entry point global.
                 const overdueCount = item.id === "soporte" ? (slaSummary?.overdue ?? 0) : 0;
                 const tooltipText = overdueCount > 0
-                  ? `${item.title} · ${overdueCount} fuera de SLA`
+                  ? `${item.title} · ${overdueCount} vencido${overdueCount === 1 ? "" : "s"} (Política + SLA Cliente)`
                   : item.title;
                 return (
                   <SidebarMenuItem key={item.id}>
@@ -188,7 +188,7 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
                       {overdueCount > 0 && (
                         <span
                           className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold tabular-nums shadow-sm group-data-[collapsible=icon]:absolute group-data-[collapsible=icon]:top-0.5 group-data-[collapsible=icon]:right-0.5 group-data-[collapsible=icon]:min-w-0 group-data-[collapsible=icon]:h-4 group-data-[collapsible=icon]:w-4 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:text-[9px]"
-                          title={`${overdueCount} casos vencidos según política v4.5`}
+                          title={`${overdueCount} casos vencidos (Política v4.5 o SLA del cliente, según corresponda)`}
                         >
                           <span className="absolute inline-flex h-full w-full rounded-full bg-destructive opacity-30 animate-ping" />
                           <span className="relative">{overdueCount}</span>
