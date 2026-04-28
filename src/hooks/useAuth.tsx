@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
-type AppRole = "admin" | "pm" | "gerente" | "colaborador" | "cliente" | "ceo";
+type AppRole = "admin" | "pm" | "gerente" | "colaborador" | "cliente" | "ceo" | "gerente_soporte";
 export type ClientePermission = "viewer" | "editor" | "admin";
 
 export interface ClienteAssignment {
@@ -31,15 +31,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [clienteAssignment, setClienteAssignment] = useState<ClienteAssignment | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Prioridad: ceo > admin > pm > gerente > colaborador > cliente.
-  // El CEO tiene la prioridad más alta porque es read-only sobre todo el sistema
-  // y debe llevarse a su dashboard ejecutivo aunque tenga otros roles secundarios.
+  // Prioridad: ceo > admin > pm > gerente_soporte > gerente > colaborador > cliente.
+  // El CEO tiene la prioridad más alta porque es read-only sobre todo el sistema.
+  // gerente_soporte > gerente porque es un rol staff (operativo, no del lado cliente).
   // El trigger `handle_new_user` inserta `gerente` por default, así que un
   // usuario puede tener múltiples filas en user_roles. Elegimos la más alta.
   const ROLE_PRIORITY: Record<string, number> = {
     ceo: 6,
     admin: 5,
     pm: 4,
+    gerente_soporte: 3.5,
     gerente: 3,
     colaborador: 2,
     cliente: 1,

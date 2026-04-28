@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { LogIn, Eye, EyeOff, Shield, Briefcase, Headphones, Crown, ShieldAlert, User as UserIcon, type LucideProps } from "lucide-react";
+import { LogIn, Eye, EyeOff, Shield, Briefcase, Headphones, Crown, ShieldAlert, User as UserIcon, Headset, type LucideProps } from "lucide-react";
 import sysdelogo from "@/assets/logo-sysde.png";
 import { cn } from "@/lib/utils";
 
@@ -17,8 +17,8 @@ type DemoAccount = {
   featured?: boolean;
   /** Icono opcional para el avatar del botón */
   Icon?: ComponentType<LucideProps>;
-  /** Tone del avatar: amber, primary, info, default */
-  tone?: "amber" | "primary" | "info" | "default";
+  /** Tone del avatar: amber, primary, info, red, default */
+  tone?: "amber" | "primary" | "info" | "red" | "default";
   /** Subtítulo opcional debajo del label */
   hint?: string;
 };
@@ -32,6 +32,15 @@ const SYSDE_USERS: DemoAccount[] = [
     Icon: Crown,
     tone: "amber",
     hint: "Cockpit ejecutivo · read-only",
+  },
+  {
+    label: "Carlos Castante · Gerente de Soporte",
+    email: "carlos.castante@sysde.com",
+    pw: "CarlosCastante2026!",
+    featured: true,
+    Icon: Headset,
+    tone: "red",
+    hint: "Acceso a clientes y boletas de soporte",
   },
   { label: "Admin", email: "admin@sysde.com", pw: "AdminSysde2026!", Icon: ShieldAlert, tone: "primary" },
   { label: "PM", email: "pm@sysde.com", pw: "PmFernando2026!", Icon: Briefcase, tone: "primary" },
@@ -86,6 +95,7 @@ export default function Login() {
 
   const TONE_STYLES: Record<NonNullable<DemoAccount["tone"]>, { avatar: string; ring: string; gradient: string }> = {
     amber:   { avatar: "bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md shadow-amber-500/30", ring: "ring-amber-500/30 hover:ring-amber-500/50",   gradient: "from-amber-500/5 via-transparent to-amber-500/5" },
+    red:     { avatar: "bg-gradient-to-br from-[#C8200F] to-[#A81C0C] text-white shadow-md shadow-[#C8200F]/30",  ring: "ring-[#C8200F]/30 hover:ring-[#C8200F]/50",      gradient: "from-[#C8200F]/5 via-transparent to-[#C8200F]/5" },
     primary: { avatar: "bg-primary/15 text-primary",                                                              ring: "ring-primary/20 hover:ring-primary/40",          gradient: "from-primary/5 via-transparent to-transparent" },
     info:    { avatar: "bg-info/15 text-info",                                                                    ring: "ring-info/20 hover:ring-info/40",                gradient: "from-info/5 via-transparent to-transparent" },
     default: { avatar: "bg-muted text-muted-foreground",                                                          ring: "ring-border hover:ring-primary/30",              gradient: "" },

@@ -90,11 +90,11 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
 
   // Build nav items based on role
   const mainNav = [
-    { id: "overview", title: "Resumen Ejecutivo", icon: LayoutDashboard, roles: ["admin", "pm", "gerente"] },
+    { id: "overview", title: "Resumen Ejecutivo", icon: LayoutDashboard, roles: ["admin", "pm", "gerente", "gerente_soporte"] },
     { id: "clients", title: "Implementación", icon: Building2, roles: ["admin", "pm"] },
-    { id: "soporte", title: "Soporte", icon: Headset, roles: ["admin", "pm"] },
+    { id: "soporte", title: "Soporte", icon: Headset, roles: ["admin", "pm", "gerente_soporte"] },
     { id: "team-scrum", title: "Equipo Scrum", icon: Trophy, roles: ["admin", "pm"] },
-    { id: "config", title: "Configuración", icon: Settings, roles: ["admin", "pm"] },
+    { id: "config", title: "Configuración", icon: Settings, roles: ["admin", "pm", "gerente_soporte"] },
   ].filter(item => role && item.roles.includes(role));
 
   const renderClientGroup = (
@@ -197,8 +197,8 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
               />
             </div>
 
-            {/* Implementación stack */}
-            {implClients.length > 0 && (
+            {/* Implementación stack — solo admin y pm (gerente_soporte solo ve soporte) */}
+            {implClients.length > 0 && role !== "gerente_soporte" && (
               <Collapsible open={implOpen} onOpenChange={setImplOpen}>
                 <SidebarGroup>
                   <CollapsibleTrigger className="w-full group-data-[collapsible=icon]:hidden">

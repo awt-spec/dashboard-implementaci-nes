@@ -27,6 +27,16 @@ const Index = () => {
   const { role, user } = useAuth();
   useActivityTracker();
   const [activeSection, setActiveSection] = useState("overview");
+  const [didLandRedirect, setDidLandRedirect] = useState(false);
+
+  // gerente_soporte aterriza directo en "soporte" (su área principal).
+  // Se ejecuta cuando role llega del backend.
+  useEffect(() => {
+    if (role === "gerente_soporte" && !didLandRedirect && activeSection === "overview") {
+      setActiveSection("soporte");
+      setDidLandRedirect(true);
+    }
+  }, [role, didLandRedirect, activeSection]);
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
   const { data: clients } = useClients();
   const [assignedClientId, setAssignedClientId] = useState<string | null>(null);
