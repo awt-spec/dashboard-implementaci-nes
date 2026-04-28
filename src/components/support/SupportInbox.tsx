@@ -490,40 +490,61 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
         </motion.div>
       )}
 
-      {/* Urgent spotlight — top 3 más urgentes globalmente */}
+      {/* Urgent spotlight — top 3 más urgentes globalmente.
+          Grid adaptable: 1 col mobile, 2 col tablet (sm/md), 3 col solo en xl
+          para que el ticket_id no se parta en líneas. */}
       {urgentSpotlight.length > 0 && (
         <Card className="border-destructive/40 bg-gradient-to-r from-destructive/5 to-transparent">
           <CardContent className="p-3">
             <div className="flex items-center gap-2 mb-2">
-              <div className="h-6 w-6 rounded-lg bg-destructive/15 flex items-center justify-center">
+              <div className="h-6 w-6 rounded-lg bg-destructive/15 flex items-center justify-center shrink-0">
                 <Flame className="h-3.5 w-3.5 text-destructive" />
               </div>
               <p className="text-xs font-bold">Atención inmediata</p>
-              <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/30">
+              <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/30 shrink-0">
                 {urgentSpotlight.length}
               </Badge>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
               {urgentSpotlight.map(t => {
                 const s = priorityStyle(t.prioridad);
+                // Estado abreviado para que quepa siempre en el badge
+                const estadoShort =
+                  t.estado === "EN ATENCIÓN" ? "Atención" :
+                  t.estado === "PENDIENTE"   ? "Pendiente" :
+                  t.estado;
+                const estadoClass =
+                  t.estado === "EN ATENCIÓN" ? "bg-info/15 text-info border-info/40" :
+                  t.estado === "PENDIENTE"   ? "bg-warning/15 text-warning border-warning/40" :
+                  "bg-muted/40 text-muted-foreground border-border";
                 return (
                   <button
                     key={t.id}
                     onClick={() => { setSelectedTicketId(t.id); setDetailOpen(true); }}
                     className={cn(
-                      "text-left p-2.5 rounded-lg border transition-colors hover:bg-muted/30",
+                      "text-left p-2.5 rounded-lg border transition-colors hover:bg-muted/30 min-w-0",
                       s.border, "bg-card"
                     )}
                   >
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <s.Icon className={cn("h-3 w-3", s.text)} />
-                      <code className="text-[10px] font-mono font-bold text-muted-foreground">{t.ticket_id}</code>
-                      <Badge variant="outline" className="text-[9px] h-4 ml-auto">
-                        {t.estado}
-                      </Badge>
+                    {/* Header del card: icono + id (truncado) + estado.
+                        min-w-0 + truncate evita que el ticket_id rompa columnas */}
+                    <div className="flex items-center gap-1.5 mb-1.5 min-w-0">
+                      <s.Icon className={cn("h-3 w-3 shrink-0", s.text)} />
+                      <code className="text-[10px] font-mono font-bold text-muted-foreground truncate flex-1 min-w-0" title={t.ticket_id}>
+                        {t.ticket_id}
+                      </code>
+                      <span
+                        className={cn(
+                          "shrink-0 inline-flex items-center gap-1 h-4 px-1.5 rounded text-[9px] font-bold border whitespace-nowrap",
+                          estadoClass
+                        )}
+                      >
+                        <span className="h-1 w-1 rounded-full bg-current" />
+                        {estadoShort}
+                      </span>
                     </div>
-                    <p className="text-xs font-semibold line-clamp-2 leading-snug">{t.asunto}</p>
-                    <p className="text-[10px] text-muted-foreground mt-1">
+                    <p className="text-xs font-semibold line-clamp-2 leading-snug break-words">{t.asunto}</p>
+                    <p className="text-[10px] text-muted-foreground mt-1.5">
                       {formatDistanceToNow(new Date(t.created_at), { addSuffix: true, locale: es })}
                     </p>
                   </button>
