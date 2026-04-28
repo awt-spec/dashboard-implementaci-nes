@@ -19,10 +19,9 @@ import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { useSupportClients, useUpdateSupportTicket, type SupportTicket } from "@/hooks/useSupportTickets";
-import { useBusinessRules } from "@/hooks/useBusinessRules";
+import { useTicketsSLAStatus } from "@/hooks/useTicketsSLAStatus";
 import { useAuth } from "@/hooks/useAuth";
 import { TicketDetailSheet } from "./TicketDetailSheet";
-import { computeSLAStatus } from "@/components/policy/ActivePolicyBar";
 
 // ─── Hook: tickets "en bandeja" (PENDIENTE, ordenados por creación) ─────
 
@@ -77,7 +76,9 @@ interface Props {
 export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
   const { data: tickets = [], isLoading, refetch } = useInboxTickets();
   const { data: clients = [] } = useSupportClients();
-  const { data: businessRules = [] } = useBusinessRules();
+  // SLA con jerarquía: cliente override > política global. Sólo el server-side
+  // sabe si un ticket cae bajo override del cliente o bajo política v4.5.
+  const { byId: slaByTicketId } = useTicketsSLAStatus();
   const update = useUpdateSupportTicket();
   const qc = useQueryClient();
   const { user, profile } = useAuth();
@@ -106,27 +107,25 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
     return tickets.filter(t => t.client_id === clientId);
   }, [tickets, clientId]);
 
-  // ── SLA status computado por cada ticket usando política v4.5 ──
-  const slaByTicketId = useMemo(() => {
-    const map = new Map<string, ReturnType<typeof computeSLAStatus>>();
-    scopedTickets.forEach(t => {
-      const sla = computeSLAStatus(t as any, businessRules as any);
-      if (sla) map.set(t.id, sla);
-    });
-    return map;
-  }, [scopedTickets, businessRules]);
-
-  // Tickets categorizados por SLA
+  // Tickets categorizados por SLA — separados por fuente para etiquetas correctas
   const slaCounts = useMemo(() => {
     let overdue = 0, warning = 0, ok = 0;
-    slaByTicketId.forEach(s => {
+    let overdueClient = 0, overduePolicy = 0;
+    scopedTickets.forEach(t => {
+      const s = slaByTicketId.get(t.id);
       if (!s) return;
-      if (s.status === "overdue") overdue++;
-      else if (s.status === "warning") warning++;
-      else ok++;
+      if (s.status === "overdue") {
+        overdue++;
+        if (s.source === "client_override") overdueClient++;
+        else if (s.source === "policy_v4.5") overduePolicy++;
+      } else if (s.status === "warning") {
+        warning++;
+      } else if (s.status === "ok") {
+        ok++;
+      }
     });
-    return { overdue, warning, ok };
-  }, [slaByTicketId]);
+    return { overdue, warning, ok, overdueClient, overduePolicy };
+  }, [scopedTickets, slaByTicketId]);
 
   // ── Filtro por quickFilter + search ──
   const filteredTickets = useMemo(() => {
@@ -202,7 +201,7 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
       groups = [makeGroup({
         key: "all",
         label: isSLAFilter
-          ? (quickFilter === "sla_overdue" ? "Casos fuera de SLA · ordenados por severidad" : "Casos en riesgo · ordenados por días restantes")
+          ? (quickFilter === "sla_overdue" ? "Casos con plazo vencido · ordenados por severidad" : "Casos en riesgo · ordenados por días restantes")
           : "Todos los casos",
         IconTag: isSLAFilter ? AlertTriangle : Inbox,
         iconTone: isSLAFilter ? "text-destructive bg-destructive/10" : "text-primary bg-primary/10",
@@ -232,14 +231,17 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
         .filter(g => g.total > 0);
     } else if (groupBy === "sla") {
       const buckets = [
-        { key: "overdue", label: "Fuera de SLA", IconTag: AlertTriangle, iconTone: "text-destructive bg-destructive/10", weight: 0,
+        { key: "overdue", label: "Plazo vencido", IconTag: AlertTriangle, iconTone: "text-destructive bg-destructive/10", weight: 0,
           match: (t: SupportTicket) => slaByTicketId.get(t.id)?.status === "overdue", useSeveritySort: true },
         { key: "warning", label: "En riesgo (≥75% del plazo)", IconTag: Clock, iconTone: "text-warning bg-warning/10", weight: 1,
           match: (t: SupportTicket) => slaByTicketId.get(t.id)?.status === "warning", useSeveritySort: true },
-        { key: "ok",      label: "Dentro de SLA", IconTag: CheckCheck, iconTone: "text-success bg-success/10", weight: 2,
+        { key: "ok",      label: "Dentro de plazo", IconTag: CheckCheck, iconTone: "text-success bg-success/10", weight: 2,
           match: (t: SupportTicket) => slaByTicketId.get(t.id)?.status === "ok", useSeveritySort: false },
-        { key: "no-sla",  label: "Sin SLA aplicable", IconTag: User, iconTone: "text-muted-foreground bg-muted/40", weight: 3,
-          match: (t: SupportTicket) => !slaByTicketId.get(t.id), useSeveritySort: false },
+        { key: "no-sla",  label: "Sin plazo aplicable", IconTag: User, iconTone: "text-muted-foreground bg-muted/40", weight: 3,
+          match: (t: SupportTicket) => {
+            const s = slaByTicketId.get(t.id);
+            return !s || s.status === "no_sla";
+          }, useSeveritySort: false },
       ];
       groups = buckets
         .map(b => makeGroup({
@@ -423,16 +425,17 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
   const totalNew24h = scopedTickets.filter(t => new Date(t.created_at).getTime() >= dayAgoMs).length;
 
   const CHIPS: Array<{ key: typeof quickFilter; label: string; count: number; Icon: any; tone: string; emphasis?: boolean }> = [
-    { key: "all",          label: "Todos",        count: scopedTickets.length, Icon: Inbox,          tone: "" },
-    // SLA emphasized chips — política v4.5 aplicada en cancha
-    { key: "sla_overdue",  label: "Fuera SLA",    count: slaCounts.overdue,    Icon: AlertTriangle,  tone: "text-destructive", emphasis: slaCounts.overdue > 0 },
-    { key: "sla_warning",  label: "En riesgo SLA",count: slaCounts.warning,    Icon: Clock,          tone: "text-warning", emphasis: slaCounts.warning > 0 },
-    // — divider visual entre SLA y resto —
-    { key: "critical",     label: "Críticos",     count: totalCritical,        Icon: Flame,          tone: "text-destructive" },
-    { key: "new24h",       label: "Nuevos 24h",   count: totalNew24h,          Icon: Zap,            tone: "text-primary" },
-    { key: "cliente",      label: "De cliente",   count: totalFromCliente,     Icon: Radio,          tone: "text-primary" },
-    { key: "pendiente",    label: "PENDIENTE",    count: totalPending,         Icon: Clock,          tone: "text-warning" },
-    { key: "enatencion",   label: "EN ATENCIÓN",  count: totalEnAtencion,      Icon: AlertTriangle,  tone: "text-info" },
+    { key: "all",          label: "Todos",         count: scopedTickets.length, Icon: Inbox,          tone: "" },
+    // Plazo vencido (incluye política + SLA cliente). El detalle por fuente
+    // se muestra en el banner y en cada badge individual.
+    { key: "sla_overdue",  label: "Plazo vencido", count: slaCounts.overdue,    Icon: AlertTriangle,  tone: "text-destructive", emphasis: slaCounts.overdue > 0 },
+    { key: "sla_warning",  label: "En riesgo",     count: slaCounts.warning,    Icon: Clock,          tone: "text-warning", emphasis: slaCounts.warning > 0 },
+    // — divider visual —
+    { key: "critical",     label: "Críticos",      count: totalCritical,        Icon: Flame,          tone: "text-destructive" },
+    { key: "new24h",       label: "Nuevos 24h",    count: totalNew24h,          Icon: Zap,            tone: "text-primary" },
+    { key: "cliente",      label: "De cliente",    count: totalFromCliente,     Icon: Radio,          tone: "text-primary" },
+    { key: "pendiente",    label: "PENDIENTE",     count: totalPending,         Icon: Clock,          tone: "text-warning" },
+    { key: "enatencion",   label: "EN ATENCIÓN",   count: totalEnAtencion,      Icon: AlertTriangle,  tone: "text-info" },
   ];
 
   const hasActiveFilters = quickFilter !== "all" || search.trim().length > 0;
@@ -484,7 +487,7 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
         </div>
       </div>
 
-      {/* ════ BANNER SLA URGENTE — jerarquía: cliente override > política v4.5 ════ */}
+      {/* ════ BANNER SLA URGENTE — separa fuente: política vs SLA cliente ════ */}
       {slaCounts.overdue > 0 && quickFilter !== "sla_overdue" && (
         <motion.div
           initial={{ opacity: 0, y: -4 }}
@@ -497,10 +500,20 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-destructive">
-                {slaCounts.overdue} {slaCounts.overdue === 1 ? "boleta rompió" : "boletas rompieron"} su SLA
+                {slaCounts.overdue} {slaCounts.overdue === 1 ? "boleta vencida" : "boletas vencidas"}
               </p>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                Plazo: <strong>contrato del cliente</strong> si tiene override, sino <strong>política v4.5</strong>
+                {slaCounts.overduePolicy > 0 && (
+                  <>
+                    <strong>{slaCounts.overduePolicy}</strong> fuera de <strong>política</strong>
+                  </>
+                )}
+                {slaCounts.overduePolicy > 0 && slaCounts.overdueClient > 0 && " · "}
+                {slaCounts.overdueClient > 0 && (
+                  <>
+                    <strong>{slaCounts.overdueClient}</strong> fuera de <strong>SLA cliente</strong>
+                  </>
+                )}
                 {slaCounts.warning > 0 && ` · ${slaCounts.warning} en riesgo (≥75%)`}
               </p>
             </div>
@@ -657,7 +670,7 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
                   { v: "cliente" as const,    Icon: Building2,     label: "Cliente",    hint: "Cada cliente es un grupo" },
                   { v: "prioridad" as const,  Icon: Flame,         label: "Prioridad",  hint: "Crítica → Alta → Media → Baja" },
                   { v: "estado" as const,     Icon: AlertTriangle, label: "Estado",     hint: "PENDIENTE → EN ATENCIÓN" },
-                  { v: "sla" as const,        Icon: Clock,         label: "SLA",        hint: "Fuera SLA → En riesgo → OK · respeta override del cliente; sino política v4.5" },
+                  { v: "sla" as const,        Icon: Clock,         label: "Plazo",      hint: "Vencidos → En riesgo → OK · separa Política vs SLA cliente" },
                   { v: "antiguedad" as const, Icon: Clock,         label: "Antigüedad", hint: "Hoy → Esta semana → Mes → +1 mes" },
                   { v: "flat" as const,       Icon: ListMinus,     label: "Plana",      hint: "Sin grupos, lista única" },
                 ].map((opt) => {
@@ -876,25 +889,35 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
                                     {t.prioridad === "Critica, Impacto Negocio" ? "Crítica" : t.prioridad}
                                   </span>
 
-                                  {/* SLA badge — política v4.5 aplicada al ticket */}
-                                  {sla && (
-                                    <span
-                                      className={cn(
-                                        "inline-flex items-center gap-0.5 h-4 px-1.5 rounded text-[10px] font-bold border",
-                                        isOverdueSLA && "bg-destructive/15 text-destructive border-destructive/40 animate-pulse",
-                                        isWarningSLA && "bg-warning/15 text-warning border-warning/40",
-                                        sla.status === "ok" && "bg-success/10 text-success border-success/30"
-                                      )}
-                                      title={`Política v4.5: plazo ${sla.deadlineDays}d · llevamos ${sla.daysElapsed}d`}
-                                    >
-                                      <Clock className="h-2.5 w-2.5" />
-                                      {isOverdueSLA
-                                        ? `+${sla.daysElapsed - sla.deadlineDays}d FUERA SLA`
-                                        : isWarningSLA
-                                        ? `${sla.deadlineDays - sla.daysElapsed}d restante${sla.deadlineDays - sla.daysElapsed === 1 ? "" : "s"}`
-                                        : `SLA ${sla.deadlineDays}d`}
-                                    </span>
-                                  )}
+                                  {/* Plazo badge — distingue fuente: política vs SLA cliente.
+                                      "SLA" solo aparece cuando viene del contrato del cliente.
+                                      Cuando viene de la política global, dice "Política". */}
+                                  {sla && sla.status !== "no_sla" && (() => {
+                                    const isClientSource = sla.source === "client_override";
+                                    const sourceLabel = isClientSource ? "SLA Cliente" : "Política";
+                                    const sourceTooltip = isClientSource
+                                      ? `SLA del contrato del cliente: ${sla.deadlineDays}d · llevamos ${sla.daysElapsed}d`
+                                      : `Política v4.5: ${sla.deadlineDays}d · llevamos ${sla.daysElapsed}d`;
+                                    const SourceIcon = isClientSource ? Building2 : ListMinus;
+                                    return (
+                                      <span
+                                        className={cn(
+                                          "inline-flex items-center gap-1 h-4 px-1.5 rounded text-[10px] font-bold border whitespace-nowrap",
+                                          isOverdueSLA && "bg-destructive/15 text-destructive border-destructive/40 animate-pulse",
+                                          isWarningSLA && "bg-warning/15 text-warning border-warning/40",
+                                          sla.status === "ok" && "bg-success/10 text-success border-success/30"
+                                        )}
+                                        title={sourceTooltip}
+                                      >
+                                        <SourceIcon className="h-2.5 w-2.5" />
+                                        {isOverdueSLA
+                                          ? `+${sla.daysElapsed - sla.deadlineDays}d ${sourceLabel}`
+                                          : isWarningSLA
+                                          ? `${sla.deadlineDays - sla.daysElapsed}d (${sourceLabel})`
+                                          : `${sourceLabel} ${sla.deadlineDays}d`}
+                                      </span>
+                                    );
+                                  })()}
                                 </div>
                                 <p className="text-sm font-medium mt-0.5 line-clamp-2">{t.asunto}</p>
                                 <div className="flex items-center gap-2 mt-1 text-[11px] text-muted-foreground flex-wrap">
