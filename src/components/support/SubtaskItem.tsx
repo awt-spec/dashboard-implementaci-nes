@@ -3,7 +3,7 @@ import { format, isPast, isToday, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import {
   GripVertical, ChevronRight, Trash2, CalendarDays, Flag, UserCircle2,
-  Pencil, Check, X, AlignLeft,
+  Pencil, Check, X, AlignLeft, Tag,
 } from "lucide-react";
 
 import { Checkbox } from "@/components/ui/checkbox";
@@ -18,7 +18,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 
-import type { TicketSubtask, SubtaskPriority } from "@/hooks/useSupportTicketDetails";
+import type { TicketSubtask, SubtaskPriority, SubtaskCategory } from "@/hooks/useSupportTicketDetails";
+import { CATEGORY_META } from "./SubtaskList";
+
+const CATEGORY_ORDER: SubtaskCategory[] = ["estrategia", "revision", "comercial", "backlog", "general"];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
 
@@ -47,7 +50,7 @@ interface Props {
   canEdit: boolean;
   memberNames: string[];
   onToggleComplete: (completed: boolean) => void;
-  onUpdate: (updates: Partial<Pick<TicketSubtask, "title" | "description" | "assignee" | "due_date" | "priority">>) => void;
+  onUpdate: (updates: Partial<Pick<TicketSubtask, "title" | "description" | "assignee" | "due_date" | "priority" | "category">>) => void;
   onDelete: () => void;
 
   // Drag & drop (HTML5 nativo). Manejado por el componente padre (SubtaskList).
@@ -187,8 +190,17 @@ export function SubtaskItem({
           )}
 
           {/* Chips de metadata (siempre visibles cuando colapsado, breves) */}
-          {!expanded && hasMeta && (
+          {!expanded && (hasMeta || subtask.category !== "general") && (
             <div className="flex flex-wrap items-center gap-1 mt-1">
+              {/* Categoría — siempre visible si no es "general" */}
+              {subtask.category && subtask.category !== "general" && (() => {
+                const cm = CATEGORY_META[subtask.category];
+                return (
+                  <Badge variant="outline" className={`text-[10px] h-4 px-1.5 gap-0.5 ${cm.bg} ${cm.tone} ${cm.border}`}>
+                    <cm.Icon className="h-2.5 w-2.5" /> {cm.label}
+                  </Badge>
+                );
+              })()}
               {subtask.priority !== "media" && (
                 <Badge variant="outline" className={`text-[10px] h-4 px-1.5 gap-0.5 ${prio.classes}`}>
                   <span className={`h-1.5 w-1.5 rounded-full ${prio.dot}`} /> {prio.label}
@@ -219,6 +231,30 @@ export function SubtaskItem({
         {/* Acciones rápidas (derecha) */}
         {canEdit && (
           <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* Categoría — naturaleza del trabajo */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="p-1 rounded hover:bg-muted text-muted-foreground" title="Tipo de tarea">
+                  {(() => {
+                    const cm = CATEGORY_META[subtask.category || "general"];
+                    return <cm.Icon className={`h-3.5 w-3.5 ${subtask.category !== "general" ? cm.tone : ""}`} />;
+                  })()}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                {CATEGORY_ORDER.map((cat) => {
+                  const cm = CATEGORY_META[cat];
+                  return (
+                    <DropdownMenuItem key={cat} onClick={() => onUpdate({ category: cat })} className="gap-2">
+                      <cm.Icon className={`h-3 w-3 ${cm.tone}`} />
+                      <span className="flex-1">{cm.label}</span>
+                      {cat === (subtask.category || "general") && <Check className="h-3 w-3 ml-auto" />}
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             {/* Prioridad */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

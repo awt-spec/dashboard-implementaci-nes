@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 // ─── Subtasks ───
 export type SubtaskPriority = "baja" | "media" | "alta" | "critica";
+export type SubtaskCategory = "estrategia" | "revision" | "comercial" | "backlog" | "general";
 
 export interface TicketSubtask {
   id: string;
@@ -14,6 +15,8 @@ export interface TicketSubtask {
   priority: SubtaskPriority;
   completed: boolean;
   sort_order: number;
+  category: SubtaskCategory;
+  linked_work_item_id: string | null;
   created_at: string;
 }
 
@@ -45,6 +48,8 @@ export function useCreateTicketSubtask() {
       assignee?: string | null;
       due_date?: string | null;
       priority?: SubtaskPriority;
+      category?: SubtaskCategory;
+      linked_work_item_id?: string | null;
     }) => {
       const { error } = await supabase.from("support_ticket_subtasks").insert([data]);
       if (error) throw error;
