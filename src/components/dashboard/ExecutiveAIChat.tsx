@@ -41,6 +41,55 @@ export function ExecutiveAIChat() {
     }
   }, [messages, loading]);
 
+  // Listener global: cualquier botón puede dispararle al asistente con
+  //   window.dispatchEvent(new CustomEvent("ai-chat:ask", { detail: { question, autoSend? } }))
+  // Si autoSend=true → manda la pregunta automáticamente. Si no, sólo abre el sheet.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail || {};
+      const q = typeof detail === "string" ? detail : detail.question;
+      const auto = typeof detail === "string" ? false : !!detail.autoSend;
+      setOpen(true);
+      if (q) {
+        if (auto) {
+          // Disparar send con la pregunta directamente — usa setTimeout para
+          // garantizar que el setOpen ya está aplicado.
+          setTimeout(() => sendDirectly(q), 50);
+        } else {
+          setInput(q);
+        }
+      }
+    };
+    window.addEventListener("ai-chat:ask", handler);
+    return () => window.removeEventListener("ai-chat:ask", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Helper para enviar una pregunta sin pasar por el state local de input
+  const sendDirectly = async (question: string) => {
+    if (!question || loading) return;
+    const userMsg: Msg = { id: crypto.randomUUID(), role: "user", content: question, ts: Date.now() };
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
+    setInput("");
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("executive-ai-chat", {
+        body: {
+          question,
+          messages: newMessages.slice(-20).map(m => ({ role: m.role, content: m.content })),
+        },
+      });
+      if (error) throw error;
+      const reply = data?.reply || "No pude generar respuesta.";
+      setMessages(prev => [...prev, { id: crypto.randomUUID(), role: "assistant", content: reply, ts: Date.now() }]);
+    } catch (err: any) {
+      toast.error(err.message || "Error consultando la IA");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const send = async (q?: string) => {
     const question = (q ?? input).trim();
     if (!question || loading) return;
