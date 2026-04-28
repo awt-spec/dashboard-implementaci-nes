@@ -172,6 +172,7 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
     };
 
     // Sort interno de items dentro de cada grupo
+    // Default: PENDIENTE primero, luego por created_at desc
     const sortItems = (items: SupportTicket[]) =>
       items.sort((a, b) => {
         if (a.estado === "PENDIENTE" && b.estado !== "PENDIENTE") return -1;
@@ -179,12 +180,33 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
 
+    // Sort por severidad SLA: más excedidos arriba (para Fuera SLA / antigüedad)
+    // - Vencidos: ranking por (días_excedidos), de mayor a menor
+    // - Resto: por antigüedad pura (más viejos arriba)
+    const sortBySLASeverity = (items: SupportTicket[]) =>
+      items.sort((a, b) => {
+        const sa = slaByTicketId.get(a.id);
+        const sb = slaByTicketId.get(b.id);
+        const exA = sa ? sa.daysElapsed - sa.deadlineDays : -Infinity;
+        const exB = sb ? sb.daysElapsed - sb.deadlineDays : -Infinity;
+        if (exA !== exB) return exB - exA;
+        // tie-breaker: caso más viejo primero
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      });
+
     let groups: Group[] = [];
 
     if (groupBy === "flat") {
+      // Si el filtro activo es SLA, ordenar por severidad (más excedidos arriba)
+      const isSLAFilter = quickFilter === "sla_overdue" || quickFilter === "sla_warning";
       groups = [makeGroup({
-        key: "all", label: "Todos los casos", IconTag: Inbox, iconTone: "text-primary bg-primary/10",
-        items: sortItems([...filteredTickets]),
+        key: "all",
+        label: isSLAFilter
+          ? (quickFilter === "sla_overdue" ? "Casos fuera de SLA · ordenados por severidad" : "Casos en riesgo · ordenados por días restantes")
+          : "Todos los casos",
+        IconTag: isSLAFilter ? AlertTriangle : Inbox,
+        iconTone: isSLAFilter ? "text-destructive bg-destructive/10" : "text-primary bg-primary/10",
+        items: isSLAFilter ? sortBySLASeverity([...filteredTickets]) : sortItems([...filteredTickets]),
         weight: 0,
       })];
     } else if (groupBy === "prioridad") {
@@ -211,18 +233,21 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
     } else if (groupBy === "sla") {
       const buckets = [
         { key: "overdue", label: "Fuera de SLA", IconTag: AlertTriangle, iconTone: "text-destructive bg-destructive/10", weight: 0,
-          match: (t: SupportTicket) => slaByTicketId.get(t.id)?.status === "overdue" },
+          match: (t: SupportTicket) => slaByTicketId.get(t.id)?.status === "overdue", useSeveritySort: true },
         { key: "warning", label: "En riesgo (≥75% del plazo)", IconTag: Clock, iconTone: "text-warning bg-warning/10", weight: 1,
-          match: (t: SupportTicket) => slaByTicketId.get(t.id)?.status === "warning" },
+          match: (t: SupportTicket) => slaByTicketId.get(t.id)?.status === "warning", useSeveritySort: true },
         { key: "ok",      label: "Dentro de SLA", IconTag: CheckCheck, iconTone: "text-success bg-success/10", weight: 2,
-          match: (t: SupportTicket) => slaByTicketId.get(t.id)?.status === "ok" },
+          match: (t: SupportTicket) => slaByTicketId.get(t.id)?.status === "ok", useSeveritySort: false },
         { key: "no-sla",  label: "Sin SLA aplicable", IconTag: User, iconTone: "text-muted-foreground bg-muted/40", weight: 3,
-          match: (t: SupportTicket) => !slaByTicketId.get(t.id) },
+          match: (t: SupportTicket) => !slaByTicketId.get(t.id), useSeveritySort: false },
       ];
       groups = buckets
         .map(b => makeGroup({
           key: b.key, label: b.label, IconTag: b.IconTag, iconTone: b.iconTone, weight: b.weight,
-          items: sortItems(filteredTickets.filter(b.match)),
+          // En "Fuera SLA" y "En riesgo": ordenar por severidad (más excedidos arriba)
+          items: b.useSeveritySort
+            ? sortBySLASeverity(filteredTickets.filter(b.match))
+            : sortItems(filteredTickets.filter(b.match)),
         }))
         .filter(g => g.total > 0);
     } else if (groupBy === "antiguedad") {
@@ -284,7 +309,7 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
     }
 
     return groups;
-  }, [filteredTickets, clients, sortBy, groupBy]);
+  }, [filteredTickets, clients, sortBy, groupBy, quickFilter, slaByTicketId]);
 
   // ── Urgent spotlight: top 3 tickets más críticos globalmente ──
   const urgentSpotlight = useMemo(() => {
