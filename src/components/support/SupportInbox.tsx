@@ -7,11 +7,10 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import {
   Inbox, Building2, Clock, Lock, AlertTriangle, Flame, User,
   ChevronDown, ChevronRight, CheckCheck, Eye, RefreshCw, Radio, Zap,
-  Search, X, ArrowUpDown, SlidersHorizontal, Plus,
+  Search, X, ArrowUpDown, SlidersHorizontal, Plus, Check,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { ListMinus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -363,14 +362,26 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
     { key: "enatencion", label: "EN ATENCIÓN", count: totalEnAtencion,      Icon: AlertTriangle,  tone: "text-info" },
   ];
 
-  const kpiCards = [
-    { label: "Pendientes",  value: totalPending,    Icon: Clock,          color: "text-warning",     bg: "bg-warning/10" },
-    { label: "En atención", value: totalEnAtencion, Icon: AlertTriangle,  color: "text-info",        bg: "bg-info/10" },
-    { label: "Críticos",    value: totalCritical,   Icon: Flame,          color: "text-destructive", bg: "bg-destructive/10" },
-    { label: "De cliente",  value: totalFromCliente,Icon: Radio,          color: "text-primary",     bg: "bg-primary/10" },
-  ];
-
   const hasActiveFilters = quickFilter !== "all" || search.trim().length > 0;
+
+  // ── Etiquetas legibles para el chip de "Vista" actual ──
+  const GROUP_LABELS: Record<typeof groupBy, string> = {
+    cliente: "Cliente",
+    prioridad: "Prioridad",
+    estado: "Estado",
+    antiguedad: "Antigüedad",
+    flat: "Plana",
+  };
+  const SORT_LABELS: Record<typeof sortBy, string> = {
+    priority: "más críticos",
+    age: "más viejos",
+    client: "A→Z",
+  };
+  // Cuando groupBy != cliente, el orden es implícito (críticos arriba en prioridad,
+  // PENDIENTE arriba en estado, etc.) → no mostramos sortBy en el chip.
+  const viewSummary = groupBy === "cliente"
+    ? `${GROUP_LABELS[groupBy]} · ${SORT_LABELS[sortBy]}`
+    : GROUP_LABELS[groupBy];
 
   return (
     <div className="space-y-4">
@@ -397,23 +408,6 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
             </Button>
           )}
         </div>
-      </div>
-
-      {/* KPI cards hero */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        {kpiCards.map(k => (
-          <Card key={k.label} className="border-border/60">
-            <CardContent className="p-3 flex items-center gap-3">
-              <div className={cn("h-9 w-9 rounded-lg flex items-center justify-center shrink-0", k.bg)}>
-                <k.Icon className={cn("h-4 w-4", k.color)} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xl font-black tabular-nums leading-tight">{k.value}</p>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{k.label}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
       </div>
 
       {/* Urgent spotlight — top 3 más urgentes globalmente */}
@@ -460,8 +454,15 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
         </Card>
       )}
 
-      {/* Filtros rápidos + búsqueda */}
+      {/* ════ TOOLBAR UNIFICADO ════
+          Una sola línea (con wrap) que reemplaza:
+            • KPI cards (sus métricas viven dentro de los chips)
+            • Fila separada de Vista/Orden (ahora en popover único)
+          Lectura izquierda → derecha:
+            [chips de filtro] · [vista popover] · [search]
+      */}
       <div className="flex items-center gap-2 flex-wrap">
+        {/* Filtros rápidos como chips compactos con count */}
         <div className="flex items-center gap-1 flex-wrap">
           {CHIPS.map(chip => {
             const active = quickFilter === chip.key;
@@ -470,18 +471,18 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
                 key={chip.key}
                 onClick={() => setQuickFilter(chip.key)}
                 className={cn(
-                  "inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-[11px] font-medium border transition-colors",
+                  "inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-medium border transition-all",
                   active
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-card hover:bg-muted/40 border-border text-muted-foreground hover:text-foreground",
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "bg-card hover:bg-muted/40 border-border text-foreground/70 hover:text-foreground",
                 )}
               >
-                <chip.Icon className={cn("h-3 w-3", !active && chip.tone)} />
-                {chip.label}
+                <chip.Icon className={cn("h-3.5 w-3.5", !active && chip.tone)} />
+                <span>{chip.label}</span>
                 {chip.count > 0 && (
                   <span className={cn(
-                    "tabular-nums ml-0.5 px-1 rounded text-[10px]",
-                    active ? "bg-primary-foreground/20" : "bg-muted"
+                    "tabular-nums px-1.5 py-0.5 rounded-full text-[10px] font-bold",
+                    active ? "bg-primary-foreground/20" : "bg-muted/80 text-muted-foreground"
                   )}>
                     {chip.count}
                   </span>
@@ -490,10 +491,106 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
             );
           })}
         </div>
-        <div className="relative flex-1 min-w-[180px]">
+
+        {/* Separador visual sutil */}
+        <div className="hidden md:block h-6 w-px bg-border" />
+
+        {/* Botón único "Vista" — abre popover con groupBy + sortBy */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-border bg-card hover:bg-muted/40 text-xs font-medium transition-colors">
+              <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-muted-foreground">Vista:</span>
+              <span className="font-bold">{viewSummary}</span>
+              <ChevronDown className="h-3 w-3 text-muted-foreground/60" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-72 p-3 space-y-3">
+            {/* GROUP BY: agrupar */}
+            <div className="space-y-1.5">
+              <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">
+                Agrupar por
+              </p>
+              <div className="grid grid-cols-1 gap-0.5">
+                {[
+                  { v: "cliente" as const,    Icon: Building2,     label: "Cliente",    hint: "Cada cliente es un grupo" },
+                  { v: "prioridad" as const,  Icon: Flame,         label: "Prioridad",  hint: "Crítica → Alta → Media → Baja" },
+                  { v: "estado" as const,     Icon: AlertTriangle, label: "Estado",     hint: "PENDIENTE → EN ATENCIÓN" },
+                  { v: "antiguedad" as const, Icon: Clock,         label: "Antigüedad", hint: "Hoy → Esta semana → Mes → +1 mes" },
+                  { v: "flat" as const,       Icon: ListMinus,     label: "Plana",      hint: "Sin grupos, lista única" },
+                ].map((opt) => {
+                  const active = groupBy === opt.v;
+                  return (
+                    <button
+                      key={opt.v}
+                      onClick={() => setGroupBy(opt.v)}
+                      className={cn(
+                        "w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-left transition-colors",
+                        active ? "bg-primary/10 text-primary" : "hover:bg-muted/40"
+                      )}
+                    >
+                      <opt.Icon className={cn("h-3.5 w-3.5 shrink-0", active ? "text-primary" : "text-muted-foreground")} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold leading-tight">{opt.label}</p>
+                        <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{opt.hint}</p>
+                      </div>
+                      {active && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* SORT BY: solo aplica con groupBy=cliente (en otros casos el orden
+                es implícito: críticos arriba, etc.) */}
+            {groupBy === "cliente" && (
+              <div className="space-y-1.5 pt-3 border-t border-border/60">
+                <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground flex items-center gap-1.5">
+                  <ArrowUpDown className="h-3 w-3" /> Ordenar clientes por
+                </p>
+                <div className="grid grid-cols-1 gap-0.5">
+                  {[
+                    { v: "priority" as const, Icon: Flame,     label: "Más críticos primero", hint: "Clientes con más casos críticos arriba" },
+                    { v: "age" as const,      Icon: Clock,     label: "Casos más viejos",     hint: "Clientes con casos más antiguos arriba" },
+                    { v: "client" as const,   Icon: Building2, label: "Alfabético (A→Z)",     hint: "Por nombre de cliente" },
+                  ].map((opt) => {
+                    const active = sortBy === opt.v;
+                    return (
+                      <button
+                        key={opt.v}
+                        onClick={() => setSortBy(opt.v)}
+                        className={cn(
+                          "w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-left transition-colors",
+                          active ? "bg-primary/10 text-primary" : "hover:bg-muted/40"
+                        )}
+                      >
+                        <opt.Icon className={cn("h-3.5 w-3.5 shrink-0", active ? "text-primary" : "text-muted-foreground")} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold leading-tight">{opt.label}</p>
+                          <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{opt.hint}</p>
+                        </div>
+                        {active && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Hint si no hay sortBy */}
+            {groupBy !== "cliente" && (
+              <p className="text-[10px] text-muted-foreground italic px-1 pt-1 border-t border-border/60">
+                💡 Agrupando por <strong>{GROUP_LABELS[groupBy].toLowerCase()}</strong>: el orden es automático (críticos / pendientes / más antiguos primero).
+              </p>
+            )}
+          </PopoverContent>
+        </Popover>
+
+        {/* Search — toma el espacio sobrante */}
+        <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
-            className="pl-8 h-8 text-xs"
+            className="pl-8 pr-8 h-8 text-xs"
             placeholder="Buscar por ID o asunto…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -508,80 +605,6 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
           )}
         </div>
       </div>
-
-      {/* Vista + Orden — controles visuales segmentados */}
-      <TooltipProvider delayDuration={200}>
-        <div className="flex items-center gap-2 flex-wrap rounded-lg border border-border bg-muted/20 px-3 py-2">
-          <div className="flex items-center gap-1.5 shrink-0">
-            <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Vista</span>
-          </div>
-          <ToggleGroup
-            type="single"
-            value={groupBy}
-            onValueChange={(v) => v && setGroupBy(v as any)}
-            className="gap-1"
-          >
-            {[
-              { v: "cliente",    Icon: Building2,     label: "Cliente",    hint: "Agrupar por cliente" },
-              { v: "prioridad",  Icon: Flame,         label: "Prioridad",  hint: "Agrupar por prioridad" },
-              { v: "estado",     Icon: AlertTriangle, label: "Estado",     hint: "Agrupar por estado (PENDIENTE / EN ATENCIÓN)" },
-              { v: "antiguedad", Icon: Clock,         label: "Antigüedad", hint: "Agrupar por edad del caso" },
-              { v: "flat",       Icon: ListMinus,     label: "Plana",      hint: "Lista plana, sin grupos" },
-            ].map((opt) => (
-              <Tooltip key={opt.v}>
-                <TooltipTrigger asChild>
-                  <ToggleGroupItem
-                    value={opt.v}
-                    className="h-7 px-2.5 text-[11px] gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-                    aria-label={opt.label}
-                  >
-                    <opt.Icon className="h-3 w-3" />
-                    <span className="hidden sm:inline">{opt.label}</span>
-                  </ToggleGroupItem>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-[10px]">{opt.hint}</TooltipContent>
-              </Tooltip>
-            ))}
-          </ToggleGroup>
-
-          {groupBy === "cliente" && (
-            <>
-              <div className="h-5 w-px bg-border mx-1" />
-              <div className="flex items-center gap-1.5 shrink-0">
-                <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Orden</span>
-              </div>
-              <ToggleGroup
-                type="single"
-                value={sortBy}
-                onValueChange={(v) => v && setSortBy(v as any)}
-                className="gap-1"
-              >
-                {[
-                  { v: "priority", Icon: Flame,        label: "Prioridad",   hint: "Clientes con más críticos arriba" },
-                  { v: "age",      Icon: Clock,        label: "Antigüedad",  hint: "Clientes con casos más viejos arriba" },
-                  { v: "client",   Icon: Building2,    label: "A→Z",         hint: "Alfabético por nombre de cliente" },
-                ].map((opt) => (
-                  <Tooltip key={opt.v}>
-                    <TooltipTrigger asChild>
-                      <ToggleGroupItem
-                        value={opt.v}
-                        className="h-7 px-2.5 text-[11px] gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-                        aria-label={opt.label}
-                      >
-                        <opt.Icon className="h-3 w-3" />
-                        <span className="hidden sm:inline">{opt.label}</span>
-                      </ToggleGroupItem>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="text-[10px]">{opt.hint}</TooltipContent>
-                  </Tooltip>
-                ))}
-              </ToggleGroup>
-            </>
-          )}
-        </div>
-      </TooltipProvider>
 
       {isLoading ? (
         <Card><CardContent className="py-12 text-center text-muted-foreground text-sm">Cargando bandeja…</CardContent></Card>
