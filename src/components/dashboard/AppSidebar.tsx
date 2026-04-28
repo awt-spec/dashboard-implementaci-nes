@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useClients } from "@/hooks/useClients";
+import { useSLASummary } from "@/hooks/useSLASummary";
 import { useState, useMemo } from "react";
 // DB is the single source of truth
 import { useAuth } from "@/hooks/useAuth";
@@ -53,6 +54,7 @@ interface AppSidebarProps {
 
 export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) {
   const { data: clientsData } = useClients();
+  const { data: slaSummary } = useSLASummary();
   const { role, profile, signOut } = useAuth();
   const allClients = clientsData || [];
   const implClients = allClients.filter((c: any) => c.client_type === "implementacion");
@@ -171,14 +173,31 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
           <SidebarGroupLabel className="text-sidebar-foreground/50">Navegación</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainNav.map(item => (
-                <SidebarMenuItem key={item.id}>
-                  <SidebarMenuButton onClick={() => onSectionChange(item.id)} isActive={activeSection === item.id} tooltip={item.title}>
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {mainNav.map(item => {
+                // Badge rojo en "Soporte" cuando hay casos fuera de SLA
+                // Visible aunque el usuario esté en otra sección — entry point global.
+                const overdueCount = item.id === "soporte" ? (slaSummary?.overdue ?? 0) : 0;
+                const tooltipText = overdueCount > 0
+                  ? `${item.title} · ${overdueCount} fuera de SLA`
+                  : item.title;
+                return (
+                  <SidebarMenuItem key={item.id}>
+                    <SidebarMenuButton onClick={() => onSectionChange(item.id)} isActive={activeSection === item.id} tooltip={tooltipText}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                      {overdueCount > 0 && (
+                        <span
+                          className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold tabular-nums shadow-sm group-data-[collapsible=icon]:absolute group-data-[collapsible=icon]:top-0.5 group-data-[collapsible=icon]:right-0.5 group-data-[collapsible=icon]:min-w-0 group-data-[collapsible=icon]:h-4 group-data-[collapsible=icon]:w-4 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:text-[9px]"
+                          title={`${overdueCount} casos vencidos según política v4.5`}
+                        >
+                          <span className="absolute inline-flex h-full w-full rounded-full bg-destructive opacity-30 animate-ping" />
+                          <span className="relative">{overdueCount}</span>
+                        </span>
+                      )}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

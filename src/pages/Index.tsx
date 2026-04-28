@@ -16,16 +16,18 @@ import { ConfigurationHub } from "@/components/settings/ConfigurationHub";
 import { useClients } from "@/hooks/useClients";
 import { useAuth } from "@/hooks/useAuth";
 import { projectInfo } from "@/data/projectData";
-import { Moon, Sun, Loader2 } from "lucide-react";
+import { Moon, Sun, Loader2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ShareReportDialog } from "@/components/dashboard/ShareReportDialog";
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { supabase } from "@/integrations/supabase/client";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
+import { useSLASummary } from "@/hooks/useSLASummary";
 
 const Index = () => {
   const { role, user } = useAuth();
   useActivityTracker();
+  const { data: slaSummary } = useSLASummary();
   const [activeSection, setActiveSection] = useState("overview");
   const [didLandRedirect, setDidLandRedirect] = useState(false);
 
@@ -136,6 +138,24 @@ const Index = () => {
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
+              {/* Pill global de "casos vencidos" — visible desde cualquier sección.
+                  Click → Soporte (donde el banner urgente activa el filtro). */}
+              {(slaSummary?.overdue ?? 0) > 0 && activeSection !== "soporte" && role !== "gerente" && (
+                <button
+                  onClick={() => setActiveSection("soporte")}
+                  className="hidden md:inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full border border-destructive/40 bg-destructive/[0.06] hover:bg-destructive/[0.12] text-destructive text-xs font-bold transition-colors group"
+                  title={`${slaSummary!.overdue} casos vencidos según política v4.5 — click para revisar`}
+                >
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-60" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive" />
+                  </span>
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  <span className="tabular-nums">{slaSummary!.overdue}</span>
+                  <span>vencido{slaSummary!.overdue === 1 ? "" : "s"}</span>
+                  <span className="text-[10px] uppercase tracking-wider opacity-60 group-hover:opacity-100 transition-opacity hidden lg:inline">→ ver</span>
+                </button>
+              )}
               <NotificationBell />
               {role !== "gerente" && <ShareReportDialog />}
               <Button variant="ghost" size="icon" onClick={() => setDark(!dark)}>
