@@ -179,12 +179,11 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, canEditInternal 
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
-        {/* Header sticky con backdrop-blur — evita que el contenido scrollee
-            visiblemente "detrás" del X close button del Sheet (creaba una
-            línea/sliver en la parte superior).
-            Negative margins para extender el bg hasta los bordes del Sheet. */}
-        <SheetHeader className="space-y-3 sticky top-0 z-20 -mx-6 -mt-6 px-6 pt-6 pb-4 bg-background/85 backdrop-blur-md border-b border-border/60">
+      {/* Layout flex: header fijo (no-scroll) + body scrolleable.
+          Reemplaza el modelo "todo scrollea" que dejaba contenido visible
+          detrás del header sticky con bg semi-transparente. */}
+      <SheetContent side="right" className="w-full sm:max-w-2xl p-0 flex flex-col gap-0">
+        <SheetHeader className="space-y-3 px-6 pt-6 pb-4 bg-card border-b border-border/60 shrink-0">
           {/* Back + ID + copy */}
           <div className="flex items-center gap-2 text-xs">
             <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} className="h-7 -ml-2 gap-1">
@@ -225,8 +224,11 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, canEditInternal 
           </SheetDescription>
         </SheetHeader>
 
-        {/* ── Acciones rápidas (sticky arriba) ── */}
-        <div className="sticky top-0 z-10 bg-background py-3 border-b border-border/40 mt-3 space-y-3">
+        {/* ── BODY scrolleable: state flow + acciones + SLA + tabs ── */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+
+        {/* ── Acciones rápidas + Flujo de estados ── */}
+        <div className="space-y-3">
           {/* Flujo de estados visual */}
           <div>
             <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-wide block mb-1">
@@ -299,12 +301,10 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, canEditInternal 
         </div>
 
         {/* ── Explicación SLA · Por qué esta etiqueta — visible siempre, antes de los tabs ── */}
-        <div className="mt-4">
-          <TicketSLAExplanation ticket={ticket} clientName={client?.name} />
-        </div>
+        <TicketSLAExplanation ticket={ticket} clientName={client?.name} />
 
         {/* ── Tabs con contenido ── */}
-        <Tabs value={tab} onValueChange={setTab} className="mt-4">
+        <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="w-full h-9 grid grid-cols-5">
             <TabsTrigger value="detalle" className="text-[11px] gap-1"><ScrollText className="h-3 w-3" /> Detalle</TabsTrigger>
             <TabsTrigger value="historial" className="text-[11px] gap-1"><History className="h-3 w-3" /> Historial</TabsTrigger>
@@ -434,6 +434,8 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, canEditInternal 
             <CaseStrategyPanel ticketId={ticket.id} canEdit={canEditInternal} />
           </TabsContent>
         </Tabs>
+
+        </div>{/* /body scrolleable */}
       </SheetContent>
 
       {/* Dialog de compartir historial (se abre desde el tab Historial) */}
