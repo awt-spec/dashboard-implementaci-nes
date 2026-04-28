@@ -19,8 +19,10 @@ import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { useSupportClients, useUpdateSupportTicket, type SupportTicket } from "@/hooks/useSupportTickets";
+import { useBusinessRules } from "@/hooks/useBusinessRules";
 import { useAuth } from "@/hooks/useAuth";
 import { TicketDetailSheet } from "./TicketDetailSheet";
+import { computeSLAStatus } from "@/components/policy/ActivePolicyBar";
 
 // ─── Hook: tickets "en bandeja" (PENDIENTE, ordenados por creación) ─────
 
@@ -75,6 +77,7 @@ interface Props {
 export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
   const { data: tickets = [], isLoading, refetch } = useInboxTickets();
   const { data: clients = [] } = useSupportClients();
+  const { data: businessRules = [] } = useBusinessRules();
   const update = useUpdateSupportTicket();
   const qc = useQueryClient();
   const { user, profile } = useAuth();
@@ -85,10 +88,10 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
   const [detailOpen, setDetailOpen] = useState(false);
 
   // UX controls
-  const [quickFilter, setQuickFilter] = useState<"all" | "critical" | "new24h" | "cliente" | "pendiente" | "enatencion">("all");
+  const [quickFilter, setQuickFilter] = useState<"all" | "critical" | "new24h" | "cliente" | "pendiente" | "enatencion" | "sla_overdue" | "sla_warning">("all");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"priority" | "age" | "client">("priority");
-  const [groupBy, setGroupBy] = useState<"cliente" | "prioridad" | "estado" | "antiguedad" | "flat">("cliente");
+  const [groupBy, setGroupBy] = useState<"cliente" | "prioridad" | "estado" | "antiguedad" | "sla" | "flat">("cliente");
 
   // Re-lookup desde la lista para que los cambios optimistic (via useUpdateSupportTicket)
   // se reflejen sin cerrar/reabrir el sheet.
@@ -103,6 +106,28 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
     return tickets.filter(t => t.client_id === clientId);
   }, [tickets, clientId]);
 
+  // ── SLA status computado por cada ticket usando política v4.5 ──
+  const slaByTicketId = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof computeSLAStatus>>();
+    scopedTickets.forEach(t => {
+      const sla = computeSLAStatus(t as any, businessRules as any);
+      if (sla) map.set(t.id, sla);
+    });
+    return map;
+  }, [scopedTickets, businessRules]);
+
+  // Tickets categorizados por SLA
+  const slaCounts = useMemo(() => {
+    let overdue = 0, warning = 0, ok = 0;
+    slaByTicketId.forEach(s => {
+      if (!s) return;
+      if (s.status === "overdue") overdue++;
+      else if (s.status === "warning") warning++;
+      else ok++;
+    });
+    return { overdue, warning, ok };
+  }, [slaByTicketId]);
+
   // ── Filtro por quickFilter + search ──
   const filteredTickets = useMemo(() => {
     const now = Date.now();
@@ -114,10 +139,12 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
       if (quickFilter === "cliente" && t.fuente !== "cliente") return false;
       if (quickFilter === "pendiente" && t.estado !== "PENDIENTE") return false;
       if (quickFilter === "enatencion" && t.estado !== "EN ATENCIÓN") return false;
+      if (quickFilter === "sla_overdue" && slaByTicketId.get(t.id)?.status !== "overdue") return false;
+      if (quickFilter === "sla_warning" && slaByTicketId.get(t.id)?.status !== "warning") return false;
       if (q && !(t.ticket_id?.toLowerCase().includes(q) || t.asunto?.toLowerCase().includes(q))) return false;
       return true;
     });
-  }, [scopedTickets, quickFilter, search]);
+  }, [scopedTickets, quickFilter, search, slaByTicketId]);
 
   // ── Grouping + sorting genérico ──
   const grouped = useMemo(() => {
@@ -179,6 +206,23 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
         .map(b => makeGroup({
           key: b.key, label: b.label, IconTag: b.IconTag, iconTone: b.iconTone, weight: b.weight,
           items: sortItems(filteredTickets.filter(t => t.estado === b.key)),
+        }))
+        .filter(g => g.total > 0);
+    } else if (groupBy === "sla") {
+      const buckets = [
+        { key: "overdue", label: "Fuera de SLA", IconTag: AlertTriangle, iconTone: "text-destructive bg-destructive/10", weight: 0,
+          match: (t: SupportTicket) => slaByTicketId.get(t.id)?.status === "overdue" },
+        { key: "warning", label: "En riesgo (≥75% del plazo)", IconTag: Clock, iconTone: "text-warning bg-warning/10", weight: 1,
+          match: (t: SupportTicket) => slaByTicketId.get(t.id)?.status === "warning" },
+        { key: "ok",      label: "Dentro de SLA", IconTag: CheckCheck, iconTone: "text-success bg-success/10", weight: 2,
+          match: (t: SupportTicket) => slaByTicketId.get(t.id)?.status === "ok" },
+        { key: "no-sla",  label: "Sin SLA aplicable", IconTag: User, iconTone: "text-muted-foreground bg-muted/40", weight: 3,
+          match: (t: SupportTicket) => !slaByTicketId.get(t.id) },
+      ];
+      groups = buckets
+        .map(b => makeGroup({
+          key: b.key, label: b.label, IconTag: b.IconTag, iconTone: b.iconTone, weight: b.weight,
+          items: sortItems(filteredTickets.filter(b.match)),
         }))
         .filter(g => g.total > 0);
     } else if (groupBy === "antiguedad") {
@@ -353,13 +397,17 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
   const dayAgoMs = Date.now() - 24 * 60 * 60 * 1000;
   const totalNew24h = scopedTickets.filter(t => new Date(t.created_at).getTime() >= dayAgoMs).length;
 
-  const CHIPS: Array<{ key: typeof quickFilter; label: string; count: number; Icon: any; tone: string }> = [
-    { key: "all",        label: "Todos",       count: scopedTickets.length, Icon: Inbox,          tone: "" },
-    { key: "critical",   label: "Críticos",    count: totalCritical,        Icon: Flame,          tone: "text-destructive" },
-    { key: "new24h",     label: "Nuevos 24h",  count: totalNew24h,          Icon: Zap,            tone: "text-primary" },
-    { key: "cliente",    label: "De cliente",  count: totalFromCliente,     Icon: Radio,          tone: "text-primary" },
-    { key: "pendiente",  label: "PENDIENTE",   count: totalPending,         Icon: Clock,          tone: "text-warning" },
-    { key: "enatencion", label: "EN ATENCIÓN", count: totalEnAtencion,      Icon: AlertTriangle,  tone: "text-info" },
+  const CHIPS: Array<{ key: typeof quickFilter; label: string; count: number; Icon: any; tone: string; emphasis?: boolean }> = [
+    { key: "all",          label: "Todos",        count: scopedTickets.length, Icon: Inbox,          tone: "" },
+    // SLA emphasized chips — política v4.5 aplicada en cancha
+    { key: "sla_overdue",  label: "Fuera SLA",    count: slaCounts.overdue,    Icon: AlertTriangle,  tone: "text-destructive", emphasis: slaCounts.overdue > 0 },
+    { key: "sla_warning",  label: "En riesgo SLA",count: slaCounts.warning,    Icon: Clock,          tone: "text-warning", emphasis: slaCounts.warning > 0 },
+    // — divider visual entre SLA y resto —
+    { key: "critical",     label: "Críticos",     count: totalCritical,        Icon: Flame,          tone: "text-destructive" },
+    { key: "new24h",       label: "Nuevos 24h",   count: totalNew24h,          Icon: Zap,            tone: "text-primary" },
+    { key: "cliente",      label: "De cliente",   count: totalFromCliente,     Icon: Radio,          tone: "text-primary" },
+    { key: "pendiente",    label: "PENDIENTE",    count: totalPending,         Icon: Clock,          tone: "text-warning" },
+    { key: "enatencion",   label: "EN ATENCIÓN",  count: totalEnAtencion,      Icon: AlertTriangle,  tone: "text-info" },
   ];
 
   const hasActiveFilters = quickFilter !== "all" || search.trim().length > 0;
@@ -370,6 +418,7 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
     prioridad: "Prioridad",
     estado: "Estado",
     antiguedad: "Antigüedad",
+    sla: "SLA",
     flat: "Plana",
   };
   const SORT_LABELS: Record<typeof sortBy, string> = {
@@ -409,6 +458,37 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
           )}
         </div>
       </div>
+
+      {/* ════ BANNER SLA URGENTE — política v4.5 aplicada ════ */}
+      {slaCounts.overdue > 0 && quickFilter !== "sla_overdue" && (
+        <motion.div
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-lg border border-destructive/40 bg-gradient-to-r from-destructive/[0.06] via-destructive/[0.02] to-transparent overflow-hidden"
+        >
+          <div className="flex items-center gap-3 px-4 py-3">
+            <div className="h-9 w-9 rounded-full bg-destructive/15 flex items-center justify-center shrink-0 animate-pulse">
+              <AlertTriangle className="h-4.5 w-4.5 text-destructive" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-destructive">
+                {slaCounts.overdue} {slaCounts.overdue === 1 ? "boleta rompió" : "boletas rompieron"} SLA según política v4.5
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Pasaron el plazo de la política activa · requiere atención inmediata
+                {slaCounts.warning > 0 && ` · ${slaCounts.warning} en riesgo (≥75%)`}
+              </p>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => setQuickFilter("sla_overdue")}
+              className="h-8 gap-1.5 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              <Eye className="h-3.5 w-3.5" /> Ver vencidas
+            </Button>
+          </div>
+        </motion.div>
+      )}
 
       {/* Urgent spotlight — top 3 más urgentes globalmente */}
       {urgentSpotlight.length > 0 && (
@@ -466,6 +546,8 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
         <div className="flex items-center gap-1 flex-wrap">
           {CHIPS.map(chip => {
             const active = quickFilter === chip.key;
+            const isSLA = chip.key === "sla_overdue" || chip.key === "sla_warning";
+            const isOverdueChip = chip.key === "sla_overdue";
             return (
               <button
                 key={chip.key}
@@ -473,7 +555,17 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
                 className={cn(
                   "inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-medium border transition-all",
                   active
-                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    ? isOverdueChip
+                      ? "bg-destructive text-destructive-foreground border-destructive shadow-sm"
+                      : chip.key === "sla_warning"
+                      ? "bg-warning text-warning-foreground border-warning shadow-sm"
+                      : "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : chip.emphasis && isOverdueChip
+                    ? "bg-destructive/[0.06] hover:bg-destructive/[0.12] border-destructive/40 text-destructive ring-2 ring-destructive/20 animate-pulse"
+                    : chip.emphasis && chip.key === "sla_warning"
+                    ? "bg-warning/[0.06] hover:bg-warning/[0.12] border-warning/40 text-warning"
+                    : isSLA
+                    ? "bg-card hover:bg-muted/40 border-border text-muted-foreground"
                     : "bg-card hover:bg-muted/40 border-border text-foreground/70 hover:text-foreground",
                 )}
               >
@@ -482,7 +574,10 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
                 {chip.count > 0 && (
                   <span className={cn(
                     "tabular-nums px-1.5 py-0.5 rounded-full text-[10px] font-bold",
-                    active ? "bg-primary-foreground/20" : "bg-muted/80 text-muted-foreground"
+                    active ? (isOverdueChip ? "bg-destructive-foreground/20" : chip.key === "sla_warning" ? "bg-warning-foreground/20" : "bg-primary-foreground/20")
+                    : chip.emphasis && isOverdueChip ? "bg-destructive/15"
+                    : chip.emphasis && chip.key === "sla_warning" ? "bg-warning/15"
+                    : "bg-muted/80 text-muted-foreground"
                   )}>
                     {chip.count}
                   </span>
@@ -516,6 +611,7 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
                   { v: "cliente" as const,    Icon: Building2,     label: "Cliente",    hint: "Cada cliente es un grupo" },
                   { v: "prioridad" as const,  Icon: Flame,         label: "Prioridad",  hint: "Crítica → Alta → Media → Baja" },
                   { v: "estado" as const,     Icon: AlertTriangle, label: "Estado",     hint: "PENDIENTE → EN ATENCIÓN" },
+                  { v: "sla" as const,        Icon: Clock,         label: "SLA",        hint: "Fuera SLA → En riesgo → OK (política v4.5)" },
                   { v: "antiguedad" as const, Icon: Clock,         label: "Antigüedad", hint: "Hoy → Esta semana → Mes → +1 mes" },
                   { v: "flat" as const,       Icon: ListMinus,     label: "Plana",      hint: "Sin grupos, lista única" },
                 ].map((opt) => {
@@ -690,15 +786,24 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
                           const s = priorityStyle(t.prioridad);
                           const src = sourceIcon(t.fuente);
                           const isNew = recentlyAdded.has(t.id);
+                          const sla = slaByTicketId.get(t.id);
+                          const isOverdueSLA = sla?.status === "overdue";
+                          const isWarningSLA = sla?.status === "warning";
                           return (
                             <motion.div
                               key={t.id}
                               initial={isNew ? { opacity: 0, y: -8, scale: 0.95 } : false}
                               animate={{ opacity: 1, y: 0, scale: 1 }}
                               exit={{ opacity: 0, height: 0 }}
-                              className={`flex items-start gap-2.5 p-2.5 rounded-lg border ${s.border} ${
-                                isNew ? "ring-2 ring-primary/40 bg-primary/5" : "bg-card hover:bg-muted/20"
-                              } transition-colors`}
+                              className={cn(
+                                "flex items-start gap-2.5 p-2.5 rounded-lg border transition-colors",
+                                // Border-left grueso si vencido (alerta visual fuerte)
+                                isOverdueSLA ? "border-destructive/60 border-l-4 bg-destructive/[0.03]" :
+                                isWarningSLA ? "border-warning/50 border-l-4 bg-warning/[0.02]" :
+                                s.border,
+                                isNew ? "ring-2 ring-primary/40 bg-primary/5" : "hover:bg-muted/20",
+                                !isOverdueSLA && !isWarningSLA && !isNew && "bg-card"
+                              )}
                             >
                               <div className={`h-8 w-8 rounded-md ${s.bg} flex items-center justify-center shrink-0`}>
                                 <s.Icon className={`h-4 w-4 ${s.text}`} />
@@ -724,12 +829,38 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
                                     <s.Icon className="h-2.5 w-2.5" />
                                     {t.prioridad === "Critica, Impacto Negocio" ? "Crítica" : t.prioridad}
                                   </span>
+
+                                  {/* SLA badge — política v4.5 aplicada al ticket */}
+                                  {sla && (
+                                    <span
+                                      className={cn(
+                                        "inline-flex items-center gap-0.5 h-4 px-1.5 rounded text-[10px] font-bold border",
+                                        isOverdueSLA && "bg-destructive/15 text-destructive border-destructive/40 animate-pulse",
+                                        isWarningSLA && "bg-warning/15 text-warning border-warning/40",
+                                        sla.status === "ok" && "bg-success/10 text-success border-success/30"
+                                      )}
+                                      title={`Política v4.5: plazo ${sla.deadlineDays}d · llevamos ${sla.daysElapsed}d`}
+                                    >
+                                      <Clock className="h-2.5 w-2.5" />
+                                      {isOverdueSLA
+                                        ? `+${sla.daysElapsed - sla.deadlineDays}d FUERA SLA`
+                                        : isWarningSLA
+                                        ? `${sla.deadlineDays - sla.daysElapsed}d restante${sla.deadlineDays - sla.daysElapsed === 1 ? "" : "s"}`
+                                        : `SLA ${sla.deadlineDays}d`}
+                                    </span>
+                                  )}
                                 </div>
                                 <p className="text-sm font-medium mt-0.5 line-clamp-2">{t.asunto}</p>
                                 <div className="flex items-center gap-2 mt-1 text-[11px] text-muted-foreground flex-wrap">
                                   <span>{formatDistanceToNow(new Date(t.created_at), { addSuffix: true, locale: es })}</span>
                                   <span>·</span>
                                   <span>{t.tipo}</span>
+                                  {t.responsable && t.responsable !== "—" && (
+                                    <>
+                                      <span>·</span>
+                                      <span className="truncate">{t.responsable.split(" ")[0]}</span>
+                                    </>
+                                  )}
                                 </div>
                               </div>
                               <div className="flex flex-col gap-1 shrink-0">
@@ -753,6 +884,36 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
                                     className="h-7 gap-1 text-[11px]"
                                   >
                                     <CheckCheck className="h-3 w-3" /> Atender
+                                  </Button>
+                                )}
+                                {/* Cerrar rápido — solo en boletas vencidas SLA o EN ATENCIÓN
+                                    Política v4.5 sugiere resolver inmediatamente lo vencido. */}
+                                {(isOverdueSLA || t.estado === "EN ATENCIÓN") && (
+                                  <Button
+                                    size="sm"
+                                    variant={isOverdueSLA ? "destructive" : "outline"}
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      if (!confirm(`¿Cerrar ${t.ticket_id} como resuelto?`)) return;
+                                      try {
+                                        await update.mutateAsync({
+                                          id: t.id,
+                                          updates: {
+                                            estado: "CERRADA",
+                                            fecha_entrega: new Date().toISOString(),
+                                          } as any,
+                                        });
+                                        toast.success(`${t.ticket_id} cerrado`, {
+                                          description: isOverdueSLA ? "Resolución de boleta vencida SLA" : "Marcado como resuelto",
+                                        });
+                                      } catch (err: any) {
+                                        toast.error(err.message);
+                                      }
+                                    }}
+                                    disabled={update.isPending}
+                                    className="h-7 gap-1 text-[11px]"
+                                  >
+                                    <Lock className="h-3 w-3" /> Cerrar
                                   </Button>
                                 )}
                               </div>
