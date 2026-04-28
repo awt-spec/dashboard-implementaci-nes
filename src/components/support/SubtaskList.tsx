@@ -18,18 +18,29 @@ import { toast } from "sonner";
 import {
   Loader2, Plus, ListChecks, Circle, CheckCircle2, Search, X,
   Target, Eye, DollarSign, Layers, Tag, LayoutList, LayoutGrid,
+  ChevronDown, ChevronUp, Flag, UserCircle2, CalendarDays, AlignLeft,
+  Sparkles,
 } from "lucide-react";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 
 import {
   useTicketSubtasks, useCreateTicketSubtask, useToggleTicketSubtask,
   useUpdateTicketSubtask, useDeleteTicketSubtask, useReorderTicketSubtasks,
-  type TicketSubtask, type SubtaskCategory,
+  type TicketSubtask, type SubtaskCategory, type SubtaskPriority,
 } from "@/hooks/useSupportTicketDetails";
 import { useSysdeTeamMembers } from "@/hooks/useTeamMembers";
 import { SubtaskItem } from "./SubtaskItem";
@@ -112,8 +123,15 @@ export function SubtaskList({ ticketId, canEdit }: Props) {
   const del = useDeleteTicketSubtask();
   const reorder = useReorderTicketSubtasks();
 
+  // Estado del creator
   const [newTitle, setNewTitle] = useState("");
   const [newCategory, setNewCategory] = useState<SubtaskCategory>("general");
+  const [newDescription, setNewDescription] = useState("");
+  const [newPriority, setNewPriority] = useState<SubtaskPriority>("media");
+  const [newAssignee, setNewAssignee] = useState<string | null>(null);
+  const [newDueDate, setNewDueDate] = useState<Date | null>(null);
+  const [detailedMode, setDetailedMode] = useState(false);
+
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("todas");
   const [categoryFilter, setCategoryFilter] = useState<SubtaskCategory | "all">("all");
   const [search, setSearch] = useState("");
@@ -172,7 +190,17 @@ export function SubtaskList({ ticketId, canEdit }: Props) {
   }, [filtered]);
 
   // ─── Handlers ──────────────────────────────────────────────────────────
-  const handleAdd = () => {
+  const resetCreator = (keepCategory = true) => {
+    setNewTitle("");
+    setNewDescription("");
+    setNewPriority("media");
+    setNewAssignee(null);
+    setNewDueDate(null);
+    if (!keepCategory) setNewCategory("general");
+    setDetailedMode(false);
+  };
+
+  const handleAdd = (closeAfter = true) => {
     const t = newTitle.trim();
     if (!t) return;
     create.mutate(
@@ -180,13 +208,22 @@ export function SubtaskList({ ticketId, canEdit }: Props) {
         ticket_id: ticketId,
         title: t,
         sort_order: subtasks.length,
-        priority: "media",
+        priority: newPriority,
         category: newCategory,
+        description: newDescription.trim() || null,
+        assignee: newAssignee,
+        due_date: newDueDate ? newDueDate.toISOString().slice(0, 10) : null,
       },
       {
         onSuccess: () => {
-          setNewTitle("");
-          // Mantener la categoría elegida — facilita crear varias del mismo tipo
+          if (closeAfter) {
+            // Mantener categoría — facilita crear varias del mismo tipo
+            resetCreator(true);
+          } else {
+            // Solo limpiar título para seguir creando rápido
+            setNewTitle("");
+          }
+          toast.success("Subtarea creada");
         },
         onError: (e: any) => toast.error(e?.message || "No se pudo crear la subtarea"),
       }
@@ -289,27 +326,57 @@ export function SubtaskList({ ticketId, canEdit }: Props) {
 
             {canEdit && (
               <div className="space-y-2">
-                {/* Input + add button */}
+                {/* Input + add buttons */}
                 <div className="flex items-center gap-2">
                   <Input
-                    placeholder="Nueva subtarea…"
+                    placeholder={detailedMode ? "Título de la subtarea…" : "Nueva subtarea (Enter para agregar rápido)…"}
                     value={newTitle}
                     onChange={(e) => setNewTitle(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !detailedMode) handleAdd();
+                    }}
                     className="h-8 text-sm flex-1"
                   />
-                  <Button
-                    size="sm"
-                    onClick={handleAdd}
-                    disabled={!newTitle.trim() || create.isPending}
-                    className="h-8 gap-1 shrink-0"
-                  >
-                    {create.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-                    Agregar
-                  </Button>
+                  {!detailedMode ? (
+                    <>
+                      <Button
+                        size="sm"
+                        onClick={() => handleAdd()}
+                        disabled={!newTitle.trim() || create.isPending}
+                        className="h-8 gap-1 shrink-0"
+                      >
+                        {create.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                        Agregar
+                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="sm" variant="outline"
+                            onClick={() => setDetailedMode(true)}
+                            className="h-8 px-2 gap-1 shrink-0"
+                          >
+                            <Sparkles className="h-3 w-3" />
+                            Detallar
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="text-[10px]">
+                          Especifica responsable, prioridad, fecha y descripción antes de crear
+                        </TooltipContent>
+                      </Tooltip>
+                    </>
+                  ) : (
+                    <Button
+                      size="sm" variant="ghost"
+                      onClick={() => { resetCreator(true); }}
+                      className="h-8 gap-1 shrink-0"
+                    >
+                      <X className="h-3 w-3" />
+                      Cancelar
+                    </Button>
+                  )}
                 </div>
 
-                {/* Category picker — chips icónicos para elegir naturaleza del trabajo */}
+                {/* Category picker — chips icónicos siempre visibles */}
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">
                     Tipo:
@@ -341,6 +408,140 @@ export function SubtaskList({ ticketId, canEdit }: Props) {
                     );
                   })}
                 </div>
+
+                {/* MODO DETALLADO — formulario expandible */}
+                {detailedMode && (
+                  <div className="rounded-lg border border-primary/30 bg-primary/[0.02] p-3 space-y-3 mt-2">
+                    {/* Descripción */}
+                    <div className="space-y-1">
+                      <Label className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground flex items-center gap-1">
+                        <AlignLeft className="h-2.5 w-2.5" /> Descripción (opcional)
+                      </Label>
+                      <Textarea
+                        placeholder="Detalle del trabajo a realizar…"
+                        value={newDescription}
+                        onChange={(e) => setNewDescription(e.target.value)}
+                        rows={2}
+                        className="text-xs resize-none"
+                      />
+                    </div>
+
+                    {/* Prioridad chips */}
+                    <div className="space-y-1">
+                      <Label className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground flex items-center gap-1">
+                        <Flag className="h-2.5 w-2.5" /> Prioridad
+                      </Label>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {(["baja", "media", "alta", "critica"] as SubtaskPriority[]).map((p) => {
+                          const active = newPriority === p;
+                          const styles =
+                            p === "critica" ? { bg: "bg-destructive/15", text: "text-destructive", border: "border-destructive/40", dot: "bg-destructive" } :
+                            p === "alta"    ? { bg: "bg-warning/15",     text: "text-warning",     border: "border-warning/40",     dot: "bg-warning" } :
+                            p === "media"   ? { bg: "bg-info/10",        text: "text-info",        border: "border-info/30",        dot: "bg-info" } :
+                                              { bg: "bg-muted",          text: "text-muted-foreground", border: "border-border",     dot: "bg-muted-foreground/60" };
+                          return (
+                            <button
+                              key={p}
+                              type="button"
+                              onClick={() => setNewPriority(p)}
+                              className={cn(
+                                "inline-flex items-center gap-1.5 h-6 px-2 rounded-full text-[10px] font-semibold border transition-all capitalize",
+                                active
+                                  ? cn(styles.bg, styles.text, styles.border, "ring-2 ring-current/20")
+                                  : "bg-card border-border text-muted-foreground hover:border-primary/40"
+                              )}
+                            >
+                              <span className={cn("h-1.5 w-1.5 rounded-full", styles.dot)} />
+                              {p}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {/* Responsable */}
+                      <div className="space-y-1">
+                        <Label className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground flex items-center gap-1">
+                          <UserCircle2 className="h-2.5 w-2.5" /> Responsable
+                        </Label>
+                        <Select value={newAssignee || "__none"} onValueChange={(v) => setNewAssignee(v === "__none" ? null : v)}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Sin asignar" /></SelectTrigger>
+                          <SelectContent className="max-h-56">
+                            <SelectItem value="__none" className="text-xs">Sin asignar</SelectItem>
+                            {memberNames.map((name) => (
+                              <SelectItem key={name} value={name} className="text-xs">{name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Fecha límite */}
+                      <div className="space-y-1">
+                        <Label className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground flex items-center gap-1">
+                          <CalendarDays className="h-2.5 w-2.5" /> Fecha límite
+                        </Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className={cn(
+                                "h-8 w-full justify-start text-xs font-normal",
+                                !newDueDate && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarDays className="h-3 w-3 mr-1.5" />
+                              {newDueDate ? format(newDueDate, "d MMM yyyy", { locale: es }) : "Sin fecha"}
+                              {newDueDate && (
+                                <X
+                                  className="h-3 w-3 ml-auto hover:text-destructive"
+                                  onClick={(e) => { e.stopPropagation(); setNewDueDate(null); }}
+                                />
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0">
+                            <Calendar
+                              mode="single"
+                              selected={newDueDate || undefined}
+                              onSelect={(d) => setNewDueDate(d || null)}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    </div>
+
+                    {/* Footer del form: resumen + acciones */}
+                    <div className="flex items-center justify-between pt-2 border-t border-border/40">
+                      <p className="text-[10px] text-muted-foreground">
+                        Categoría: <span className="font-bold">{CATEGORY_META[newCategory].label}</span>
+                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          size="sm" variant="outline"
+                          onClick={() => handleAdd(false)}
+                          disabled={!newTitle.trim() || create.isPending}
+                          className="h-7 gap-1 text-[11px]"
+                          title="Crear y mantener formulario abierto para crear más"
+                        >
+                          {create.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                          Crear y seguir
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleAdd(true)}
+                          disabled={!newTitle.trim() || create.isPending}
+                          className="h-7 gap-1 text-[11px]"
+                        >
+                          {create.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+                          Crear con detalle
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
