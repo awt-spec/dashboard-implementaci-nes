@@ -484,7 +484,7 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
         </div>
       </div>
 
-      {/* ════ BANNER SLA URGENTE — política v4.5 aplicada ════ */}
+      {/* ════ BANNER SLA URGENTE — jerarquía: cliente override > política v4.5 ════ */}
       {slaCounts.overdue > 0 && quickFilter !== "sla_overdue" && (
         <motion.div
           initial={{ opacity: 0, y: -4 }}
@@ -497,10 +497,10 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-destructive">
-                {slaCounts.overdue} {slaCounts.overdue === 1 ? "boleta rompió" : "boletas rompieron"} SLA según política v4.5
+                {slaCounts.overdue} {slaCounts.overdue === 1 ? "boleta rompió" : "boletas rompieron"} su SLA
               </p>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                Pasaron el plazo de la política activa · requiere atención inmediata
+                Plazo: <strong>contrato del cliente</strong> si tiene override, sino <strong>política v4.5</strong>
                 {slaCounts.warning > 0 && ` · ${slaCounts.warning} en riesgo (≥75%)`}
               </p>
             </div>
@@ -657,7 +657,7 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
                   { v: "cliente" as const,    Icon: Building2,     label: "Cliente",    hint: "Cada cliente es un grupo" },
                   { v: "prioridad" as const,  Icon: Flame,         label: "Prioridad",  hint: "Crítica → Alta → Media → Baja" },
                   { v: "estado" as const,     Icon: AlertTriangle, label: "Estado",     hint: "PENDIENTE → EN ATENCIÓN" },
-                  { v: "sla" as const,        Icon: Clock,         label: "SLA",        hint: "Fuera SLA → En riesgo → OK (política v4.5)" },
+                  { v: "sla" as const,        Icon: Clock,         label: "SLA",        hint: "Fuera SLA → En riesgo → OK · respeta override del cliente; sino política v4.5" },
                   { v: "antiguedad" as const, Icon: Clock,         label: "Antigüedad", hint: "Hoy → Esta semana → Mes → +1 mes" },
                   { v: "flat" as const,       Icon: ListMinus,     label: "Plana",      hint: "Sin grupos, lista única" },
                 ].map((opt) => {

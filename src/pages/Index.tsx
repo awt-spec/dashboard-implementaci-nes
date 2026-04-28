@@ -144,7 +144,7 @@ const Index = () => {
                 <button
                   onClick={() => setActiveSection("soporte")}
                   className="hidden md:inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full border border-destructive/40 bg-destructive/[0.06] hover:bg-destructive/[0.12] text-destructive text-xs font-bold transition-colors group"
-                  title={`${slaSummary!.overdue} casos vencidos según política v4.5 — click para revisar`}
+                  title={`${slaSummary!.overdue} casos vencidos · plazo según contrato del cliente o política v4.5 (override > global) — click para revisar`}
                 >
                   <span className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-60" />
