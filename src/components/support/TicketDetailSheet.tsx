@@ -180,7 +180,11 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, canEditInternal 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
-        <SheetHeader className="space-y-3">
+        {/* Header sticky con backdrop-blur — evita que el contenido scrollee
+            visiblemente "detrás" del X close button del Sheet (creaba una
+            línea/sliver en la parte superior).
+            Negative margins para extender el bg hasta los bordes del Sheet. */}
+        <SheetHeader className="space-y-3 sticky top-0 z-20 -mx-6 -mt-6 px-6 pt-6 pb-4 bg-background/85 backdrop-blur-md border-b border-border/60">
           {/* Back + ID + copy */}
           <div className="flex items-center gap-2 text-xs">
             <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} className="h-7 -ml-2 gap-1">
