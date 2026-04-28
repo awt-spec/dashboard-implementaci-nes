@@ -179,26 +179,46 @@ export function ActivePolicyBar({
 /**
  * Helper: dada una boleta, calcula su estado SLA según la política activa.
  * Devuelve null si no hay regla aplicable o no hay fecha de registro.
+ *
+ * BEST-MATCH (consistente con la Postgres function get_tickets_sla_status):
+ *   1) priority + case_type ambos coinciden (más específico)
+ *   2) priority solo (más estricto primero, ASC por deadline_days)
+ *   3) case_type solo
+ *   4) fallback a "media"
  */
 export function computeSLAStatus(
   ticket: { fecha_registro?: string | null; created_at?: string; prioridad?: string; tipo?: string; estado?: string },
   rules: Array<{ rule_type: string; is_active: boolean; policy_version: string; content: any }>
 ): { deadlineDays: number; daysElapsed: number; status: "ok" | "warning" | "overdue" } | null {
-  // Si está cerrada/anulada, no calcula SLA
   if (ticket.estado && ["CERRADA", "ANULADA", "ENTREGADA", "APROBADA"].includes(ticket.estado)) return null;
 
   const slaRule = rules.find(r => r.rule_type === "sla" && r.is_active && r.policy_version === "v4.5");
   if (!slaRule) return null;
 
   const deadlines: any[] = slaRule.content?.deadlines || [];
-  // Match por prioridad (preferred) o por case_type
   const prio = (ticket.prioridad || "").toLowerCase();
   const tipo = (ticket.tipo || "").toLowerCase();
 
-  let match =
-    deadlines.find(d => prio.includes((d.priority || "").toLowerCase()) && (d.priority || "").length > 0) ||
-    deadlines.find(d => tipo.includes((d.case_type || "").toLowerCase()) && (d.case_type || "").length > 0) ||
-    deadlines.find(d => (d.priority || "").toLowerCase() === "media");
+  const matchesPrio = (d: any) =>
+    !!d.priority && prio.includes((d.priority as string).toLowerCase());
+  const matchesType = (d: any) =>
+    !!d.case_type && tipo.includes((d.case_type as string).toLowerCase());
+
+  // 1) ambos coinciden — más específico
+  let match: any = deadlines.find(d => matchesPrio(d) && matchesType(d));
+
+  // 2) priority solo (orden por deadline_days ASC para preferir el más estricto)
+  if (!match) {
+    const candidates = deadlines.filter(matchesPrio);
+    candidates.sort((a, b) => (a.deadline_days || 999) - (b.deadline_days || 999));
+    match = candidates[0];
+  }
+
+  // 3) case_type solo
+  if (!match) match = deadlines.find(matchesType);
+
+  // 4) fallback "media"
+  if (!match) match = deadlines.find(d => (d.priority || "").toLowerCase() === "media");
 
   if (!match || !match.deadline_days) return null;
 
