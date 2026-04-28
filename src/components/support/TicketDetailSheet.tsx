@@ -34,6 +34,7 @@ import { SubtaskList } from "./SubtaskList";
 import { TicketStateFlow } from "./TicketStateFlow";
 import { ShareTicketHistoryDialog } from "./ShareTicketHistoryDialog";
 import { CaseStrategyPanel } from "./CaseStrategyPanel";
+import { TicketSLAExplanation } from "./TicketSLAExplanation";
 import { isTicketClosed } from "@/lib/ticketStatus";
 
 // ─── Constantes ───────────────────────────────────────────────────────────
@@ -291,6 +292,11 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, canEditInternal 
               )}
             </div>
           )}
+        </div>
+
+        {/* ── Explicación SLA · Por qué esta etiqueta — visible siempre, antes de los tabs ── */}
+        <div className="mt-4">
+          <TicketSLAExplanation ticket={ticket} clientName={client?.name} />
         </div>
 
         {/* ── Tabs con contenido ── */}
