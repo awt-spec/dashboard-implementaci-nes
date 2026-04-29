@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useClients } from "@/hooks/useClients";
 import { useAllSupportTickets, useSupportClients } from "@/hooks/useSupportTickets";
+import { useAuth } from "@/hooks/useAuth";
 // DB is the single source of truth — no static fallback
 import { TrendingUp, CheckCircle, AlertTriangle, Users, Clock, ShieldAlert, Filter, BarChart3, Target, FileCheck, Layers, Loader2, Presentation, AlertOctagon, UserX } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
@@ -42,18 +43,30 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
   const { data: clientsData, isLoading } = useClients();
   const { data: allSupportTickets } = useAllSupportTickets();
   const { data: supportClientsData } = useSupportClients();
+  const { role } = useAuth();
   const clients = clientsData || [];
   const supportTickets = allSupportTickets || [];
   const supportClients = (supportClientsData || []).map(c => ({ id: c.id, name: c.name }));
+
+  // Vista limpia para admin: menos widgets default + hero compacto + KPIs reducidos.
+  // El admin ya tiene "Configuración" para detalle profundo — el Resumen es para
+  // tomar el pulso rápido, no para analizar. Mantener PM/gerente con la vista
+  // anterior (más completa) ya que para ellos esto ES su workspace.
+  const isAdminView = role === "admin";
+
+  // Set inicial de widgets activos:
+  //  - admin → solo actions + pulso + kpis + alerts (4 esenciales)
+  //  - resto → todos los marcados defaultOn:true (vista actual)
+  const [activeWidgets, setActiveWidgets] = useState<Set<string>>(() =>
+    isAdminView
+      ? new Set(["actions", "pulso", "kpis", "alerts"])
+      : new Set(WIDGETS.filter(w => w.defaultOn).map(w => w.key))
+  );
 
   const [filterClient, setFilterClient] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
   const [filterImpact, setFilterImpact] = useState<string>("all");
   const [showPresentation, setShowPresentation] = useState(false);
-  // Composer: widgets activos. Default = los marcados defaultOn:true
-  const [activeWidgets, setActiveWidgets] = useState<Set<string>>(
-    () => new Set(WIDGETS.filter(w => w.defaultOn).map(w => w.key))
-  );
   const show = (k: string) => activeWidgets.has(k);
 
   if (isLoading) {
@@ -140,7 +153,11 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
     personas: c.teamAssigned.length,
   }));
 
-  const kpis = [
+  // KPIs:
+  //  - admin → 4 esenciales (clientes, riesgos, tareas, entregables)
+  //    foco en negocio, sin datos operativos del día a día
+  //  - resto → 8 KPIs detallados (vista de operación PM)
+  const kpisAll = [
     { title: "Clientes Activos", value: activeClients, icon: Users, color: "text-success" },
     { title: "Progreso Promedio", value: `${avgProgress}%`, icon: TrendingUp, color: "text-info" },
     { title: "Total Tareas", value: allTasks.length, icon: Layers, color: "text-primary" },
@@ -150,6 +167,13 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
     { title: "Entregables", value: allDeliverables.length, icon: FileCheck, color: "text-info" },
     { title: "Equipo Total", value: [...new Set(clients.flatMap(c => c.teamAssigned))].length, icon: Target, color: "text-success" },
   ];
+  const kpisAdmin = [
+    { title: "Clientes Activos", value: activeClients, icon: Users, color: "text-success" },
+    { title: "En Riesgo", value: atRisk, icon: AlertTriangle, color: "text-destructive" },
+    { title: "Progreso", value: `${avgProgress}%`, icon: TrendingUp, color: "text-info" },
+    { title: "Equipo", value: [...new Set(clients.flatMap(c => c.teamAssigned))].length, icon: Target, color: "text-primary" },
+  ];
+  const kpis = isAdminView ? kpisAdmin : kpisAll;
 
   const impactColor: Record<string, string> = {
     alto: "bg-destructive",
@@ -211,16 +235,31 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
         />
       )}
 
-      {/* ════ HERO: Pulso del día ════ */}
+      {/* ════ HERO: Pulso del día ════
+          Admin = versión limpia: sin orb blur, padding menor, SOLO los chips
+          que tienen valor > 0 (sin redundancia con ActionQueue arriba).
+          Resto = versión completa (rounded-3xl + blur + todos los chips). */}
       {show("pulso") && (
-      <div className="relative overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/5 via-card to-card p-6">
-        <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+      <div className={
+        isAdminView
+          ? "rounded-2xl border border-border/60 bg-card p-5"
+          : "relative overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/5 via-card to-card p-6"
+      }>
+        {!isAdminView && (
+          <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+        )}
         <div className="relative flex items-start justify-between gap-4 flex-wrap">
           <div className="flex-1 min-w-[280px]">
-            <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-primary mb-1">
+            <p className={
+              isAdminView
+                ? "text-[10px] uppercase tracking-[0.18em] font-bold text-muted-foreground mb-1"
+                : "text-[10px] uppercase tracking-[0.18em] font-bold text-primary mb-1"
+            }>
               Resumen ejecutivo · {now.toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" })}
             </p>
-            <h1 className="text-2xl md:text-3xl font-black leading-tight">{greeting}.</h1>
+            <h1 className={isAdminView ? "text-xl md:text-2xl font-black leading-tight" : "text-2xl md:text-3xl font-black leading-tight"}>
+              {greeting}.
+            </h1>
             <p className="text-sm text-muted-foreground mt-1">
               {atRisk > 0 ? `Hay ${atRisk} cliente${atRisk === 1 ? "" : "s"} en riesgo` :
                criticalSupportOpen > 0 ? `${criticalSupportOpen} caso${criticalSupportOpen === 1 ? "" : "s"} crítico${criticalSupportOpen === 1 ? "" : "s"} sin cerrar` :
@@ -229,7 +268,8 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
                "Todo bajo control 🚀"}
             </p>
 
-            {/* Insights inline accionables */}
+            {/* Insights inline accionables — admin solo ve los más críticos
+                (atRisk + crítico abierto). El resto está en ActionQueue arriba. */}
             <div className="flex items-center gap-2 mt-4 flex-wrap">
               {atRisk > 0 && (
                 <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-destructive/10 text-destructive border border-destructive/30 text-xs font-semibold">
@@ -241,24 +281,25 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
                   <ShieldAlert className="h-3 w-3" /> {criticalSupportOpen} críticos abiertos
                 </span>
               )}
-              {unattendedSupport > 0 && (
+              {/* Resto de chips: solo en vista NO-admin (ya están en ActionQueue) */}
+              {!isAdminView && unattendedSupport > 0 && (
                 <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/30 text-xs font-semibold">
                   <UserX className="h-3 w-3" />
                   {unattendedSupport} sin atender
                   <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse ml-0.5" />
                 </span>
               )}
-              {overdueDeliverables > 0 && (
+              {!isAdminView && overdueDeliverables > 0 && (
                 <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-warning/10 text-warning border border-warning/30 text-xs font-semibold">
                   <AlertTriangle className="h-3 w-3" /> {overdueDeliverables} entregables vencidos
                 </span>
               )}
-              {dueSoonDeliverables > 0 && (
+              {!isAdminView && dueSoonDeliverables > 0 && (
                 <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-info/10 text-info border border-info/30 text-xs font-semibold">
                   <Clock className="h-3 w-3" /> {dueSoonDeliverables} vencen en 7 días
                 </span>
               )}
-              {totalRisks > 0 && (
+              {!isAdminView && totalRisks > 0 && (
                 <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-muted text-muted-foreground border border-border text-xs font-semibold">
                   <FileCheck className="h-3 w-3" /> {totalRisks} alertas activas
                 </span>
@@ -270,7 +311,12 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
               )}
             </div>
           </div>
-          <Button onClick={() => setShowPresentation(true)} className="gap-2 shrink-0">
+          <Button
+            onClick={() => setShowPresentation(true)}
+            variant={isAdminView ? "outline" : "default"}
+            size={isAdminView ? "sm" : "default"}
+            className="gap-2 shrink-0"
+          >
             <Presentation className="h-4 w-4" /> Presentación
           </Button>
         </div>
@@ -278,16 +324,34 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
       )}
       <ExecutivePresentation clients={clients} supportTickets={supportTickets} supportClients={supportClients} open={showPresentation} onClose={() => setShowPresentation(false)} />
 
-      {/* KPIs */}
+      {/* KPIs — grid responsive: 4-col cuando admin, 8-col cuando PM */}
       {show("kpis") && (
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+      <div className={
+        isAdminView
+          ? "grid grid-cols-2 lg:grid-cols-4 gap-3"
+          : "grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3"
+      }>
         {kpis.map((kpi, i) => (
           <motion.div key={kpi.title} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-            <Card className="hover:shadow-md transition-shadow">
-              <CardContent className="p-3 text-center">
-                <kpi.icon className={`h-4 w-4 mx-auto mb-1.5 ${kpi.color}`} />
-                <p className="text-lg font-bold text-foreground leading-tight">{kpi.value}</p>
-                <p className="text-[9px] text-muted-foreground uppercase tracking-wider mt-1">{kpi.title}</p>
+            <Card className={isAdminView ? "border-border/60 hover:border-border transition-colors" : "hover:shadow-md transition-shadow"}>
+              <CardContent className={isAdminView ? "p-4 flex items-center gap-3" : "p-3 text-center"}>
+                {isAdminView ? (
+                  <>
+                    <div className="h-10 w-10 rounded-xl bg-muted/50 flex items-center justify-center shrink-0">
+                      <kpi.icon className={`h-5 w-5 ${kpi.color}`} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-2xl font-black tabular-nums leading-none">{kpi.value}</p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1.5">{kpi.title}</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <kpi.icon className={`h-4 w-4 mx-auto mb-1.5 ${kpi.color}`} />
+                    <p className="text-lg font-bold text-foreground leading-tight">{kpi.value}</p>
+                    <p className="text-[9px] text-muted-foreground uppercase tracking-wider mt-1">{kpi.title}</p>
+                  </>
+                )}
               </CardContent>
             </Card>
           </motion.div>
