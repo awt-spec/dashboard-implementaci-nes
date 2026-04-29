@@ -216,22 +216,25 @@ export function ActionQueue({ onNavigate }: Props) {
 function ActionRow({ action: a, delay }: { action: Action; delay: number }) {
   const tones = {
     destructive: {
-      bg: "bg-destructive/[0.04] hover:bg-destructive/[0.08]",
-      border: "border-destructive/30",
-      icon: "bg-destructive/15 text-destructive",
+      bg: "hover:bg-destructive/[0.04]",
+      leftBar: "bg-destructive",
+      iconColor: "text-destructive",
       cta: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+      pill: "bg-destructive text-destructive-foreground",
     },
     warning: {
-      bg: "bg-amber-500/[0.04] hover:bg-amber-500/[0.08]",
-      border: "border-amber-500/30",
-      icon: "bg-amber-500/15 text-amber-500",
+      bg: "hover:bg-amber-500/[0.04]",
+      leftBar: "bg-amber-500",
+      iconColor: "text-amber-500",
       cta: "bg-amber-500 text-white hover:bg-amber-600",
+      pill: "bg-amber-500 text-white",
     },
     info: {
-      bg: "bg-info/[0.04] hover:bg-info/[0.08]",
-      border: "border-info/30",
-      icon: "bg-info/15 text-info",
+      bg: "hover:bg-info/[0.04]",
+      leftBar: "bg-info",
+      iconColor: "text-info",
       cta: "bg-info text-info-foreground hover:bg-info/90",
+      pill: "bg-info text-info-foreground",
     },
   } as const;
   const t = tones[a.tone];
@@ -241,41 +244,46 @@ function ActionRow({ action: a, delay }: { action: Action; delay: number }) {
       initial={{ opacity: 0, x: -6 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.3, delay }}
-      className={cn("group flex items-center gap-3 p-3 rounded-lg border transition-all", t.bg, t.border)}
+      className={cn(
+        "group relative flex items-center gap-3 px-3.5 py-2.5 rounded-lg border border-border/60 bg-card transition-colors overflow-hidden",
+        t.bg
+      )}
     >
-      <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center shrink-0", t.icon)}>
-        <a.Icon className="h-5 w-5" />
-      </div>
+      {/* Barra vertical izquierda — indicador de urgencia más sutil que un bg lleno */}
+      <div className={cn("absolute left-0 top-0 bottom-0 w-1", t.leftBar)} />
+
+      {/* Icono pequeño sin bg pill — color sólido de la urgencia */}
+      <a.Icon className={cn("h-4 w-4 shrink-0 ml-1", t.iconColor)} />
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5 flex-wrap">
           <p className="text-sm font-bold truncate">{a.title}</p>
           {a.priority === 1 && (
-            <Badge className="h-4 text-[9px] bg-destructive text-destructive-foreground border-0">
+            <span className={cn("inline-flex items-center h-4 px-1.5 rounded text-[9px] font-bold uppercase tracking-wider", t.pill)}>
               URGENTE
-            </Badge>
+            </span>
           )}
         </div>
         <p className="text-[11px] text-muted-foreground truncate mt-0.5">{a.detail}</p>
       </div>
 
+      {/* Analizar — icon-only en mobile, con label en desktop */}
       {a.aiPrompt && (
-        <Button
-          variant="ghost"
-          size="sm"
+        <button
+          type="button"
           onClick={() => askAI(a.aiPrompt!)}
-          className="h-8 gap-1 text-[11px] hidden md:inline-flex shrink-0"
-          title="Que la IA me lo explique"
+          className="inline-flex items-center gap-1 h-7 px-2 rounded-md hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+          title="Que la IA te lo explique"
         >
           <Sparkles className="h-3 w-3" />
-          Analizar
-        </Button>
+          <span className="text-[11px] hidden md:inline">Analizar</span>
+        </button>
       )}
 
       <Button
         size="sm"
         onClick={a.onAction}
-        className={cn("h-8 gap-1 text-xs font-semibold shrink-0", t.cta)}
+        className={cn("h-7 gap-1 text-xs font-semibold shrink-0 px-3", t.cta)}
       >
         {a.cta}
         <ArrowRight className="h-3 w-3" />

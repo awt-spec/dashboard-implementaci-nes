@@ -153,29 +153,29 @@ export function ExecutiveComposer({ widgets, selected, onChange }: Props) {
   const isPinned = activeView?.is_pinned;
 
   return (
-    <Card className="border-primary/20 overflow-hidden">
+    <Card className="border-border/60 overflow-hidden">
+      {/* Trigger compacto — single-row, padding reducido. Era una card grande
+          ocupando 90px+ para una settings; ahora son 48px de altura total. */}
       <button
         onClick={() => setComposerOpen(o => !o)}
-        className="w-full p-4 flex items-center gap-3 hover:bg-muted/30 transition-colors text-left"
+        className="w-full px-3 py-2 flex items-center gap-2.5 hover:bg-muted/30 transition-colors text-left"
       >
-        <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-          <LayoutDashboard className="h-5 w-5 text-primary" />
+        <div className="h-7 w-7 rounded-md bg-muted/50 flex items-center justify-center shrink-0">
+          <LayoutDashboard className="h-3.5 w-3.5 text-muted-foreground" />
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-sm font-bold">¿Qué querés ver hoy?</p>
-            {loadedFromSaved && (
-              <Badge variant="outline" className="text-[10px] gap-1 bg-primary/10 text-primary border-primary/30">
-                {isPinned && <Pin className="h-2.5 w-2.5" />}
-                {loadedFromSaved}
-              </Badge>
-            )}
-          </div>
-          <p className="text-[11px] text-muted-foreground">
-            {selected.size} de {widgets.length} secciones activas · {savedViews.length} vistas guardadas
-          </p>
+        <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-bold">¿Qué querés ver hoy?</span>
+          <span className="text-[10px] text-muted-foreground tabular-nums">
+            {selected.size}/{widgets.length} secciones · {savedViews.length} vista{savedViews.length === 1 ? "" : "s"}
+          </span>
+          {loadedFromSaved && (
+            <Badge variant="outline" className="text-[9px] gap-0.5 bg-primary/10 text-primary border-primary/30 h-4">
+              {isPinned && <Pin className="h-2 w-2" />}
+              {loadedFromSaved}
+            </Badge>
+          )}
         </div>
-        {composerOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
+        {composerOpen ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
       </button>
 
       <AnimatePresence>
