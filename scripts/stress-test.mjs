@@ -142,6 +142,53 @@ all.push(await runSequentialBurst("Burst secuencial · ticket count", 100, async
 }));
 
 // ═══════════════════════════════════════════════════════════════════════════
+// TEST 5a: ESPECÍFICO race condition en consecutivo_cliente
+//   20 inserts paralelos para el MISMO cliente. Antes del fix con
+//   pg_advisory_xact_lock, fallaban 19/20 con duplicate key.
+// ═══════════════════════════════════════════════════════════════════════════
+console.log(`${C.bold}${C.blue}━━━ Race condition test · 20 inserts paralelos al MISMO cliente ━━━${C.reset}`);
+{
+  const { data: anyClient } = await sb.from("clients").select("id").limit(1).single();
+  if (anyClient) {
+    const stamp = Date.now();
+    const start = Date.now();
+    const tasks = Array.from({ length: 20 }, (_, i) =>
+      sb.from("support_tickets").insert([{
+        client_id: anyClient.id,
+        ticket_id: `RACE-${stamp}-${i}`,
+        producto: "TEST", asunto: "Race condition test", tipo: "Requerimiento",
+        prioridad: "Baja", estado: "PENDIENTE", dias_antiguedad: 0,
+      }]).select("id, consecutivo_cliente").single()
+        .then(({ data, error }) => ({ ok: !error, id: data?.id, consec: data?.consecutivo_cliente, error: error?.message }))
+        .catch(e => ({ ok: false, error: e.message }))
+    );
+    const results = await Promise.all(tasks);
+    const elapsed = Date.now() - start;
+    const ok = results.filter(r => r.ok);
+    const fail = results.filter(r => !r.ok);
+    const consecutivos = ok.map(r => r.consec).sort((a, b) => a - b);
+    const allUnique = new Set(consecutivos).size === consecutivos.length;
+
+    console.log(`  ${C.gray}elapsed: ${C.reset}${fmtMs(elapsed)}`);
+    console.log(`  ${ok.length === 20 ? C.green : C.red}inserts OK: ${ok.length}/20${C.reset}`);
+    console.log(`  ${allUnique ? C.green : C.red}consecutivos únicos: ${C.reset}${allUnique ? "sí" : "NO"} ${C.gray}(${consecutivos.slice(0, 5).join(",")}...)${C.reset}`);
+    if (fail.length > 0) {
+      console.log(`  ${C.red}errores:${C.reset}`);
+      fail.slice(0, 3).forEach(f => console.log(`    ${C.red}- ${f.error}${C.reset}`));
+    }
+
+    // Cleanup
+    if (ok.length > 0) {
+      await sb.from("support_tickets").delete().in("id", ok.map(r => r.id));
+      console.log(`  ${C.gray}cleanup: ${ok.length} tickets eliminados${C.reset}\n`);
+    } else {
+      console.log("");
+    }
+    all.push({ errors: fail.length, latencies: [], elapsed });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // TEST 5: Mixed workload (30 reads + 10 writes en paralelo)
 //   Crea/elimina tickets de prueba para no contaminar prod
 // ═══════════════════════════════════════════════════════════════════════════
