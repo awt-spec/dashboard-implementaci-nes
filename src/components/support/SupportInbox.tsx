@@ -519,7 +519,7 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
             </div>
             <Button
               size="sm"
-              onClick={() => setQuickFilter("sla_overdue")}
+              onClick={() => window.dispatchEvent(new CustomEvent("overdue:open"))}
               className="h-8 gap-1.5 bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               <Eye className="h-3.5 w-3.5" /> Ver vencidas

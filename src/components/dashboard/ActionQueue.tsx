@@ -62,6 +62,9 @@ export function ActionQueue({ onNavigate }: Props) {
       else overduePolicy++;
     });
 
+    // Helper: abre el sheet global de vencidos (lista completa con bulk actions)
+    const openOverdueSheet = () => window.dispatchEvent(new CustomEvent("overdue:open"));
+
     // Acción para vencidos según POLÍTICA (regla global v4.5)
     if (overduePolicy > 0) {
       list.push({
@@ -73,7 +76,7 @@ export function ActionQueue({ onNavigate }: Props) {
         Icon: Clock,
         tone: "destructive",
         cta: "Resolver ahora",
-        onAction: () => onNavigate?.("soporte"),
+        onAction: openOverdueSheet,
         aiPrompt: `Listáme las boletas que pasaron el plazo de la política v4.5 (sin override de cliente). Para cada una: cliente, antigüedad, prioridad, y qué acción tomar AHORA.`,
       });
     }
@@ -89,7 +92,7 @@ export function ActionQueue({ onNavigate }: Props) {
         Icon: Clock,
         tone: "destructive",
         cta: "Resolver ahora",
-        onAction: () => onNavigate?.("soporte"),
+        onAction: openOverdueSheet,
         aiPrompt: `Listáme las boletas que pasaron el SLA del contrato del cliente (override del v4.5 estándar). Para cada una: cliente, plazo del contrato, días excedidos, y qué acción tomar.`,
       });
     }

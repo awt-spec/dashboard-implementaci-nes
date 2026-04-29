@@ -1,0 +1,474 @@
+/**
+ * OverdueTicketsSheet — Vista perfecta de TODOS los casos vencidos.
+ *
+ * Soluciona la discrepancia: el dashboard mostraba "85 vencidas" pero al
+ * hacer click solo veías 55 porque la Bandeja filtraba PENDIENTE+EN ATENCIÓN.
+ *
+ * Esta vista muestra TODOS los vencidos (cualquier estado no-cerrado) con:
+ *   • Filtros: source (Política / SLA Cliente), prioridad, cliente
+ *   • Sort: severidad (default), antigüedad, cliente A→Z
+ *   • Bulk actions: cerrar varios, asignar a mí
+ *   • Quick view: click → abre TicketDetailSheet
+ *
+ * Trigger: window.dispatchEvent(new CustomEvent("overdue:open"))
+ */
+import { useEffect, useMemo, useState } from "react";
+import { useAllSupportTickets, useSupportClients, useUpdateSupportTicket, type SupportTicket } from "@/hooks/useSupportTickets";
+import { useTicketsSLAStatus } from "@/hooks/useTicketsSLAStatus";
+import { useAuth } from "@/hooks/useAuth";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  AlertTriangle, Search, X, Building2, ListMinus, Eye, Lock,
+  CheckCheck, UserPlus, Loader2, Flame, Clock, Filter,
+  ArrowUpDown,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
+import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { TicketDetailSheet } from "./TicketDetailSheet";
+
+type SortMode = "severity" | "age" | "client";
+type SourceFilter = "all" | "policy" | "client_override";
+
+export function OverdueTicketsSheet() {
+  const [open, setOpen] = useState(false);
+  const { data: tickets = [] } = useAllSupportTickets();
+  const { data: clients = [] } = useSupportClients();
+  const { byId: slaByTicketId } = useTicketsSLAStatus();
+  const update = useUpdateSupportTicket();
+  const { user, profile } = useAuth();
+
+  const [sortMode, setSortMode] = useState<SortMode>("severity");
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
+  const [search, setSearch] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [openDetailId, setOpenDetailId] = useState<string | null>(null);
+
+  // Listener global: cualquier botón "ver vencidas" puede abrir el sheet
+  useEffect(() => {
+    const handler = () => setOpen(true);
+    window.addEventListener("overdue:open", handler);
+    return () => window.removeEventListener("overdue:open", handler);
+  }, []);
+
+  // Limpiar selección al cerrar
+  useEffect(() => { if (!open) setSelectedIds(new Set()); }, [open]);
+
+  // Solo vencidos — todos los estados no-cerrados
+  const overdueTickets = useMemo(() => {
+    return tickets.filter(t => slaByTicketId.get(t.id)?.status === "overdue");
+  }, [tickets, slaByTicketId]);
+
+  // Aplicar filtros
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return overdueTickets.filter(t => {
+      const sla = slaByTicketId.get(t.id);
+      if (sourceFilter !== "all") {
+        const expectedSource = sourceFilter === "policy" ? "policy_v4.5" : "client_override";
+        if (sla?.source !== expectedSource) return false;
+      }
+      if (q) {
+        const cli = clients.find(c => c.id === t.client_id);
+        const haystack = `${t.ticket_id} ${t.asunto} ${cli?.name || ""} ${t.responsable || ""}`.toLowerCase();
+        if (!haystack.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [overdueTickets, slaByTicketId, sourceFilter, search, clients]);
+
+  // Ordenar
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    arr.sort((a, b) => {
+      const sa = slaByTicketId.get(a.id);
+      const sb = slaByTicketId.get(b.id);
+      if (sortMode === "severity") {
+        const exA = sa ? sa.daysElapsed - sa.deadlineDays : 0;
+        const exB = sb ? sb.daysElapsed - sb.deadlineDays : 0;
+        return exB - exA;
+      }
+      if (sortMode === "age") {
+        return new Date(a.fecha_registro || a.created_at).getTime() - new Date(b.fecha_registro || b.created_at).getTime();
+      }
+      if (sortMode === "client") {
+        const ca = clients.find(c => c.id === a.client_id)?.name || a.client_id;
+        const cb = clients.find(c => c.id === b.client_id)?.name || b.client_id;
+        return ca.localeCompare(cb);
+      }
+      return 0;
+    });
+    return arr;
+  }, [filtered, sortMode, slaByTicketId, clients]);
+
+  // Stats
+  const stats = useMemo(() => {
+    let policy = 0, client = 0;
+    overdueTickets.forEach(t => {
+      const s = slaByTicketId.get(t.id);
+      if (s?.source === "client_override") client++;
+      else policy++;
+    });
+    return { total: overdueTickets.length, policy, client };
+  }, [overdueTickets, slaByTicketId]);
+
+  const allSelected = sorted.length > 0 && sorted.every(t => selectedIds.has(t.id));
+  const someSelected = selectedIds.size > 0;
+
+  const toggleAll = () => {
+    if (allSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(sorted.map(t => t.id)));
+  };
+
+  const toggleOne = (id: string) => {
+    setSelectedIds(prev => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  };
+
+  const handleBulkClose = async () => {
+    if (!confirm(`¿Cerrar ${selectedIds.size} boleta${selectedIds.size === 1 ? "" : "s"} como resuelta${selectedIds.size === 1 ? "" : "s"}?`)) return;
+    let ok = 0, fail = 0;
+    for (const id of selectedIds) {
+      try {
+        await update.mutateAsync({
+          id,
+          updates: {
+            estado: "CERRADA",
+            fecha_entrega: new Date().toISOString(),
+          } as any,
+        });
+        ok++;
+      } catch { fail++; }
+    }
+    toast.success(`${ok} boleta${ok === 1 ? "" : "s"} cerrada${ok === 1 ? "" : "s"}${fail > 0 ? ` · ${fail} con error` : ""}`);
+    setSelectedIds(new Set());
+  };
+
+  const handleAssignToMe = async () => {
+    if (!user || !profile) return;
+    let ok = 0, fail = 0;
+    for (const id of selectedIds) {
+      try {
+        await update.mutateAsync({
+          id,
+          updates: {
+            assigned_user_id: user.id,
+            responsable: profile.full_name || "Yo",
+            estado: "EN ATENCIÓN",
+          } as any,
+        });
+        ok++;
+      } catch { fail++; }
+    }
+    toast.success(`${ok} asignada${ok === 1 ? "" : "s"} a vos${fail > 0 ? ` · ${fail} con error` : ""}`);
+    setSelectedIds(new Set());
+  };
+
+  return (
+    <TooltipProvider delayDuration={150}>
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-3xl p-0 flex flex-col gap-0">
+          {/* ════════ HEADER FIJO ════════ */}
+          <SheetHeader className="space-y-3 px-6 pt-6 pb-4 bg-card border-b border-border/60 shrink-0">
+            <div className="flex items-start gap-3">
+              <div className="h-11 w-11 rounded-xl bg-destructive/15 flex items-center justify-center shrink-0">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <SheetTitle className="text-lg font-bold leading-tight text-left">
+                  {stats.total} {stats.total === 1 ? "boleta vencida" : "boletas vencidas"}
+                </SheetTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Pasaron su plazo · Política o SLA del cliente, según corresponda
+                </p>
+              </div>
+            </div>
+
+            {/* Stats por fuente */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setSourceFilter(sourceFilter === "policy" ? "all" : "policy")}
+                className={cn(
+                  "flex items-center gap-2.5 p-2.5 rounded-lg border text-left transition-all",
+                  sourceFilter === "policy"
+                    ? "border-destructive bg-destructive/[0.06] ring-2 ring-destructive/20"
+                    : "border-border/60 hover:border-destructive/40 hover:bg-destructive/[0.03]"
+                )}
+              >
+                <ListMinus className="h-4 w-4 text-destructive shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-2xl font-black tabular-nums leading-none">{stats.policy}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1">Fuera de Política</p>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSourceFilter(sourceFilter === "client_override" ? "all" : "client_override")}
+                className={cn(
+                  "flex items-center gap-2.5 p-2.5 rounded-lg border text-left transition-all",
+                  sourceFilter === "client_override"
+                    ? "border-destructive bg-destructive/[0.06] ring-2 ring-destructive/20"
+                    : "border-border/60 hover:border-destructive/40 hover:bg-destructive/[0.03]"
+                )}
+              >
+                <Building2 className="h-4 w-4 text-destructive shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-2xl font-black tabular-nums leading-none">{stats.client}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1">Fuera de SLA Cliente</p>
+                </div>
+              </button>
+            </div>
+
+            {/* Toolbar: search + sort */}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1 min-w-0">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por ID, asunto, cliente, responsable…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9 pr-8 h-8 text-xs"
+                />
+                {search && (
+                  <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 h-5 w-5 rounded hover:bg-muted/60 flex items-center justify-center">
+                    <X className="h-3 w-3 text-muted-foreground" />
+                  </button>
+                )}
+              </div>
+              <select
+                value={sortMode}
+                onChange={(e) => setSortMode(e.target.value as SortMode)}
+                className="h-8 px-2 rounded-md border border-border bg-background text-xs"
+                title="Ordenar"
+              >
+                <option value="severity">↓ Más vencidos</option>
+                <option value="age">↓ Más antiguos</option>
+                <option value="client">A→Z cliente</option>
+              </select>
+            </div>
+
+            {/* Bulk actions bar — visible cuando hay selección */}
+            {someSelected && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/[0.06] border border-primary/30"
+              >
+                <span className="text-xs font-bold text-primary">
+                  {selectedIds.size} seleccionada{selectedIds.size === 1 ? "" : "s"}
+                </span>
+                <div className="flex-1" />
+                <Button
+                  size="sm" variant="outline"
+                  onClick={handleAssignToMe}
+                  disabled={update.isPending}
+                  className="h-7 gap-1 text-[11px]"
+                >
+                  <UserPlus className="h-3 w-3" /> Asignar a mí
+                </Button>
+                <Button
+                  size="sm" variant="destructive"
+                  onClick={handleBulkClose}
+                  disabled={update.isPending}
+                  className="h-7 gap-1 text-[11px]"
+                >
+                  {update.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Lock className="h-3 w-3" />}
+                  Cerrar
+                </Button>
+                <button
+                  onClick={() => setSelectedIds(new Set())}
+                  className="h-7 w-7 rounded hover:bg-muted/60 flex items-center justify-center"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </motion.div>
+            )}
+
+            {/* Select all */}
+            {sorted.length > 0 && (
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                <Checkbox checked={allSelected} onCheckedChange={toggleAll} className="h-3.5 w-3.5" />
+                <span>Mostrando {sorted.length} de {stats.total}</span>
+                {(sourceFilter !== "all" || search) && (
+                  <button
+                    onClick={() => { setSourceFilter("all"); setSearch(""); }}
+                    className="text-primary hover:underline"
+                  >
+                    Limpiar filtros
+                  </button>
+                )}
+              </div>
+            )}
+          </SheetHeader>
+
+          {/* ════════ BODY scrolleable ════════ */}
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-2">
+            {sorted.length === 0 ? (
+              <Card className="border-emerald-500/30 bg-emerald-500/[0.04]">
+                <CardContent className="py-12 text-center space-y-3">
+                  <CheckCheck className="h-10 w-10 text-emerald-500 mx-auto" />
+                  <p className="text-sm font-bold">Sin boletas vencidas con esos filtros</p>
+                  <p className="text-xs text-muted-foreground">
+                    {stats.total === 0 ? "Todas las boletas están dentro de plazo 🎉" : "Limpiá los filtros para ver el resto"}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <AnimatePresence>
+                {sorted.map((t, i) => {
+                  const sla = slaByTicketId.get(t.id);
+                  const cli = clients.find(c => c.id === t.client_id);
+                  const isClientSource = sla?.source === "client_override";
+                  const exceeded = sla ? sla.daysElapsed - sla.deadlineDays : 0;
+                  const isSelected = selectedIds.has(t.id);
+                  const isCritical = /critica/i.test(t.prioridad || "");
+
+                  return (
+                    <motion.div
+                      key={t.id}
+                      layout
+                      initial={i < 20 ? { opacity: 0, y: 4 } : false}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className={cn(
+                        "rounded-lg border transition-colors group relative overflow-hidden",
+                        isSelected ? "border-primary bg-primary/[0.04] ring-1 ring-primary/20" : "border-border/60 bg-card hover:border-destructive/30"
+                      )}
+                    >
+                      {/* Border-left rojo grueso para vencidos */}
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-destructive" />
+
+                      <div className="flex items-start gap-3 p-3 pl-4">
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleOne(t.id)}
+                          className="mt-1 shrink-0"
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() => setOpenDetailId(t.id)}
+                          className="flex-1 min-w-0 text-left"
+                        >
+                          {/* Header row */}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <code className="text-[11px] font-mono font-bold text-muted-foreground">{t.ticket_id}</code>
+                            {isCritical && (
+                              <Badge className="h-4 text-[9px] gap-0.5 bg-destructive/15 text-destructive border-destructive/30">
+                                <Flame className="h-2.5 w-2.5" /> Crítica
+                              </Badge>
+                            )}
+                            <Badge variant="outline" className="h-4 text-[9px]">{t.estado}</Badge>
+                            {/* Source badge */}
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "h-4 text-[9px] gap-1",
+                                isClientSource
+                                  ? "bg-primary/10 text-primary border-primary/30"
+                                  : "bg-muted/50 text-muted-foreground border-border"
+                              )}
+                            >
+                              {isClientSource ? <Building2 className="h-2.5 w-2.5" /> : <ListMinus className="h-2.5 w-2.5" />}
+                              {isClientSource ? "SLA Cliente" : "Política"}
+                            </Badge>
+                            {/* Severity badge */}
+                            <Badge className="h-4 text-[9px] bg-destructive text-destructive-foreground border-0 tabular-nums">
+                              <Clock className="h-2.5 w-2.5 mr-0.5" />
+                              +{exceeded}d
+                            </Badge>
+                          </div>
+
+                          <p className="text-sm font-medium mt-1 line-clamp-2 leading-snug">{t.asunto}</p>
+
+                          <div className="flex items-center gap-2 mt-1.5 text-[11px] text-muted-foreground flex-wrap">
+                            <span className="font-semibold text-foreground/80">{cli?.name || t.client_id}</span>
+                            <span>·</span>
+                            <span>{formatDistanceToNow(new Date(t.fecha_registro || t.created_at), { addSuffix: true, locale: es })}</span>
+                            <span>·</span>
+                            <span>plazo {sla?.deadlineDays}d · llevamos {sla?.daysElapsed}d</span>
+                            {t.responsable && t.responsable !== "—" && (
+                              <>
+                                <span>·</span>
+                                <span>{t.responsable}</span>
+                              </>
+                            )}
+                            {(!t.responsable || t.responsable === "—") && (
+                              <Badge variant="outline" className="h-4 text-[9px] bg-amber-500/10 text-amber-500 border-amber-500/30">
+                                Sin asignar
+                              </Badge>
+                            )}
+                          </div>
+                        </button>
+
+                        {/* Quick actions */}
+                        <div className="flex flex-col gap-1 shrink-0">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button size="sm" variant="outline" onClick={() => setOpenDetailId(t.id)} className="h-7 w-7 p-0">
+                                <Eye className="h-3 w-3" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Ver detalle</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={async () => {
+                                  if (!confirm(`Cerrar ${t.ticket_id}?`)) return;
+                                  try {
+                                    await update.mutateAsync({
+                                      id: t.id,
+                                      updates: { estado: "CERRADA", fecha_entrega: new Date().toISOString() } as any,
+                                    });
+                                    toast.success(`${t.ticket_id} cerrado`);
+                                  } catch (e: any) { toast.error(e.message); }
+                                }}
+                                disabled={update.isPending}
+                                className="h-7 w-7 p-0"
+                              >
+                                <Lock className="h-3 w-3" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Cerrar caso</TooltipContent>
+                          </Tooltip>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* TicketDetailSheet anidado para ver detalle de un vencido sin cerrar este Sheet */}
+      <TicketDetailSheet
+        ticket={openDetailId ? tickets.find(t => t.id === openDetailId) ?? null : null}
+        open={!!openDetailId}
+        onOpenChange={(o) => { if (!o) setOpenDetailId(null); }}
+        canEditInternal={true}
+      />
+    </TooltipProvider>
+  );
+}
+
+/** Helper para disparar la sheet desde cualquier botón del app. */
+export function openOverdueSheet() {
+  window.dispatchEvent(new CustomEvent("overdue:open"));
+}
