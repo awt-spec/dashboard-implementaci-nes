@@ -212,28 +212,8 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
 
   return (
     <div className="space-y-6">
-      {/* Composer: ¿Qué querés ver hoy? — multi-widget picker + saved views */}
-      <ExecutiveComposer
-        widgets={WIDGETS}
-        selected={activeWidgets}
-        onChange={setActiveWidgets}
-      />
-
       {/* Botón flotante de chat IA — abre Sheet con asistente conversacional */}
       <ExecutiveAIChat />
-
-      {/* ════ ACCIONES DEL DÍA — vista accionable, one-click ════ */}
-      {show("actions") && (
-        <ActionQueue onNavigate={onNavigate} />
-      )}
-
-      {/* ════ POLÍTICA ACTIVA — reglas v4.5 visibles en cancha ════ */}
-      {show("policy") && (
-        <ActivePolicyBar
-          ruleTypes={["sla", "checklist", "metric"]}
-          title="Política activa v4.5 · reglas en operación"
-        />
-      )}
 
       {/* ════ HERO: Pulso del día ════
           Admin = versión limpia: sin orb blur, padding menor, SOLO los chips
@@ -357,6 +337,27 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
           </motion.div>
         ))}
       </div>
+      )}
+
+      {/* ════ COMPOSER: ¿Qué querés ver hoy? — debajo del hero/KPIs ════
+          Permite al user activar/desactivar widgets y guardar vistas. */}
+      <ExecutiveComposer
+        widgets={WIDGETS}
+        selected={activeWidgets}
+        onChange={setActiveWidgets}
+      />
+
+      {/* ════ ACCIONES DEL DÍA — vista accionable, one-click ════ */}
+      {show("actions") && (
+        <ActionQueue onNavigate={onNavigate} />
+      )}
+
+      {/* ════ POLÍTICA ACTIVA — reglas v4.5 visibles en cancha ════ */}
+      {show("policy") && (
+        <ActivePolicyBar
+          ruleTypes={["sla", "checklist", "metric"]}
+          title="Política activa v4.5 · reglas en operación"
+        />
       )}
 
       {/* Row 1: Status Pie + Progress by Client */}
