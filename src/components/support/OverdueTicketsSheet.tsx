@@ -25,8 +25,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   AlertTriangle, Search, X, Building2, ListMinus, Eye, Lock,
-  CheckCheck, UserPlus, Loader2, Flame, Clock, Filter,
-  ArrowUpDown,
+  CheckCheck, UserPlus, Loader2, Flame, Clock, Check,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -38,6 +37,58 @@ import { TicketDetailSheet } from "./TicketDetailSheet";
 type SortMode = "severity" | "age" | "client";
 type SourceFilter = "all" | "policy" | "client_override";
 
+// Categoría de acción: agrupa estados de manera operativa para que el user
+// sepa qué hacer con cada caso. NO se basa en bandeja vs no-bandeja sino en
+// la NATURALEZA del trabajo pendiente.
+type ActionCategory = "easy_close" | "active_inbox" | "waiting_external";
+
+const ACTION_META: Record<ActionCategory, {
+  label: string;
+  hint: string;
+  Icon: typeof Lock;
+  tone: string;
+  bg: string;
+  border: string;
+  states: string[];
+}> = {
+  easy_close: {
+    label: "Listos para cerrar",
+    hint: "Trabajo hecho · solo falta cierre formal",
+    Icon: Lock,
+    tone: "text-emerald-500",
+    bg: "bg-emerald-500/10",
+    border: "border-emerald-500/40",
+    states: ["POR CERRAR"],
+  },
+  active_inbox: {
+    label: "En bandeja activa",
+    hint: "Necesitan acción tuya: asignar / atender",
+    Icon: AlertTriangle,
+    tone: "text-destructive",
+    bg: "bg-destructive/10",
+    border: "border-destructive/40",
+    states: ["PENDIENTE", "EN ATENCIÓN"],
+  },
+  waiting_external: {
+    label: "Esperando externos",
+    hint: "Pendientes de cliente, valoración o pausa",
+    Icon: Clock,
+    tone: "text-amber-500",
+    bg: "bg-amber-500/10",
+    border: "border-amber-500/40",
+    states: ["COTIZADA", "VALORACIÓN", "ON HOLD"],
+  },
+};
+
+const ACTION_ORDER: ActionCategory[] = ["easy_close", "active_inbox", "waiting_external"];
+
+function getActionCategory(estado: string): ActionCategory | null {
+  for (const cat of ACTION_ORDER) {
+    if (ACTION_META[cat].states.includes(estado)) return cat;
+  }
+  return null;
+}
+
 export function OverdueTicketsSheet() {
   const [open, setOpen] = useState(false);
   const { data: tickets = [] } = useAllSupportTickets();
@@ -48,6 +99,7 @@ export function OverdueTicketsSheet() {
 
   const [sortMode, setSortMode] = useState<SortMode>("severity");
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
+  const [actionFilter, setActionFilter] = useState<ActionCategory | "all">("all");
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [openDetailId, setOpenDetailId] = useState<string | null>(null);
@@ -67,15 +119,21 @@ export function OverdueTicketsSheet() {
     return tickets.filter(t => slaByTicketId.get(t.id)?.status === "overdue");
   }, [tickets, slaByTicketId]);
 
-  // Aplicar filtros
+  // Aplicar filtros (action category + source + search)
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return overdueTickets.filter(t => {
+      // Filtro por categoría de acción
+      if (actionFilter !== "all") {
+        if (getActionCategory(t.estado) !== actionFilter) return false;
+      }
+      // Filtro por fuente del SLA
       const sla = slaByTicketId.get(t.id);
       if (sourceFilter !== "all") {
         const expectedSource = sourceFilter === "policy" ? "policy_v4.5" : "client_override";
         if (sla?.source !== expectedSource) return false;
       }
+      // Búsqueda libre
       if (q) {
         const cli = clients.find(c => c.id === t.client_id);
         const haystack = `${t.ticket_id} ${t.asunto} ${cli?.name || ""} ${t.responsable || ""}`.toLowerCase();
@@ -83,7 +141,7 @@ export function OverdueTicketsSheet() {
       }
       return true;
     });
-  }, [overdueTickets, slaByTicketId, sourceFilter, search, clients]);
+  }, [overdueTickets, slaByTicketId, sourceFilter, actionFilter, search, clients]);
 
   // Ordenar
   const sorted = useMemo(() => {
@@ -109,15 +167,25 @@ export function OverdueTicketsSheet() {
     return arr;
   }, [filtered, sortMode, slaByTicketId, clients]);
 
-  // Stats
+  // Stats por categoría de acción + por fuente
   const stats = useMemo(() => {
     let policy = 0, client = 0;
+    const byAction: Record<ActionCategory, { count: number; states: Record<string, number> }> = {
+      easy_close:       { count: 0, states: {} },
+      active_inbox:     { count: 0, states: {} },
+      waiting_external: { count: 0, states: {} },
+    };
     overdueTickets.forEach(t => {
       const s = slaByTicketId.get(t.id);
       if (s?.source === "client_override") client++;
       else policy++;
+      const cat = getActionCategory(t.estado);
+      if (cat) {
+        byAction[cat].count++;
+        byAction[cat].states[t.estado] = (byAction[cat].states[t.estado] || 0) + 1;
+      }
     });
-    return { total: overdueTickets.length, policy, client };
+    return { total: overdueTickets.length, policy, client, byAction };
   }, [overdueTickets, slaByTicketId]);
 
   const allSelected = sorted.length > 0 && sorted.every(t => selectedIds.has(t.id));
@@ -195,39 +263,115 @@ export function OverdueTicketsSheet() {
               </div>
             </div>
 
-            {/* Stats por fuente */}
-            <div className="grid grid-cols-2 gap-2">
+            {/* ════ BREAKDOWN POR CATEGORÍA DE ACCIÓN ════
+                3 cards clickables que agrupan por NATURALEZA del trabajo:
+                - Listos para cerrar (POR CERRAR)
+                - En bandeja activa (PENDIENTE + EN ATENCIÓN)
+                - Esperando externos (COTIZADA + ON HOLD + VALORACIÓN)
+                Cada card muestra el desglose de estados que la componen. */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              {ACTION_ORDER.map(cat => {
+                const m = ACTION_META[cat];
+                const data = stats.byAction[cat];
+                const isActive = actionFilter === cat;
+                const stateBreakdown = Object.entries(data.states).sort((a, b) => b[1] - a[1]);
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setActionFilter(isActive ? "all" : cat)}
+                    disabled={data.count === 0}
+                    className={cn(
+                      "flex flex-col gap-2 p-3 rounded-lg border text-left transition-all relative overflow-hidden",
+                      isActive
+                        ? cn(m.border, m.bg, "ring-2 ring-current/20")
+                        : data.count > 0
+                        ? "border-border/60 bg-card hover:border-current/40"
+                        : "border-border/40 bg-muted/20 opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center", m.bg)}>
+                        <m.Icon className={cn("h-4 w-4", m.tone)} />
+                      </div>
+                      {isActive && <Check className="h-3.5 w-3.5 text-current" />}
+                    </div>
+                    <div>
+                      <p className={cn("text-3xl font-black tabular-nums leading-none", m.tone)}>
+                        {data.count}
+                      </p>
+                      <p className="text-[11px] font-semibold mt-1.5">{m.label}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{m.hint}</p>
+                    </div>
+                    {/* Desglose de estados — visible siempre, da claridad */}
+                    {stateBreakdown.length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-1.5 border-t border-border/40">
+                        {stateBreakdown.map(([estado, n]) => (
+                          <span key={estado} className="text-[9px] font-mono text-muted-foreground">
+                            <strong className={m.tone}>{n}</strong> {estado}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Easy wins banner — si hay POR CERRAR, ofrece bulk close inmediato */}
+            {stats.byAction.easy_close.count > 0 && actionFilter !== "easy_close" && (
               <button
                 type="button"
-                onClick={() => setSourceFilter(sourceFilter === "policy" ? "all" : "policy")}
+                onClick={() => setActionFilter("easy_close")}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-emerald-500/40 bg-emerald-500/[0.04] hover:bg-emerald-500/[0.08] transition-colors text-left group"
+              >
+                <Lock className="h-4 w-4 text-emerald-500 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                    💡 Win rápido: {stats.byAction.easy_close.count} boleta{stats.byAction.easy_close.count === 1 ? "" : "s"} listas para cerrar
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    Trabajo hecho · selecciónalas y "Cerrar" baja tu count en {stats.byAction.easy_close.count}
+                  </p>
+                </div>
+                <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider group-hover:underline">
+                  Filtrar →
+                </span>
+              </button>
+            )}
+
+            {/* Filtros secundarios por FUENTE — ahora más compactos como chips */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Fuente:</span>
+              <button
+                onClick={() => setSourceFilter("all")}
                 className={cn(
-                  "flex items-center gap-2.5 p-2.5 rounded-lg border text-left transition-all",
-                  sourceFilter === "policy"
-                    ? "border-destructive bg-destructive/[0.06] ring-2 ring-destructive/20"
-                    : "border-border/60 hover:border-destructive/40 hover:bg-destructive/[0.03]"
+                  "inline-flex items-center gap-1 h-6 px-2 rounded-full text-[10px] font-semibold border transition-all",
+                  sourceFilter === "all" ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border text-muted-foreground hover:border-primary/40"
                 )}
               >
-                <ListMinus className="h-4 w-4 text-destructive shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-2xl font-black tabular-nums leading-none">{stats.policy}</p>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1">Fuera de Política</p>
-                </div>
+                Todas <span className="tabular-nums">{stats.total}</span>
               </button>
               <button
-                type="button"
-                onClick={() => setSourceFilter(sourceFilter === "client_override" ? "all" : "client_override")}
+                onClick={() => setSourceFilter(sourceFilter === "policy" ? "all" : "policy")}
                 className={cn(
-                  "flex items-center gap-2.5 p-2.5 rounded-lg border text-left transition-all",
-                  sourceFilter === "client_override"
-                    ? "border-destructive bg-destructive/[0.06] ring-2 ring-destructive/20"
-                    : "border-border/60 hover:border-destructive/40 hover:bg-destructive/[0.03]"
+                  "inline-flex items-center gap-1 h-6 px-2 rounded-full text-[10px] font-semibold border transition-all",
+                  sourceFilter === "policy" ? "bg-muted text-foreground border-border" : "bg-card border-border text-muted-foreground hover:border-primary/40"
                 )}
               >
-                <Building2 className="h-4 w-4 text-destructive shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-2xl font-black tabular-nums leading-none">{stats.client}</p>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1">Fuera de SLA Cliente</p>
-                </div>
+                <ListMinus className="h-2.5 w-2.5" />
+                Política <span className="tabular-nums">{stats.policy}</span>
+              </button>
+              <button
+                onClick={() => setSourceFilter(sourceFilter === "client_override" ? "all" : "client_override")}
+                className={cn(
+                  "inline-flex items-center gap-1 h-6 px-2 rounded-full text-[10px] font-semibold border transition-all",
+                  sourceFilter === "client_override" ? "bg-primary/15 text-primary border-primary/30" : "bg-card border-border text-muted-foreground hover:border-primary/40"
+                )}
+                disabled={stats.client === 0}
+              >
+                <Building2 className="h-2.5 w-2.5" />
+                SLA Cliente <span className="tabular-nums">{stats.client}</span>
               </button>
             </div>
 
@@ -301,9 +445,9 @@ export function OverdueTicketsSheet() {
               <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                 <Checkbox checked={allSelected} onCheckedChange={toggleAll} className="h-3.5 w-3.5" />
                 <span>Mostrando {sorted.length} de {stats.total}</span>
-                {(sourceFilter !== "all" || search) && (
+                {(sourceFilter !== "all" || actionFilter !== "all" || search) && (
                   <button
-                    onClick={() => { setSourceFilter("all"); setSearch(""); }}
+                    onClick={() => { setSourceFilter("all"); setActionFilter("all"); setSearch(""); }}
                     className="text-primary hover:underline"
                   >
                     Limpiar filtros
