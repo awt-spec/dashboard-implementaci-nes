@@ -25,7 +25,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   AlertTriangle, Search, X, Building2, ListMinus, Eye, Lock,
-  CheckCheck, UserPlus, Loader2, Flame, Clock, Check,
+  CheckCheck, UserPlus, Loader2, Flame, Clock, Check, ChevronDown,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -33,6 +33,7 @@ import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { TicketDetailSheet } from "./TicketDetailSheet";
+import { SLAByClientPanel } from "./SLAByClientPanel";
 
 type SortMode = "severity" | "age" | "client";
 type SourceFilter = "all" | "policy" | "client_override";
@@ -100,6 +101,8 @@ export function OverdueTicketsSheet() {
   const [sortMode, setSortMode] = useState<SortMode>("severity");
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [actionFilter, setActionFilter] = useState<ActionCategory | "all">("all");
+  const [clientFilter, setClientFilter] = useState<string | null>(null); // client_id o null
+  const [showClientPanel, setShowClientPanel] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [openDetailId, setOpenDetailId] = useState<string | null>(null);
@@ -127,6 +130,8 @@ export function OverdueTicketsSheet() {
       if (actionFilter !== "all") {
         if (getActionCategory(t.estado) !== actionFilter) return false;
       }
+      // Filtro por cliente específico
+      if (clientFilter && t.client_id !== clientFilter) return false;
       // Filtro por fuente del SLA
       const sla = slaByTicketId.get(t.id);
       if (sourceFilter !== "all") {
@@ -141,7 +146,7 @@ export function OverdueTicketsSheet() {
       }
       return true;
     });
-  }, [overdueTickets, slaByTicketId, sourceFilter, actionFilter, search, clients]);
+  }, [overdueTickets, slaByTicketId, sourceFilter, actionFilter, clientFilter, search, clients]);
 
   // Ordenar
   const sorted = useMemo(() => {
@@ -340,7 +345,7 @@ export function OverdueTicketsSheet() {
               </button>
             )}
 
-            {/* Filtros secundarios por FUENTE — ahora más compactos como chips */}
+            {/* Filtros secundarios por FUENTE + chip de cliente activo */}
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Fuente:</span>
               <button
@@ -373,7 +378,53 @@ export function OverdueTicketsSheet() {
                 <Building2 className="h-2.5 w-2.5" />
                 SLA Cliente <span className="tabular-nums">{stats.client}</span>
               </button>
+
+              {/* Toggle "Por cliente" — abre/colapsa el panel de breakdown */}
+              <button
+                onClick={() => setShowClientPanel(v => !v)}
+                className={cn(
+                  "inline-flex items-center gap-1 h-6 px-2 rounded-full text-[10px] font-semibold border transition-all ml-auto",
+                  showClientPanel
+                    ? "bg-primary/15 text-primary border-primary/30"
+                    : "bg-card border-border text-muted-foreground hover:border-primary/40"
+                )}
+              >
+                <Building2 className="h-2.5 w-2.5" />
+                Por cliente
+                <ChevronDown className={cn("h-2.5 w-2.5 transition-transform", showClientPanel && "rotate-180")} />
+              </button>
             </div>
+
+            {/* Chip cliente activo — visible si hay filtro */}
+            {clientFilter && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Cliente:</span>
+                <span className="inline-flex items-center gap-1 h-6 px-2 rounded-full text-[10px] font-bold border bg-primary/15 text-primary border-primary/30">
+                  <Building2 className="h-2.5 w-2.5" />
+                  {clients.find(c => c.id === clientFilter)?.name || clientFilter}
+                  <button
+                    onClick={() => setClientFilter(null)}
+                    className="hover:bg-primary/20 rounded-full p-0.5 ml-0.5"
+                  >
+                    <X className="h-2 w-2" />
+                  </button>
+                </span>
+              </div>
+            )}
+
+            {/* Panel "Por cliente" — desplegable con la lista completa */}
+            {showClientPanel && (
+              <div className="rounded-lg border border-border/60 bg-muted/20 p-2">
+                <SLAByClientPanel
+                  embedded
+                  limit={15}
+                  onClientClick={(clientId) => {
+                    setClientFilter(clientId);
+                    setShowClientPanel(false);
+                  }}
+                />
+              </div>
+            )}
 
             {/* Toolbar: search + sort */}
             <div className="flex items-center gap-2">
@@ -445,9 +496,9 @@ export function OverdueTicketsSheet() {
               <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                 <Checkbox checked={allSelected} onCheckedChange={toggleAll} className="h-3.5 w-3.5" />
                 <span>Mostrando {sorted.length} de {stats.total}</span>
-                {(sourceFilter !== "all" || actionFilter !== "all" || search) && (
+                {(sourceFilter !== "all" || actionFilter !== "all" || clientFilter || search) && (
                   <button
-                    onClick={() => { setSourceFilter("all"); setActionFilter("all"); setSearch(""); }}
+                    onClick={() => { setSourceFilter("all"); setActionFilter("all"); setClientFilter(null); setSearch(""); }}
                     className="text-primary hover:underline"
                   >
                     Limpiar filtros

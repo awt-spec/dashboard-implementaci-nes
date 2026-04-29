@@ -37,6 +37,7 @@ import { SupportInbox } from "./SupportInbox";
 import { ExportTicketsMenu } from "./ExportTicketsMenu";
 import { Plus, Inbox, Settings, BarChart3, Database, Briefcase } from "lucide-react";
 import { ActivePolicyBar } from "@/components/policy/ActivePolicyBar";
+import { SLAByClientPanel } from "./SLAByClientPanel";
 
 const prioridadColors: Record<string, string> = {
   "Critica, Impacto Negocio": "bg-red-600 text-white",
@@ -548,7 +549,18 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
 
         {/* ============ 1. OPERACIÓN: KPIs visuales + tabla de casos ============ */}
         {/* ============ EXPLORAR: operación + insights + minutas unificados ============ */}
-        <TabsContent value="explorar" className="mt-4">
+        <TabsContent value="explorar" className="mt-4 space-y-4">
+          {/* Panel SLA por cliente — visible siempre arriba de Explorar */}
+          <SLAByClientPanel
+            limit={10}
+            onClientClick={(clientId, clientName) => {
+              // Filtra el dashboard por ese cliente y abre OverdueSheet
+              setSelectedClient(clientId);
+              window.dispatchEvent(new CustomEvent("overdue:open"));
+            }}
+            onViewAll={() => window.dispatchEvent(new CustomEvent("overdue:open"))}
+          />
+
           <InsightsGuidedView
             tickets={filteredActive}
             ticketsWithClientName={ticketsWithClientName}
