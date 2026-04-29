@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
   Settings, Search, X, Shield, Users, Lock, Activity, Brain, Sparkles,
   BookOpen, ListChecks, Building2, KeyRound, TrendingUp, ChevronRight,
@@ -238,134 +237,135 @@ export function ConfigurationHub() {
 
   return (
     <div className="space-y-4">
-      {/* ════════ HERO ════════ */}
-      <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 via-card to-card p-4">
-        <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
-        <div className="relative flex items-start justify-between gap-3 flex-wrap">
-          <div className="flex items-start gap-3">
-            <div className="h-11 w-11 rounded-2xl bg-primary/15 flex items-center justify-center shrink-0">
-              <Settings className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-muted-foreground">
-                Centro de configuración
-              </p>
-              <h2 className="text-lg font-black leading-tight mt-0.5">
-                Sistema, usuarios e IA
-              </h2>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                {totalSections} secciones · {visibleGroups.length} categorías
-              </p>
-            </div>
-          </div>
-          {activeSection && (
-            <Badge
-              variant="outline"
-              className={cn("gap-1.5 h-7 px-2", activeSection.section.tone)}
+      {/* ════════ HERO COMPACTO single-row ════════
+          Antes era una card de 80px+ con kicker + h2 + badge. Ahora es 1 línea
+          con título + search prominente + count. Más espacio para contenido. */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Settings className="h-5 w-5 text-primary" />
+          <h2 className="text-base font-bold tracking-tight">Configuración</h2>
+          <span className="text-[10px] text-muted-foreground tabular-nums">
+            {totalSections} secciones · {visibleGroups.length} categorías
+          </span>
+        </div>
+        <div className="relative flex-1 min-w-[200px] max-w-md ml-auto">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Buscar configuración…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 pr-9 h-9 text-sm"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 rounded hover:bg-muted/60 flex items-center justify-center"
             >
-              <activeSection.section.Icon className="h-3 w-3" />
-              {activeSection.section.label}
-            </Badge>
+              <X className="h-3 w-3" />
+            </button>
           )}
         </div>
       </div>
 
       {/* ════════ LAYOUT: Sidebar + Contenido ════════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
-        {/* SIDEBAR vertical */}
-        <Card className="lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-7rem)] overflow-hidden flex flex-col">
-          <div className="p-3 border-b border-border/60">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                placeholder="Buscar configuración…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 pr-9 h-9 text-sm"
-              />
-              {search && (
-                <button
-                  onClick={() => setSearch("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 rounded hover:bg-muted/60 flex items-center justify-center"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
+      <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-4">
+        {/* SIDEBAR vertical — sticky, sin Card chrome */}
+        <nav
+          className="lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-6rem)] overflow-y-auto space-y-5 p-1"
+          aria-label="Navegación de configuración"
+        >
+          {filteredGroups.length === 0 ? (
+            <div className="text-center py-8 space-y-2">
+              <Search className="h-6 w-6 mx-auto text-muted-foreground/40" />
+              <p className="text-[11px] text-muted-foreground">Sin resultados</p>
+              <button
+                onClick={() => setSearch("")}
+                className="text-[10px] text-primary hover:underline"
+              >
+                Limpiar búsqueda
+              </button>
             </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-2 space-y-3">
-            {filteredGroups.length === 0 ? (
-              <div className="text-center py-8 space-y-2">
-                <Search className="h-6 w-6 mx-auto text-muted-foreground/40" />
-                <p className="text-[11px] text-muted-foreground">Sin resultados</p>
-                <button
-                  onClick={() => setSearch("")}
-                  className="text-[10px] text-primary hover:underline"
-                >
-                  Limpiar búsqueda
-                </button>
-              </div>
-            ) : (
-              filteredGroups.map((g) => (
-                <div key={g.id}>
-                  <div className="flex items-center gap-1.5 px-2 py-1 mb-1">
-                    <g.Icon className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">
-                      {g.label}
-                    </span>
-                  </div>
-                  <div className="space-y-0.5">
-                    {g.sections.map((s) => {
-                      const isActive = active === s.id;
-                      return (
-                        <button
-                          key={s.id}
-                          onClick={() => setActive(s.id)}
-                          className={cn(
-                            "w-full text-left flex items-center gap-2.5 px-2 py-1.5 rounded-lg transition-all group",
-                            isActive
-                              ? "bg-primary/[0.08] ring-1 ring-primary/20"
-                              : "hover:bg-muted/40"
-                          )}
-                        >
-                          <div className={cn(
-                            "h-7 w-7 rounded-md flex items-center justify-center shrink-0 border transition-all",
-                            isActive ? s.tone : "bg-card border-border/60 text-muted-foreground"
-                          )}>
-                            <s.Icon className="h-3.5 w-3.5" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className={cn(
-                              "text-xs leading-tight truncate transition-colors",
-                              isActive ? "font-bold text-foreground" : "font-semibold text-foreground/80 group-hover:text-foreground"
-                            )}>
-                              {s.label}
-                            </p>
-                            <p className="text-[10px] text-muted-foreground truncate mt-0.5">{s.hint}</p>
-                          </div>
-                          {isActive && (
-                            <ChevronRight className="h-3 w-3 text-primary shrink-0" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
+          ) : (
+            filteredGroups.map((g) => (
+              <div key={g.id} className="space-y-1.5">
+                {/* Header del grupo: icono + label + línea decorativa */}
+                <div className="flex items-center gap-2 px-1.5 mb-1">
+                  <g.Icon className="h-3 w-3 text-muted-foreground/60" />
+                  <span className="text-[10px] uppercase tracking-[0.12em] font-bold text-muted-foreground/70">
+                    {g.label}
+                  </span>
+                  <div className="flex-1 h-px bg-border/40" />
                 </div>
-              ))
-            )}
-          </div>
-        </Card>
+                <div className="space-y-0.5">
+                  {g.sections.map((s) => {
+                    const isActive = active === s.id;
+                    return (
+                      <button
+                        key={s.id}
+                        onClick={() => setActive(s.id)}
+                        className={cn(
+                          "w-full text-left flex items-center gap-2.5 pl-3 pr-2 py-2 rounded-md transition-colors group relative",
+                          isActive
+                            ? "bg-primary/[0.08] text-foreground"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                        )}
+                      >
+                        {/* Indicador izquierdo cuando activo — más limpio que ring */}
+                        {isActive && (
+                          <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r-full bg-primary" />
+                        )}
+                        {/* Icon — con color tono propio cuando activo */}
+                        <s.Icon className={cn(
+                          "h-3.5 w-3.5 shrink-0 transition-colors",
+                          isActive ? s.tone.split(" ").find(c => c.startsWith("text-")) : "text-muted-foreground/70 group-hover:text-foreground/80"
+                        )} />
+                        <div className="flex-1 min-w-0">
+                          <p className={cn(
+                            "text-xs leading-tight truncate transition-colors",
+                            isActive ? "font-bold" : "font-semibold"
+                          )}>
+                            {s.label}
+                          </p>
+                          {/* Hint solo cuando activo (reduce ruido visual en items inactivos) */}
+                          {isActive && (
+                            <p className="text-[10px] text-muted-foreground truncate mt-0.5">{s.hint}</p>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))
+          )}
+        </nav>
 
         {/* CONTENIDO de la sección activa */}
-        <div className="min-w-0">
+        <div className="min-w-0 space-y-3">
+          {/* Breadcrumb dinámico — Configuración › Grupo › Sección */}
+          {activeSection && (
+            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground flex-wrap">
+              <Settings className="h-3 w-3" />
+              <span>Configuración</span>
+              <ChevronRight className="h-3 w-3 opacity-50" />
+              <span className="font-semibold">{activeSection.group.label}</span>
+              <ChevronRight className="h-3 w-3 opacity-50" />
+              <span className={cn("font-bold inline-flex items-center gap-1", activeSection.section.tone.split(" ").find(c => c.startsWith("text-")))}>
+                <activeSection.section.Icon className="h-3 w-3" />
+                {activeSection.section.label}
+              </span>
+              <span className="hidden md:inline ml-2 text-muted-foreground/70">— {activeSection.section.hint}</span>
+            </div>
+          )}
+
+          {/* Render del componente activo con animación */}
           {activeSection ? (
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeSection.section.id}
-                initial={{ opacity: 0, y: 8 }}
+                initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
+                exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.18 }}
               >
                 <activeSection.section.Component />
