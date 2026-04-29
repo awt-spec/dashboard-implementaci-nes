@@ -13,7 +13,7 @@ import ColaboradorDashboard from "@/pages/ColaboradorDashboard";
 import { CEODashboard } from "@/components/dashboard/CEODashboard";
 import { ClientPortalDashboard } from "@/components/dashboard/ClientPortalDashboard";
 import { ConfigurationHub } from "@/components/settings/ConfigurationHub";
-import { OverdueTicketsSheet, openOverdueSheet } from "@/components/support/OverdueTicketsSheet";
+import { OverdueTicketsSheet } from "@/components/support/OverdueTicketsSheet";
 import { useClients } from "@/hooks/useClients";
 import { useAuth } from "@/hooks/useAuth";
 import { projectInfo } from "@/data/projectData";
@@ -140,12 +140,17 @@ const Index = () => {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {/* Pill global de "casos vencidos" — abre OverdueTicketsSheet
-                  con la lista COMPLETA (no solo bandeja). */}
+                  con la lista COMPLETA (no solo bandeja).
+                  Si el user está en una vista de cliente específica, pasa el
+                  clientId al evento → la sheet se scope automáticamente. */}
               {(slaSummary?.overdue ?? 0) > 0 && role !== "gerente" && (
                 <button
-                  onClick={openOverdueSheet}
+                  onClick={() => {
+                    const cid = selectedSupportClientId || (selectedClient?.id);
+                    window.dispatchEvent(new CustomEvent("overdue:open", cid ? { detail: { clientId: cid } } : undefined));
+                  }}
                   className="hidden md:inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full border border-destructive/40 bg-destructive/[0.06] hover:bg-destructive/[0.12] text-destructive text-xs font-bold transition-colors group"
-                  title={`${slaSummary!.overdue} casos vencidos · plazo según contrato del cliente o política v4.5 (override > global) — click para gestionar`}
+                  title={`${slaSummary!.overdue} casos vencidos · click para gestionar${selectedSupportClientId ? " (filtrado a este cliente)" : ""}`}
                 >
                   <span className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-60" />

@@ -102,25 +102,50 @@ export function OverdueTicketsSheet() {
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [actionFilter, setActionFilter] = useState<ActionCategory | "all">("all");
   const [clientFilter, setClientFilter] = useState<string | null>(null); // client_id o null
+  /** Cuando se abre desde una vista scoped a un cliente, este ID NO se puede
+   *  quitar (es el contexto del usuario). El clientFilter sí. */
+  const [scopedClientId, setScopedClientId] = useState<string | null>(null);
   const [showClientPanel, setShowClientPanel] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [openDetailId, setOpenDetailId] = useState<string | null>(null);
 
-  // Listener global: cualquier botón "ver vencidas" puede abrir el sheet
+  // Listener global: cualquier botón "ver vencidas" puede abrir el sheet,
+  // opcionalmente con un clientId para scopearlo a ese cliente.
+  // Uso:  dispatchEvent(new CustomEvent("overdue:open", { detail: { clientId } }))
   useEffect(() => {
-    const handler = () => setOpen(true);
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail || {};
+      const cid = typeof detail === "object" && detail.clientId ? detail.clientId : null;
+      setScopedClientId(cid);
+      // Si vino con cliente, limpiar otros filtros de cliente
+      if (cid) setClientFilter(null);
+      setOpen(true);
+    };
     window.addEventListener("overdue:open", handler);
     return () => window.removeEventListener("overdue:open", handler);
   }, []);
 
-  // Limpiar selección al cerrar
-  useEffect(() => { if (!open) setSelectedIds(new Set()); }, [open]);
+  // Limpiar selección + scope al cerrar
+  useEffect(() => {
+    if (!open) {
+      setSelectedIds(new Set());
+      setScopedClientId(null);
+    }
+  }, [open]);
 
-  // Solo vencidos — todos los estados no-cerrados
+  // Solo vencidos — y si hay scope a cliente, solo de ese cliente
   const overdueTickets = useMemo(() => {
-    return tickets.filter(t => slaByTicketId.get(t.id)?.status === "overdue");
-  }, [tickets, slaByTicketId]);
+    return tickets.filter(t => {
+      if (slaByTicketId.get(t.id)?.status !== "overdue") return false;
+      if (scopedClientId && t.client_id !== scopedClientId) return false;
+      return true;
+    });
+  }, [tickets, slaByTicketId, scopedClientId]);
+
+  const scopedClientName = scopedClientId
+    ? clients.find(c => c.id === scopedClientId)?.name || scopedClientId
+    : null;
 
   // Aplicar filtros (action category + source + search)
   const filtered = useMemo(() => {
@@ -261,11 +286,23 @@ export function OverdueTicketsSheet() {
               <div className="flex-1 min-w-0">
                 <SheetTitle className="text-lg font-bold leading-tight text-left">
                   {stats.total} {stats.total === 1 ? "boleta vencida" : "boletas vencidas"}
+                  {scopedClientName && (
+                    <span className="text-base font-normal text-muted-foreground"> · {scopedClientName}</span>
+                  )}
                 </SheetTitle>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Pasaron su plazo · Política o SLA del cliente, según corresponda
+                  {scopedClientName
+                    ? <>Solo este cliente · <span className="text-primary font-semibold">{scopedClientName}</span></>
+                    : "Pasaron su plazo · Política o SLA del cliente, según corresponda"}
                 </p>
               </div>
+              {/* Pill recordando scope cuando aplica */}
+              {scopedClientName && (
+                <span className="inline-flex items-center gap-1 h-6 px-2 rounded-full bg-primary/15 text-primary border border-primary/30 text-[10px] font-bold shrink-0">
+                  <Building2 className="h-2.5 w-2.5" />
+                  scope cliente
+                </span>
+              )}
             </div>
 
             {/* ════ BREAKDOWN POR CATEGORÍA DE ACCIÓN ════
@@ -379,20 +416,23 @@ export function OverdueTicketsSheet() {
                 SLA Cliente <span className="tabular-nums">{stats.client}</span>
               </button>
 
-              {/* Toggle "Por cliente" — abre/colapsa el panel de breakdown */}
-              <button
-                onClick={() => setShowClientPanel(v => !v)}
-                className={cn(
-                  "inline-flex items-center gap-1 h-6 px-2 rounded-full text-[10px] font-semibold border transition-all ml-auto",
-                  showClientPanel
-                    ? "bg-primary/15 text-primary border-primary/30"
-                    : "bg-card border-border text-muted-foreground hover:border-primary/40"
-                )}
-              >
-                <Building2 className="h-2.5 w-2.5" />
-                Por cliente
-                <ChevronDown className={cn("h-2.5 w-2.5 transition-transform", showClientPanel && "rotate-180")} />
-              </button>
+              {/* Toggle "Por cliente" — solo visible si NO hay scope a un cliente
+                  (cuando hay scope no tiene sentido un breakdown por cliente). */}
+              {!scopedClientId && (
+                <button
+                  onClick={() => setShowClientPanel(v => !v)}
+                  className={cn(
+                    "inline-flex items-center gap-1 h-6 px-2 rounded-full text-[10px] font-semibold border transition-all ml-auto",
+                    showClientPanel
+                      ? "bg-primary/15 text-primary border-primary/30"
+                      : "bg-card border-border text-muted-foreground hover:border-primary/40"
+                  )}
+                >
+                  <Building2 className="h-2.5 w-2.5" />
+                  Por cliente
+                  <ChevronDown className={cn("h-2.5 w-2.5 transition-transform", showClientPanel && "rotate-180")} />
+                </button>
+              )}
             </div>
 
             {/* Chip cliente activo — visible si hay filtro */}
