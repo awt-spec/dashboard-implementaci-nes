@@ -123,9 +123,16 @@ interface Props {
   onChange: (newState: AnyState) => void;
   disabled?: boolean;
   pending?: boolean;
+  /** Tipo del caso (Requerimiento, Correccion, Consulta, etc.). Si es
+   *  Requerimiento, ofrecemos el trigger "Activar cotización". Para los
+   *  demás tipos, el trigger se oculta — solo aparece el flow comercial
+   *  si el caso ya está en uno de esos estados. */
+  ticketTipo?: string;
 }
 
-export function TicketStateFlow({ currentState, onChange, disabled = false, pending = false }: Props) {
+const COMMERCIAL_APPLIES_TO_TIPOS = ["Requerimiento"];
+
+export function TicketStateFlow({ currentState, onChange, disabled = false, pending = false, ticketTipo }: Props) {
   const isClosed = isTicketClosed(currentState);
   const allKnown = useMemo(
     () => [...STANDARD_FLOW, ...COMMERCIAL_FLOW, ...EXCEPTION_STATES] as AnyState[],
@@ -135,15 +142,20 @@ export function TicketStateFlow({ currentState, onChange, disabled = false, pend
   const currentMeta = META[currentState as AnyState];
   const isInCommercial = currentMeta?.group === "commercial";
 
+  // ¿Aplica el flujo comercial para este tipo de caso?
+  // Por default solo para Requerimientos. Si el caso YA está en commercial,
+  // siempre se muestra (ej. si el tipo cambió o es legacy).
+  const commercialApplies =
+    isInCommercial ||
+    (ticketTipo ? COMMERCIAL_APPLIES_TO_TIPOS.includes(ticketTipo) : false);
+
   // El flujo comercial NO se muestra por default — solo cuando aplica:
   //   • El caso ya está en uno de los estados comerciales (auto-show)
-  //   • El usuario lo activa explícitamente con el botón "Activar cotización"
+  //   • El tipo es Requerimiento Y el usuario lo activa con el trigger
   // Feedback COO 30/04: "que el flujo comercial se active cuando sea necesario".
   const [showCommercial, setShowCommercial] = useState(isInCommercial);
 
   // Si el caso entra al flujo comercial desde fuera, expandir auto.
-  // Si sale (después de APROBADA → EN ATENCIÓN), respetar la decisión del user
-  // (no colapsar agresivamente).
   if (isInCommercial && !showCommercial) {
     setShowCommercial(true);
   }
@@ -226,12 +238,12 @@ export function TicketStateFlow({ currentState, onChange, disabled = false, pend
           </div>
         </div>
 
-        {/* ═══ Fase COMERCIAL — bajo demanda ═══
-            Solo visible si:
-              • El caso ya está en VALORACIÓN/COTIZADA/APROBADA (auto-show)
-              • El usuario expandió la sección manualmente
-            Si está colapsado y el caso NO está en flujo comercial, mostramos
-            un trigger sutil "+ Activar cotización" para iniciar el path. */}
+        {/* ═══ Fase COMERCIAL — solo si aplica ═══
+            Visible solo si:
+              • El caso ya está en VALORACIÓN/COTIZADA/APROBADA (auto-show, sin importar tipo)
+              • O el tipo del caso lo requiere (Requerimiento) Y se expandió manualmente
+            Para correcciones/consultas/bugs no aparece el trigger — reduce ruido. */}
+        {commercialApplies && (
         <AnimatePresence initial={false} mode="wait">
           {showCommercial ? (
             <motion.div
@@ -302,6 +314,7 @@ export function TicketStateFlow({ currentState, onChange, disabled = false, pend
             </motion.div>
           )}
         </AnimatePresence>
+        )}
 
         {/* ═══ Excepciones — pausa o cancelación ═══ */}
         <div>

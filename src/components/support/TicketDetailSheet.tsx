@@ -11,7 +11,7 @@ import {
   Building2, Calendar, User, Flame, Clock, CheckCheck, Loader2,
   MessageSquare, History, ScrollText, Lock, Eye, EyeOff, Copy,
   Save, Trash2, AlertTriangle, Paperclip, CheckSquare, ArrowLeft,
-  Share2, Sparkles, RotateCcw,
+  Share2, Sparkles, RotateCcw, Maximize2, Minimize2,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -97,6 +97,19 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, canEditInternal 
   // Diálogo de reincidencia: capturamos el estado destino mientras el usuario
   // confirma el motivo. Si cancela, el cambio de estado NO se aplica.
   const [reopenDialogTarget, setReopenDialogTarget] = useState<string | null>(null);
+  // Tamaño del sheet — toggle entre normal (max-w-2xl) y wide (casi fullscreen).
+  // Persistimos preferencia para que sobreviva navegación. Feedback COO 30/04:
+  // "quiero poder estirar esa ventana hacia la izquierda o ponerlo en pantalla completa".
+  const [isWide, setIsWide] = useState<boolean>(() => {
+    try { return localStorage.getItem("sva-erp:ticket-sheet-wide") === "1"; } catch { return false; }
+  });
+  const toggleWide = () => {
+    setIsWide((v) => {
+      const next = !v;
+      try { localStorage.setItem("sva-erp:ticket-sheet-wide", next ? "1" : "0"); } catch {}
+      return next;
+    });
+  };
 
   // ── Notas ──
   const { data: notes = [] } = useTicketNotes(ticket?.id ?? null);
@@ -207,16 +220,38 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, canEditInternal 
       {/* Layout flex: header fijo (no-scroll) + body scrolleable.
           Reemplaza el modelo "todo scrollea" que dejaba contenido visible
           detrás del header sticky con bg semi-transparente. */}
-      <SheetContent side="right" className="w-full sm:max-w-2xl p-0 flex flex-col gap-0">
+      <SheetContent
+        side="right"
+        className={cn(
+          "p-0 flex flex-col gap-0 transition-[max-width] duration-200",
+          isWide ? "w-full sm:max-w-[calc(100vw-3rem)]" : "w-full sm:max-w-2xl",
+        )}
+      >
         <SheetHeader className="space-y-3 px-6 pt-6 pb-4 bg-card border-b border-border/60 shrink-0">
-          {/* Back + ID + copy */}
+          {/* Back + ID + copy + toggle fullscreen */}
           <div className="flex items-center gap-2 text-xs">
             <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} className="h-7 -ml-2 gap-1">
               <ArrowLeft className="h-3.5 w-3.5" /> Volver
             </Button>
             <div className="flex-1" />
             <code className="font-mono font-bold">{ticket.ticket_id}</code>
-            <button onClick={copyId} className="p-1 rounded hover:bg-muted" title="Copiar ID"><Copy className="h-3 w-3" /></button>
+            <button
+              onClick={copyId}
+              className="p-1 rounded hover:bg-muted"
+              title="Copiar ID"
+            >
+              <Copy className="h-3 w-3" />
+            </button>
+            <button
+              onClick={toggleWide}
+              className="p-1 rounded hover:bg-muted"
+              title={isWide ? "Contraer (ancho normal)" : "Expandir (pantalla completa)"}
+              aria-label={isWide ? "Contraer ventana" : "Expandir ventana"}
+            >
+              {isWide
+                ? <Minimize2 className="h-3.5 w-3.5" />
+                : <Maximize2 className="h-3.5 w-3.5" />}
+            </button>
           </div>
 
           {/* Título */}
@@ -271,6 +306,7 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, canEditInternal 
               onChange={changeState}
               disabled={!canEditInternal}
               pending={update.isPending}
+              ticketTipo={ticket.tipo}
             />
           </div>
 
