@@ -152,6 +152,8 @@ interface Props {
   burndown: any[];
   scrumStatusDist: any[];
   kpis?: { total: number; inProgress: number; avgWsjf: number; noEstimate: number; activeSprints: number };
+  /** Click sobre un item del backlog/tablero/flujo → abre detalle. Lo provee el dashboard padre. */
+  onItemClick?: (item: ScrumWorkItem) => void;
 }
 
 // ─── Helper: chip de métrica slim ────────────────────────────────────
@@ -218,7 +220,7 @@ export function TeamScrumGuidedView(props: Props) {
       case "daily":             return <DailyStandupPanel />;
       case "flujo":             return <FordLineView items={props.filteredItems} onMove={(item, status) => props.onScrumStatusChange(item, status)} title="Flujo del equipo" />;
       case "planner":           return <SprintPlanner backlog={props.backlog} sprintItems={props.sprintItems} activeSprints={props.activeSprints} />;
-      case "backlog":           return <BacklogView items={props.backlog} hasActiveFilters={props.hasActiveFilters} onChangeStatus={props.onScrumStatusChange} activeSprints={props.activeSprints} />;
+      case "backlog":           return <BacklogView items={props.backlog} hasActiveFilters={props.hasActiveFilters} onChangeStatus={props.onScrumStatusChange} activeSprints={props.activeSprints} onItemClick={props.onItemClick} />;
       case "estrategia":        return <SVAStrategyPanel />;
       case "sprints":           return <SprintManager />;
       case "reportes":          return (

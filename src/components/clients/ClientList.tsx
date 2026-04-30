@@ -29,7 +29,15 @@ export function ClientList({ onSelectClient, selectedClientId }: ClientListProps
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("todos");
 
-  const clientData = (clients || []).filter((c: any) => c.client_type === "implementacion");
+  // Mostrar todos los clientes con backlog de implementación, no solo los
+  // marcados client_type='implementacion'. CMI vive como soporte pero tiene
+  // un producto Arrendamiento en implementación → debe aparecer aquí también.
+  // Cuando Arrendamiento pase a soporte (sin tasks pendientes), CMI desaparece
+  // automáticamente de esta lista — natural fusion.
+  const clientData = (clients || []).filter((c: any) =>
+    c.client_type === "implementacion"
+    || (c.tasks && c.tasks.length > 0)
+  );
 
   const filtered = clientData.filter(c => {
     const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||

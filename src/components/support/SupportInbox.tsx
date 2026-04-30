@@ -7,12 +7,13 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import {
   Inbox, Building2, Clock, Lock, AlertTriangle, Flame, User,
   ChevronDown, ChevronRight, CheckCheck, Eye, RefreshCw, Radio, Zap,
-  Search, X, ArrowUpDown, SlidersHorizontal, Plus, Check,
+  Search, X, ArrowUpDown, SlidersHorizontal, Plus, Check, RotateCcw,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { ListMinus } from "lucide-react";
+import { ReopenBadge } from "./ReopenBadge";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -89,7 +90,7 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
   const [detailOpen, setDetailOpen] = useState(false);
 
   // UX controls
-  const [quickFilter, setQuickFilter] = useState<"all" | "critical" | "new24h" | "cliente" | "pendiente" | "enatencion" | "sla_overdue" | "sla_warning">("all");
+  const [quickFilter, setQuickFilter] = useState<"all" | "critical" | "new24h" | "cliente" | "pendiente" | "enatencion" | "sla_overdue" | "sla_warning" | "reincidentes">("all");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"priority" | "age" | "client">("priority");
   const [groupBy, setGroupBy] = useState<"cliente" | "prioridad" | "estado" | "antiguedad" | "sla" | "flat">("cliente");
@@ -140,6 +141,7 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
       if (quickFilter === "enatencion" && t.estado !== "EN ATENCIÓN") return false;
       if (quickFilter === "sla_overdue" && slaByTicketId.get(t.id)?.status !== "overdue") return false;
       if (quickFilter === "sla_warning" && slaByTicketId.get(t.id)?.status !== "warning") return false;
+      if (quickFilter === "reincidentes" && (t.reopen_count ?? 0) < 2) return false;
       if (q && !(t.ticket_id?.toLowerCase().includes(q) || t.asunto?.toLowerCase().includes(q))) return false;
       return true;
     });
@@ -423,6 +425,7 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
   const totalFromCliente = scopedTickets.filter(t => t.fuente === "cliente").length;
   const dayAgoMs = Date.now() - 24 * 60 * 60 * 1000;
   const totalNew24h = scopedTickets.filter(t => new Date(t.created_at).getTime() >= dayAgoMs).length;
+  const totalReincidentes = scopedTickets.filter(t => (t.reopen_count ?? 0) >= 2).length;
 
   const CHIPS: Array<{ key: typeof quickFilter; label: string; count: number; Icon: any; tone: string; emphasis?: boolean }> = [
     { key: "all",          label: "Todos",         count: scopedTickets.length, Icon: Inbox,          tone: "" },
@@ -436,6 +439,7 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
     { key: "cliente",      label: "De cliente",    count: totalFromCliente,     Icon: Radio,          tone: "text-primary" },
     { key: "pendiente",    label: "PENDIENTE",     count: totalPending,         Icon: Clock,          tone: "text-warning" },
     { key: "enatencion",   label: "EN ATENCIÓN",   count: totalEnAtencion,      Icon: AlertTriangle,  tone: "text-info" },
+    { key: "reincidentes", label: "Reincidentes (≥2)", count: totalReincidentes, Icon: RotateCcw,     tone: "text-warning", emphasis: totalReincidentes > 0 },
   ];
 
   const hasActiveFilters = quickFilter !== "all" || search.trim().length > 0;
@@ -571,6 +575,9 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
                       <code className="text-[10px] font-mono font-bold text-muted-foreground truncate flex-1 min-w-0" title={t.ticket_id}>
                         {t.ticket_id}
                       </code>
+                      {(t.reopen_count ?? 0) > 0 && (
+                        <ReopenBadge count={t.reopen_count} lastReason={t.last_reopen_reason} lastReopenAt={t.last_reopen_at} size="sm" />
+                      )}
                       <span
                         className={cn(
                           "shrink-0 inline-flex items-center gap-1 h-4 px-1.5 rounded text-[9px] font-bold border whitespace-nowrap",
@@ -870,6 +877,9 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <code className="text-[11px] font-mono font-bold text-muted-foreground">{t.ticket_id}</code>
+                                  {(t.reopen_count ?? 0) > 0 && (
+                                    <ReopenBadge count={t.reopen_count} lastReason={t.last_reopen_reason} lastReopenAt={t.last_reopen_at} size="sm" />
+                                  )}
                                   {t.is_confidential && (
                                     <span title="Confidencial" className="inline-flex items-center justify-center h-4 w-4 rounded bg-warning/10 text-warning">
                                       <Lock className="h-2.5 w-2.5" />

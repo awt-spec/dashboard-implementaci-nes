@@ -11,7 +11,7 @@ import {
   Building2, Calendar, User, Flame, Clock, CheckCheck, Loader2,
   MessageSquare, History, ScrollText, Lock, Eye, EyeOff, Copy,
   Save, Trash2, AlertTriangle, Paperclip, CheckSquare, ArrowLeft,
-  Share2, Sparkles,
+  Share2, Sparkles, RotateCcw,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -35,7 +35,16 @@ import { TicketStateFlow } from "./TicketStateFlow";
 import { ShareTicketHistoryDialog } from "./ShareTicketHistoryDialog";
 import { CaseStrategyPanel } from "./CaseStrategyPanel";
 import { TicketSLAExplanation } from "./TicketSLAExplanation";
+import { ReopenBadge } from "./ReopenBadge";
+import { ReopenReasonDialog } from "./ReopenReasonDialog";
+import { TicketReopensTimeline } from "./TicketReopensTimeline";
 import { isTicketClosed } from "@/lib/ticketStatus";
+import { cn } from "@/lib/utils";
+
+/** Estados que cuentan como "entregado/aprobado" para detectar reincidencia */
+const DELIVERED_STATES = new Set(["ENTREGADA", "APROBADA"]);
+/** Estados activos donde puede regresar un caso entregado */
+const REOPEN_TARGET_STATES = new Set(["EN ATENCIÓN", "PENDIENTE", "VALORACIÓN", "COTIZADA", "POR CERRAR"]);
 
 // ─── Constantes ───────────────────────────────────────────────────────────
 
@@ -85,6 +94,9 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, canEditInternal 
   const [decryptedText, setDecryptedText] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  // Diálogo de reincidencia: capturamos el estado destino mientras el usuario
+  // confirma el motivo. Si cancela, el cambio de estado NO se aplica.
+  const [reopenDialogTarget, setReopenDialogTarget] = useState<string | null>(null);
 
   // ── Notas ──
   const { data: notes = [] } = useTicketNotes(ticket?.id ?? null);
@@ -105,6 +117,12 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, canEditInternal 
   // ── Handlers de acciones rápidas ──
 
   const changeState = async (newState: string) => {
+    // Detectar reincidencia: ENTREGADA/APROBADA → activo abre el diálogo de motivo.
+    // El UPDATE real se hace dentro del useReopenTicket() después de confirmar.
+    if (DELIVERED_STATES.has(ticket.estado) && REOPEN_TARGET_STATES.has(newState)) {
+      setReopenDialogTarget(newState);
+      return;
+    }
     try {
       await update.mutateAsync({ id: ticket.id, updates: { estado: newState } });
       toast.success(`${ticket.ticket_id} → ${newState}`);
@@ -136,6 +154,13 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, canEditInternal 
   };
 
   const handleReopen = async () => {
+    // Reabrir un caso CERRADO desde ENTREGADA/APROBADA también dispara
+    // reincidencia. Si vino de otro estado (ej. CERRADA tras VALORACIÓN sin
+    // entrega), no aplica — UPDATE directo.
+    if (DELIVERED_STATES.has(ticket.estado)) {
+      setReopenDialogTarget("EN ATENCIÓN");
+      return;
+    }
     try {
       await update.mutateAsync({ id: ticket.id, updates: { estado: "EN ATENCIÓN" } });
       toast.info(`Caso reabierto`);
@@ -203,6 +228,13 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, canEditInternal 
             <Badge variant="outline" className={priorityColor(ticket.prioridad)}>
               {/critica/i.test(ticket.prioridad || "") ? "Crítica" : ticket.prioridad}
             </Badge>
+            {/* Reincidencia (solo cara interna — clientFacing=!canEditInternal) */}
+            <ReopenBadge
+              count={ticket.reopen_count}
+              lastReason={ticket.last_reopen_reason}
+              lastReopenAt={ticket.last_reopen_at}
+              clientFacing={!canEditInternal}
+            />
             {ticket.is_confidential && (
               <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30">
                 <Lock className="h-3 w-3 mr-0.5" /> Confidencial
@@ -305,7 +337,13 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, canEditInternal 
 
         {/* ── Tabs con contenido ── */}
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="w-full h-9 grid grid-cols-5">
+          <TabsList className={cn(
+            "w-full h-9 grid",
+            // Tab "Reincidencias" solo si hay reopen_count > 0 y vista interna
+            (canEditInternal && (ticket.reopen_count ?? 0) > 0)
+              ? "grid-cols-6"
+              : "grid-cols-5",
+          )}>
             <TabsTrigger value="detalle" className="text-[11px] gap-1"><ScrollText className="h-3 w-3" /> Detalle</TabsTrigger>
             <TabsTrigger value="historial" className="text-[11px] gap-1"><History className="h-3 w-3" /> Historial</TabsTrigger>
             <TabsTrigger value="notas" className="text-[11px] gap-1">
@@ -319,6 +357,17 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, canEditInternal 
             <TabsTrigger value="estrategia" className="text-[11px] gap-1">
               <Sparkles className="h-3 w-3" /> Estrategia IA
             </TabsTrigger>
+            {canEditInternal && (ticket.reopen_count ?? 0) > 0 && (
+              <TabsTrigger value="reopens" className="text-[11px] gap-1">
+                <RotateCcw className="h-3 w-3" /> Reincidencias
+                <Badge variant="outline" className={cn(
+                  "ml-0.5 text-[9px] h-3.5 px-1 border-warning/40 bg-warning/10 text-warning",
+                  (ticket.reopen_count ?? 0) >= 3 && "border-destructive/40 bg-destructive/10 text-destructive",
+                )}>
+                  {ticket.reopen_count}
+                </Badge>
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* DETALLE — usa TicketLegacyView que ya muestra todo */}
@@ -433,6 +482,26 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, canEditInternal 
           <TabsContent value="estrategia" className="mt-3">
             <CaseStrategyPanel ticketId={ticket.id} canEdit={canEditInternal} />
           </TabsContent>
+
+          {/* REINCIDENCIAS — solo cara interna y solo si hubo reopens */}
+          {canEditInternal && (ticket.reopen_count ?? 0) > 0 && (
+            <TabsContent value="reopens" className="mt-3">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <RotateCcw className="h-4 w-4 text-warning" />
+                    Reincidencias / Inconformidades
+                    <Badge variant="outline" className="text-[10px] h-4 px-1.5 ml-1">
+                      {ticket.reopen_count} {ticket.reopen_count === 1 ? "vuelta" : "vueltas"}
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <TicketReopensTimeline ticketId={ticket.id} ticketCode={ticket.ticket_id} />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
         </Tabs>
 
         </div>{/* /body scrolleable */}
@@ -445,6 +514,21 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, canEditInternal 
         open={shareOpen}
         onClose={() => setShareOpen(false)}
       />
+
+      {/* Dialog de motivo de reincidencia (interceptor de cambio de estado) */}
+      {reopenDialogTarget && (
+        <ReopenReasonDialog
+          open={!!reopenDialogTarget}
+          onOpenChange={(o) => { if (!o) setReopenDialogTarget(null); }}
+          ticketId={ticket.id}
+          ticketCode={ticket.ticket_id}
+          fromState={ticket.estado}
+          toState={reopenDialogTarget}
+          currentReopenCount={ticket.reopen_count ?? 0}
+          currentResponsable={ticket.responsable}
+          onSuccess={() => setReopenDialogTarget(null)}
+        />
+      )}
     </Sheet>
   );
 }

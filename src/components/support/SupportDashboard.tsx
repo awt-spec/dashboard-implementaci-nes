@@ -38,6 +38,7 @@ import { ExportTicketsMenu } from "./ExportTicketsMenu";
 import { Plus, Inbox, Settings, BarChart3, Database, Briefcase } from "lucide-react";
 import { ActivePolicyBar } from "@/components/policy/ActivePolicyBar";
 import { SLAByClientPanel } from "./SLAByClientPanel";
+import { ReopensInsightsPanel } from "./ReopensInsightsPanel";
 
 const prioridadColors: Record<string, string> = {
   "Critica, Impacto Negocio": "bg-red-600 text-white",
@@ -563,6 +564,11 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
               onViewAll={() => window.dispatchEvent(new CustomEvent("overdue:open"))}
             />
           )}
+
+          {/* Panel de Reincidencias / Inconformidades — feedback de María (COO).
+              Detecta patrones de QA: técnicos / productos / clientes con más vueltas. */}
+          <ReopensInsightsPanel clientId={isClientView ? initialClientId : (selectedClient !== "all" ? selectedClient : undefined)} />
+
 
           <InsightsGuidedView
             tickets={filteredActive}

@@ -49,15 +49,35 @@ const SYSDE_USERS: DemoAccount[] = [
   { label: "Olga Lucia Cuervo", email: "olga.lucia@sysde.com", pw: "Sysde2026!", Icon: UserIcon },
   { label: "Orlando Castro", email: "orlando.castro@sysde.com", pw: "Sysde2026!", Icon: UserIcon },
   { label: "Carlos Solis", email: "solis.sequeira@sysde.com", pw: "Sysde2026!", Icon: UserIcon },
+  // Colaboradores de implementación (creados desde los CSV de backlog).
+  // Cada uno ve sus tasks asignadas en ColaboradorDashboard via assigned_user_id.
+  // Password común: Sysde2026!
+  { label: "Luis Alfaro", email: "lalfaro-contratista@sysde.com", pw: "Sysde2026!", Icon: UserIcon, hint: "56 tasks · Dos Pinos" },
+  { label: "Carlos Quesada", email: "cquesada-contratista@sysde.com", pw: "Sysde2026!", Icon: UserIcon, hint: "48 tasks · CMI Arrendamiento" },
+  { label: "Maria Vargas", email: "mavargas-contratista@sysde.com", pw: "Sysde2026!", Icon: UserIcon, hint: "45 tasks · ARKFIN/CMI" },
+  { label: "Carlos Andrés Rico", email: "crico@sysde.com", pw: "Sysde2026!", Icon: UserIcon, hint: "34 tasks · Dos Pinos/CMI" },
+  { label: "Bryan Hernandez", email: "bhernandez-contratista@sysde.com", pw: "Sysde2026!", Icon: UserIcon, hint: "32 tasks · CMI/AMC" },
+  { label: "Walter Gómez", email: "wgomez-contratista@sysde.com", pw: "Sysde2026!", Icon: UserIcon, hint: "14 tasks · CMI" },
+  { label: "Andrés Julián Gómez", email: "ajgomez-contratista@sysde.com", pw: "Sysde2026!", Icon: UserIcon, hint: "7 tasks · Dos Pinos" },
+  { label: "Luis Mangel", email: "lmangel-contratista@sysde.com", pw: "Sysde2026!", Icon: UserIcon, hint: "6 tasks · CMI" },
+  { label: "Fernando Pinto", email: "fpinto-contratista@sysde.com", pw: "Sysde2026!", Icon: UserIcon, hint: "5 tasks · Aurum/Apex" },
+  { label: "Diego García", email: "dgarcia-contratista@sysde.com", pw: "Sysde2026!", Icon: UserIcon, hint: "5 tasks · CMI" },
+  { label: "Andrés Venegas", email: "avenegas-contratista@sysde.com", pw: "Sysde2026!", Icon: UserIcon, hint: "3 tasks · Dos Pinos" },
+  { label: "Marco Pisacreta", email: "mpisacreta-contratista@sysde.com", pw: "Sysde2026!", Icon: UserIcon, hint: "3 tasks · Dos Pinos" },
+  { label: "Sandra Guerra", email: "sguerra-contratista@sysde.com", pw: "Sysde2026!", Icon: UserIcon, hint: "Implementación" },
 ];
 
 // Usuarios con rol "cliente" (Portal Cliente) — uno por cada empresa activa.
 // Generados por scripts/seed-cliente-users.mjs. Al loguearse van al
 // ClientPortalDashboard (panel horas + minutas + casos scopeados a su empresa).
 const IMPLEMENTATION_CLIENTS: DemoAccount[] = [
-  { label: "Apex", email: "cliente.apex@sysde.com", pw: "ClienteApex2026!" },
-  { label: "Arkfin", email: "cliente.arkfin@sysde.com", pw: "ClienteArkfin2026!" },
-  { label: "Aurum", email: "cliente.aurum@sysde.com", pw: "ClienteAurum2026!" },
+  { label: "Apex",      email: "cliente.apex@sysde.com",      pw: "ClienteApex2026!"      },
+  { label: "Arkfin",    email: "cliente.arkfin@sysde.com",    pw: "ClienteArkfin2026!"    },
+  { label: "Aurum",     email: "cliente.aurum@sysde.com",     pw: "ClienteAurum2026!"     },
+  { label: "Dos Pinos", email: "cliente.dospinos@sysde.com",  pw: "ClienteDospinos2026!"  },
+  { label: "AMC",       email: "cliente.amc@sysde.com",       pw: "ClienteAmc2026!"       },
+  // CMI tiene producto dual: Factoraje (soporte) + Arrendamiento (implementación).
+  // Su acceso cliente está en SUPPORT_CLIENTS abajo y ve ambos productos.
 ];
 
 const SUPPORT_CLIENTS: DemoAccount[] = [

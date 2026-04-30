@@ -19,6 +19,8 @@ export interface ScrumWorkItem {
   backlog_rank: number | null;
   scrum_status: string | null;
   wsjf: number;
+  /** Visibility: 'interna' (solo equipo SVA) o 'externa' (cliente puede ver). */
+  visibility: "interna" | "externa";
   raw: any;
 }
 
@@ -40,20 +42,42 @@ function calcWsjf(value: number | null, effort: number | null): number {
   return Math.round((value / effort) * 100) / 100;
 }
 
+// Paginación manual: el default REST de Supabase trunca a 1000 filas. Con
+// 2800+ tickets totales (2099 implementación + ~720 soporte), Dos Pinos
+// (1177 tickets) quedaba parcial o totalmente fuera. Cargar en chunks de
+// 1000 hasta agotar.
+async function fetchAllPages<T>(
+  buildQuery: () => any,
+  pageSize: number = 1000,
+): Promise<T[]> {
+  const all: T[] = [];
+  let from = 0;
+  // Hard upper bound to avoid infinite loops si algo va mal: 50k filas.
+  for (let i = 0; i < 50; i++) {
+    const { data, error } = await buildQuery().range(from, from + pageSize - 1);
+    if (error) throw error;
+    const chunk = (data || []) as T[];
+    all.push(...chunk);
+    if (chunk.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
+
 export function useAllScrumWorkItems() {
   return useQuery({
     queryKey: ["scrum-work-items"],
     queryFn: async () => {
-      const [{ data: tasks }, { data: tickets }, { data: clients }] = await Promise.all([
-        (supabase.from("tasks").select("*") as any),
-        (supabase.from("support_tickets").select("*") as any),
-        (supabase.from("clients").select("id, name") as any),
+      const [tasks, tickets, clients] = await Promise.all([
+        fetchAllPages<any>(() => supabase.from("tasks").select("*")),
+        fetchAllPages<any>(() => supabase.from("support_tickets").select("*")),
+        fetchAllPages<any>(() => supabase.from("clients").select("id, name")),
       ]);
 
       const clientMap = new Map<string, string>();
-      (clients || []).forEach((c: any) => clientMap.set(c.id, c.name));
+      (clients).forEach((c: any) => clientMap.set(c.id, c.name));
 
-      const taskItems: ScrumWorkItem[] = (tasks || []).map((t: any) => ({
+      const taskItems: ScrumWorkItem[] = (tasks).map((t: any) => ({
         id: t.id,
         source: "task" as const,
         client_id: t.client_id,
@@ -70,10 +94,11 @@ export function useAllScrumWorkItems() {
         backlog_rank: t.backlog_rank ?? null,
         scrum_status: t.scrum_status ?? "backlog",
         wsjf: calcWsjf(t.business_value, t.effort),
+        visibility: (t.visibility === "interna" ? "interna" : "externa") as "interna" | "externa",
         raw: t,
       }));
 
-      const ticketItems: ScrumWorkItem[] = (tickets || []).map((t: any) => ({
+      const ticketItems: ScrumWorkItem[] = (tickets).map((t: any) => ({
         id: t.id,
         source: "ticket" as const,
         client_id: t.client_id,
@@ -90,6 +115,8 @@ export function useAllScrumWorkItems() {
         backlog_rank: t.backlog_rank ?? null,
         scrum_status: t.scrum_status ?? "backlog",
         wsjf: calcWsjf(t.business_value, t.effort),
+        // Casos soporte siempre son "externos" (relacionados al cliente).
+        visibility: "externa" as const,
         raw: t,
       }));
 

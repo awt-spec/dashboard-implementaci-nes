@@ -15,8 +15,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   AlertOctagon, ChevronRight, ShieldAlert, Flame, UserX, Package,
-  Clock, Sparkles, ArrowRight, Inbox,
+  Clock, Sparkles, ArrowRight, Inbox, RotateCcw,
 } from "lucide-react";
+import { isTicketClosed } from "@/lib/ticketStatus";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -170,6 +171,30 @@ export function ActionQueue({ onNavigate }: Props) {
         cta: "Ver",
         onAction: () => onNavigate?.("clients"),
         aiPrompt: `Detallá los entregables vencidos: cliente, qué entregable, hace cuántos días debió entregarse, y qué bloqueo identificás.`,
+      });
+    }
+
+    // ── Reincidencias críticas (3+ vueltas) — feedback de María (COO) ──
+    // Detecta tickets activos que ya regresaron 3 o más veces. Patrón QA.
+    const reincidentesCriticos = (tickets as any[]).filter(t =>
+      (t.reopen_count ?? 0) >= 3 && !isTicketClosed(t.estado)
+    );
+    if (reincidentesCriticos.length > 0) {
+      const sample = reincidentesCriticos.slice(0, 2).map((t: any) => {
+        const cli = (clients as any[]).find(c => c.id === t.client_id);
+        return `${cli?.name || t.client_id.slice(0, 6)} · ${t.ticket_id} (${t.reopen_count}× vuelto)`;
+      }).join(" · ");
+      list.push({
+        id: "reincidencias-3plus",
+        priority: 2,
+        title: `${reincidentesCriticos.length} caso${reincidentesCriticos.length === 1 ? "" : "s"} con 3+ reincidencias`,
+        detail: `Patrón repetido — revisar QA o reasignar técnico. ${sample}`,
+        count: reincidentesCriticos.length,
+        Icon: RotateCcw,
+        tone: "warning",
+        cta: "Ver casos",
+        onAction: () => window.dispatchEvent(new CustomEvent("overdue:open")),
+        aiPrompt: "Listáme los casos que reabrieron 3+ veces, agrupados por técnico responsable y por producto. Identificá patrones (módulos problemáticos, técnicos con QA gap) y sugerí 2 acciones concretas.",
       });
     }
 

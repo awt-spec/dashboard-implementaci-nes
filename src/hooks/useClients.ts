@@ -119,6 +119,23 @@ interface DbRisk {
   category: string;
 }
 
+// Paginación manual: Supabase REST trunca a 1000 filas por default. Con
+// 2100+ tareas (post-import implementación), `tasks` se truncaba y los
+// clientes con más backlog (Dos Pinos 1177) aparecían vacíos.
+async function fetchAllPages<T>(buildQuery: () => any, pageSize = 1000): Promise<T[]> {
+  const all: T[] = [];
+  let from = 0;
+  for (let i = 0; i < 50; i++) {
+    const { data, error } = await buildQuery().range(from, from + pageSize - 1);
+    if (error) throw error;
+    const chunk = (data || []) as T[];
+    all.push(...chunk);
+    if (chunk.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
+
 // Fetch all clients with related data — only ACTIVE clients + specific columns for performance
 async function fetchClients(): Promise<Client[]> {
   // 1) First fetch active client IDs (status != 'completado' — keep risk/active/paused visible)
@@ -133,35 +150,28 @@ async function fetchClients(): Promise<Client[]> {
   const activeIds = clients.map((c) => c.id);
 
   // 2) Fetch related rows scoped to active clients only + minimal column projection
-  const [
-    { data: phases },
-    { data: deliverables },
-    { data: tasks },
-    { data: actionItems },
-    { data: meetingMinutes },
-    { data: emailNotifications },
-    { data: comments },
-    { data: risks },
-  ] = await Promise.all([
-    supabase.from("phases").select("id,client_id,name,status,progress,start_date,end_date").in("client_id", activeIds),
-    supabase.from("deliverables").select("id,client_id,original_id,name,type,status,due_date,delivered_date,approved_by,version,detail,responsible_party,responsible_team,linked_task_id").in("client_id", activeIds),
-    supabase.from("tasks").select("id,client_id,original_id,title,status,owner,due_date,priority,assignees,description,visibility").in("client_id", activeIds),
-    supabase.from("action_items").select("id,client_id,original_id,title,assignee,due_date,status,source,priority,responsible_party,responsible_team,linked_task_id").in("client_id", activeIds),
-    supabase.from("meeting_minutes").select("id,client_id,original_id,title,date,attendees,summary,agreements,action_items,next_meeting,visible_to_client,presentation_snapshot").in("client_id", activeIds),
-    supabase.from("email_notifications").select("id,client_id,original_id,subject,to,from,date,status,type,preview").in("client_id", activeIds),
-    supabase.from("comments").select("id,client_id,original_id,user,avatar,message,date,type").in("client_id", activeIds),
-    supabase.from("risks").select("id,client_id,original_id,description,impact,status,mitigation,category").in("client_id", activeIds),
+  // Tasks va paginado porque con 2100+ items post-import el default de 1000 truncaba
+  // el backlog de los clientes con más volumen (Dos Pinos 1177).
+  const [phases, deliverables, tasks, actionItems, meetingMinutes, emailNotifications, comments, risks] = await Promise.all([
+    fetchAllPages<any>(() => supabase.from("phases").select("id,client_id,name,status,progress,start_date,end_date").in("client_id", activeIds)),
+    fetchAllPages<any>(() => supabase.from("deliverables").select("id,client_id,original_id,name,type,status,due_date,delivered_date,approved_by,version,detail,responsible_party,responsible_team,linked_task_id").in("client_id", activeIds)),
+    fetchAllPages<any>(() => supabase.from("tasks").select("id,client_id,original_id,title,status,owner,due_date,priority,assignees,description,visibility").in("client_id", activeIds)),
+    fetchAllPages<any>(() => supabase.from("action_items").select("id,client_id,original_id,title,assignee,due_date,status,source,priority,responsible_party,responsible_team,linked_task_id").in("client_id", activeIds)),
+    fetchAllPages<any>(() => supabase.from("meeting_minutes").select("id,client_id,original_id,title,date,attendees,summary,agreements,action_items,next_meeting,visible_to_client,presentation_snapshot").in("client_id", activeIds)),
+    fetchAllPages<any>(() => supabase.from("email_notifications").select("id,client_id,original_id,subject,to,from,date,status,type,preview").in("client_id", activeIds)),
+    fetchAllPages<any>(() => supabase.from("comments").select("id,client_id,original_id,user,avatar,message,date,type").in("client_id", activeIds)),
+    fetchAllPages<any>(() => supabase.from("risks").select("id,client_id,original_id,description,impact,status,mitigation,category").in("client_id", activeIds)),
   ]);
 
   const clientsData = clients as unknown as DbClient[];
-  const phasesData = (phases || []) as unknown as DbPhase[];
-  const deliverablesData = (deliverables || []) as unknown as DbDeliverable[];
-  const tasksData = (tasks || []) as unknown as DbTask[];
-  const actionItemsData = (actionItems || []) as unknown as DbActionItem[];
-  const meetingMinutesData = (meetingMinutes || []) as unknown as DbMeetingMinute[];
-  const emailNotificationsData = (emailNotifications || []) as unknown as DbEmailNotification[];
-  const commentsData = (comments || []) as unknown as DbComment[];
-  const risksData = (risks || []) as unknown as DbRisk[];
+  const phasesData = phases as unknown as DbPhase[];
+  const deliverablesData = deliverables as unknown as DbDeliverable[];
+  const tasksData = tasks as unknown as DbTask[];
+  const actionItemsData = actionItems as unknown as DbActionItem[];
+  const meetingMinutesData = meetingMinutes as unknown as DbMeetingMinute[];
+  const emailNotificationsData = emailNotifications as unknown as DbEmailNotification[];
+  const commentsData = comments as unknown as DbComment[];
+  const risksData = risks as unknown as DbRisk[];
 
   return clientsData.map((c): Client => {
     return {

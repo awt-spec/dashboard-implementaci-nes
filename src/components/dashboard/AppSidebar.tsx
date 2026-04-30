@@ -216,10 +216,12 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
               />
             </div>
 
-            {/* Implementación stack — solo admin y pm (gerente_soporte solo ve soporte) */}
+            {/* Implementación stack — solo admin y pm (gerente_soporte solo ve soporte).
+                En collapsed mode (icon) toda la sección desaparece — la nav principal
+                arriba ya tiene "Implementación" como entry point. */}
             {implClients.length > 0 && role !== "gerente_soporte" && (
               <Collapsible open={implOpen} onOpenChange={setImplOpen}>
-                <SidebarGroup>
+                <SidebarGroup className="group-data-[collapsible=icon]:hidden">
                   <CollapsibleTrigger className="w-full group-data-[collapsible=icon]:hidden">
                     <SidebarGroupLabel className="text-sidebar-foreground/70 hover:text-sidebar-foreground cursor-pointer flex items-center justify-between w-full">
                       <span className="flex items-center gap-2">
@@ -244,10 +246,10 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
               </Collapsible>
             )}
 
-            {/* Soporte stack */}
+            {/* Soporte stack — también oculto en collapsed mode */}
             {supportClients.length > 0 && (
               <Collapsible open={supportOpen} onOpenChange={setSupportOpen}>
-                <SidebarGroup>
+                <SidebarGroup className="group-data-[collapsible=icon]:hidden">
                   <CollapsibleTrigger className="w-full group-data-[collapsible=icon]:hidden">
                     <SidebarGroupLabel className="text-sidebar-foreground/70 hover:text-sidebar-foreground cursor-pointer flex items-center justify-between w-full">
                       <span className="flex items-center gap-2">

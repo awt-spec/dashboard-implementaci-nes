@@ -33,6 +33,9 @@ import { SVAStrategyPanel } from "@/components/scrum/SVAStrategyPanel";
 import { SprintBoard } from "@/components/scrum/SprintBoard";
 import { BacklogView } from "@/components/scrum/BacklogView";
 import { TeamScrumGuidedView } from "@/components/scrum/TeamScrumGuidedView";
+import { TicketDetailSheet } from "@/components/support/TicketDetailSheet";
+import { TaskDetailSheet } from "@/components/colaborador/TaskDetailSheet";
+import type { SupportTicket } from "@/hooks/useSupportTickets";
 
 const CHART_COLORS = [
   "hsl(var(--primary))",
@@ -144,6 +147,11 @@ export default function TeamScrumDashboard() {
   const [filterSource, setFilterSource] = useState<string>("all");
   const [filterOwner, setFilterOwner] = useState<string>("all");
   const [filterSprint, setFilterSprint] = useState<string>("all");
+  const [filterVisibility, setFilterVisibility] = useState<"all" | "interna" | "externa">("all");
+  // Detail sheets: source='ticket' → TicketDetailSheet (con tabs Detalle/Notas/
+  // Subtareas/Estrategia/Reincidencias); source='task' → TaskDetailSheet (vista
+  // de tarea de implementación con checklist).
+  const [selectedItem, setSelectedItem] = useState<ScrumWorkItem | null>(null);
   const [activeTab, setActiveTab] = useState<string>("sprint");
 
   const owners = useMemo(() => {
@@ -156,6 +164,7 @@ export default function TeamScrumDashboard() {
     return items.filter(i => {
       if (filterSource !== "all" && i.source !== filterSource) return false;
       if (filterOwner !== "all" && i.owner !== filterOwner) return false;
+      if (filterVisibility !== "all" && i.visibility !== filterVisibility) return false;
       if (filterSprint !== "all") {
         if (filterSprint === "none" && i.sprint_id) return false;
         if (filterSprint !== "none" && i.sprint_id !== filterSprint) return false;
@@ -163,11 +172,16 @@ export default function TeamScrumDashboard() {
       if (search && !i.title.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
-  }, [items, filterSource, filterOwner, filterSprint, search]);
+  }, [items, filterSource, filterOwner, filterVisibility, filterSprint, search]);
 
+  // Backlog activo = items sin sprint activo Y NO terminados.
+  // Los items de sprints viejos (cerrados via migración) tienen scrum_status='done'
+  // y status='completada' — NO ensucian el backlog operativo. Quedan accesibles
+  // en SprintAnalytics + el detalle del cliente como histórico.
   const backlog = useMemo(() => {
     return [...filteredItems]
       .filter(i => !i.sprint_id || sprints.find(s => s.id === i.sprint_id)?.status !== "activo")
+      .filter(i => i.scrum_status !== "done" && i.status !== "completada")
       .sort((a, b) => b.wsjf - a.wsjf);
   }, [filteredItems, sprints]);
 
@@ -279,9 +293,10 @@ export default function TeamScrumDashboard() {
     setFilterSource("all");
     setFilterOwner("all");
     setFilterSprint("all");
+    setFilterVisibility("all");
   };
 
-  const hasActiveFilters = search || filterSource !== "all" || filterOwner !== "all" || filterSprint !== "all";
+  const hasActiveFilters = search || filterSource !== "all" || filterOwner !== "all" || filterSprint !== "all" || filterVisibility !== "all";
 
   if (isLoading) return <LoadingSkeleton />;
 
@@ -290,6 +305,36 @@ export default function TeamScrumDashboard() {
       {/* Sin KPIs ni toolbar global — el wizard se autocontiene. Los filtros
           que se necesiten viven dentro de cada preset. Las métricas globales
           aparecen integradas en el header del picker como chips. */}
+      {/* Toggle de visibility — Interna (solo SVA) / Externa (cliente puede ver) / Todas.
+          Heurística aplicada en migración 20260430200000:
+            DevOps "Task" → interna (sub-pasos de implementación)
+            DevOps "Product Backlog Item" / "Bug" → externa (cliente las ve) */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Visibilidad:</span>
+        {([
+          { v: "all" as const,     label: "Todas",    count: items.length },
+          { v: "interna" as const, label: "Internas", count: items.filter(i => i.visibility === "interna").length },
+          { v: "externa" as const, label: "Externas", count: items.filter(i => i.visibility === "externa").length },
+        ]).map(opt => (
+          <button
+            key={opt.v}
+            onClick={() => setFilterVisibility(opt.v)}
+            className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border text-xs font-medium transition-colors ${
+              filterVisibility === opt.v
+                ? opt.v === "interna"
+                  ? "bg-violet-500/10 text-violet-500 border-violet-500/40"
+                  : opt.v === "externa"
+                  ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/40"
+                  : "bg-primary text-primary-foreground border-primary"
+                : "bg-card hover:bg-muted/50 text-muted-foreground border-border"
+            }`}
+          >
+            {opt.label}
+            <span className="text-[10px] tabular-nums opacity-70">{opt.count}</span>
+          </button>
+        ))}
+      </div>
+
       <TeamScrumGuidedView
         filteredItems={filteredItems}
         backlog={backlog}
@@ -305,7 +350,27 @@ export default function TeamScrumDashboard() {
         burndown={burndown}
         scrumStatusDist={scrumStatusDist}
         kpis={kpis}
+        onItemClick={setSelectedItem}
       />
+
+      {/* Detalle del item seleccionado: usa TicketDetailSheet para casos (source='ticket')
+          y TaskDetailSheet para tareas de implementación (source='task'). */}
+      {selectedItem?.source === "ticket" && (
+        <TicketDetailSheet
+          ticket={selectedItem.raw as SupportTicket}
+          open={!!selectedItem}
+          onOpenChange={(o) => { if (!o) setSelectedItem(null); }}
+          canEditInternal={true}
+        />
+      )}
+      {selectedItem?.source === "task" && (
+        <TaskDetailSheet
+          item={selectedItem}
+          clientName={selectedItem.client_name}
+          sprintName={sprints.find(s => s.id === selectedItem.sprint_id)?.name}
+          onClose={() => setSelectedItem(null)}
+        />
+      )}
     </div>
   );
 }

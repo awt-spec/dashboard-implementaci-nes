@@ -34,6 +34,7 @@ import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { TicketDetailSheet } from "./TicketDetailSheet";
 import { SLAByClientPanel } from "./SLAByClientPanel";
+import { ReopenBadge } from "./ReopenBadge";
 
 type SortMode = "severity" | "age" | "client";
 type SourceFilter = "all" | "policy" | "client_override";
@@ -600,6 +601,9 @@ export function OverdueTicketsSheet() {
                           {/* Header row */}
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <code className="text-[11px] font-mono font-bold text-muted-foreground">{t.ticket_id}</code>
+                            {(t.reopen_count ?? 0) > 0 && (
+                              <ReopenBadge count={t.reopen_count} lastReason={t.last_reopen_reason} lastReopenAt={t.last_reopen_at} size="sm" />
+                            )}
                             {isCritical && (
                               <Badge className="h-4 text-[9px] gap-0.5 bg-destructive/15 text-destructive border-destructive/30">
                                 <Flame className="h-2.5 w-2.5" /> Crítica

@@ -25,6 +25,11 @@ const SOURCE_STYLES: Record<string, string> = {
   ticket: "bg-warning/10 text-warning border-warning/30",
 };
 
+const VISIBILITY_STYLES: Record<string, string> = {
+  interna: "bg-violet-500/10 text-violet-500 border-violet-500/30",
+  externa: "bg-emerald-500/10 text-emerald-500 border-emerald-500/30",
+};
+
 type ViewMode = "list" | "by-client" | "by-owner" | "table";
 
 interface Props {
@@ -33,6 +38,8 @@ interface Props {
   onChangeStatus: (item: ScrumWorkItem, status: string) => void;
   /** Sprints activos para el dropdown "Asignar a sprint". Si no se pasa, no se muestra el botón. */
   activeSprints?: UnifiedSprint[];
+  /** Si se pasa, el área izquierda de cada row (título + metadata) abre el detalle. */
+  onItemClick?: (item: ScrumWorkItem) => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -58,12 +65,13 @@ function EmptyBacklog({ hasActiveFilters }: { hasActiveFilters: boolean }) {
 }
 
 function ItemRow({
-  item, idx, onChangeStatus, activeSprints,
+  item, idx, onChangeStatus, activeSprints, onItemClick,
 }: {
   item: ScrumWorkItem;
   idx?: number;
   onChangeStatus: (i: ScrumWorkItem, s: string) => void;
   activeSprints?: UnifiedSprint[];
+  onItemClick?: (item: ScrumWorkItem) => void;
 }) {
   const updateScrum = useUpdateWorkItemScrum();
   // Filtra sprints del cliente del item (o todos si no hay match)
@@ -85,13 +93,22 @@ function ItemRow({
     }
   };
 
-  return (
-    <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-muted/40 border border-border/40 transition-colors">
+  // Área izquierda (idx + tipo + título + meta + badges): clickable si hay handler.
+  // Los Selects de la derecha permanecen interactivos sin bubbling — viven fuera del button.
+  const leftContent = (
+    <>
       {idx !== undefined && (
         <span className="font-mono text-xs text-muted-foreground w-6 text-center font-semibold shrink-0">{idx + 1}</span>
       )}
       <Badge variant="outline" className={`${SOURCE_STYLES[item.source]} text-[11px] shrink-0`}>
         {item.source === "task" ? "Tarea" : "Caso"}
+      </Badge>
+      <Badge
+        variant="outline"
+        className={`${VISIBILITY_STYLES[item.visibility]} text-[10px] shrink-0 hidden md:inline-flex`}
+        title={item.visibility === "interna" ? "Interna · solo equipo SVA" : "Externa · cliente puede ver"}
+      >
+        {item.visibility === "interna" ? "Int" : "Ext"}
       </Badge>
       <span className="flex-1 truncate text-sm font-medium">{item.title}</span>
       {item.client_name && (
@@ -107,6 +124,23 @@ function ItemRow({
           WSJF {item.wsjf || "—"}
         </Badge>
       </div>
+    </>
+  );
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-muted/40 border border-border/40 transition-colors">
+      {onItemClick ? (
+        <button
+          type="button"
+          onClick={() => onItemClick(item)}
+          className="flex flex-1 items-center gap-2 text-left min-w-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40 rounded"
+          aria-label={`Ver detalle: ${item.title}`}
+        >
+          {leftContent}
+        </button>
+      ) : (
+        <>{leftContent}</>
+      )}
       <Select value={item.scrum_status || "backlog"} onValueChange={v => onChangeStatus(item, v)}>
         <SelectTrigger className="h-7 w-[120px] text-[11px] shrink-0"><SelectValue /></SelectTrigger>
         <SelectContent>
@@ -140,21 +174,22 @@ function ItemRow({
 // Vistas
 // ─────────────────────────────────────────────────────────────────────────
 
-function ListView({ items, onChangeStatus, activeSprints }: { items: ScrumWorkItem[]; onChangeStatus: Props["onChangeStatus"]; activeSprints?: UnifiedSprint[] }) {
+function ListView({ items, onChangeStatus, activeSprints, onItemClick }: { items: ScrumWorkItem[]; onChangeStatus: Props["onChangeStatus"]; activeSprints?: UnifiedSprint[]; onItemClick?: Props["onItemClick"] }) {
   return (
     <div className="space-y-1 max-h-[640px] overflow-auto pr-1">
-      {items.map((item, idx) => <ItemRow key={`${item.source}-${item.id}`} item={item} idx={idx} onChangeStatus={onChangeStatus} activeSprints={activeSprints} />)}
+      {items.map((item, idx) => <ItemRow key={`${item.source}-${item.id}`} item={item} idx={idx} onChangeStatus={onChangeStatus} activeSprints={activeSprints} onItemClick={onItemClick} />)}
     </div>
   );
 }
 
 function GroupedView({
-  items, groupBy, onChangeStatus, activeSprints,
+  items, groupBy, onChangeStatus, activeSprints, onItemClick,
 }: {
   items: ScrumWorkItem[];
   groupBy: (item: ScrumWorkItem) => string;
   onChangeStatus: Props["onChangeStatus"];
   activeSprints?: UnifiedSprint[];
+  onItemClick?: Props["onItemClick"];
 }) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const groups = useMemo(() => {
@@ -204,7 +239,7 @@ function GroupedView({
             {!isCollapsed && (
               <div className="p-2 space-y-1 bg-card">
                 {g.items.map((item, idx) => (
-                  <ItemRow key={`${item.source}-${item.id}`} item={item} idx={idx} onChangeStatus={onChangeStatus} activeSprints={activeSprints} />
+                  <ItemRow key={`${item.source}-${item.id}`} item={item} idx={idx} onChangeStatus={onChangeStatus} activeSprints={activeSprints} onItemClick={onItemClick} />
                 ))}
               </div>
             )}
@@ -215,7 +250,7 @@ function GroupedView({
   );
 }
 
-function TableView({ items, onChangeStatus }: { items: ScrumWorkItem[]; onChangeStatus: Props["onChangeStatus"] }) {
+function TableView({ items, onChangeStatus, onItemClick }: { items: ScrumWorkItem[]; onChangeStatus: Props["onChangeStatus"]; onItemClick?: Props["onItemClick"] }) {
   return (
     <div className="overflow-auto max-h-[640px] border border-border/40 rounded-lg">
       <table className="w-full text-xs">
@@ -234,7 +269,11 @@ function TableView({ items, onChangeStatus }: { items: ScrumWorkItem[]; onChange
         </thead>
         <tbody>
           {items.map((item, idx) => (
-            <tr key={`${item.source}-${item.id}`} className="border-t border-border/30 hover:bg-muted/30 transition-colors">
+            <tr
+              key={`${item.source}-${item.id}`}
+              className={`border-t border-border/30 hover:bg-muted/30 transition-colors ${onItemClick ? "cursor-pointer" : ""}`}
+              onClick={onItemClick ? () => onItemClick(item) : undefined}
+            >
               <td className="px-2 py-1.5 font-mono text-muted-foreground">{idx + 1}</td>
               <td className="px-2 py-1.5">
                 <Badge variant="outline" className={`${SOURCE_STYLES[item.source]} text-[10px]`}>
@@ -251,7 +290,7 @@ function TableView({ items, onChangeStatus }: { items: ScrumWorkItem[]; onChange
                   {item.wsjf || "—"}
                 </Badge>
               </td>
-              <td className="px-2 py-1.5">
+              <td className="px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
                 <Select value={item.scrum_status || "backlog"} onValueChange={v => onChangeStatus(item, v)}>
                   <SelectTrigger className="h-6 text-[10px]"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -278,7 +317,7 @@ const VIEWS: Array<{ value: ViewMode; label: string; Icon: LucideIcon; title: st
   { value: "table",     label: "Tabla",          Icon: TableIcon,  title: "Vista compacta" },
 ];
 
-export function BacklogView({ items, hasActiveFilters, onChangeStatus, activeSprints }: Props) {
+export function BacklogView({ items, hasActiveFilters, onChangeStatus, activeSprints, onItemClick }: Props) {
   const [view, setView] = useState<ViewMode>("list");
   const current = VIEWS.find(v => v.value === view)!;
 
@@ -318,13 +357,13 @@ export function BacklogView({ items, hasActiveFilters, onChangeStatus, activeSpr
         {items.length === 0 ? (
           <EmptyBacklog hasActiveFilters={hasActiveFilters} />
         ) : view === "list" ? (
-          <ListView items={items} onChangeStatus={onChangeStatus} activeSprints={activeSprints} />
+          <ListView items={items} onChangeStatus={onChangeStatus} activeSprints={activeSprints} onItemClick={onItemClick} />
         ) : view === "by-client" ? (
-          <GroupedView items={items} groupBy={(i) => i.client_name || "Sin cliente"} onChangeStatus={onChangeStatus} activeSprints={activeSprints} />
+          <GroupedView items={items} groupBy={(i) => i.client_name || "Sin cliente"} onChangeStatus={onChangeStatus} activeSprints={activeSprints} onItemClick={onItemClick} />
         ) : view === "by-owner" ? (
-          <GroupedView items={items} groupBy={(i) => (i.owner && i.owner !== "—") ? i.owner : "Sin responsable"} onChangeStatus={onChangeStatus} activeSprints={activeSprints} />
+          <GroupedView items={items} groupBy={(i) => (i.owner && i.owner !== "—") ? i.owner : "Sin responsable"} onChangeStatus={onChangeStatus} activeSprints={activeSprints} onItemClick={onItemClick} />
         ) : (
-          <TableView items={items} onChangeStatus={onChangeStatus} />
+          <TableView items={items} onChangeStatus={onChangeStatus} onItemClick={onItemClick} />
         )}
       </CardContent>
     </Card>

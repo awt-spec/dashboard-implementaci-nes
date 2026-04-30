@@ -47,6 +47,13 @@ export interface SupportTicket {
   fuente?: "cliente" | "interno" | "email" | "api" | "devops" | null;
   // Asignación granular (existe en la tabla desde migración 20260416193142)
   assigned_user_id?: string | null;
+  // Reincidencias / Inconformidades (migración 20260429140000_ticket_reopens)
+  // El trigger detect_ticket_reopen incrementa reopen_count cuando el ticket
+  // pasa de ENTREGADA/APROBADA a un estado activo. Cara cliente: invisible
+  // (sigue viendo el estado actual). Cara interna: badge "🔁 Reincidencia #N".
+  reopen_count?: number | null;
+  last_reopen_at?: string | null;
+  last_reopen_reason?: string | null;
 }
 
 export interface SupportClient {
@@ -215,6 +222,8 @@ const POST_MIGRATION_FIELDS = new Set([
   "fecha_estimada_cierre", "is_confidential", "fuente",
   "assigned_user_id", "story_points", "business_value", "effort",
   "backlog_rank", "scrum_status", "sprint_id",
+  // Reincidencias (migración 20260429140000)
+  "reopen_count", "last_reopen_at", "last_reopen_reason",
 ]);
 
 // Defaults del schema BD para los campos post-migración. Si el payload trae

@@ -18,6 +18,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { SupportCaseDetailPanel } from "./SupportCaseDetailPanel";
+import { ReopenBadge } from "./ReopenBadge";
 
 const prioridadColors: Record<string, string> = {
   "Critica, Impacto Negocio": "bg-red-600 text-white",
@@ -412,7 +413,19 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
                   <td className="p-2 font-mono font-bold whitespace-nowrap">{t.ticket_id}</td>
                   <td className="p-2 whitespace-nowrap">{clientName(t.client_id)}</td>
                   <td className="p-2 whitespace-nowrap">{t.producto}</td>
-                  <td className="p-2 max-w-[220px] truncate">{t.asunto}</td>
+                  <td className="p-2 max-w-[260px]">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="truncate flex-1 min-w-0">{t.asunto}</span>
+                      {(t.reopen_count ?? 0) > 0 && (
+                        <ReopenBadge
+                          count={t.reopen_count}
+                          lastReason={t.last_reopen_reason}
+                          lastReopenAt={t.last_reopen_at}
+                          size="sm"
+                        />
+                      )}
+                    </div>
+                  </td>
                   <td className="p-2 whitespace-nowrap">{t.tipo}</td>
                   <td className="p-2"><Badge className={`text-[10px] ${prioridadColors[t.prioridad] || "bg-muted"}`}>{t.prioridad}</Badge></td>
                   <td className="p-2"><Badge variant="outline" className={`text-[10px] ${estadoColors[t.estado] || ""}`}>{t.estado}</Badge></td>
@@ -453,6 +466,9 @@ export function SupportCaseTable({ tickets, clientName, teamMembers = [] }: Prop
                         <span className="font-mono font-black text-base">{t.ticket_id}</span>
                         <Badge variant="outline" className={`text-[10px] ${estadoColors[t.estado] || ""}`}>{t.estado}</Badge>
                         <Badge className={`text-[10px] ${prioridadColors[t.prioridad] || "bg-muted"}`}>{t.prioridad}</Badge>
+                        {(t.reopen_count ?? 0) > 0 && (
+                          <ReopenBadge count={t.reopen_count} lastReason={t.last_reopen_reason} lastReopenAt={t.last_reopen_at} size="sm" />
+                        )}
                       </div>
                       <p className="text-sm text-foreground font-medium leading-snug">{t.asunto}</p>
                     </div>
