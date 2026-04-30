@@ -27,7 +27,6 @@ import { TaskViewSwitcher } from "@/components/tasks/TaskViewSwitcher";
 import { ContactsTab } from "./tabs/ContactsTab";
 import { FunnelTab } from "./tabs/FunnelTab";
 import { ContractsSLATab } from "./ContractsSLATab";
-import { ClientSupportMinutasTab } from "./ClientSupportMinutasTab";
 import { ClientUsersTab } from "./ClientUsersTab";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -256,63 +255,85 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
       </motion.div>
 
       {/* Tabs */}
+      {/* Tabs consolidados de 11 → 5 (feedback COO 30/04):
+          • Quitamos "Minutas de Soporte" (no aplica a cliente implementación)
+          • "Trabajo" agrupa Pipeline + Entregables + Pendientes + Riesgos como sub-tabs
+          • "Minutas" agrupa Reuniones + Colaboración (comments del proyecto)
+          • "Personas" agrupa Equipo Cliente (sus contactos) + Usuarios (accesos plataforma)
+          • "Tareas" y "Contratos & SLA" se mantienen porque son vistas autocontenidas. */}
       <Tabs defaultValue="tareas">
-        <TabsList className="flex-wrap h-auto">
+        <TabsList className="h-9">
           <TabsTrigger value="tareas">Tareas</TabsTrigger>
-          <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
-          <TabsTrigger value="entregables">Entregables</TabsTrigger>
-          <TabsTrigger value="equipo">Equipo Cliente</TabsTrigger>
-          <TabsTrigger value="pendientes">Pendientes</TabsTrigger>
+          <TabsTrigger value="trabajo">Trabajo</TabsTrigger>
           <TabsTrigger value="minutas">Minutas</TabsTrigger>
-          <TabsTrigger value="minutas-soporte">Minutas de Soporte</TabsTrigger>
-          <TabsTrigger value="riesgos">Riesgos</TabsTrigger>
-          <TabsTrigger value="colaboracion">Colaboración</TabsTrigger>
+          <TabsTrigger value="personas">Personas</TabsTrigger>
           <TabsTrigger value="contratos">Contratos & SLA</TabsTrigger>
-          <TabsTrigger value="usuarios">Usuarios</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="tareas">
+        {/* TAREAS — vista diaria del trabajo (lista/kanban/calendario) */}
+        <TabsContent value="tareas" className="mt-3">
           <TaskViewSwitcher tasks={client.tasks} clientId={client.id} clientName={client.name} />
         </TabsContent>
 
-        <TabsContent value="entregables">
-          <DeliverablesTab deliverables={client.deliverables} clientId={client.id} tasks={client.tasks} />
+        {/* TRABAJO — todo lo planificable: pipeline, entregables, pendientes, riesgos */}
+        <TabsContent value="trabajo" className="mt-3">
+          <Tabs defaultValue="pipeline">
+            <TabsList className="h-8">
+              <TabsTrigger value="pipeline" className="text-xs">Pipeline</TabsTrigger>
+              <TabsTrigger value="entregables" className="text-xs">Entregables</TabsTrigger>
+              <TabsTrigger value="pendientes" className="text-xs">Pendientes</TabsTrigger>
+              <TabsTrigger value="riesgos" className="text-xs">Riesgos</TabsTrigger>
+            </TabsList>
+            <TabsContent value="pipeline" className="mt-3">
+              <FunnelTab client={client} />
+            </TabsContent>
+            <TabsContent value="entregables" className="mt-3">
+              <DeliverablesTab deliverables={client.deliverables} clientId={client.id} tasks={client.tasks} />
+            </TabsContent>
+            <TabsContent value="pendientes" className="mt-3">
+              <ActionItemsTab actionItems={client.actionItems} clientId={client.id} tasks={client.tasks} />
+            </TabsContent>
+            <TabsContent value="riesgos" className="mt-3">
+              <RisksTab risks={client.risks} clientId={client.id} />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
-        <TabsContent value="equipo">
-          <ContactsTab clientId={client.id} />
+        {/* MINUTAS — reuniones + colaboración (comments del proyecto) */}
+        <TabsContent value="minutas" className="mt-3">
+          <Tabs defaultValue="reuniones">
+            <TabsList className="h-8">
+              <TabsTrigger value="reuniones" className="text-xs">Reuniones</TabsTrigger>
+              <TabsTrigger value="colaboracion" className="text-xs">Colaboración</TabsTrigger>
+            </TabsList>
+            <TabsContent value="reuniones" className="mt-3">
+              <MeetingMinutesTab meetingMinutes={client.meetingMinutes} clientId={client.id} client={client} />
+            </TabsContent>
+            <TabsContent value="colaboracion" className="mt-3">
+              <CollaborationTab comments={client.comments} clientId={client.id} />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
-        <TabsContent value="pipeline">
-          <FunnelTab client={client} />
+        {/* PERSONAS — equipo del cliente + usuarios con acceso a la plataforma */}
+        <TabsContent value="personas" className="mt-3">
+          <Tabs defaultValue="equipo-cliente">
+            <TabsList className="h-8">
+              <TabsTrigger value="equipo-cliente" className="text-xs">Equipo Cliente</TabsTrigger>
+              <TabsTrigger value="usuarios" className="text-xs">Accesos Plataforma</TabsTrigger>
+            </TabsList>
+            <TabsContent value="equipo-cliente" className="mt-3">
+              <ContactsTab clientId={client.id} />
+            </TabsContent>
+            <TabsContent value="usuarios" className="mt-3">
+              <ClientUsersTab clientId={client.id} clientName={client.name} />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
-        <TabsContent value="pendientes">
-          <ActionItemsTab actionItems={client.actionItems} clientId={client.id} tasks={client.tasks} />
-        </TabsContent>
-
-        <TabsContent value="minutas">
-          <MeetingMinutesTab meetingMinutes={client.meetingMinutes} clientId={client.id} client={client} />
-        </TabsContent>
-
-        <TabsContent value="minutas-soporte">
-          <ClientSupportMinutasTab clientId={client.id} clientName={client.name} />
-        </TabsContent>
-
-        <TabsContent value="riesgos">
-          <RisksTab risks={client.risks} clientId={client.id} />
-        </TabsContent>
-
-        <TabsContent value="colaboracion">
-          <CollaborationTab comments={client.comments} clientId={client.id} />
-        </TabsContent>
-
-        <TabsContent value="contratos">
+        {/* CONTRATOS & SLA — vista autocontenida */}
+        <TabsContent value="contratos" className="mt-3">
           <ContractsSLATab clientId={client.id} />
-        </TabsContent>
-
-        <TabsContent value="usuarios">
-          <ClientUsersTab clientId={client.id} clientName={client.name} />
         </TabsContent>
       </Tabs>
 
