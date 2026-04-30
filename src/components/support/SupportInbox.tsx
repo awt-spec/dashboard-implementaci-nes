@@ -84,6 +84,14 @@ interface Props {
 // ─── Componente principal ───────────────────────────────────────────────
 
 export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
+  // UX controls — declarados PRIMERO porque otros derivados (includeHistory)
+  // dependen de quickFilter. Mover esto abajo causa ReferenceError (TDZ) y
+  // pantalla en blanco — bug detectado 30/04 al introducir el chip "Cerrados".
+  const [quickFilter, setQuickFilter] = useState<"all" | "critical" | "new24h" | "cliente" | "pendiente" | "enatencion" | "sla_overdue" | "sla_warning" | "reincidentes" | "cerrados">("all");
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"priority" | "age" | "client">("priority");
+  const [groupBy, setGroupBy] = useState<"cliente" | "prioridad" | "estado" | "antiguedad" | "sla" | "flat">("cliente");
+
   // Cargamos histórico solo cuando el filtro lo pide — keeps default light.
   const includeHistory = quickFilter === "cerrados";
   const { data: tickets = [], isLoading, refetch } = useInboxTickets(includeHistory);
@@ -99,12 +107,6 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
   const [recentlyAdded, setRecentlyAdded] = useState<Set<string>>(new Set());
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
-
-  // UX controls
-  const [quickFilter, setQuickFilter] = useState<"all" | "critical" | "new24h" | "cliente" | "pendiente" | "enatencion" | "sla_overdue" | "sla_warning" | "reincidentes" | "cerrados">("all");
-  const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<"priority" | "age" | "client">("priority");
-  const [groupBy, setGroupBy] = useState<"cliente" | "prioridad" | "estado" | "antiguedad" | "sla" | "flat">("cliente");
 
   // Re-lookup desde la lista para que los cambios optimistic (via useUpdateSupportTicket)
   // se reflejen sin cerrar/reabrir el sheet.
