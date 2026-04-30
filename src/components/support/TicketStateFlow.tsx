@@ -1,9 +1,10 @@
-import { useMemo } from "react";
-import { motion } from "framer-motion";
+import { useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Inbox, PlayCircle, ClipboardList, DollarSign, BadgeCheck,
-  Truck, CircleCheck, Archive, PauseCircle, XCircle,
-  ChevronRight, Check, type LucideIcon,
+  Truck, Eye, Archive, PauseCircle, XCircle,
+  ChevronRight, ChevronDown, Check, FileSignature,
+  type LucideIcon,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -55,18 +56,18 @@ const EXCEPTION_STATES: ExceptionState[] = ["ON HOLD", "ANULADA"];
 
 const META: Record<AnyState, StateMeta> = {
   // ═ Estándar
-  "PENDIENTE":   { icon: Inbox,        label: "Pendiente",   hint: "Recién creado · esperando que alguien del equipo lo tome", tone: "warning",     group: "standard" },
-  "EN ATENCIÓN": { icon: PlayCircle,   label: "En atención", hint: "El equipo lo está trabajando activamente",                  tone: "info",        group: "standard" },
-  "ENTREGADA":   { icon: Truck,        label: "Entregada",   hint: "Entregado al cliente · esperando que confirme",            tone: "success",     group: "standard" },
-  "POR CERRAR":  { icon: CircleCheck,  label: "Por cerrar",  hint: "Cliente confirmó · listo para cerrar formalmente",         tone: "success",     group: "standard" },
-  "CERRADA":     { icon: Archive,      label: "Cerrada",     hint: "Caso finalizado oficialmente en el sistema",               tone: "muted",       group: "standard" },
+  "PENDIENTE":   { icon: Inbox,        label: "Pendiente",        hint: "Recién creado · esperando que alguien del equipo lo tome",                tone: "warning",     group: "standard" },
+  "EN ATENCIÓN": { icon: PlayCircle,   label: "En atención",      hint: "El equipo lo está trabajando activamente",                                tone: "info",        group: "standard" },
+  "ENTREGADA":   { icon: Truck,        label: "Entregada",        hint: "Entregado al cliente · esperando que revise y confirme",                  tone: "success",     group: "standard" },
+  "POR CERRAR":  { icon: Eye,          label: "Revisión cliente", hint: "El cliente está revisando el entregable · cerramos cuando confirme",      tone: "info",        group: "standard" },
+  "CERRADA":     { icon: Archive,      label: "Cerrada",          hint: "Caso finalizado oficialmente en el sistema",                              tone: "muted",       group: "standard" },
   // ═ Comercial (cotización para requerimientos)
-  "VALORACIÓN":  { icon: ClipboardList,label: "Valoración",  hint: "Analizando alcance y esfuerzo · paso previo a cotizar",    tone: "info",        group: "commercial" },
-  "COTIZADA":    { icon: DollarSign,   label: "Cotizada",    hint: "Cotización enviada al cliente · esperando respuesta",      tone: "info",        group: "commercial" },
-  "APROBADA":    { icon: BadgeCheck,   label: "Aprobada",    hint: "Cliente aprobó la cotización · pasa a ejecución",          tone: "success",     group: "commercial" },
+  "VALORACIÓN":  { icon: ClipboardList,label: "Valoración",       hint: "Analizando alcance y esfuerzo · paso previo a cotizar",                   tone: "info",        group: "commercial" },
+  "COTIZADA":    { icon: DollarSign,   label: "Cotizada",         hint: "Cotización enviada al cliente · esperando respuesta",                     tone: "info",        group: "commercial" },
+  "APROBADA":    { icon: BadgeCheck,   label: "Aprobada",         hint: "Cliente aprobó la cotización · pasa a ejecución",                         tone: "success",     group: "commercial" },
   // ═ Excepciones
-  "ON HOLD":     { icon: PauseCircle,  label: "On hold",     hint: "Pausa temporal · bloqueador externo o esperando cliente",  tone: "warning",     group: "exception" },
-  "ANULADA":     { icon: XCircle,      label: "Anulada",     hint: "Cancelado o descartado · no se trabajará",                 tone: "destructive", group: "exception" },
+  "ON HOLD":     { icon: PauseCircle,  label: "On hold",          hint: "Pausa temporal · bloqueador externo o esperando cliente",                 tone: "warning",     group: "exception" },
+  "ANULADA":     { icon: XCircle,      label: "Anulada",          hint: "Cancelado o descartado · no se trabajará",                                tone: "destructive", group: "exception" },
 };
 
 // ─── Helpers de estilo ────────────────────────────────────────────────────
@@ -132,10 +133,32 @@ export function TicketStateFlow({ currentState, onChange, disabled = false, pend
   );
   const isUnknown = !allKnown.includes(currentState as AnyState);
   const currentMeta = META[currentState as AnyState];
+  const isInCommercial = currentMeta?.group === "commercial";
+
+  // El flujo comercial NO se muestra por default — solo cuando aplica:
+  //   • El caso ya está en uno de los estados comerciales (auto-show)
+  //   • El usuario lo activa explícitamente con el botón "Activar cotización"
+  // Feedback COO 30/04: "que el flujo comercial se active cuando sea necesario".
+  const [showCommercial, setShowCommercial] = useState(isInCommercial);
+
+  // Si el caso entra al flujo comercial desde fuera, expandir auto.
+  // Si sale (después de APROBADA → EN ATENCIÓN), respetar la decisión del user
+  // (no colapsar agresivamente).
+  if (isInCommercial && !showCommercial) {
+    setShowCommercial(true);
+  }
 
   const handleClick = (state: AnyState) => {
     if (disabled || state === currentState || pending) return;
     onChange(state);
+  };
+
+  // Activar el flujo comercial = ir directo a VALORACIÓN (paso 1 del flow).
+  const activateCommercial = () => {
+    setShowCommercial(true);
+    if (currentState !== "VALORACIÓN" && !disabled && !pending) {
+      onChange("VALORACIÓN");
+    }
   };
 
   const renderNode = (state: AnyState, opts: { showArrow?: boolean; size?: "md" | "sm" } = {}) => {
@@ -203,33 +226,82 @@ export function TicketStateFlow({ currentState, onChange, disabled = false, pend
           </div>
         </div>
 
-        {/* ═══ Fase COMERCIAL — cotización para requerimientos ═══ */}
-        <div>
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="text-[10px] uppercase font-bold text-info tracking-wider">
-              Flujo comercial
-            </span>
-            <span className="text-[9px] text-muted-foreground/60 italic hidden sm:inline">
-              · requerimientos con cotización
-            </span>
-          </div>
-          <div className="flex items-center gap-1 flex-wrap">
-            {COMMERCIAL_FLOW.map((state, i) => (
-              <div key={state} className="flex items-center gap-1 shrink-0">
-                {renderNode(state)}
-                {i < COMMERCIAL_FLOW.length - 1 && (
-                  <ChevronRight className={`h-3.5 w-3.5 shrink-0 ${
-                    nodeStatus(state, currentState, "commercial") === "past"
-                      ? "text-success/70" : "text-muted-foreground/40"
-                  }`} />
+        {/* ═══ Fase COMERCIAL — bajo demanda ═══
+            Solo visible si:
+              • El caso ya está en VALORACIÓN/COTIZADA/APROBADA (auto-show)
+              • El usuario expandió la sección manualmente
+            Si está colapsado y el caso NO está en flujo comercial, mostramos
+            un trigger sutil "+ Activar cotización" para iniciar el path. */}
+        <AnimatePresence initial={false} mode="wait">
+          {showCommercial ? (
+            <motion.div
+              key="commercial-expanded"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase font-bold text-info tracking-wider">
+                    Flujo comercial
+                  </span>
+                  <span className="text-[9px] text-muted-foreground/60 italic hidden sm:inline">
+                    · requerimientos con cotización
+                  </span>
+                </div>
+                {!isInCommercial && (
+                  <button
+                    onClick={() => setShowCommercial(false)}
+                    className="text-[10px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-muted/50 transition-colors"
+                    aria-label="Ocultar flujo comercial"
+                  >
+                    <ChevronDown className="h-3 w-3 rotate-180" />
+                    Ocultar
+                  </button>
                 )}
               </div>
-            ))}
-            <span className="text-[10px] text-muted-foreground/70 italic ml-2 hidden md:inline">
-              ↩ regresa a "En atención" para ejecutar
-            </span>
-          </div>
-        </div>
+              <div className="flex items-center gap-1 flex-wrap">
+                {COMMERCIAL_FLOW.map((state, i) => (
+                  <div key={state} className="flex items-center gap-1 shrink-0">
+                    {renderNode(state)}
+                    {i < COMMERCIAL_FLOW.length - 1 && (
+                      <ChevronRight className={`h-3.5 w-3.5 shrink-0 ${
+                        nodeStatus(state, currentState, "commercial") === "past"
+                          ? "text-success/70" : "text-muted-foreground/40"
+                      }`} />
+                    )}
+                  </div>
+                ))}
+                <span className="text-[10px] text-muted-foreground/70 italic ml-2 hidden md:inline">
+                  ↩ regresa a "En atención" para ejecutar
+                </span>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="commercial-collapsed"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <button
+                onClick={activateCommercial}
+                disabled={disabled || pending}
+                className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-dashed border-info/40 bg-info/5 hover:bg-info/10 hover:border-info/60 text-info text-[11px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Iniciar flujo de cotización (Valoración → Cotizada → Aprobada)"
+              >
+                <FileSignature className="h-3.5 w-3.5" />
+                Activar cotización
+                <span className="text-[9px] font-normal opacity-70 hidden sm:inline">
+                  · si requiere presupuesto
+                </span>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* ═══ Excepciones — pausa o cancelación ═══ */}
         <div>
