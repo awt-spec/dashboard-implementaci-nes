@@ -13,8 +13,8 @@
  *   • Sub-tab "Por cliente" se oculta (no aporta — solo hay 1)
  *   • Default scope = "tecnico" (lo más útil cuando estás en un cliente)
  */
-import { useState } from "react";
-import { RotateCcw, TrendingDown, TrendingUp, AlertTriangle, Loader2, Building2, User as UserIcon, Package } from "lucide-react";
+import { useState, useEffect } from "react";
+import { RotateCcw, TrendingDown, TrendingUp, AlertTriangle, Loader2, Building2, User as UserIcon, Package, ChevronDown, ChevronUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -28,53 +28,110 @@ interface Props {
   clientName?: string;
 }
 
+// Helpers para persistir UI state — sobrevive focus changes / TOKEN_REFRESHED.
+const STORAGE = {
+  expanded: "sva-erp:reopens-panel-expanded",
+  scope:    "sva-erp:reopens-panel-scope",
+};
+function readBool(key: string, fallback: boolean): boolean {
+  try { const v = localStorage.getItem(key); return v == null ? fallback : v === "1"; } catch { return fallback; }
+}
+function writeBool(key: string, value: boolean) {
+  try { localStorage.setItem(key, value ? "1" : "0"); } catch {}
+}
+function readScope(fallback: ReopenScope): ReopenScope {
+  try {
+    const v = localStorage.getItem(STORAGE.scope);
+    return v === "cliente" || v === "tecnico" || v === "producto" ? v : fallback;
+  } catch { return fallback; }
+}
+function writeScope(value: ReopenScope) {
+  try { localStorage.setItem(STORAGE.scope, value); } catch {}
+}
+
 export function ReopensInsightsPanel({ clientId, clientName }: Props) {
   const isScoped = !!clientId;
   // Cuando estamos scoped a un cliente, "Por cliente" no aporta — default a "Por técnico"
-  const [scope, setScope] = useState<ReopenScope>(isScoped ? "tecnico" : "cliente");
+  const defaultScope: ReopenScope = isScoped ? "tecnico" : "cliente";
+  const [scope, setScopeState] = useState<ReopenScope>(() => {
+    const persisted = readScope(defaultScope);
+    // Si estamos scoped y el persisted era "cliente", forzar "tecnico"
+    return isScoped && persisted === "cliente" ? "tecnico" : persisted;
+  });
+  const setScope = (s: ReopenScope) => { setScopeState(s); writeScope(s); };
+
+  // Toggle expandido/colapsado, persistente
+  const [expanded, setExpandedState] = useState<boolean>(() => readBool(STORAGE.expanded, true));
+  const toggleExpanded = () => setExpandedState((v) => { writeBool(STORAGE.expanded, !v); return !v; });
+
   const { data: rate, isLoading: loadingRate } = useReopenRate90d(clientId);
+
+  // Sync scope si cambia el contexto (de global a scoped) — evita "Por cliente" inválido
+  useEffect(() => {
+    if (isScoped && scope === "cliente") setScope("tecnico");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isScoped]);
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm flex items-center gap-2 flex-wrap">
-          <RotateCcw className="h-4 w-4 text-warning" />
-          Reincidencias / Inconformidades
-          {isScoped && clientName && (
-            <Badge variant="outline" className="text-[10px] gap-1 bg-primary/5 text-primary border-primary/30">
-              <Building2 className="h-2.5 w-2.5" /> {clientName}
-            </Badge>
-          )}
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-normal ml-auto">
+      <CardHeader className={cn("pb-3", !expanded && "pb-3")}>
+        <button
+          type="button"
+          onClick={toggleExpanded}
+          className="w-full flex items-center gap-2 text-left group"
+          aria-expanded={expanded}
+          aria-controls="reopens-panel-body"
+        >
+          <RotateCcw className="h-4 w-4 text-warning shrink-0" />
+          <CardTitle className="text-sm flex items-center gap-2 flex-wrap min-w-0 flex-1">
+            Reincidencias / Inconformidades
+            {isScoped && clientName && (
+              <Badge variant="outline" className="text-[10px] gap-1 bg-primary/5 text-primary border-primary/30">
+                <Building2 className="h-2.5 w-2.5" /> {clientName}
+              </Badge>
+            )}
+            {/* Mini-resumen cuando está colapsado — para no perder señal */}
+            {!expanded && rate && (
+              <span className="text-[11px] font-normal text-muted-foreground ml-1">
+                · {rate.rate_pct.toFixed(1)}% · {rate.reopens_90d} reincidencias / {rate.entregados_90d} entregados (90d)
+              </span>
+            )}
+          </CardTitle>
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-normal hidden md:inline">
             Excluye histórico pre-instalación
           </span>
-        </CardTitle>
+          {expanded
+            ? <ChevronUp className="h-4 w-4 text-muted-foreground group-hover:text-foreground shrink-0" />
+            : <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-foreground shrink-0" />}
+        </button>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* KPI: tasa 90d (global o scoped al cliente) */}
-        <RateKPI loading={loadingRate} rate={rate} />
+      {expanded && (
+        <CardContent id="reopens-panel-body" className="space-y-4">
+          {/* KPI: tasa 90d (global o scoped al cliente) */}
+          <RateKPI loading={loadingRate} rate={rate} />
 
-        {/* Sub-tabs — "Por cliente" se oculta cuando ya estamos scoped a un cliente */}
-        <Tabs value={scope} onValueChange={(v) => setScope(v as ReopenScope)}>
-          <TabsList className={cn("grid w-full h-8", isScoped ? "grid-cols-2" : "grid-cols-3")}>
-            {!isScoped && (
-              <TabsTrigger value="cliente" className="text-xs gap-1">
-                <Building2 className="h-3 w-3" /> Por cliente
+          {/* Sub-tabs — "Por cliente" se oculta cuando ya estamos scoped a un cliente */}
+          <Tabs value={scope} onValueChange={(v) => setScope(v as ReopenScope)}>
+            <TabsList className={cn("grid w-full h-8", isScoped ? "grid-cols-2" : "grid-cols-3")}>
+              {!isScoped && (
+                <TabsTrigger value="cliente" className="text-xs gap-1">
+                  <Building2 className="h-3 w-3" /> Por cliente
+                </TabsTrigger>
+              )}
+              <TabsTrigger value="tecnico" className="text-xs gap-1">
+                <UserIcon className="h-3 w-3" /> Por técnico
               </TabsTrigger>
-            )}
-            <TabsTrigger value="tecnico" className="text-xs gap-1">
-              <UserIcon className="h-3 w-3" /> Por técnico
-            </TabsTrigger>
-            <TabsTrigger value="producto" className="text-xs gap-1">
-              <Package className="h-3 w-3" /> Por producto
-            </TabsTrigger>
-          </TabsList>
+              <TabsTrigger value="producto" className="text-xs gap-1">
+                <Package className="h-3 w-3" /> Por producto
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value={scope} className="mt-3">
-            <TopList scope={scope} clientId={clientId} />
-          </TabsContent>
-        </Tabs>
-      </CardContent>
+            <TabsContent value={scope} className="mt-3">
+              <TopList scope={scope} clientId={clientId} />
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      )}
     </Card>
   );
 }

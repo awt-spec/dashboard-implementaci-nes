@@ -96,7 +96,19 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
   const [transferring, setTransferring] = useState(false);
   const [newTicketOpen, setNewTicketOpen] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>("inbox");
+  // Tab activo persistido — sobrevive cambio de pestaña del navegador y
+  // remounts por TOKEN_REFRESHED de Supabase Auth. Feedback COO 30/04.
+  const TAB_STORAGE_KEY = "sva-erp:support-active-tab";
+  const [activeTab, setActiveTabState] = useState<string>(() => {
+    try {
+      const v = localStorage.getItem(TAB_STORAGE_KEY);
+      return v === "inbox" || v === "explorar" ? v : "inbox";
+    } catch { return "inbox"; }
+  });
+  const setActiveTab = (t: string) => {
+    setActiveTabState(t);
+    try { localStorage.setItem(TAB_STORAGE_KEY, t); } catch {}
+  };
 
   const isClientView = !!initialClientId;
 
