@@ -25,12 +25,32 @@ import { supabase } from "@/integrations/supabase/client";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { useSLASummary } from "@/hooks/useSLASummary";
 
+// Key para persistir la sección activa entre tabs/refreshes (feedback COO 30/04:
+// "cuando cambio a otra ventana se me devuelve al resumen ejecutivo").
+// El re-render disparado por Supabase Auth.onAuthStateChange (TOKEN_REFRESHED al
+// volver a la pestaña) reseteaba el useState. Persistimos en localStorage para
+// recuperar la posición al recargar/cambiar focus.
+const ACTIVE_SECTION_KEY = "sva-erp:active-section";
+
+function readPersistedSection(): string {
+  try {
+    const v = localStorage.getItem(ACTIVE_SECTION_KEY);
+    return v && v.length > 0 && v.length < 200 ? v : "overview";
+  } catch { return "overview"; }
+}
+
 const Index = () => {
   const { role, user } = useAuth();
   useActivityTracker();
   const { data: slaSummary } = useSLASummary();
-  const [activeSection, setActiveSection] = useState("overview");
+  const [activeSection, setActiveSectionState] = useState<string>(readPersistedSection);
   const [didLandRedirect, setDidLandRedirect] = useState(false);
+
+  // Wrapper que persiste cada cambio. Reemplaza el setState directo en todo el componente.
+  const setActiveSection = (section: string) => {
+    setActiveSectionState(section);
+    try { localStorage.setItem(ACTIVE_SECTION_KEY, section); } catch { /* quota / private mode */ }
+  };
 
   // gerente_soporte aterriza directo en "soporte" (su área principal).
   // Se ejecuta cuando role llega del backend.

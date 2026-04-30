@@ -40,6 +40,8 @@ interface Props {
   activeSprints?: UnifiedSprint[];
   /** Si se pasa, el área izquierda de cada row (título + metadata) abre el detalle. */
   onItemClick?: (item: ScrumWorkItem) => void;
+  /** Lista global de owners disponibles (sysdeTeamMembers + responsables actuales). */
+  availableOwners?: string[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -65,13 +67,14 @@ function EmptyBacklog({ hasActiveFilters }: { hasActiveFilters: boolean }) {
 }
 
 function ItemRow({
-  item, idx, onChangeStatus, activeSprints, onItemClick,
+  item, idx, onChangeStatus, activeSprints, onItemClick, availableOwners,
 }: {
   item: ScrumWorkItem;
   idx?: number;
   onChangeStatus: (i: ScrumWorkItem, s: string) => void;
   activeSprints?: UnifiedSprint[];
   onItemClick?: (item: ScrumWorkItem) => void;
+  availableOwners?: string[];
 }) {
   const updateScrum = useUpdateWorkItemScrum();
   // Filtra sprints del cliente del item (o todos si no hay match)
@@ -90,6 +93,22 @@ function ItemRow({
       toast.success(`Asignado a ${sprintName}`);
     } catch (e: any) {
       toast.error(e.message || "Error asignando a sprint");
+    }
+  };
+
+  // Cambio de responsable: para tasks (impl) actualiza tasks.owner;
+  // para tickets (soporte) actualiza support_tickets.responsable.
+  // Ambas tablas se invalidan automáticamente vía useUpdateWorkItemScrum.
+  const changeOwner = async (newOwner: string) => {
+    const value = newOwner === "__unassign__" ? null : newOwner;
+    const updates = item.source === "task"
+      ? { owner: value || "—" }
+      : { responsable: value };
+    try {
+      await updateScrum.mutateAsync({ id: item.id, source: item.source, updates });
+      toast.success(value ? `Asignado a ${value}` : "Sin asignar");
+    } catch (e: any) {
+      toast.error(e.message || "Error cambiando responsable");
     }
   };
 
@@ -116,7 +135,6 @@ function ItemRow({
           {item.client_name}
         </span>
       )}
-      <span className="text-xs text-muted-foreground shrink-0 hidden lg:inline">{item.owner || "—"}</span>
       <div className="flex items-center gap-1 shrink-0">
         <Badge variant="outline" className="text-[11px] tabular-nums">V:{item.business_value ?? "—"}</Badge>
         <Badge variant="outline" className="text-[11px] tabular-nums">E:{item.effort ?? "—"}</Badge>
@@ -141,6 +159,27 @@ function ItemRow({
       ) : (
         <>{leftContent}</>
       )}
+      {/* Cambiar responsable — feedback COO 30/04 */}
+      <Select
+        value={item.owner && item.owner !== "—" ? item.owner : "__unassign__"}
+        onValueChange={changeOwner}
+      >
+        <SelectTrigger className="h-7 w-[140px] text-[11px] shrink-0" title="Cambiar responsable">
+          <SelectValue placeholder="Sin asignar" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="__unassign__" className="text-xs italic text-muted-foreground">Sin asignar</SelectItem>
+          {(availableOwners || [])
+            .filter(o => o && o !== "—")
+            .filter((o, i, arr) => arr.indexOf(o) === i)
+            .sort()
+            .map(o => <SelectItem key={o} value={o} className="text-xs">{o}</SelectItem>)}
+          {/* Si el current owner no está en la lista (puede pasar con datos legacy), lo añadimos */}
+          {item.owner && item.owner !== "—" && !(availableOwners || []).includes(item.owner) && (
+            <SelectItem value={item.owner} className="text-xs italic">{item.owner} (actual)</SelectItem>
+          )}
+        </SelectContent>
+      </Select>
       <Select value={item.scrum_status || "backlog"} onValueChange={v => onChangeStatus(item, v)}>
         <SelectTrigger className="h-7 w-[120px] text-[11px] shrink-0"><SelectValue /></SelectTrigger>
         <SelectContent>
@@ -174,22 +213,23 @@ function ItemRow({
 // Vistas
 // ─────────────────────────────────────────────────────────────────────────
 
-function ListView({ items, onChangeStatus, activeSprints, onItemClick }: { items: ScrumWorkItem[]; onChangeStatus: Props["onChangeStatus"]; activeSprints?: UnifiedSprint[]; onItemClick?: Props["onItemClick"] }) {
+function ListView({ items, onChangeStatus, activeSprints, onItemClick, availableOwners }: { items: ScrumWorkItem[]; onChangeStatus: Props["onChangeStatus"]; activeSprints?: UnifiedSprint[]; onItemClick?: Props["onItemClick"]; availableOwners?: string[] }) {
   return (
     <div className="space-y-1 max-h-[640px] overflow-auto pr-1">
-      {items.map((item, idx) => <ItemRow key={`${item.source}-${item.id}`} item={item} idx={idx} onChangeStatus={onChangeStatus} activeSprints={activeSprints} onItemClick={onItemClick} />)}
+      {items.map((item, idx) => <ItemRow key={`${item.source}-${item.id}`} item={item} idx={idx} onChangeStatus={onChangeStatus} activeSprints={activeSprints} onItemClick={onItemClick} availableOwners={availableOwners} />)}
     </div>
   );
 }
 
 function GroupedView({
-  items, groupBy, onChangeStatus, activeSprints, onItemClick,
+  items, groupBy, onChangeStatus, activeSprints, onItemClick, availableOwners,
 }: {
   items: ScrumWorkItem[];
   groupBy: (item: ScrumWorkItem) => string;
   onChangeStatus: Props["onChangeStatus"];
   activeSprints?: UnifiedSprint[];
   onItemClick?: Props["onItemClick"];
+  availableOwners?: string[];
 }) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const groups = useMemo(() => {
@@ -239,7 +279,7 @@ function GroupedView({
             {!isCollapsed && (
               <div className="p-2 space-y-1 bg-card">
                 {g.items.map((item, idx) => (
-                  <ItemRow key={`${item.source}-${item.id}`} item={item} idx={idx} onChangeStatus={onChangeStatus} activeSprints={activeSprints} onItemClick={onItemClick} />
+                  <ItemRow key={`${item.source}-${item.id}`} item={item} idx={idx} onChangeStatus={onChangeStatus} activeSprints={activeSprints} onItemClick={onItemClick} availableOwners={availableOwners} />
                 ))}
               </div>
             )}
@@ -317,7 +357,15 @@ const VIEWS: Array<{ value: ViewMode; label: string; Icon: LucideIcon; title: st
   { value: "table",     label: "Tabla",          Icon: TableIcon,  title: "Vista compacta" },
 ];
 
-export function BacklogView({ items, hasActiveFilters, onChangeStatus, activeSprints, onItemClick }: Props) {
+export function BacklogView({ items, hasActiveFilters, onChangeStatus, activeSprints, onItemClick, availableOwners }: Props) {
+  // Si el padre no provee la lista de owners, derivamos de los items presentes
+  // (al menos podemos asignar entre los responsables que ya existen).
+  const ownersFromItems = useMemo(() => {
+    const set = new Set<string>();
+    items.forEach(i => { if (i.owner && i.owner !== "—") set.add(i.owner); });
+    return Array.from(set);
+  }, [items]);
+  const owners = availableOwners && availableOwners.length > 0 ? availableOwners : ownersFromItems;
   const [view, setView] = useState<ViewMode>("list");
   const current = VIEWS.find(v => v.value === view)!;
 
@@ -357,11 +405,11 @@ export function BacklogView({ items, hasActiveFilters, onChangeStatus, activeSpr
         {items.length === 0 ? (
           <EmptyBacklog hasActiveFilters={hasActiveFilters} />
         ) : view === "list" ? (
-          <ListView items={items} onChangeStatus={onChangeStatus} activeSprints={activeSprints} onItemClick={onItemClick} />
+          <ListView items={items} onChangeStatus={onChangeStatus} activeSprints={activeSprints} onItemClick={onItemClick} availableOwners={owners} />
         ) : view === "by-client" ? (
-          <GroupedView items={items} groupBy={(i) => i.client_name || "Sin cliente"} onChangeStatus={onChangeStatus} activeSprints={activeSprints} onItemClick={onItemClick} />
+          <GroupedView items={items} groupBy={(i) => i.client_name || "Sin cliente"} onChangeStatus={onChangeStatus} activeSprints={activeSprints} onItemClick={onItemClick} availableOwners={owners} />
         ) : view === "by-owner" ? (
-          <GroupedView items={items} groupBy={(i) => (i.owner && i.owner !== "—") ? i.owner : "Sin responsable"} onChangeStatus={onChangeStatus} activeSprints={activeSprints} onItemClick={onItemClick} />
+          <GroupedView items={items} groupBy={(i) => (i.owner && i.owner !== "—") ? i.owner : "Sin responsable"} onChangeStatus={onChangeStatus} activeSprints={activeSprints} onItemClick={onItemClick} availableOwners={owners} />
         ) : (
           <TableView items={items} onChangeStatus={onChangeStatus} onItemClick={onItemClick} />
         )}

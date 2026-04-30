@@ -24,20 +24,29 @@ import { useTicketsSLAStatus } from "@/hooks/useTicketsSLAStatus";
 import { useAuth } from "@/hooks/useAuth";
 import { TicketDetailSheet } from "./TicketDetailSheet";
 
-// ─── Hook: tickets "en bandeja" (PENDIENTE, ordenados por creación) ─────
+// ─── Hook: tickets "en bandeja" ──────────────────────────────────────────
+// Por default mostramos los estados activos (PENDIENTE + EN ATENCIÓN). Cuando
+// el usuario activa el filtro "Cerrados" o "Histórico", el hook se reactiva
+// con el set expandido. Feedback COO 30/04: "cuando cierro un caso, ¿dónde
+// lo veo?". La respuesta es ahora el chip "Cerrados" en la toolbar.
+const ACTIVE_STATES = ["PENDIENTE", "EN ATENCIÓN"];
+const CLOSED_STATES = ["CERRADA", "ANULADA", "ENTREGADA", "APROBADA"];
+const ALL_STATES = [
+  ...ACTIVE_STATES, ...CLOSED_STATES,
+  "VALORACIÓN", "COTIZADA", "POR CERRAR", "ON HOLD",
+];
 
-const INBOX_STATES = ["PENDIENTE", "EN ATENCIÓN"];
-
-function useInboxTickets() {
+function useInboxTickets(includeHistory: boolean) {
   return useQuery({
-    queryKey: ["support-inbox"],
+    queryKey: ["support-inbox", includeHistory ? "all" : "active"],
     queryFn: async () => {
+      const states = includeHistory ? ALL_STATES : ACTIVE_STATES;
       const { data, error } = await (supabase
         .from("support_tickets")
         .select("*") as any)
-        .in("estado", INBOX_STATES)
-        .order("created_at", { ascending: false })
-        .limit(200);
+        .in("estado", states)
+        .order("updated_at", { ascending: false })
+        .limit(includeHistory ? 500 : 200);
       if (error) throw error;
       return (data || []) as SupportTicket[];
     },
@@ -75,7 +84,9 @@ interface Props {
 // ─── Componente principal ───────────────────────────────────────────────
 
 export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
-  const { data: tickets = [], isLoading, refetch } = useInboxTickets();
+  // Cargamos histórico solo cuando el filtro lo pide — keeps default light.
+  const includeHistory = quickFilter === "cerrados";
+  const { data: tickets = [], isLoading, refetch } = useInboxTickets(includeHistory);
   const { data: clients = [] } = useSupportClients();
   // SLA con jerarquía: cliente override > política global. Sólo el server-side
   // sabe si un ticket cae bajo override del cliente o bajo política v4.5.
@@ -90,7 +101,7 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
   const [detailOpen, setDetailOpen] = useState(false);
 
   // UX controls
-  const [quickFilter, setQuickFilter] = useState<"all" | "critical" | "new24h" | "cliente" | "pendiente" | "enatencion" | "sla_overdue" | "sla_warning" | "reincidentes">("all");
+  const [quickFilter, setQuickFilter] = useState<"all" | "critical" | "new24h" | "cliente" | "pendiente" | "enatencion" | "sla_overdue" | "sla_warning" | "reincidentes" | "cerrados">("all");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"priority" | "age" | "client">("priority");
   const [groupBy, setGroupBy] = useState<"cliente" | "prioridad" | "estado" | "antiguedad" | "sla" | "flat">("cliente");
@@ -142,6 +153,8 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
       if (quickFilter === "sla_overdue" && slaByTicketId.get(t.id)?.status !== "overdue") return false;
       if (quickFilter === "sla_warning" && slaByTicketId.get(t.id)?.status !== "warning") return false;
       if (quickFilter === "reincidentes" && (t.reopen_count ?? 0) < 2) return false;
+      // Filtro Cerrados — solo estados de cierre / entrega final
+      if (quickFilter === "cerrados" && !["CERRADA","ANULADA","ENTREGADA","APROBADA"].includes(t.estado)) return false;
       if (q && !(t.ticket_id?.toLowerCase().includes(q) || t.asunto?.toLowerCase().includes(q))) return false;
       return true;
     });
@@ -440,6 +453,8 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
     { key: "pendiente",    label: "PENDIENTE",     count: totalPending,         Icon: Clock,          tone: "text-warning" },
     { key: "enatencion",   label: "EN ATENCIÓN",   count: totalEnAtencion,      Icon: AlertTriangle,  tone: "text-info" },
     { key: "reincidentes", label: "Reincidentes (≥2)", count: totalReincidentes, Icon: RotateCcw,     tone: "text-warning", emphasis: totalReincidentes > 0 },
+    // Histórico — abre la query expandida para ver CERRADA/ANULADA/ENTREGADA/APROBADA
+    { key: "cerrados",     label: "Cerrados",      count: includeHistory ? scopedTickets.filter(t => ["CERRADA","ANULADA","ENTREGADA","APROBADA"].includes(t.estado)).length : 0, Icon: CheckCheck, tone: "text-muted-foreground" },
   ];
 
   const hasActiveFilters = quickFilter !== "all" || search.trim().length > 0;
