@@ -566,8 +566,22 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
           )}
 
           {/* Panel de Reincidencias / Inconformidades — feedback de María (COO).
-              Detecta patrones de QA: técnicos / productos / clientes con más vueltas. */}
-          <ReopensInsightsPanel clientId={isClientView ? initialClientId : (selectedClient !== "all" ? selectedClient : undefined)} />
+              Detecta patrones de QA: técnicos / productos / clientes con más vueltas.
+              Cuando hay cliente activo (initialClientId o selectedClient !== "all"),
+              el panel se scope a ese cliente — KPI + listas filtradas, oculta sub-tab
+              "Por cliente" (no aporta — solo hay 1). */}
+          {(() => {
+            const scopedClientId = isClientView ? initialClientId : (selectedClient !== "all" ? selectedClient : undefined);
+            const scopedClientName = scopedClientId
+              ? (isClientView ? clientName(initialClientId) : selectedClientName)
+              : undefined;
+            return (
+              <ReopensInsightsPanel
+                clientId={scopedClientId}
+                clientName={scopedClientName}
+              />
+            );
+          })()}
 
 
           <InsightsGuidedView

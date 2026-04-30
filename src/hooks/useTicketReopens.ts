@@ -102,13 +102,16 @@ export interface TopReincidente {
   reopen_rate_90d_pct: number;
 }
 
-export function useTopReincidentes(scope: ReopenScope, limit: number = 10) {
+export function useTopReincidentes(scope: ReopenScope, limit: number = 10, clientId?: string) {
   return useQuery({
-    queryKey: ["top-reincidentes", scope, limit],
+    queryKey: ["top-reincidentes", scope, limit, clientId ?? "all"],
     queryFn: async () => {
       // Necesitamos joinear con clients para mostrar nombre, no UUID
+      // Si hay clientId, filtrar la summary view por ese cliente
+      let summaryQuery = (supabase.from("support_reopens_summary").select("*") as any);
+      if (clientId) summaryQuery = summaryQuery.eq("client_id", clientId);
       const [{ data: rows, error }, { data: clients }] = await Promise.all([
-        (supabase.from("support_reopens_summary").select("*") as any),
+        summaryQuery,
         (supabase.from("clients").select("id,name") as any),
       ]);
       if (error) throw error;
@@ -158,16 +161,18 @@ export function useTopReincidentes(scope: ReopenScope, limit: number = 10) {
 }
 
 /**
- * Métrica global: tasa de reapertura últimos 90 días.
- * Usa la view directamente y agrega global.
+ * Métrica: tasa de reapertura últimos 90 días.
+ * Si se pasa clientId, scope al cliente. Si no, agrega global.
  */
-export function useReopenRate90d() {
+export function useReopenRate90d(clientId?: string) {
   return useQuery({
-    queryKey: ["reopen-rate-90d"],
+    queryKey: ["reopen-rate-90d", clientId ?? "all"],
     queryFn: async () => {
-      const { data, error } = await (supabase
+      let q = (supabase
         .from("support_reopens_summary")
         .select("reopens_real_90d, entregados_90d") as any);
+      if (clientId) q = q.eq("client_id", clientId);
+      const { data, error } = await q;
       if (error) throw error;
       const rows = (data || []) as Array<{
         reopens_real_90d: number;

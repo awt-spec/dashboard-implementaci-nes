@@ -2,10 +2,16 @@
  * ReopensInsightsPanel — el "panel de QA gaps" que pidió María.
  *
  * KPI superior: tasa de reapertura últimos 90d.
- * 3 sub-tabs: por cliente · por técnico · por producto.
+ * Sub-tabs: por cliente (oculto si scoped) · por técnico · por producto.
  *
  * Excluye reopen_type='historico' del cálculo de tasa real (esos son
  * pre-instalación del sistema, no son patrón actual).
+ *
+ * Cuando recibe `clientId`, todo el panel se scope a ese cliente:
+ *   • KPI = tasa de ese cliente
+ *   • TopList = filtra por client_id
+ *   • Sub-tab "Por cliente" se oculta (no aporta — solo hay 1)
+ *   • Default scope = "tecnico" (lo más útil cuando estás en un cliente)
  */
 import { useState } from "react";
 import { RotateCcw, TrendingDown, TrendingUp, AlertTriangle, Loader2, Building2, User as UserIcon, Package } from "lucide-react";
@@ -18,33 +24,44 @@ import { cn } from "@/lib/utils";
 
 interface Props {
   clientId?: string;
+  /** Nombre del cliente para mostrar en el header cuando hay scope. */
+  clientName?: string;
 }
 
-export function ReopensInsightsPanel({ clientId }: Props) {
-  const { data: rate, isLoading: loadingRate } = useReopenRate90d();
-  const [scope, setScope] = useState<ReopenScope>("cliente");
+export function ReopensInsightsPanel({ clientId, clientName }: Props) {
+  const isScoped = !!clientId;
+  // Cuando estamos scoped a un cliente, "Por cliente" no aporta — default a "Por técnico"
+  const [scope, setScope] = useState<ReopenScope>(isScoped ? "tecnico" : "cliente");
+  const { data: rate, isLoading: loadingRate } = useReopenRate90d(clientId);
 
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-sm flex items-center gap-2">
+        <CardTitle className="text-sm flex items-center gap-2 flex-wrap">
           <RotateCcw className="h-4 w-4 text-warning" />
           Reincidencias / Inconformidades
+          {isScoped && clientName && (
+            <Badge variant="outline" className="text-[10px] gap-1 bg-primary/5 text-primary border-primary/30">
+              <Building2 className="h-2.5 w-2.5" /> {clientName}
+            </Badge>
+          )}
           <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-normal ml-auto">
             Excluye histórico pre-instalación
           </span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* KPI: tasa global 90d */}
+        {/* KPI: tasa 90d (global o scoped al cliente) */}
         <RateKPI loading={loadingRate} rate={rate} />
 
-        {/* 3 sub-tabs */}
+        {/* Sub-tabs — "Por cliente" se oculta cuando ya estamos scoped a un cliente */}
         <Tabs value={scope} onValueChange={(v) => setScope(v as ReopenScope)}>
-          <TabsList className="grid w-full grid-cols-3 h-8">
-            <TabsTrigger value="cliente" className="text-xs gap-1">
-              <Building2 className="h-3 w-3" /> Por cliente
-            </TabsTrigger>
+          <TabsList className={cn("grid w-full h-8", isScoped ? "grid-cols-2" : "grid-cols-3")}>
+            {!isScoped && (
+              <TabsTrigger value="cliente" className="text-xs gap-1">
+                <Building2 className="h-3 w-3" /> Por cliente
+              </TabsTrigger>
+            )}
             <TabsTrigger value="tecnico" className="text-xs gap-1">
               <UserIcon className="h-3 w-3" /> Por técnico
             </TabsTrigger>
@@ -54,7 +71,7 @@ export function ReopensInsightsPanel({ clientId }: Props) {
           </TabsList>
 
           <TabsContent value={scope} className="mt-3">
-            <TopList scope={scope} />
+            <TopList scope={scope} clientId={clientId} />
           </TabsContent>
         </Tabs>
       </CardContent>
@@ -110,8 +127,8 @@ function RateKPI({
   );
 }
 
-function TopList({ scope }: { scope: ReopenScope }) {
-  const { data: items, isLoading } = useTopReincidentes(scope, 8);
+function TopList({ scope, clientId }: { scope: ReopenScope; clientId?: string }) {
+  const { data: items, isLoading } = useTopReincidentes(scope, 8, clientId);
 
   if (isLoading) {
     return (
