@@ -27,7 +27,7 @@ import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useAllSupportTickets, type SupportTicket } from "@/hooks/useSupportTickets";
-import { useTicketsSLAStatus } from "@/hooks/useSupportTickets";
+import { useTicketsSLAStatus } from "@/hooks/useTicketsSLAStatus";
 import { ReopensInsightsPanel } from "./ReopensInsightsPanel";
 import { TicketDetailSheet } from "./TicketDetailSheet";
 import { ReopenBadge } from "./ReopenBadge";
