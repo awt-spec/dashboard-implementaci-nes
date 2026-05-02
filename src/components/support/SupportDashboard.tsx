@@ -34,6 +34,7 @@ import { ClientStrategyPanel } from "./ClientStrategyPanel";
 import { DevOpsPanel } from "./DevOpsPanel";
 import { NewTicketForm } from "./NewTicketForm";
 import { SupportInbox } from "./SupportInbox";
+import { ClientSupportView } from "./ClientSupportView";
 import { ExportTicketsMenu } from "./ExportTicketsMenu";
 import { Plus, Inbox, Folder, Settings, BarChart3, Database, Briefcase } from "lucide-react";
 import { ActivePolicyBar } from "@/components/policy/ActivePolicyBar";
@@ -533,19 +534,24 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
         title="Política v4.5 aplicada a esta operación"
       />
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      {/* En CLIENT VIEW renderizamos un layout completamente distinto a la
+          bandeja triage — feedback COO 30/04: "que sea diferente, adaptado
+          al cliente, refleje lo necesario en la cancha". KPIs específicos +
+          casos agrupados por estado del flujo + insights inline + histórico. */}
+      {isClientView ? (
+        <ClientSupportView
+          clientId={initialClientId!}
+          clientName={clientName(initialClientId)}
+          onNewTicket={() => setNewTicketOpen(true)}
+        />
+      ) : (
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="flex-wrap">
-          {/* Tab principal: "Bandeja" en vista global (triage cross-cliente)
-              vs "Casos" en vista cliente (lista enfocada del cliente activo).
-              Feedback COO 30/04: la bandeja no aplica al perfil de un cliente. */}
           <TabsTrigger value="inbox" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            {isClientView
-              ? <><Folder className="h-3.5 w-3.5" /> Casos</>
-              : <><Inbox className="h-3.5 w-3.5" /> Bandeja</>}
+            <Inbox className="h-3.5 w-3.5" /> Bandeja
             {(() => {
               const inboxCount = allTickets.filter(t =>
                 ["PENDIENTE", "EN ATENCIÓN"].includes(t.estado) &&
-                (!isClientView || t.client_id === initialClientId) &&
                 (selectedClient === "all" || t.client_id === selectedClient)
               ).length;
               return inboxCount > 0 ? (
@@ -554,16 +560,14 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
             })()}
           </TabsTrigger>
           <TabsTrigger value="explorar" className="gap-1.5">
-            <Sparkles className="h-3.5 w-3.5" />
-            {isClientView ? "Insights" : "Explorar"}
+            <Sparkles className="h-3.5 w-3.5" /> Explorar
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="inbox" className="mt-4">
           <SupportInbox
-            clientId={isClientView ? initialClientId : (selectedClient !== "all" ? selectedClient : undefined)}
-            clientName={isClientView ? clientName(initialClientId) : undefined}
-            mode={isClientView ? "client" : "inbox"}
+            clientId={selectedClient !== "all" ? selectedClient : undefined}
+            mode="inbox"
             onNewTicket={() => setNewTicketOpen(true)}
           />
         </TabsContent>
@@ -620,6 +624,7 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
 
 
       </Tabs>
+      )}
 
       {/* ============ CONFIGURACIÓN (gear button): Comercial + Datos & Sync ============ */}
       <Sheet open={configOpen} onOpenChange={setConfigOpen}>
