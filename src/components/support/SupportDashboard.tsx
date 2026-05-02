@@ -35,7 +35,7 @@ import { DevOpsPanel } from "./DevOpsPanel";
 import { NewTicketForm } from "./NewTicketForm";
 import { SupportInbox } from "./SupportInbox";
 import { ExportTicketsMenu } from "./ExportTicketsMenu";
-import { Plus, Inbox, Settings, BarChart3, Database, Briefcase } from "lucide-react";
+import { Plus, Inbox, Folder, Settings, BarChart3, Database, Briefcase } from "lucide-react";
 import { ActivePolicyBar } from "@/components/policy/ActivePolicyBar";
 import { SLAByClientPanel } from "./SLAByClientPanel";
 import { ReopensInsightsPanel } from "./ReopensInsightsPanel";
@@ -535,8 +535,13 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="flex-wrap">
+          {/* Tab principal: "Bandeja" en vista global (triage cross-cliente)
+              vs "Casos" en vista cliente (lista enfocada del cliente activo).
+              Feedback COO 30/04: la bandeja no aplica al perfil de un cliente. */}
           <TabsTrigger value="inbox" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            <Inbox className="h-3.5 w-3.5" /> Bandeja
+            {isClientView
+              ? <><Folder className="h-3.5 w-3.5" /> Casos</>
+              : <><Inbox className="h-3.5 w-3.5" /> Bandeja</>}
             {(() => {
               const inboxCount = allTickets.filter(t =>
                 ["PENDIENTE", "EN ATENCIÓN"].includes(t.estado) &&
@@ -549,13 +554,16 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
             })()}
           </TabsTrigger>
           <TabsTrigger value="explorar" className="gap-1.5">
-            <Sparkles className="h-3.5 w-3.5" /> Explorar
+            <Sparkles className="h-3.5 w-3.5" />
+            {isClientView ? "Insights" : "Explorar"}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="inbox" className="mt-4">
           <SupportInbox
             clientId={isClientView ? initialClientId : (selectedClient !== "all" ? selectedClient : undefined)}
+            clientName={isClientView ? clientName(initialClientId) : undefined}
+            mode={isClientView ? "client" : "inbox"}
             onNewTicket={() => setNewTicketOpen(true)}
           />
         </TabsContent>

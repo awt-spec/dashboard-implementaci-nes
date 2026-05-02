@@ -76,6 +76,14 @@ function sourceIcon(fuente?: string | null) {
 interface Props {
   /** Si se especifica, solo muestra tickets de ese cliente. */
   clientId?: string;
+  /** Nombre del cliente para mostrar en el título cuando mode='client'. */
+  clientName?: string;
+  /** mode='client' adapta UI para vista de un solo cliente:
+   *  • Título "Casos de [Cliente]" en lugar de "Bandeja"
+   *  • Default groupBy='estado' (no 'cliente' — solo hay 1)
+   *  • Oculta opción "Por cliente" del groupBy select
+   *  • Quita filtros que no aportan en single-client (ej. agrupado por cliente) */
+  mode?: "inbox" | "client";
   onOpenTicket?: (ticket: SupportTicket) => void;
   /** Callback opcional para crear un nuevo caso (botón en header). */
   onNewTicket?: () => void;
@@ -83,14 +91,20 @@ interface Props {
 
 // ─── Componente principal ───────────────────────────────────────────────
 
-export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
+export function SupportInbox({ clientId, clientName, mode = "inbox", onOpenTicket, onNewTicket }: Props) {
+  const isClientMode = mode === "client";
+
   // UX controls — declarados PRIMERO porque otros derivados (includeHistory)
   // dependen de quickFilter. Mover esto abajo causa ReferenceError (TDZ) y
   // pantalla en blanco — bug detectado 30/04 al introducir el chip "Cerrados".
   const [quickFilter, setQuickFilter] = useState<"all" | "critical" | "new24h" | "cliente" | "pendiente" | "enatencion" | "sla_overdue" | "sla_warning" | "reincidentes" | "cerrados">("all");
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<"priority" | "age" | "client">("priority");
-  const [groupBy, setGroupBy] = useState<"cliente" | "prioridad" | "estado" | "antiguedad" | "sla" | "flat">("cliente");
+  // Default sort: prioridad en bandeja triage; antigüedad en vista cliente
+  // (un solo cliente, no compite con otros — antigüedad es la señal natural).
+  const [sortBy, setSortBy] = useState<"priority" | "age" | "client">(isClientMode ? "age" : "priority");
+  // Default groupBy: por cliente en bandeja, por estado en client view (no
+  // tiene sentido agrupar por cliente cuando solo hay 1).
+  const [groupBy, setGroupBy] = useState<"cliente" | "prioridad" | "estado" | "antiguedad" | "sla" | "flat">(isClientMode ? "estado" : "cliente");
 
   // Cargamos histórico solo cuando el filtro lo pide — keeps default light.
   const includeHistory = quickFilter === "cerrados";
@@ -490,9 +504,14 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
             <Inbox className="h-4.5 w-4.5 text-primary" />
           </div>
           <div>
-            <h2 className="text-base font-bold">Bandeja de Entrada</h2>
+            <h2 className="text-base font-bold">
+              {isClientMode && clientName
+                ? `Casos de ${clientName}`
+                : "Bandeja de Entrada"}
+            </h2>
             <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-              <Radio className="h-3 w-3 text-success animate-pulse" /> Escuchando en vivo
+              <Radio className="h-3 w-3 text-success animate-pulse" />
+              {isClientMode ? `${scopedTickets.length} casos · sincronizado en vivo` : "Escuchando en vivo"}
             </p>
           </div>
         </div>
@@ -691,7 +710,9 @@ export function SupportInbox({ clientId, onOpenTicket, onNewTicket }: Props) {
               </p>
               <div className="grid grid-cols-1 gap-0.5">
                 {[
-                  { v: "cliente" as const,    Icon: Building2,     label: "Cliente",    hint: "Cada cliente es un grupo" },
+                  // "Cliente" se oculta en modo client view — no aporta agrupar
+                  // por cliente cuando solo hay 1 cliente activo.
+                  ...(isClientMode ? [] : [{ v: "cliente" as const, Icon: Building2, label: "Cliente", hint: "Cada cliente es un grupo" }]),
                   { v: "prioridad" as const,  Icon: Flame,         label: "Prioridad",  hint: "Crítica → Alta → Media → Baja" },
                   { v: "estado" as const,     Icon: AlertTriangle, label: "Estado",     hint: "PENDIENTE → EN ATENCIÓN" },
                   { v: "sla" as const,        Icon: Clock,         label: "Plazo",      hint: "Vencidos → En riesgo → OK · separa Política vs SLA cliente" },
