@@ -63,7 +63,7 @@ export function exportReportPdf({ mode, sections, client, clients = [] }: Export
   doc.save(filename);
 }
 
-function exportResumenSections(doc: jsPDF, sections: ReportSection[], margin: number, contentW: number, startY: number, checkPage: (n: number) => void, clients: Client[]) {
+function exportResumenSections(doc: jsPDF, sections: ReportSection[], margin: number, _contentW: number, startY: number, checkPage: (n: number) => void, clients: Client[]) {
   let y = startY;
 
   if (sections.includes("kpis")) {
@@ -130,7 +130,7 @@ function exportResumenSections(doc: jsPDF, sections: ReportSection[], margin: nu
   }
 }
 
-function exportClientSections(doc: jsPDF, sections: ReportSection[], client: Client, margin: number, contentW: number, startY: number, checkPage: (n: number) => void) {
+function exportClientSections(doc: jsPDF, sections: ReportSection[], client: Client, margin: number, _contentW: number, startY: number, checkPage: (n: number) => void) {
   let y = startY;
 
   if (sections.includes("client-info")) {

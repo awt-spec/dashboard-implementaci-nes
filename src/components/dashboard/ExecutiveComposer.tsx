@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,8 +8,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  LayoutDashboard, Star, BookmarkPlus, Pin, PinOff, Trash2,
-  Loader2, ChevronRight, ChevronDown, Sparkles, Eye,
+  LayoutDashboard, BookmarkPlus, Pin, PinOff, Trash2,
+  Loader2, ChevronRight, ChevronDown, Eye,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";

@@ -23,7 +23,7 @@ const semaphoreColor: Record<string, string> = {
   overdue: "bg-destructive text-destructive-foreground animate-pulse",
 };
 
-export function CaseCompliancePanel({ ticketId, clientId, onEscalate }: Props) {
+export function CaseCompliancePanel({ ticketId, onEscalate }: Props) {
   const { data: compliance, isLoading } = useCaseCompliance(ticketId);
   const { data: rules } = useBusinessRules();
   const evaluate = useEvaluateCompliance();

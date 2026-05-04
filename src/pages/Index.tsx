@@ -12,7 +12,7 @@ import { ExecutiveOverview } from "@/components/dashboard/ExecutiveOverview";
 //   • TeamScrumDashboard   → sección scrum (admin/pm)
 //   • SupportDashboard     → sección soporte (admin/pm/gerente_soporte)
 //   • ConfigurationHub     → sección config (admin)
-//   • ClientDashboard, ClientList, ClientDetail → sección Implementación
+//   • ClientList, ClientDetail → sección Implementación
 const ColaboradorDashboard    = lazy(() => import("@/pages/ColaboradorDashboard"));
 const CEODashboard            = lazy(() => import("@/components/dashboard/CEODashboard").then(m => ({ default: m.CEODashboard })));
 const ClientPortalDashboard   = lazy(() => import("@/components/dashboard/ClientPortalDashboard").then(m => ({ default: m.ClientPortalDashboard })));
@@ -21,7 +21,6 @@ const GerenteSupportDashboard = lazy(() => import("@/components/dashboard/Gerent
 const TeamScrumDashboard      = lazy(() => import("@/pages/TeamScrumDashboard"));
 const SupportDashboard        = lazy(() => import("@/components/support/SupportDashboard").then(m => ({ default: m.SupportDashboard })));
 const ConfigurationHub        = lazy(() => import("@/components/settings/ConfigurationHub").then(m => ({ default: m.ConfigurationHub })));
-const ClientDashboard         = lazy(() => import("@/components/dashboard/ClientDashboard").then(m => ({ default: m.ClientDashboard })));
 const ClientList              = lazy(() => import("@/components/clients/ClientList").then(m => ({ default: m.ClientList })));
 const ClientDetail            = lazy(() => import("@/components/clients/ClientDetail").then(m => ({ default: m.ClientDetail })));
 

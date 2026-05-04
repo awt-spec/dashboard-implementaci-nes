@@ -16,7 +16,9 @@ export interface WidgetRegistryEntry {
   type: string;
   label: string;
   description: string;
-  icon: string;
+  // El icono puede ser un emoji (string) o un componente Lucide / React.
+  // Esto deja al consumidor elegir entre `"📊"` o `BarChart3` directamente.
+  icon: string | React.ComponentType<{ className?: string }>;
   defaultSize: { w: number; h: number; minW?: number; minH?: number };
   render: () => React.ReactNode;
 }
@@ -27,7 +29,7 @@ interface Props {
 }
 
 export function MondayGridDashboard({ registry, onEditingChange }: Props) {
-  const { data, isLoading, save, reset, defaults } = useColaboradorLayout();
+  const { data, isLoading, save, reset } = useColaboradorLayout();
   const [editing, setEditing] = useState(false);
   const [widgets, setWidgets] = useState<WidgetConfig[]>([]);
   const [layout, setLayout] = useState<WidgetLayoutItem[]>([]);

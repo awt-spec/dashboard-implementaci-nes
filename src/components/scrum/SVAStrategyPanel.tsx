@@ -9,8 +9,6 @@ import {
   Loader2, RefreshCw, Sparkles, Target, TrendingDown, Users, Zap,
   ArrowRight, DollarSign, type LucideIcon,
 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
-import { es } from "date-fns/locale";
 import { toast } from "sonner";
 import { useAllScrumWorkItems, useUpdateWorkItemScrum, type ScrumWorkItem } from "@/hooks/useTeamScrum";
 import { Input } from "@/components/ui/input";

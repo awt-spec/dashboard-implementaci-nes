@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
   Mic, Video, ThumbsUp, ThumbsDown, Minus, Send, Loader2, Square,
-  Play, Pause, Trash2, CheckCircle2, AlertCircle,
+  Trash2, CheckCircle2, 
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";

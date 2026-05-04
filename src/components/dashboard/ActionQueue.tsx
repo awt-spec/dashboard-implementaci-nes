@@ -14,7 +14,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  AlertOctagon, ChevronRight, ShieldAlert, Flame, UserX, Package,
+  AlertOctagon, ShieldAlert, Flame, UserX, Package,
   Clock, Sparkles, ArrowRight, Inbox, RotateCcw,
 } from "lucide-react";
 import { isTicketClosed } from "@/lib/ticketStatus";

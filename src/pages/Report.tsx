@@ -6,13 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import type { ReportSection } from "@/components/dashboard/ShareReportDialog";
 
-const tooltipStyle = {
-  background: "hsl(var(--card))",
-  border: "1px solid hsl(var(--border))",
-  borderRadius: 8,
-  fontSize: 12,
-};
-
 export default function Report() {
   const [params] = useSearchParams();
   const { data: clientsData } = useClients();

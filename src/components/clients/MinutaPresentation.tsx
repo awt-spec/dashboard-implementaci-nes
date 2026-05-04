@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback, useRef, createContext, useContext } from "react";
-import { type Client, type ClientTask, type Phase } from "@/data/projectData";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { type Client, type Phase } from "@/data/projectData";
 import { Button } from "@/components/ui/button";
 import {
   ChevronLeft, ChevronRight, Maximize2, Minimize2, X,
   FileText, Sparkles, ArrowRight, Pencil, Table2, Download,
-  BarChart3, Target, Zap, Clock, CheckCircle2, AlertTriangle, ListChecks
+  BarChart3, Target, Zap, Clock, CheckCircle2, ListChecks
 } from "lucide-react";
 import sysdeLogo from "@/assets/sysde_default_logo.png";
 import { motion, AnimatePresence } from "framer-motion";
@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { ensureTaskInDb } from "@/lib/ensureTaskInDb";
 import { useAllPresentationData } from "@/hooks/usePresentationData";
 import {
-  SlideLayout, ScaledSlide, SysdeLogo, EditableText, EditableCell,
+  SlideLayout, ScaledSlide, SysdeLogo, EditableText, 
   EditDisabledContext,
   extractProgress,
   getMonthRange, getPhaseBarStyle, getCurrentDatePosition,
@@ -34,9 +34,6 @@ interface MinutaPresentationProps {
   onClose: () => void;
   onContinue: () => void;
 }
-
-// Context for fullscreen state (disables editing)
-const PresentationModeContext = createContext(false);
 
 // ── Activity Groups ─────────────────────────────────────
 
@@ -82,8 +79,7 @@ function buildActivityGroups(client: Client): ActivityGroup[] {
 
 // ── Editable Progress Bar ───────────────────────────────
 
-function EditableProgressBar({ item, clientId, onUpdate }: { item: ActivityItem; clientId: string; onUpdate: (taskId: number, newProgress: number) => void }) {
-  const isFullscreenMode = useContext(PresentationModeContext);
+function EditableProgressBar({ item, onUpdate }: { item: ActivityItem; clientId: string; onUpdate: (taskId: number, newProgress: number) => void }) {
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(item.progress.toString());
   const barColor = item.progress === 100 ? "#27ae60" : item.status === "in-progress" ? "#c0392b" : "#e67e22";

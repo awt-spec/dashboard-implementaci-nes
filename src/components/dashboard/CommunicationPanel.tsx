@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,15 +9,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import {
-  MessageSquare, ThumbsUp, Send, Bell, Plus, MessageCircle,
+  MessageSquare, Send, Bell, Plus, MessageCircle,
   Link2, FileCheck, ListTodo, ChevronRight, CheckCircle2,
-  Clock, ArrowLeft, Search, Filter, Pin, PinOff,
-  Sparkles, CornerDownRight, CircleDot, Archive, Inbox,
-  Star, Hash, Zap, Eye, Smile
+  Clock, ArrowLeft, Search, Filter, 
+  Sparkles, CornerDownRight, CircleDot, Inbox,
+  Star, Hash, Zap, Smile
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -354,14 +353,12 @@ export function CommunicationPanel({ client }: CommunicationPanelProps) {
   }));
   const totalMessages = threads.reduce((acc, t) => acc + (t._messageCount || 0), 0);
   const openCount = threads.filter(t => t.status === "abierto").length;
-  const resolvedCount = threads.filter(t => t.status === "resuelto").length;
 
   // ── Thread Detail View (WhatsApp/Teams style) ──
   if (activeThread) {
     const linked = getLinkedLabel(activeThread);
     const catCfg = categoryConfig[activeThread.category] || categoryConfig.general;
     const stCfg = statusConfig[activeThread.status] || statusConfig.abierto;
-    const CatIcon = catCfg.icon;
     const StIcon = stCfg.icon;
     const myName = profile?.full_name || "";
 

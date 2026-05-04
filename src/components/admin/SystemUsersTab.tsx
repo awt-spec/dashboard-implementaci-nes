@@ -13,7 +13,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuTrigger,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -848,7 +848,7 @@ function UserCardComfortable({
   user: UserRow;
   onChangeRole: (role: string) => void;
   onResetPassword: (pwd: string) => Promise<void>;
-  onDelete: () => void;
+  onDelete: () => Promise<void> | void;
   onAssignClients: () => void;
 }) {
   const meta = ROLE_META[u.role as StaffRole];
@@ -978,7 +978,7 @@ function UserRowCompact({
   user: UserRow;
   onChangeRole: (role: string) => void;
   onResetPassword: (pwd: string) => Promise<void>;
-  onDelete: () => void;
+  onDelete: () => Promise<void> | void;
   onAssignClients: () => void;
 }) {
   const meta = ROLE_META[u.role as StaffRole];
@@ -1538,7 +1538,7 @@ function DeleteUserDialog({
   iconOnly,
 }: {
   userEmail: string;
-  onSubmit: () => Promise<void>;
+  onSubmit: () => Promise<void> | void;
   iconOnly?: boolean;
 }) {
   const [submitting, setSubmitting] = useState(false);

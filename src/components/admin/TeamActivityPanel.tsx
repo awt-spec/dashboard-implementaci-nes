@@ -22,7 +22,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { formatDistanceToNow, format, startOfDay } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
 

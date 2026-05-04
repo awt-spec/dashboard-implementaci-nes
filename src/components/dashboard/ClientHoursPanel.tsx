@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Loader2, TrendingUp, User } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { format, startOfMonth, isAfter } from "date-fns";
 import { es } from "date-fns/locale";
 

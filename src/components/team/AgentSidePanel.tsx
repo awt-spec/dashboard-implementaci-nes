@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bot, Sparkles, ChevronRight, ChevronLeft, Maximize2, Minimize2 } from "lucide-react";
+import { Bot, Sparkles, ChevronRight, Maximize2, Minimize2 } from "lucide-react";
 import { MemberAIAgentPanel } from "./MemberAIAgentPanel";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";

@@ -17,7 +17,7 @@ import { useMemo } from "react";
 import { useAllSupportTickets, useSupportClients } from "@/hooks/useSupportTickets";
 import { useTicketsSLAStatus } from "@/hooks/useTicketsSLAStatus";
 import { Card, CardContent } from "@/components/ui/card";
-import { Building2, Lock, AlertTriangle, Clock, ListMinus, ChevronRight } from "lucide-react";
+import { Building2, Lock, AlertTriangle, Clock, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Props {

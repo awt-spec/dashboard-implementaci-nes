@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Building2, Calendar, Hash, Target, X, MoreHorizontal, Link2, Send, Plus } from "lucide-react";
+import { Building2, Calendar, Target, X, MoreHorizontal, Link2, Send, Plus } from "lucide-react";
 import type { ScrumWorkItem } from "@/hooks/useTeamScrum";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";

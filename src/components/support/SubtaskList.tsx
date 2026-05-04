@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import {
   Loader2, Plus, ListChecks, Circle, CheckCircle2, Search, X,
   Target, Eye, DollarSign, Layers, Tag, LayoutList, LayoutGrid,
-  ChevronDown, ChevronUp, Flag, UserCircle2, CalendarDays, AlignLeft,
+  Flag, UserCircle2, CalendarDays, AlignLeft,
   Sparkles,
 } from "lucide-react";
 import { format } from "date-fns";

@@ -1,14 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "react-router-dom";
-import { type Client, type Deliverable, type ClientTask, type ActionItem, type Risk } from "@/data/projectData";
-import { Badge } from "@/components/ui/badge";
+import { type Client } from "@/data/projectData";
 import { Button } from "@/components/ui/button";
 import {
   ChevronLeft, ChevronRight, Maximize2, Minimize2,
-  TrendingUp, AlertTriangle, Package, ListChecks, DollarSign,
-  Clock, CheckCircle2, Circle, Users, FileText, ThumbsUp, ThumbsDown,
-  ArrowRight, Star, Send, Loader2, MessageSquare, ArrowUpDown, GripVertical,
-  Mic, MicOff, Video, VideoOff, StopCircle, Play, Trash2
+  TrendingUp, AlertTriangle, Package, ListChecks, 
+  Clock, CheckCircle2, Circle, ThumbsUp, ThumbsDown,
+  Star, Send, Loader2, MessageSquare, ArrowUpDown, 
+  Mic, Video, StopCircle, Trash2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -107,7 +106,7 @@ function MediaRecorderWidget({ onRecorded, sharedId }: { onRecorded: (url: strin
         // Upload to storage
         setUploading(true);
         const fileName = `${sharedId}/${Date.now()}.webm`;
-        const { data, error } = await supabase.storage.from("presentation-media").upload(fileName, blob);
+        const { error } = await supabase.storage.from("presentation-media").upload(fileName, blob);
         if (error) { toast.error("Error al subir grabación"); setUploading(false); return; }
         const { data: urlData } = supabase.storage.from("presentation-media").getPublicUrl(fileName);
         onRecorded(urlData.publicUrl, type);

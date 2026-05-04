@@ -4,8 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { formatDistanceToNow, format } from "date-fns";
 import { es } from "date-fns/locale";
 import {
-  Sparkles, Loader2, RefreshCw, Target, AlertTriangle, History, Clock,
-  Gauge, CheckCircle2, ShieldAlert, TrendingDown, BookOpen, DollarSign,
+  Sparkles, Loader2, RefreshCw, Target, AlertTriangle, Clock,
+  Gauge, CheckCircle2, ShieldAlert, BookOpen, DollarSign,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";

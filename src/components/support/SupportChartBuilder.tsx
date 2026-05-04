@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
   Tooltip, CartesianGrid, LineChart, Line, AreaChart, Area, RadarChart, Radar,
-  PolarGrid, PolarAngleAxis, PolarRadiusAxis, Legend, Treemap
+  PolarGrid, PolarAngleAxis, PolarRadiusAxis, Treemap
 } from "recharts";
 import type { SupportTicket } from "@/hooks/useSupportTickets";
 

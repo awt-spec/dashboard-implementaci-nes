@@ -1,9 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckSquare, ArrowRight, Calendar, FileText, CheckCircle2, Circle, Loader2 } from "lucide-react";
+import { CheckSquare, ArrowRight, Calendar, FileText, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Minuta {

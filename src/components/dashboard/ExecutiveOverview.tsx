@@ -4,7 +4,7 @@ import { useClients } from "@/hooks/useClients";
 import { useAllSupportTickets, useSupportClients } from "@/hooks/useSupportTickets";
 import { useAuth } from "@/hooks/useAuth";
 // DB is the single source of truth — no static fallback
-import { TrendingUp, CheckCircle, AlertTriangle, Users, Clock, ShieldAlert, Filter, BarChart3, Target, FileCheck, Layers, Loader2, Presentation, AlertOctagon, UserX } from "lucide-react";
+import { TrendingUp, CheckCircle, AlertTriangle, Users, Clock, ShieldAlert, Filter, Target, FileCheck, Layers, Loader2, Presentation, AlertOctagon, UserX } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";

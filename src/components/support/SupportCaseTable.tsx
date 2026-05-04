@@ -5,12 +5,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
-  ChevronDown, Brain, Calendar, User, Tag, FileText,
+  Brain, Calendar, User, Tag, FileText,
   AlertTriangle, Save, Loader2, CheckSquare, ArrowRight, Clock,
   Package, Wrench, Search, Filter, X, Plus, Trash2, Sparkles, Zap,
-  Globe, Lock
 } from "lucide-react";
 import type { SupportTicket, CaseAgreementItem } from "@/hooks/useSupportTickets";
 import { useUpdateSupportTicket } from "@/hooks/useSupportTickets";

@@ -371,7 +371,7 @@ export function SupportInbox({ clientId, clientName, mode = "inbox", onOpenTicke
         { event: "INSERT", schema: "public", table: "support_tickets" },
         (payload) => {
           const t = payload.new as SupportTicket;
-          if (!INBOX_STATES.includes(t.estado)) return;
+          if (!ACTIVE_STATES.includes(t.estado)) return;
           if (clientId && t.client_id !== clientId) return;
 
           const client = clients.find(c => c.id === t.client_id);

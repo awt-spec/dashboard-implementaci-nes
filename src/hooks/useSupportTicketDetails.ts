@@ -51,7 +51,7 @@ export function useCreateTicketSubtask() {
       category?: SubtaskCategory;
       linked_work_item_id?: string | null;
     }) => {
-      const { error } = await supabase.from("support_ticket_subtasks").insert([data]);
+      const { error } = await (supabase.from("support_ticket_subtasks") as any).insert([data]);
       if (error) throw error;
     },
     onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ["ticket-subtasks", v.ticket_id] }),

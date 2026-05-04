@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Plus, Trash2, GripVertical, Table2 } from "lucide-react";
 import { cn } from "@/lib/utils";

@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/tooltip";
 import {
   Activity, Flame, Clock, Package, AlertTriangle, Building2,
-  Eye, Radio, ChevronRight, ChevronDown,
+  Eye, Radio, 
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { isTicketClosed } from "@/lib/ticketStatus";

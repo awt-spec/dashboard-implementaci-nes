@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Factory, GaugeCircle, Workflow, AlertTriangle, ChevronRight, Clock, User } from "lucide-react";
@@ -75,7 +74,7 @@ export function FordLineView({ items, onSelect, onMove, defaultMode = "pipeline"
     return null;
   }, [items, itemsByStation]);
 
-  const handleDrop = (e: React.DragEvent, status: string, owner?: string) => {
+  const handleDrop = (e: React.DragEvent, status: string, _owner?: string) => {
     e.preventDefault();
     const raw = e.dataTransfer.getData("application/json");
     if (!raw || !onMove) return;
@@ -145,7 +144,7 @@ export function FordLineView({ items, onSelect, onMove, defaultMode = "pipeline"
 
 /* ---------- Pipeline (assembly line) ---------- */
 function PipelineView({
-  items, stations, itemsByStation, onSelect, onDragStart, onDrop,
+  stations, itemsByStation, onSelect, onDragStart, onDrop,
 }: any) {
   return (
     <TooltipProvider delayDuration={200}>

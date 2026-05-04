@@ -2,14 +2,13 @@ import { useState } from "react";
 import { type Client } from "@/data/projectData";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import {
   Building2, MapPin, Mail, User, Calendar, TrendingUp,
   CheckCircle2, Loader2, Circle, Clock, AlertTriangle,
-  ArrowLeft, Download, ArrowRightLeft, Plus, Ticket,
+  ArrowLeft, Download, ArrowRightLeft, Plus,
 } from "lucide-react";
 import { NewTicketForm } from "@/components/support/NewTicketForm";
 import { Button } from "@/components/ui/button";

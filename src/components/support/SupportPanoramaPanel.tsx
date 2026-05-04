@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  ShieldCheck, ShieldAlert, ShieldX, Clock, Flame, Inbox, AlertTriangle,
+  ShieldCheck, ShieldAlert, ShieldX, Clock, Flame, AlertTriangle,
   UserPlus, PackageCheck, RotateCcw, Eye, ArrowRight, CheckCircle2, TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -55,13 +55,6 @@ function normalizePriority(prio?: string | null): string {
 function hoursSince(iso: string | null | undefined): number {
   if (!iso) return 0;
   return (Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60);
-}
-
-function statusMeta(status: SlaStatus) {
-  if (status === "ok") return { label: "Dentro", Icon: ShieldCheck, color: "text-success", bg: "bg-success/10", border: "border-success/30" };
-  if (status === "riesgo") return { label: "En riesgo", Icon: ShieldAlert, color: "text-warning", bg: "bg-warning/10", border: "border-warning/30" };
-  if (status === "vencido") return { label: "Vencido", Icon: ShieldX, color: "text-destructive", bg: "bg-destructive/10", border: "border-destructive/30" };
-  return { label: "Sin SLA", Icon: Clock, color: "text-muted-foreground", bg: "bg-muted/40", border: "border-border" };
 }
 
 // ─── Componente ──────────────────────────────────────────────────────────

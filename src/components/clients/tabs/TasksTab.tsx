@@ -1,4 +1,4 @@
-import { type ClientTask, type TaskAssignee } from "@/data/projectData";
+import { type ClientTask } from "@/data/projectData";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";

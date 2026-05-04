@@ -146,8 +146,12 @@ export function NewTicketForm({
 
   const onSubmit = async (values: TicketForm) => {
     try {
+      // zod garantiza client_id+asunto no vacíos pero TS los infiere opcionales
+      // por defaultValues — refinamos con assertion para satisfacer la firma.
       const inserted = await create.mutateAsync({
         ...values,
+        client_id: values.client_id,
+        asunto: values.asunto,
         estado: "PENDIENTE",
         fecha_registro: new Date().toISOString().slice(0, 10),
         dias_antiguedad: 0,

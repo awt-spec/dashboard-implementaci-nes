@@ -3,7 +3,7 @@ import { format, isPast, isToday, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import {
   GripVertical, ChevronRight, Trash2, CalendarDays, Flag, UserCircle2,
-  Pencil, Check, X, AlignLeft, Tag,
+  Pencil, Check, X, AlignLeft, 
 } from "lucide-react";
 
 import { Checkbox } from "@/components/ui/checkbox";

@@ -6,9 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
-  FileText, Plus, Calendar, Sparkles, Loader2, ChevronDown, ChevronUp, Trash2,
+  FileText, Plus, Calendar, Sparkles, Loader2, ChevronDown, Trash2,
   Users, CheckSquare, ArrowRight, Presentation, Edit3, Save, X, UserPlus, AlertTriangle, Share2,
-  Mic, ClipboardPaste, MessageSquareText, Upload, File
+  ClipboardPaste, MessageSquareText, Upload, File
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";

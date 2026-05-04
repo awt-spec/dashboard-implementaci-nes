@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react";
 import { type ClientTask } from "@/data/projectData";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 

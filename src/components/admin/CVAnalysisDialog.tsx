@@ -90,13 +90,6 @@ export function CVAnalysisDialog({ member, open, onOpenChange, onUpdated }: Prop
     }
   };
 
-  const reanalyze = async () => {
-    if (!member.cv_url) return toast.error("Primero sube un CV");
-    toast.info("Re-analizando con IA...");
-    // We don't have the original file; re-trigger by asking user to re-upload
-    toast.info("Para re-analizar, sube el CV de nuevo");
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">

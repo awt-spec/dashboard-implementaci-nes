@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,8 +39,6 @@ const ROLE_TYPES = [
   { value: "equipo", label: "Equipo", icon: Users, color: "bg-muted text-muted-foreground border-border" },
 ];
 
-const getRoleConfig = (roleType: string) => ROLE_TYPES.find(r => r.value === roleType) || ROLE_TYPES[5];
-
 interface ContactsTabProps {
   clientId: string;
 }
@@ -55,7 +52,6 @@ export function ContactsTab({ clientId }: ContactsTabProps) {
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   // Form state
   const [form, setForm] = useState({

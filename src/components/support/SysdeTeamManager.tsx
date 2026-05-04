@@ -1,13 +1,12 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { UserPlus, Trash2, Users, Briefcase, Building2, Mail, CheckCircle2, XCircle, FileText, Sparkles, KeyRound, ShieldCheck, ExternalLink } from "lucide-react";
-import { motion } from "framer-motion";
+import { UserPlus, Trash2, Users, Briefcase, Building2, CheckCircle2, XCircle, FileText, Sparkles, KeyRound, ShieldCheck, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -111,7 +110,6 @@ export function SysdeTeamManager() {
   };
 
   const activeMembers = members.filter(m => m.is_active);
-  const inactiveMembers = members.filter(m => !m.is_active);
 
   return (
     <div className="space-y-6">

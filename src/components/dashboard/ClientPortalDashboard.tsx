@@ -28,7 +28,7 @@ const PERMISSION_LABEL: Record<string, { label: string; Icon: typeof Shield; ton
 export function ClientPortalDashboard() {
   const { clienteAssignment, profile, signOut, loading } = useAuth();
   const { data: clients, isLoading: clientsLoading } = useClients();
-  const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
+  const [dark, _setDark] = useState(() => document.documentElement.classList.contains("dark"));
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);

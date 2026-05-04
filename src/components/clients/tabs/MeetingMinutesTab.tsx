@@ -4,10 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import {
-  Calendar, Users, FileText, ChevronDown, ChevronUp, CheckSquare,
-  ArrowRight, Plus, Trash2, Presentation, Sparkles, Share2, Eye, EyeOff
+  Calendar, Users, FileText, ChevronDown, CheckSquare,
+  ArrowRight, Trash2, Presentation, Sparkles, Share2, Eye, EyeOff
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";

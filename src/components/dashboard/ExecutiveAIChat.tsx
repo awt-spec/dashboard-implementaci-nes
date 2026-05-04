@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
-  Sparkles, Send, Loader2, Bot, User as UserIcon, X, RefreshCw,
+  Sparkles, Send, Loader2, Bot, User as UserIcon, RefreshCw,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";

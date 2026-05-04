@@ -13,7 +13,7 @@
  * Trigger: window.dispatchEvent(new CustomEvent("overdue:open"))
  */
 import { useEffect, useMemo, useState } from "react";
-import { useAllSupportTickets, useSupportClients, useUpdateSupportTicket, type SupportTicket } from "@/hooks/useSupportTickets";
+import { useAllSupportTickets, useSupportClients, useUpdateSupportTicket } from "@/hooks/useSupportTickets";
 import { useTicketsSLAStatus } from "@/hooks/useTicketsSLAStatus";
 import { useAuth } from "@/hooks/useAuth";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";

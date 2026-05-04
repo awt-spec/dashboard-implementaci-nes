@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +8,7 @@ import {
 import {
   ArrowRight, ArrowLeft, Star, Pin, PinOff, Trash2, BookmarkPlus,
   Loader2, ChevronRight, Sparkles, LayoutGrid, Workflow, Sunrise,
-  ListOrdered, Target, BarChart3, TrendingUp, Brain, Flame,
+  ListOrdered, Target, BarChart3, TrendingUp, Flame,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -24,7 +23,6 @@ import { SprintPlanner } from "./SprintPlanner";
 import { SVAStrategyPanel } from "./SVAStrategyPanel";
 import { SprintManager } from "./SprintManager";
 import { SprintAnalytics } from "./SprintAnalytics";
-import { PMAIPanel } from "./PMAIPanel";
 import { TeamWorkloadReport } from "./TeamWorkloadReport";
 import { useSavedViews, useSaveView, useDeleteView, useTogglePinView } from "@/hooks/useSavedViews";
 import type { ScrumWorkItem } from "@/hooks/useTeamScrum";
@@ -154,25 +152,6 @@ interface Props {
   kpis?: { total: number; inProgress: number; avgWsjf: number; noEstimate: number; activeSprints: number };
   /** Click sobre un item del backlog/tablero/flujo → abre detalle. Lo provee el dashboard padre. */
   onItemClick?: (item: ScrumWorkItem) => void;
-}
-
-// ─── Helper: chip de métrica slim ────────────────────────────────────
-
-function MetricChip({
-  Icon, label, value, tone = "text-foreground",
-}: {
-  Icon: any;
-  label: string;
-  value: number | string;
-  tone?: string;
-}) {
-  return (
-    <div className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-card/60 border border-border backdrop-blur-sm">
-      <Icon className={cn("h-3.5 w-3.5", tone)} />
-      <span className="text-[11px] text-muted-foreground">{label}</span>
-      <span className={cn("text-xs font-bold tabular-nums", tone)}>{value}</span>
-    </div>
-  );
 }
 
 function InlineStat({ value, label, tone = "text-foreground" }: { value: number | string; label: string; tone?: string }) {

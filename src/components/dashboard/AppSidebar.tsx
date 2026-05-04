@@ -34,13 +34,6 @@ const supportStatusLabel: Record<string, string> = {
 
 const statusOrder = ["activo", "en-riesgo", "completado", "pausado"];
 
-const statusDot: Record<string, string> = {
-  activo: "bg-success",
-  "en-riesgo": "bg-destructive",
-  completado: "bg-info",
-  pausado: "bg-muted-foreground",
-};
-
 const roleBadgeStyle: Record<string, string> = {
   admin: "bg-destructive text-destructive-foreground",
   pm: "bg-primary text-primary-foreground",

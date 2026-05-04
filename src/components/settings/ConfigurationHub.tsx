@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Settings, Search, X, Shield, Users, Lock, Activity, Brain, Sparkles,
-  BookOpen, ListChecks, Building2, KeyRound, TrendingUp, ChevronRight,
+  BookOpen, ListChecks, Building2, TrendingUp, ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";

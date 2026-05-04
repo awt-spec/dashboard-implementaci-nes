@@ -25,10 +25,10 @@ import {
   DollarSign, Activity, Layers, Target, Flame, AlertOctagon,
   LogOut, ArrowUpRight, UserX, Zap, Minus, Package, Users, Clock,
   CheckCircle2, AlertTriangle, ArrowLeft, Trophy, Settings,
-  MessageSquare, ChevronRight, Sparkles, Code2,
+  ChevronRight, Sparkles, Code2,
 } from "lucide-react";
 import {
-  ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis,
+  ResponsiveContainer, AreaChart, Area, BarChart, Bar as ReBar, XAxis, YAxis,
   CartesianGrid, Tooltip as ReTooltip, LineChart, Line,
 } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
@@ -184,7 +184,6 @@ export function CEODashboard() {
 
   const last30 = Date.now() - 30 * 86400000;
   const recent30 = aiLogs.filter(l => new Date(l.created_at).getTime() >= last30);
-  const totalAICalls = recent30.length;
   const totalAITokens = recent30.reduce((s, l) => s + (l.total_tokens || 0), 0);
   const estimatedAICost = (totalAITokens / 1000) * 0.000075;
 
@@ -618,7 +617,7 @@ export function CEODashboard() {
                         <XAxis type="number" tick={{ fontSize: 9, fill: SYSDE.mid }} stroke={SYSDE.mid + "40"} tickLine={false} />
                         <YAxis dataKey="name" type="category" tick={{ fontSize: 9, fill: SYSDE.gray, fontFamily: "Montserrat" }} stroke={SYSDE.mid + "40"} width={60} tickLine={false} />
                         <ReTooltip contentStyle={{ fontSize: 11, background: SYSDE.white, border: `1px solid ${SYSDE.mid}40`, borderRadius: 0 }} />
-                        <Bar dataKey="value" fill={SYSDE.red} />
+                        <ReBar dataKey="value" fill={SYSDE.red} />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : <Empty label="SIN DATOS" />}

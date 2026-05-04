@@ -6,9 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Progress } from "@/components/ui/progress";
 import {
-  Plus, Play, Square, Target, Calendar, Trophy, Trash2, ArrowRight, AlertCircle,
+  Plus, Play, Square, Target, Calendar, Trophy, Trash2, ArrowRight, 
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";

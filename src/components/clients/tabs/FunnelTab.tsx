@@ -1,15 +1,15 @@
-import { useState, useMemo, useRef } from "react";
-import { type Client, type ClientTask, type Deliverable, type ActionItem, type Risk } from "@/data/projectData";
+import { useState, useMemo } from "react";
+import { type Client } from "@/data/projectData";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  AlertTriangle, CheckCircle2, Clock, Circle, Ban,
-  Users, Target, Zap, Eye, Filter, TrendingUp, ChevronRight,
+  AlertTriangle, CheckCircle2, Clock, Ban,
+  Users, Target, Zap, Eye, Filter, TrendingUp, 
   ArrowUpRight, Flame, Shield, Search, LayoutGrid, List,
-  ChevronDown, GripVertical, ArrowRight
+  GripVertical
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -164,7 +164,7 @@ export function FunnelTab({ client }: FunnelTabProps) {
   const resolvedCount = stageGroups.find(s => s.id === "resuelto")?.items.length || 0;
   const throughputPct = totalItems > 0 ? Math.round((resolvedCount / totalItems) * 100) : 0;
 
-  const renderItemCard = (item: FunnelItem, stage: typeof STAGES[0], i: number) => {
+  const renderItemCard = (item: FunnelItem, stage: typeof STAGES[0], _i: number) => {
     const isOpen = expandedItem === item.id;
     const tb = TYPE_CONFIG[item.type];
     const TypeIcon = tb.icon;
@@ -456,7 +456,7 @@ export function FunnelTab({ client }: FunnelTabProps) {
                 <div className="text-center py-12">
                   <p className="text-sm text-muted-foreground">No hay gestiones que coincidan con los filtros</p>
                 </div>
-              ) : filtered.map((item, i) => {
+              ) : filtered.map((item, _i) => {
                 const tb = TYPE_CONFIG[item.type];
                 const TypeIcon = tb.icon;
                 const stageInfo = STAGES.find(s => s.id === item.stage)!;

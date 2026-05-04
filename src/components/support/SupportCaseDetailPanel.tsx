@@ -7,12 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  CheckSquare, ArrowRight, Plus, Trash2, X, Link2, Tag, Paperclip, MessageSquare,
-  Globe, Lock, Loader2, FileText, ExternalLink, Download, Target
+  CheckSquare, Plus, Trash2, X, Link2, Tag, Paperclip, MessageSquare,
+  Globe, Lock, Loader2, ExternalLink, Target
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import type { SupportTicket, CaseAgreementItem } from "@/hooks/useSupportTickets";
+import type { SupportTicket } from "@/hooks/useSupportTickets";
 import {
   useTicketSubtasks, useCreateTicketSubtask, useToggleTicketSubtask, useDeleteTicketSubtask,
   useTicketTags, useAddTicketTag, useRemoveTicketTag,
@@ -34,7 +34,7 @@ interface Props {
   teamMembers?: string[];
 }
 
-export function SupportCaseDetailPanel({ ticket, teamMembers = [] }: Props) {
+export function SupportCaseDetailPanel({ ticket }: Props) {
   const t = ticket;
   const { data: clients = [] } = useSupportClients();
   const clientForTicket = clients.find(c => c.id === t.client_id);

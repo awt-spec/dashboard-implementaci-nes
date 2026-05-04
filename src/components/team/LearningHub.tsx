@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { GraduationCap, BookOpen, Plus, Sparkles, Send, Bot, User, ExternalLink, Clock, Star } from "lucide-react";
+import { GraduationCap, BookOpen, Plus, Send, Bot, User, ExternalLink, Clock, Star } from "lucide-react";
 import { useCourses, useEnrollments, useUpsertCourse, useEnroll, useUpdateEnrollment } from "@/hooks/useTeamEngagement";
 import { useSysdeTeamMembers } from "@/hooks/useTeamMembers";
 import { supabase } from "@/integrations/supabase/client";

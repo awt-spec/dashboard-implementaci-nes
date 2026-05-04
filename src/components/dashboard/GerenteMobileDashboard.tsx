@@ -5,16 +5,15 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  TrendingUp, CheckCircle2, Clock, AlertTriangle, Calendar, Activity,
-  MessageSquare, Plus, Target, Flame, ChevronRight, Send, ThumbsUp,
-  FileText, Users, Sparkles, ArrowUpRight, CircleDot, Loader2, Mail,
+  CheckCircle2, AlertTriangle, Calendar, Activity,
+  MessageSquare, Target, Flame, Send, 
+  FileText, Users, CircleDot, Loader2, 
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { type Client } from "@/data/projectData";
 import { useCreateComment } from "@/hooks/useClients";
 import { useAuth } from "@/hooks/useAuth";
@@ -47,7 +46,7 @@ function getHealth(client: Client): keyof typeof HEALTH_CONFIG {
 }
 
 export function GerenteMobileDashboard({ client }: Props) {
-  const { profile, user } = useAuth();
+  const { profile } = useAuth();
   const createComment = useCreateComment();
   const [tab, setTab] = useState("resumen");
   const [actionDialog, setActionDialog] = useState<"comment" | "request" | "risk" | null>(null);

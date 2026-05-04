@@ -12,7 +12,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useSupportClients, type SupportClient } from "@/hooks/useSupportTickets";
+import { useSupportClients } from "@/hooks/useSupportTickets";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface ParsedTicket {

@@ -3,14 +3,13 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Building2, Calendar, User, Flame, Clock, CheckCheck, Loader2,
-  MessageSquare, History, ScrollText, Lock, Eye, EyeOff, Copy,
-  Save, Trash2, AlertTriangle, Paperclip, CheckSquare, ArrowLeft,
+  Building2, Calendar, User, CheckCheck, Loader2,
+  MessageSquare, History, ScrollText, Lock, Copy,
+  Save, Trash2, CheckSquare, ArrowLeft,
   Share2, Sparkles, RotateCcw, Maximize2, Minimize2,
 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -20,7 +19,7 @@ import { es } from "date-fns/locale";
 
 import {
   useSupportClients, useUpdateSupportTicket, useDeleteSupportTicket,
-  useDecryptTicket, type SupportTicket,
+  type SupportTicket,
 } from "@/hooks/useSupportTickets";
 import {
   useTicketNotes, useCreateTicketNote, useDeleteTicketNote,
@@ -88,10 +87,8 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, canEditInternal 
   const { profile } = useAuth();
   const update = useUpdateSupportTicket();
   const del = useDeleteSupportTicket();
-  const decrypt = useDecryptTicket();
 
   const [tab, setTab] = useState("detalle");
-  const [decryptedText, setDecryptedText] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   // Diálogo de reincidencia: capturamos el estado destino mientras el usuario
@@ -185,14 +182,6 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, canEditInternal 
       await del.mutateAsync(ticket.id);
       toast.success(`Caso eliminado`);
       onOpenChange(false);
-    } catch (e: any) { toast.error(e.message); }
-  };
-
-  const handleReveal = async () => {
-    if (decryptedText) { setDecryptedText(null); return; }
-    try {
-      const r = await decrypt.mutateAsync(ticket.id);
-      setDecryptedText(r.descripcion || "(vacío)");
     } catch (e: any) { toast.error(e.message); }
   };
 

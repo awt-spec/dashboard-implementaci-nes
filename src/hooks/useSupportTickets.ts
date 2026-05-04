@@ -54,6 +54,14 @@ export interface SupportTicket {
   reopen_count?: number | null;
   last_reopen_at?: string | null;
   last_reopen_reason?: string | null;
+  // Scrum fields (migraciones de abril 2026): se exponen como opcionales para
+  // que consumidores legacy no rompan, pero existen físicamente en la tabla.
+  sprint_id?: string | null;
+  story_points?: number | null;
+  business_value?: number | null;
+  effort?: number | null;
+  scrum_status?: string | null;
+  backlog_rank?: number | null;
 }
 
 export interface SupportClient {

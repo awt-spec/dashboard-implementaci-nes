@@ -1,12 +1,11 @@
 import { useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Trophy, Target, ArrowRight, ArrowLeft, GripVertical, Inbox, Flame, X,
+  Trophy, Target, ArrowRight, ArrowLeft, GripVertical, Inbox, Flame, 
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";

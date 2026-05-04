@@ -238,7 +238,7 @@ function EditReopenDialog({
     setSaving(true);
     try {
       const { error } = await (supabase
-        .from("support_ticket_reopens")
+        .from("support_ticket_reopens" as any)
         .update({ reason: reason.trim(), reopen_type: reopenType } as any) as any)
         .eq("id", reopen.id);
       if (error) throw error;

@@ -50,15 +50,6 @@ function calcSPI(client: Client): number | null {
   return plannedProgress > 0 ? client.progress / plannedProgress : 1;
 }
 
-function calcCPI(client: Client, financials?: { hours_estimated: number; hours_used: number; contract_value: number; billed: number }): number | null {
-  if (financials && financials.hours_estimated > 0 && financials.hours_used > 0) {
-    const ev = (client.progress / 100) * financials.contract_value;
-    const ac = financials.billed > 0 ? financials.billed : (financials.hours_used / financials.hours_estimated) * financials.contract_value;
-    return ac > 0 ? ev / ac : null;
-  }
-  // Fallback: use phase progress vs time
-  return null;
-}
 
 function getIndicatorInfo(value: number) {
   if (value >= 1.05) return { label: "Adelantado", color: "text-success", bg: "bg-success/10", icon: TrendingUp };

@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
-  Bell, Search, LogOut, Moon, Sun, Loader2, Factory,
+  Search, LogOut, Moon, Sun, Loader2, Factory,
   Sunrise, Target, Zap, Bot, LayoutGrid, CalendarDays, AlertTriangle, Building2, BarChart3,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";

@@ -41,7 +41,7 @@ export function useTicketReopens(ticketId?: string) {
     enabled: !!ticketId,
     queryFn: async () => {
       const { data, error } = await (supabase
-        .from("support_ticket_reopens")
+        .from("support_ticket_reopens" as any)
         .select("*") as any)
         .eq("ticket_id", ticketId)
         .order("iteration_number", { ascending: false });
@@ -76,7 +76,7 @@ export function useReopensSummary(filters?: {
   return useQuery({
     queryKey: ["reopens-summary", filters],
     queryFn: async () => {
-      let query = (supabase.from("support_reopens_summary").select("*") as any);
+      let query = (supabase.from("support_reopens_summary" as any).select("*") as any);
       if (filters?.clientId) query = query.eq("client_id", filters.clientId);
       if (filters?.responsable) query = query.eq("responsable", filters.responsable);
       if (filters?.producto) query = query.eq("producto", filters.producto);
@@ -108,7 +108,7 @@ export function useTopReincidentes(scope: ReopenScope, limit: number = 10, clien
     queryFn: async () => {
       // Necesitamos joinear con clients para mostrar nombre, no UUID
       // Si hay clientId, filtrar la summary view por ese cliente
-      let summaryQuery = (supabase.from("support_reopens_summary").select("*") as any);
+      let summaryQuery = (supabase.from("support_reopens_summary" as any).select("*") as any);
       if (clientId) summaryQuery = summaryQuery.eq("client_id", clientId);
       const [{ data: rows, error }, { data: clients }] = await Promise.all([
         summaryQuery,
@@ -169,7 +169,7 @@ export function useReopenRate90d(clientId?: string) {
     queryKey: ["reopen-rate-90d", clientId ?? "all"],
     queryFn: async () => {
       let q = (supabase
-        .from("support_reopens_summary")
+        .from("support_reopens_summary" as any)
         .select("reopens_real_90d, entregados_90d") as any);
       if (clientId) q = q.eq("client_id", clientId);
       const { data, error } = await q;

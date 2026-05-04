@@ -18,7 +18,6 @@ import { SupportPanoramaPanel } from "./SupportPanoramaPanel";
 import { SupportChartBuilder } from "./SupportChartBuilder";
 import { SupportClientHeatmap } from "./SupportClientHeatmap";
 import { ClientStrategyPanel } from "./ClientStrategyPanel";
-import { SupportScrumPanel } from "./SupportScrumPanel";
 import { SupportCaseTable } from "./SupportCaseTable";
 import { SupportMinutas } from "./SupportMinutas";
 import { SupportGlobalHeatmap } from "./SupportGlobalHeatmap";
@@ -503,7 +502,7 @@ export function InsightsGuidedView(props: Props) {
 
 function PresetContent({
   preset, tickets, ticketsWithClientName, allTickets, clients, scopedTickets,
-  clientId, clientName, selectedClientObj, isClientView, onOpenTicket,
+  clientId, clientName, selectedClientObj, onOpenTicket,
 }: {
   preset: PresetKey;
   tickets: SupportTicket[];

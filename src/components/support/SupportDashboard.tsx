@@ -1,7 +1,7 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -9,77 +9,26 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertTriangle, Search, Ticket, Clock, CheckCircle2,
-  Flame, Activity, Filter, Brain, Loader2, Sparkles, RefreshCw,
-  ArrowLeft, Building2, MapPin, Mail, User, FileText, ArrowRightLeft, UserX
+  Flame, Filter, Brain, Loader2, Sparkles, 
+  ArrowLeft, Building2, MapPin, Mail, User, ArrowRightLeft, UserX
 } from "lucide-react";
 import { motion } from "framer-motion";
-import {
-  ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
-  Tooltip, CartesianGrid, AreaChart, Area
-} from "recharts";
-import { useSupportClients, useAllSupportTickets, type SupportTicket } from "@/hooks/useSupportTickets";
+import { useSupportClients, useAllSupportTickets } from "@/hooks/useSupportTickets";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { SupportChartBuilder } from "./SupportChartBuilder";
-import { SupportPanoramaPanel } from "./SupportPanoramaPanel";
 import { InsightsGuidedView } from "./InsightsGuidedView";
-import { SupportCaseTable } from "./SupportCaseTable";
-import { SupportClientHeatmap } from "./SupportClientHeatmap";
 import { SupportDataLoader } from "./SupportDataLoader";
-import { SupportMinutas } from "./SupportMinutas";
 import { SupportAgreementsTab } from "./SupportAgreementsTab";
 import { ContractsSLATab } from "@/components/clients/ContractsSLATab";
-import { SupportScrumPanel } from "./SupportScrumPanel";
-import { ClientStrategyPanel } from "./ClientStrategyPanel";
 import { DevOpsPanel } from "./DevOpsPanel";
 import { NewTicketForm } from "./NewTicketForm";
 import { SupportInbox } from "./SupportInbox";
 import { ClientSupportView } from "./ClientSupportView";
 import { ExportTicketsMenu } from "./ExportTicketsMenu";
-import { Plus, Inbox, Folder, Settings, BarChart3, Database, Briefcase } from "lucide-react";
+import { Plus, Inbox, Settings, Database, Briefcase } from "lucide-react";
 import { ActivePolicyBar } from "@/components/policy/ActivePolicyBar";
 import { SLAByClientPanel } from "./SLAByClientPanel";
 import { ReopensInsightsPanel } from "./ReopensInsightsPanel";
-
-const prioridadColors: Record<string, string> = {
-  "Critica, Impacto Negocio": "bg-red-600 text-white",
-  "Alta": "bg-destructive text-destructive-foreground",
-  "Media": "bg-warning text-warning-foreground",
-  "Baja": "bg-muted text-muted-foreground",
-};
-
-const estadoColors: Record<string, string> = {
-  "EN ATENCIÓN": "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  "ENTREGADA": "bg-amber-500/20 text-amber-400 border-amber-500/30",
-  "PENDIENTE": "bg-orange-500/20 text-orange-400 border-orange-500/30",
-  "POR CERRAR": "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-  "CERRADA": "bg-green-500/20 text-green-400 border-green-500/30",
-  "ANULADA": "bg-gray-500/20 text-gray-400 border-gray-500/30",
-  "COTIZADA": "bg-violet-500/20 text-violet-400 border-violet-500/30",
-  "APROBADA": "bg-indigo-500/20 text-indigo-400 border-indigo-500/30",
-  "ON HOLD": "bg-slate-500/20 text-slate-400 border-slate-500/30",
-  "VALORACIÓN": "bg-pink-500/20 text-pink-400 border-pink-500/30",
-};
-
-const aiRiskColors: Record<string, string> = {
-  critical: "bg-red-600/20 text-red-400 border-red-600/40",
-  high: "bg-orange-500/20 text-orange-400 border-orange-500/40",
-  medium: "bg-yellow-500/20 text-yellow-400 border-yellow-500/40",
-  low: "bg-green-500/20 text-green-400 border-green-500/40",
-};
-
-const aiRiskLabels: Record<string, string> = {
-  critical: "Crítico", high: "Alto", medium: "Medio", low: "Bajo",
-};
-
-const CHART_COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "hsl(var(--warning))", "hsl(220,70%,55%)", "hsl(150,60%,50%)", "hsl(280,60%,60%)", "hsl(30,80%,55%)"];
-
-function heatBg(value: number, max: number, baseR: number, baseG: number, baseB: number) {
-  if (value === 0) return undefined;
-  const intensity = Math.min(1, value / Math.max(1, max));
-  const alpha = 0.15 + intensity * 0.65;
-  return { background: `rgba(${baseR},${baseG},${baseB},${alpha})`, color: intensity > 0.5 ? "white" : undefined };
-}
 
 interface SupportDashboardProps {
   initialClientId?: string;
@@ -160,82 +109,6 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
       .slice(0, 5);
   }, [scopedTickets]);
 
-  // Charts data — fallback to all tickets when no active ones exist
-  const chartTickets = useMemo(() => filteredActive.length > 0 ? filteredActive : tickets, [filteredActive, tickets]);
-  const showingAllInCharts = filteredActive.length === 0 && tickets.length > 0;
-
-  const estadoData = useMemo(() => {
-    const counts: Record<string, number> = {};
-    chartTickets.forEach(t => { counts[t.estado] = (counts[t.estado] || 0) + 1; });
-    return Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-  }, [chartTickets]);
-
-  const prioridadData = useMemo(() => {
-    const counts: Record<string, number> = {};
-    chartTickets.forEach(t => { counts[t.prioridad] = (counts[t.prioridad] || 0) + 1; });
-    return Object.entries(counts).map(([name, value]) => ({ name, value }));
-  }, [chartTickets]);
-
-  const tipoData = useMemo(() => {
-    const counts: Record<string, number> = {};
-    chartTickets.forEach(t => { counts[t.tipo] = (counts[t.tipo] || 0) + 1; });
-    return Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-  }, [chartTickets]);
-
-  const agingData = useMemo(() => {
-    const ranges = [
-      { name: "0-30d", min: 0, max: 30 },
-      { name: "31-90d", min: 31, max: 90 },
-      { name: "91-180d", min: 91, max: 180 },
-      { name: "181-365d", min: 181, max: 365 },
-      { name: ">365d", min: 366, max: 99999 },
-    ];
-    return ranges.map(r => ({
-      name: r.name,
-      value: chartTickets.filter(t => t.dias_antiguedad >= r.min && t.dias_antiguedad <= r.max).length,
-    }));
-  }, [chartTickets]);
-
-  // Heat map data for general view
-  const heatMapData = useMemo(() => {
-    if (isClientView) return [];
-    const allActiveTickets = allTickets.filter(t => !["CERRADA", "ANULADA"].includes(t.estado));
-    return clients.map(c => {
-      const ct = allActiveTickets.filter(t => t.client_id === c.id);
-      const total = allTickets.filter(t => t.client_id === c.id).length;
-      return {
-        id: c.id, name: c.name, total, activos: ct.length,
-        critica: ct.filter(t => t.prioridad === "Critica, Impacto Negocio").length,
-        alta: ct.filter(t => t.prioridad === "Alta").length,
-        media: ct.filter(t => t.prioridad === "Media").length,
-        baja: ct.filter(t => t.prioridad === "Baja").length,
-        enAtencion: ct.filter(t => t.estado === "EN ATENCIÓN").length,
-        entregada: ct.filter(t => t.estado === "ENTREGADA").length,
-        pendiente: ct.filter(t => t.estado === "PENDIENTE").length,
-        maxDias: Math.max(0, ...ct.map(t => t.dias_antiguedad)),
-        avgDias: ct.length > 0 ? Math.round(ct.reduce((s, t) => s + t.dias_antiguedad, 0) / ct.length) : 0,
-      };
-    }).sort((a, b) => b.activos - a.activos);
-  }, [clients, allTickets, isClientView]);
-
-  const aiClassData = useMemo(() => {
-    const counts: Record<string, number> = {};
-    filteredActive.filter(t => t.ai_classification).forEach(t => {
-      counts[t.ai_classification!] = (counts[t.ai_classification!] || 0) + 1;
-    });
-    return Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-  }, [filteredActive]);
-
-  const topCritical = useMemo(() => {
-    return [...chartTickets]
-      .sort((a, b) => {
-        const prio = (p: string) => p === "Critica, Impacto Negocio" ? 0 : p === "Alta" ? 1 : p === "Media" ? 2 : 3;
-        const diff = prio(a.prioridad) - prio(b.prioridad);
-        return diff !== 0 ? diff : b.dias_antiguedad - a.dias_antiguedad;
-      })
-      .slice(0, 15);
-  }, [chartTickets]);
-
   const clientName = (id: string) => clients.find(c => c.id === id)?.name || id;
 
   const ticketsWithClientName = useMemo(() =>
@@ -288,13 +161,6 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
   }
-
-  const maxCrit = Math.max(1, ...heatMapData.map(r => r.critica));
-  const maxAlta = Math.max(1, ...heatMapData.map(r => r.alta));
-  const maxMedia = Math.max(1, ...heatMapData.map(r => r.media));
-  const maxActivos = Math.max(1, ...heatMapData.map(r => r.activos));
-  const maxEntregada = Math.max(1, ...heatMapData.map(r => r.entregada));
-  const maxPendiente = Math.max(1, ...heatMapData.map(r => r.pendiente));
 
   return (
     <div className="space-y-5">

@@ -1,4 +1,3 @@
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, Clock } from "lucide-react";
 import type { ScrumWorkItem } from "@/hooks/useTeamScrum";

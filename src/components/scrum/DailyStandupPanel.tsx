@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Save, AlertTriangle, Sun, Coffee, Loader2, Calendar as CalIcon, CheckCircle2,
-  Clock, TrendingUp, Smile, Sparkles, ArrowRight, ArrowLeft, Edit3, Building2,
+  TrendingUp, ArrowRight, ArrowLeft, Edit3, Building2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAllSprints, useAllScrumWorkItems } from "@/hooks/useTeamScrum";
@@ -100,7 +100,6 @@ export function DailyStandupPanel() {
   }, [myDaily?.id]);
 
   const reported = todayDailies.length;
-  const pending = sprintMembers.filter(m => !todayDailies.find(d => d.member_name === m));
   const blockers = todayDailies.filter(d => d.blockers && d.blockers.trim().length > 0);
   const avgMood = reported > 0 ? todayDailies.reduce((s, d) => s + (d.mood || 3), 0) / reported : 0;
   const reportPct = sprintMembers.length > 0 ? Math.round((reported / sprintMembers.length) * 100) : 0;

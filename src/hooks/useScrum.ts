@@ -63,7 +63,7 @@ export function useUpdateSprint() {
 export function useDeleteSprint() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, client_id }: { id: string; client_id: string }) => {
+    mutationFn: async ({ id }: { id: string; client_id: string }) => {
       const { error } = await (supabase.from("support_sprints" as any).delete().eq("id", id) as any);
       if (error) throw error;
     },

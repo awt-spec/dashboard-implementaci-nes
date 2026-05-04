@@ -8,7 +8,6 @@ import { TaskTable } from "@/components/tasks/TaskTable";
 import { EditTaskDialog } from "@/components/tasks/EditTaskDialog";
 import { CreateTaskDialog } from "@/components/tasks/CreateTaskDialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";

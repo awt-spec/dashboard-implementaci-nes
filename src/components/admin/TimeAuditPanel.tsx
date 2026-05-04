@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Search, Download, Filter, AlertTriangle, History, Lock, Unlock, FileText,
+  Search, Download, AlertTriangle, History, Lock, Unlock, FileText,
   TrendingUp, Activity, Loader2, CheckCircle2,
 } from "lucide-react";
 import { useAllTimeEntries, useUpdateTimeEntry, entryHours, startOfWeek } from "@/hooks/useTimeTracking";
@@ -83,7 +83,7 @@ export function TimeAuditPanel() {
       if (!byUserDay.has(k)) byUserDay.set(k, []);
       byUserDay.get(k)!.push(e);
     });
-    byUserDay.forEach((dayEntries, key) => {
+    byUserDay.forEach((dayEntries, _key) => {
       const total = dayEntries.reduce((s, e) => s + entryHours(e), 0);
       if (total > 14) list.push({ entry: dayEntries[0], reason: `Jornada extrema: ${total.toFixed(1)}h en un día`, severity: "high" });
       else if (total > 12) list.push({ entry: dayEntries[0], reason: `Jornada larga: ${total.toFixed(1)}h en un día`, severity: "medium" });

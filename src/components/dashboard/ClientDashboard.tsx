@@ -2,26 +2,22 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  TrendingUp, CheckCircle2, Clock, FileCheck, Calendar, Building2,
-  MessageSquare, ThumbsUp, Send, Bell, Plus, Loader2, AlertTriangle,
+  TrendingUp, CheckCircle2, FileCheck, Calendar, Building2,
+  MessageSquare, ThumbsUp, Send, Bell, AlertTriangle,
   LayoutDashboard, ListTodo, FileText, MessageCircle, BellRing,
-  Settings, GripVertical, Eye, EyeOff, ChevronDown, ChevronUp,
+  Settings, GripVertical, Eye, EyeOff, ChevronDown, 
   CheckSquare, ArrowRight, Users
 } from "lucide-react";
 import { isTaskClosed } from "@/lib/ticketStatus";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  RadialBarChart, RadialBar, Legend, Area, AreaChart, Label, LineChart, Line, ReferenceLine
+  RadialBarChart, RadialBar, Area, AreaChart, ReferenceLine
 } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
 import { type Client, type Comment, type MeetingMinute } from "@/data/projectData";
@@ -219,7 +215,7 @@ function TaskChartWidget({ tasks }: { tasks: any[] }) {
     { name: "Baja", value: tasks.filter(t => t.priority === "baja").length, fill: "hsl(var(--success))" },
   ];
 
-  const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }: any) => {
+  const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
     if (percent < 0.08) return null;
     const RADIAN = Math.PI / 180;
     const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
@@ -492,7 +488,7 @@ function DeliverablesWidget({ deliverables }: { deliverables: any[] }) {
     { name: "Pendientes", value: deliverables.filter(d => d.status === "pendiente").length, color: "hsl(var(--destructive))", emoji: "⏳" },
   ].filter(d => d.value > 0);
 
-  const renderLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+  const renderLabel = ({ cx, cy, midAngle, outerRadius, percent }: any) => {
     if (percent < 0.1) return null;
     const RADIAN = Math.PI / 180;
     const radius = outerRadius + 18;
@@ -668,7 +664,7 @@ function RecentMinutesWidget({ minutes }: { minutes: MeetingMinute[] }) {
 function FeedbackWidget({ comments, clientId }: { comments: Comment[]; clientId: string }) {
   const { profile } = useAuth();
   const createComment = useCreateComment();
-  const [open, setOpen] = useState(false);
+  const [_open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [type, setType] = useState("comentario");
   const [filter, setFilter] = useState("all");
@@ -1015,13 +1011,13 @@ interface ClientDashboardProps {
 type Section = "dashboard" | "actividades" | "entregables" | "minutas" | "comunicacion" | "notificaciones";
 
 export function ClientDashboard({ client }: ClientDashboardProps) {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const [section, setSection] = useState<Section>("dashboard");
   const [editMode, setEditMode] = useState(false);
-  const { widgets, saveWidgets, loaded } = useWidgetConfig(user?.id);
+  const { widgets, saveWidgets } = useWidgetConfig(user?.id);
 
   const tasks = client.tasks.filter(t => t.visibility === "externa");
-  const { notifications, unreadCount } = useNotifications(client.id);
+  const { unreadCount } = useNotifications(client.id);
 
   const navItems: { id: Section; label: string; icon: any; badge?: number }[] = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },

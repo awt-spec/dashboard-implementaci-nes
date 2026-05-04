@@ -9,6 +9,7 @@ export interface SysdeTeamMember {
   department: string;
   is_active: boolean;
   created_at: string;
+  user_id?: string | null;
 }
 
 export interface ClientTeamMember {

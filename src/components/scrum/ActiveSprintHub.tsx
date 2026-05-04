@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
-  Target, Zap, Trophy, AlertTriangle, Calendar, Users, TrendingDown,
+  Target, Zap, AlertTriangle, Users, TrendingDown,
   Flame, Clock, CheckCircle2, AlertCircle, PlayCircle, Sparkles,
 } from "lucide-react";
 import {
@@ -175,7 +175,6 @@ function SprintHubContent({
   // ===== BURNDOWN =====
   const burndown = useMemo(() => {
     if (!sprint.start_date || !sprint.end_date) return [];
-    const start = new Date(sprint.start_date).getTime();
     const totalDays = time.totalDays;
     const days: Array<{ day: string; ideal: number; real: number | null }> = [];
     for (let d = 0; d <= totalDays; d++) {
@@ -223,14 +222,6 @@ function SprintHubContent({
       return false;
     }).slice(0, 8);
   }, [sprintItems]);
-
-  // ===== UI HELPERS =====
-  const vibeColor = time.vibe === "overdue" ? "bg-destructive text-destructive-foreground"
-    : time.vibe === "danger" ? "bg-destructive/15 text-destructive border-destructive/30"
-    : time.vibe === "warn" ? "bg-warning/15 text-warning border-warning/30"
-    : "bg-success/15 text-success border-success/30";
-
-  const varianceColor = points.variance >= 0 ? "text-success" : "text-destructive";
 
   // ─── Estado simplificado del sprint para mensaje principal ──
   const heroStatus = (() => {
@@ -537,19 +528,3 @@ function HeroStat({ label, value, hint, tone, hintTone }: { label: string; value
   );
 }
 
-function KpiCard({ icon: Icon, label, value, color, sub }: { icon: any; label: string; value: any; color: string; sub?: React.ReactNode }) {
-  return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-      <Card>
-        <CardContent className="p-3">
-          <div className="flex items-center gap-2 mb-1">
-            <Icon className={`h-4 w-4 ${color}`} />
-            <p className="text-[10px] uppercase text-muted-foreground tracking-wide">{label}</p>
-          </div>
-          <p className="text-xl font-bold">{value}</p>
-          {sub && <p className="text-[10px] mt-0.5">{sub}</p>}
-        </CardContent>
-      </Card>
-    </motion.div>
-  );
-}

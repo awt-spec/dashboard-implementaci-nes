@@ -5,7 +5,7 @@ import { formatDistanceToNow, format } from "date-fns";
 import { es } from "date-fns/locale";
 import {
   Sparkles, Loader2, RefreshCw, Heart, TrendingUp, TrendingDown, ArrowUpRight,
-  AlertTriangle, BookOpen, DollarSign, Target, CalendarDays, Activity,
+  AlertTriangle, DollarSign, Target, CalendarDays, Activity,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";

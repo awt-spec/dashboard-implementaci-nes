@@ -36,7 +36,7 @@ interface Props {
 // ─── Componente ──────────────────────────────────────────────────────────
 
 export function ShareTicketHistoryDialog({ ticket, clientName, open, onClose }: Props) {
-  const { profile } = useAuth();
+  const { user } = useAuth();
   const { data: events = [] } = useTicketHistory(ticket.id);
 
   const [title, setTitle] = useState(`Historial · ${ticket.ticket_id} · ${ticket.asunto}`);
@@ -86,7 +86,7 @@ export function ShareTicketHistoryDialog({ ticket, clientName, open, onClose }: 
         history_snapshot: filteredPreview,
         ticket_snapshot: ticketSnapshot,
         expires_at: expiresAt.toISOString(),
-        created_by: profile?.user_id ?? null,
+        created_by: user?.id ?? null,
       }).select("token").single() as any);
 
       if (error) throw error;

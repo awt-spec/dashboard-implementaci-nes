@@ -3,11 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  Plus, BarChart3, PieChart as PieIcon, TrendingUp, Activity, Trash2, Pencil, X, Save, AreaChart as AreaIcon,
+  Plus, BarChart3, PieChart as PieIcon, TrendingUp, Activity, Trash2, Pencil, Save, AreaChart as AreaIcon,
 } from "lucide-react";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -124,7 +122,7 @@ function extractData(client: Client, source: DataSource): { name: string; value:
 }
 
 // ── Chart Renderer ──────────────────
-function RenderChart({ chart, data, colors }: { chart: CustomChart; data: { name: string; value: number }[]; colors: string[] }) {
+function RenderChart({ chart, data }: { chart: CustomChart; data: { name: string; value: number }[]; colors: string[] }) {
   if (data.length === 0) {
     return <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Sin datos disponibles</div>;
   }

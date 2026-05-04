@@ -1,12 +1,11 @@
 import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Trophy, Inbox, List, Users, Building2, Table as TableIcon,
-  ChevronDown, ChevronRight, Target, ArrowRightCircle, type LucideIcon,
+  ChevronDown, ChevronRight, Target, type LucideIcon,
 } from "lucide-react";
 import type { ScrumWorkItem, UnifiedSprint } from "@/hooks/useTeamScrum";
 import { useUpdateWorkItemScrum } from "@/hooks/useTeamScrum";

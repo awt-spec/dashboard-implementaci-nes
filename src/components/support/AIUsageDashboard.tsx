@@ -1,17 +1,15 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Brain, Sparkles, Zap, Activity, CheckCircle2, Clock, AlertTriangle, Shield, Lock, Key, Server, Eye, FileText, TrendingUp, Hash } from "lucide-react";
+import { Brain, Sparkles, Zap, Activity, CheckCircle2, AlertTriangle, Shield, Lock, Key, Server, Eye, FileText, TrendingUp, Hash } from "lucide-react";
 import { motion } from "framer-motion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAllSupportTickets, useSupportClients } from "@/hooks/useSupportTickets";
 import { useAIUsageLogs } from "@/hooks/useAIUsageLogs";
 import {
   ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
-  Tooltip, CartesianGrid, AreaChart, Area, LineChart, Line
+  Tooltip, CartesianGrid, AreaChart, Area, Line
 } from "recharts";
-
-const COLORS = ["hsl(var(--primary))", "hsl(280,60%,60%)", "hsl(var(--destructive))", "hsl(var(--warning))", "hsl(150,60%,50%)", "hsl(220,70%,55%)"];
 
 const riskLabels: Record<string, string> = {
   critical: "Crítico", high: "Alto", medium: "Medio", low: "Bajo",
@@ -239,7 +237,6 @@ export function ClassificationTab() {
           <CardContent className="space-y-3">
             {categoriesWithSamples.slice(0, 6).map(cat => {
               const total = cat.count;
-              const critPct = total > 0 ? Math.round(((cat.risk.critical || 0) / total) * 100) : 0;
               return (
                 <div key={cat.name} className="rounded-xl border border-border p-3 bg-card hover:border-violet-500/30 transition-colors">
                   <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">

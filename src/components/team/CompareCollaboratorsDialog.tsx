@@ -8,7 +8,6 @@ import { useSysdeTeamMembers } from "@/hooks/useTeamMembers";
 import { useAllTeamSkills } from "@/hooks/useTeamSkills";
 import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend } from "recharts";
 import { X } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 const COLORS = ["hsl(var(--primary))", "hsl(var(--info))", "hsl(var(--success))"];
 const initials = (n: string) => n.split(" ").map(x => x[0]).slice(0, 2).join("").toUpperCase();

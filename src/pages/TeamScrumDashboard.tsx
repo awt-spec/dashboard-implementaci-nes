@@ -1,50 +1,20 @@
 import { useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Trophy, ListOrdered, Brain, BarChart3, Sparkles,
-  AlertTriangle, TrendingUp, Users, Target, Calendar, Filter, Zap, Flame,
-  PackageOpen, CheckCircle2, PlayCircle, Flag, Search, X,
-  LucideIcon, Inbox, Workflow, LayoutGrid, Sunrise,
+  Flame,
+  PackageOpen, CheckCircle2, PlayCircle, Flag,
+  LucideIcon,
 } from "lucide-react";
-import {
-  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
-  LineChart, Line, Legend, PieChart, Pie, Cell,
-} from "recharts";
 import { toast } from "sonner";
-import { formatDistanceToNow } from "date-fns";
-import { es } from "date-fns/locale";
 import {
   useAllScrumWorkItems, useAllSprints, useUpdateWorkItemScrum,
   type ScrumWorkItem,
 } from "@/hooks/useTeamScrum";
-import { PMAIPanel } from "@/components/scrum/PMAIPanel";
-import { SprintManager } from "@/components/scrum/SprintManager";
-import { DailyStandupPanel } from "@/components/scrum/DailyStandupPanel";
-import { SprintAnalytics } from "@/components/scrum/SprintAnalytics";
-import { ActiveSprintHub } from "@/components/scrum/ActiveSprintHub";
-import { FordLineView } from "@/components/scrum/FordLineView";
-import { SVAStrategyPanel } from "@/components/scrum/SVAStrategyPanel";
-import { SprintBoard } from "@/components/scrum/SprintBoard";
-import { BacklogView } from "@/components/scrum/BacklogView";
 import { TeamScrumGuidedView } from "@/components/scrum/TeamScrumGuidedView";
 import { TicketDetailSheet } from "@/components/support/TicketDetailSheet";
 import { TaskDetailSheet } from "@/components/colaborador/TaskDetailSheet";
 import type { SupportTicket } from "@/hooks/useSupportTickets";
-
-const CHART_COLORS = [
-  "hsl(var(--primary))",
-  "hsl(var(--info))",
-  "hsl(var(--warning))",
-  "hsl(var(--success))",
-  "hsl(280,60%,60%)",
-  "hsl(150,60%,50%)",
-];
 
 const SCRUM_COLUMNS: Array<{
   key: string;
@@ -59,58 +29,7 @@ const SCRUM_COLUMNS: Array<{
   { key: "done",        label: "Hecho",       Icon: Flag,          accent: "text-success" },
 ];
 
-const SOURCE_STYLES: Record<string, string> = {
-  task:   "bg-info/10 text-info border-info/30",
-  ticket: "bg-warning/10 text-warning border-warning/30",
-};
-
-const WORKLOAD_STYLES: Record<string, { border: string; bg: string; text: string; dot: string; label: string; Icon: LucideIcon }> = {
-  sobrecargado:  { border: "border-destructive/40", bg: "bg-destructive/5", text: "text-destructive",     dot: "bg-destructive",     label: "Sobrecargados",  Icon: Flame },
-  saludable:     { border: "border-success/40",     bg: "bg-success/5",     text: "text-success",         dot: "bg-success",         label: "Saludables",     Icon: CheckCircle2 },
-  subutilizado:  { border: "border-warning/40",     bg: "bg-warning/5",     text: "text-warning",         dot: "bg-warning",         label: "Subutilizados",  Icon: AlertTriangle },
-  sin_carga:     { border: "border-muted-foreground/25", bg: "bg-muted/30", text: "text-muted-foreground",dot: "bg-muted-foreground/50", label: "Sin Carga",  Icon: Inbox },
-};
-
 // ---------- helpers ----------
-
-function KPIStat({
-  label, value, Icon, accent = "text-foreground", hint,
-}: {
-  label: string;
-  value: string | number;
-  Icon: LucideIcon;
-  accent?: string;
-  hint?: string;
-}) {
-  return (
-    <Card className="animate-fade-in">
-      <CardContent className="p-4 flex items-start gap-3">
-        <div className={`h-9 w-9 rounded-lg bg-secondary flex items-center justify-center shrink-0 ${accent}`}>
-          <Icon className="h-4.5 w-4.5" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-2xl font-bold tabular-nums leading-none text-foreground">{value}</p>
-          <p className="mt-1 text-[11px] uppercase tracking-wide font-semibold text-muted-foreground">{label}</p>
-          {hint && <p className="mt-0.5 text-[11px] text-muted-foreground/80 truncate">{hint}</p>}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function EmptyState({ Icon, title, subtitle }: { Icon: LucideIcon; title: string; subtitle?: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-14 text-center gap-3">
-      <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
-        <Icon className="h-6 w-6 text-primary" />
-      </div>
-      <div>
-        <p className="text-sm font-semibold text-foreground">{title}</p>
-        {subtitle && <p className="mt-1 text-xs text-muted-foreground max-w-sm">{subtitle}</p>}
-      </div>
-    </div>
-  );
-}
 
 function LoadingSkeleton() {
   return (
@@ -143,22 +62,20 @@ export default function TeamScrumDashboard() {
   const { data: sprints = [] } = useAllSprints();
   const updateScrum = useUpdateWorkItemScrum();
 
-  const [search, setSearch] = useState("");
-  const [filterSource, setFilterSource] = useState<string>("all");
-  const [filterOwner, setFilterOwner] = useState<string>("all");
-  const [filterSprint, setFilterSprint] = useState<string>("all");
+  // Filtros de UI: search/source/owner/sprint son immutables actualmente — su
+  // UI fue migrada a TeamScrumGuidedView. Solo `filterVisibility` se controla
+  // desde este nivel (toggle "Internas/Externas/Todas" debajo del wizard).
+  // Tipados como `string` para que el filtrado abajo siga compilando aunque
+  // el valor literal sea constante.
+  const search: string = "";
+  const filterSource: string = "all";
+  const filterOwner: string = "all";
+  const filterSprint: string = "all";
   const [filterVisibility, setFilterVisibility] = useState<"all" | "interna" | "externa">("all");
   // Detail sheets: source='ticket' → TicketDetailSheet (con tabs Detalle/Notas/
   // Subtareas/Estrategia/Reincidencias); source='task' → TaskDetailSheet (vista
   // de tarea de implementación con checklist).
   const [selectedItem, setSelectedItem] = useState<ScrumWorkItem | null>(null);
-  const [activeTab, setActiveTab] = useState<string>("sprint");
-
-  const owners = useMemo(() => {
-    const set = new Set<string>();
-    items.forEach(i => i.owner && i.owner !== "—" && set.add(i.owner));
-    return Array.from(set).sort();
-  }, [items]);
 
   const filteredItems = useMemo(() => {
     return items.filter(i => {
@@ -286,14 +203,6 @@ export default function TeamScrumDashboard() {
       await updateScrum.mutateAsync({ id: item.id, source: item.source, updates: { scrum_status: newStatus } });
       toast.success("Estado actualizado");
     } catch (e: any) { toast.error(e.message); }
-  };
-
-  const clearFilters = () => {
-    setSearch("");
-    setFilterSource("all");
-    setFilterOwner("all");
-    setFilterSprint("all");
-    setFilterVisibility("all");
   };
 
   const hasActiveFilters = search || filterSource !== "all" || filterOwner !== "all" || filterSprint !== "all" || filterVisibility !== "all";
