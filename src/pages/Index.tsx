@@ -1,18 +1,32 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/dashboard/AppSidebar";
 import { ExecutiveOverview } from "@/components/dashboard/ExecutiveOverview";
-import { ClientDashboard } from "@/components/dashboard/ClientDashboard";
-import { GerenteMobileDashboard } from "@/components/dashboard/GerenteMobileDashboard";
-import { GerenteSupportDashboard } from "@/components/dashboard/GerenteSupportDashboard";
-import { ClientList } from "@/components/clients/ClientList";
-import { ClientDetail } from "@/components/clients/ClientDetail";
-import TeamScrumDashboard from "@/pages/TeamScrumDashboard";
-import { SupportDashboard } from "@/components/support/SupportDashboard";
-import ColaboradorDashboard from "@/pages/ColaboradorDashboard";
-import { CEODashboard } from "@/components/dashboard/CEODashboard";
-import { ClientPortalDashboard } from "@/components/dashboard/ClientPortalDashboard";
-import { ConfigurationHub } from "@/components/settings/ConfigurationHub";
+
+// Lazy: dashboards específicos por rol o sección. Solo se descargan cuando
+// el usuario realmente entra a su rol/sección. Bajan el initial bundle.
+//   • ColaboradorDashboard → solo rol colaborador (full-screen Jira-style)
+//   • CEODashboard         → solo rol ceo (cockpit ejecutivo)
+//   • ClientPortalDashboard → solo rol cliente (portal externo)
+//   • GerenteMobile/Support → solo rol gerente
+//   • TeamScrumDashboard   → sección scrum (admin/pm)
+//   • SupportDashboard     → sección soporte (admin/pm/gerente_soporte)
+//   • ConfigurationHub     → sección config (admin)
+//   • ClientDashboard, ClientList, ClientDetail → sección Implementación
+const ColaboradorDashboard    = lazy(() => import("@/pages/ColaboradorDashboard"));
+const CEODashboard            = lazy(() => import("@/components/dashboard/CEODashboard").then(m => ({ default: m.CEODashboard })));
+const ClientPortalDashboard   = lazy(() => import("@/components/dashboard/ClientPortalDashboard").then(m => ({ default: m.ClientPortalDashboard })));
+const GerenteMobileDashboard  = lazy(() => import("@/components/dashboard/GerenteMobileDashboard").then(m => ({ default: m.GerenteMobileDashboard })));
+const GerenteSupportDashboard = lazy(() => import("@/components/dashboard/GerenteSupportDashboard").then(m => ({ default: m.GerenteSupportDashboard })));
+const TeamScrumDashboard      = lazy(() => import("@/pages/TeamScrumDashboard"));
+const SupportDashboard        = lazy(() => import("@/components/support/SupportDashboard").then(m => ({ default: m.SupportDashboard })));
+const ConfigurationHub        = lazy(() => import("@/components/settings/ConfigurationHub").then(m => ({ default: m.ConfigurationHub })));
+const ClientDashboard         = lazy(() => import("@/components/dashboard/ClientDashboard").then(m => ({ default: m.ClientDashboard })));
+const ClientList              = lazy(() => import("@/components/clients/ClientList").then(m => ({ default: m.ClientList })));
+const ClientDetail            = lazy(() => import("@/components/clients/ClientDetail").then(m => ({ default: m.ClientDetail })));
+
+// OverdueTicketsSheet se importa eager — está en el header global como pill
+// y es la primera interacción común. Si fuera lazy, el primer click sería lento.
 import { OverdueTicketsSheet } from "@/components/support/OverdueTicketsSheet";
 import { useClients } from "@/hooks/useClients";
 import { useAuth } from "@/hooks/useAuth";
@@ -96,19 +110,26 @@ const Index = () => {
     setActiveSection(section);
   };
 
+  // Spinner consistente para los Suspense fallbacks de dashboards lazy.
+  const LazyFallback = (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  );
+
   // Colaborador uses its own full-screen layout (Jira/DevOps style) — no admin sidebar
   if (role === "colaborador") {
-    return <ColaboradorDashboard />;
+    return <Suspense fallback={LazyFallback}><ColaboradorDashboard /></Suspense>;
   }
 
   // Cliente externo: portal dedicado con su empresa scopeada
   if (role === "cliente") {
-    return <ClientPortalDashboard />;
+    return <Suspense fallback={LazyFallback}><ClientPortalDashboard /></Suspense>;
   }
 
   // CEO: dashboard ejecutivo super-administrativo (read-only de todo el sistema)
   if (role === "ceo") {
-    return <CEODashboard />;
+    return <Suspense fallback={LazyFallback}><CEODashboard /></Suspense>;
   }
 
   const clientData = clients || [];
@@ -191,36 +212,46 @@ const Index = () => {
           </header>
 
           <main className="flex-1 overflow-auto p-4 md:p-6">
-            <div className="w-full">
-              {activeSection === "overview" && role === "gerente" && (
-                loadingAssignment ? (
-                  <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-                ) : gerenteClient ? (
-                  (gerenteClient as any).client_type === "soporte"
-                    ? <GerenteSupportDashboard client={gerenteClient} />
-                    : <GerenteMobileDashboard client={gerenteClient} />
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-12">No tiene un proyecto asignado. Contacte al administrador.</p>
-                )
-              )}
-              {activeSection === "overview" && role !== "gerente" && <ExecutiveOverview onNavigate={setActiveSection} />}
-              {activeSection === "team-scrum" && <TeamScrumDashboard />}
-              {activeSection === "soporte" && <SupportDashboard />}
-              {selectedSupportClientId && <SupportDashboard initialClientId={selectedSupportClientId} onBack={() => setActiveSection("soporte")} />}
-              {activeSection === "config" && <ConfigurationHub />}
-              {activeSection === "clients" && (
-                <ClientList
-                  onSelectClient={(id) => setActiveSection(`client-${id}`)}
-                  selectedClientId={undefined}
-                />
-              )}
-              {selectedClient && (
-                <ClientDetail
-                  client={selectedClient}
-                  onBack={() => setActiveSection("clients")}
-                />
-              )}
-            </div>
+            {/* Suspense envuelve TODO el contenido lazy del main: cualquier sección
+                que el user abra (scrum/soporte/config/clientes/detalle) se carga
+                on-demand. El fallback es el spinner inline (no fullscreen) para
+                que el sidebar permanezca visible durante el chunk download. */}
+            <Suspense fallback={
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            }>
+              <div className="w-full">
+                {activeSection === "overview" && role === "gerente" && (
+                  loadingAssignment ? (
+                    <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                  ) : gerenteClient ? (
+                    (gerenteClient as any).client_type === "soporte"
+                      ? <GerenteSupportDashboard client={gerenteClient} />
+                      : <GerenteMobileDashboard client={gerenteClient} />
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-12">No tiene un proyecto asignado. Contacte al administrador.</p>
+                  )
+                )}
+                {activeSection === "overview" && role !== "gerente" && <ExecutiveOverview onNavigate={setActiveSection} />}
+                {activeSection === "team-scrum" && <TeamScrumDashboard />}
+                {activeSection === "soporte" && <SupportDashboard />}
+                {selectedSupportClientId && <SupportDashboard initialClientId={selectedSupportClientId} onBack={() => setActiveSection("soporte")} />}
+                {activeSection === "config" && <ConfigurationHub />}
+                {activeSection === "clients" && (
+                  <ClientList
+                    onSelectClient={(id) => setActiveSection(`client-${id}`)}
+                    selectedClientId={undefined}
+                  />
+                )}
+                {selectedClient && (
+                  <ClientDetail
+                    client={selectedClient}
+                    onBack={() => setActiveSection("clients")}
+                  />
+                )}
+              </div>
+            </Suspense>
           </main>
         </div>
       </div>
