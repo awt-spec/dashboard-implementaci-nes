@@ -3,7 +3,7 @@
   "framework": "vite",
   "buildCommand": "bun run build",
   "outputDirectory": "dist",
-  "installCommand": "bun install",
+  "installCommand": "bun install --linker=hoisted",
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
