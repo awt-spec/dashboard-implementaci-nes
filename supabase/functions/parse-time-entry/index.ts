@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { corsHeaders, corsPreflight, lovableCompatFetch } from "../_shared/cors.ts";
 
 interface ParsedEntry {
   source: "task" | "ticket";
@@ -91,22 +91,14 @@ Devuelve SOLO un JSON con este formato exacto:
   "confidence": number
 }`;
 
-    const aiResp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${Deno.env.get("GEMINI_API_KEY")}`,
-        "Content-Type": "application/json",
-      },
-      signal: AbortSignal.timeout(30000),
-      body: JSON.stringify({
-        model: "gemini-2.5-flash-lite",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        response_format: { type: "json_object" },
-      }),
-    });
+    const aiResp = await lovableCompatFetch({
+      model: "gemini-2.5-flash-lite",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      response_format: { type: "json_object" },
+    }, { timeoutMs: 30000 });
 
     if (aiResp.status === 429) {
       return new Response(JSON.stringify({ error: "Demasiadas solicitudes, intenta en un momento" }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });

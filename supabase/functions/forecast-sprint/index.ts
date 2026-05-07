@@ -1,4 +1,4 @@
-import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { corsHeaders, corsPreflight, lovableCompatFetch } from "../_shared/cors.ts";
 import { AuthError, authErrorResponse, requireAuth, requireRole } from "../_shared/auth.ts";
 
 Deno.serve(async (req) => {
@@ -11,8 +11,6 @@ Deno.serve(async (req) => {
     await requireRole(ctx, ["admin", "pm", "gerente"]);
 
     const { velocity_history, backlog_points } = await req.json();
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
 
     const systemPrompt = `Eres un Scrum Master experto. Analiza la velocity histórica del equipo y predice cuándo terminarán el backlog. Responde SIEMPRE usando la función forecast_sprint.`;
 
@@ -23,39 +21,34 @@ Backlog actual pendiente: ${backlog_points} story points.
 
 Calcula velocity promedio, cuántos sprints faltan, fecha estimada de fin (asumiendo sprints de 2 semanas desde hoy), nivel de confianza basado en la consistencia, factores de riesgo y recomendaciones.`;
 
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(30000),
-      body: JSON.stringify({
-        model: "gemini-2.5-flash-lite",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "forecast_sprint",
-            description: "Devuelve la predicción de fin del backlog",
-            parameters: {
-              type: "object",
-              properties: {
-                avg_velocity: { type: "number", description: "Velocity promedio en story points" },
-                sprints_to_complete: { type: "number", description: "Sprints faltantes para terminar el backlog" },
-                estimated_end_date: { type: "string", description: "Fecha YYYY-MM-DD estimada de fin" },
-                confidence: { type: "string", enum: ["alta", "media", "baja"] },
-                risk_factors: { type: "array", items: { type: "string" } },
-                recommendations: { type: "array", items: { type: "string" } },
-              },
-              required: ["avg_velocity", "sprints_to_complete", "estimated_end_date", "confidence", "risk_factors", "recommendations"],
-              additionalProperties: false,
+    const response = await lovableCompatFetch({
+      model: "gemini-2.5-flash-lite",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      tools: [{
+        type: "function",
+        function: {
+          name: "forecast_sprint",
+          description: "Devuelve la predicción de fin del backlog",
+          parameters: {
+            type: "object",
+            properties: {
+              avg_velocity: { type: "number", description: "Velocity promedio en story points" },
+              sprints_to_complete: { type: "number", description: "Sprints faltantes para terminar el backlog" },
+              estimated_end_date: { type: "string", description: "Fecha YYYY-MM-DD estimada de fin" },
+              confidence: { type: "string", enum: ["alta", "media", "baja"] },
+              risk_factors: { type: "array", items: { type: "string" } },
+              recommendations: { type: "array", items: { type: "string" } },
             },
+            required: ["avg_velocity", "sprints_to_complete", "estimated_end_date", "confidence", "risk_factors", "recommendations"],
+            additionalProperties: false,
           },
-        }],
-        tool_choice: { type: "function", function: { name: "forecast_sprint" } },
-      }),
-    });
+        },
+      }],
+      tool_choice: { type: "function", function: { name: "forecast_sprint" } },
+    }, { timeoutMs: 30000 });
 
     if (!response.ok) {
       if (response.status === 429) return new Response(JSON.stringify({ error: "Rate limit excedido" }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });

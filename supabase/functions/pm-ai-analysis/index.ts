@@ -1,4 +1,4 @@
-import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { corsHeaders, corsPreflight, lovableCompatFetch } from "../_shared/cors.ts";
 import { AuthError, authErrorResponse, requireAuth, requireRole } from "../_shared/auth.ts";
 import { isTicketClosed, isTaskClosed } from "../_shared/ticketStatus.ts";
 
@@ -11,7 +11,6 @@ Deno.serve(async (req) => {
     const ctx = await requireAuth(req);
     await requireRole(ctx, ["admin", "pm", "gerente"]);
 
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY")!;
     const supabase = ctx.adminClient;
 
     // Gather full context
@@ -80,80 +79,75 @@ Deno.serve(async (req) => {
 
     const userPrompt = `Analiza el estado global del portafolio y genera tu informe ejecutivo:\n\n${context}`;
 
-    const aiResp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(30000),
-      body: JSON.stringify({
-        model: "gemini-2.5-flash-lite",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "pm_analysis",
-            description: "Análisis ejecutivo del PM IA",
-            parameters: {
-              type: "object",
-              properties: {
-                executive_summary: { type: "string", description: "Resumen ejecutivo en 3-4 frases" },
-                duration_estimate_weeks: { type: "number", description: "Semanas estimadas para limpiar el backlog actual con el equipo disponible" },
-                team_health_score: { type: "number", description: "0-100" },
-                team_capacity_analysis: { type: "string" },
-                client_priorities: {
-                  type: "array",
-                  description: "Clientes ordenados por prioridad financiera/SLA",
-                  items: {
-                    type: "object",
-                    properties: {
-                      client_id: { type: "string" },
-                      client_name: { type: "string" },
-                      priority_score: { type: "number", description: "0-100" },
-                      monthly_value: { type: "number" },
-                      reasoning: { type: "string" },
-                      action: { type: "string", description: "Qué hacer ahora" }
-                    },
-                    required: ["client_id", "client_name", "priority_score", "reasoning", "action"]
-                  }
-                },
-                recommendations: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      type: { type: "string", enum: ["reasignar", "contratar", "escalar", "renegociar", "priorizar", "desescalar"] },
-                      title: { type: "string" },
-                      detail: { type: "string" },
-                      impact: { type: "string", enum: ["alto", "medio", "bajo"] },
-                      urgency: { type: "string", enum: ["inmediata", "esta_semana", "este_mes"] }
-                    },
-                    required: ["type", "title", "detail", "impact", "urgency"]
-                  }
-                },
-                risks: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      title: { type: "string" },
-                      client_name: { type: "string" },
-                      severity: { type: "string", enum: ["crítico", "alto", "medio"] },
-                      financial_impact: { type: "string" },
-                      mitigation: { type: "string" }
-                    },
-                    required: ["title", "severity", "mitigation"]
-                  }
+    const aiResp = await lovableCompatFetch({
+      model: "gemini-2.5-flash-lite",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      tools: [{
+        type: "function",
+        function: {
+          name: "pm_analysis",
+          description: "Análisis ejecutivo del PM IA",
+          parameters: {
+            type: "object",
+            properties: {
+              executive_summary: { type: "string", description: "Resumen ejecutivo en 3-4 frases" },
+              duration_estimate_weeks: { type: "number", description: "Semanas estimadas para limpiar el backlog actual con el equipo disponible" },
+              team_health_score: { type: "number", description: "0-100" },
+              team_capacity_analysis: { type: "string" },
+              client_priorities: {
+                type: "array",
+                description: "Clientes ordenados por prioridad financiera/SLA",
+                items: {
+                  type: "object",
+                  properties: {
+                    client_id: { type: "string" },
+                    client_name: { type: "string" },
+                    priority_score: { type: "number", description: "0-100" },
+                    monthly_value: { type: "number" },
+                    reasoning: { type: "string" },
+                    action: { type: "string", description: "Qué hacer ahora" }
+                  },
+                  required: ["client_id", "client_name", "priority_score", "reasoning", "action"]
                 }
               },
-              required: ["executive_summary", "duration_estimate_weeks", "team_health_score", "client_priorities", "recommendations", "risks"]
-            }
+              recommendations: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    type: { type: "string", enum: ["reasignar", "contratar", "escalar", "renegociar", "priorizar", "desescalar"] },
+                    title: { type: "string" },
+                    detail: { type: "string" },
+                    impact: { type: "string", enum: ["alto", "medio", "bajo"] },
+                    urgency: { type: "string", enum: ["inmediata", "esta_semana", "este_mes"] }
+                  },
+                  required: ["type", "title", "detail", "impact", "urgency"]
+                }
+              },
+              risks: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    title: { type: "string" },
+                    client_name: { type: "string" },
+                    severity: { type: "string", enum: ["crítico", "alto", "medio"] },
+                    financial_impact: { type: "string" },
+                    mitigation: { type: "string" }
+                  },
+                  required: ["title", "severity", "mitigation"]
+                }
+              }
+            },
+            required: ["executive_summary", "duration_estimate_weeks", "team_health_score", "client_priorities", "recommendations", "risks"]
           }
-        }],
-        tool_choice: { type: "function", function: { name: "pm_analysis" } }
-      })
-    });
+        }
+      }],
+      tool_choice: { type: "function", function: { name: "pm_analysis" } }
+    }, { timeoutMs: 30000 });
 
     if (!aiResp.ok) {
       if (aiResp.status === 429) return new Response(JSON.stringify({ error: "Rate limit excedido, intenta en unos minutos" }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });

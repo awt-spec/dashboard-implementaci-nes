@@ -1,8 +1,6 @@
 // Analiza la actividad de un colaborador con Lovable AI y devuelve insights estructurados.
-import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { corsHeaders, corsPreflight, lovableCompatFetch } from "../_shared/cors.ts";
 import { AuthError, authErrorResponse, canActOnUser, requireAuth } from "../_shared/auth.ts";
-
-const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY")!;
 
 interface ActivityRow {
   action: string;
@@ -140,45 +138,37 @@ Devuelve un análisis con:
 5. focus_assessment: evaluación de concentración (alto/medio/bajo) y por qué
 6. risk_flags: alertas si las hay (inactividad, sobrecarga, fragmentación)`;
 
-    const aiResp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${GEMINI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      signal: AbortSignal.timeout(30000),
-      body: JSON.stringify({
-        model: "gemini-2.5-flash-lite",
-        messages: [
-          { role: "system", content: "Eres un analista de productividad senior. Devuelves SIEMPRE en JSON válido siguiendo el schema requerido." },
-          { role: "user", content: prompt },
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "report_activity_analysis",
-            description: "Reporta análisis de productividad",
-            parameters: {
-              type: "object",
-              properties: {
-                summary: { type: "string" },
-                patterns: { type: "array", items: { type: "string" } },
-                recommendations: { type: "array", items: { type: "string" } },
-                productivity_score: { type: "number" },
-                focus_assessment: {
-                  type: "object",
-                  properties: { level: { type: "string", enum: ["alto", "medio", "bajo"] }, reason: { type: "string" } },
-                  required: ["level", "reason"],
-                },
-                risk_flags: { type: "array", items: { type: "string" } },
+    const aiResp = await lovableCompatFetch({
+      model: "gemini-2.5-flash-lite",
+      messages: [
+        { role: "system", content: "Eres un analista de productividad senior. Devuelves SIEMPRE en JSON válido siguiendo el schema requerido." },
+        { role: "user", content: prompt },
+      ],
+      tools: [{
+        type: "function",
+        function: {
+          name: "report_activity_analysis",
+          description: "Reporta análisis de productividad",
+          parameters: {
+            type: "object",
+            properties: {
+              summary: { type: "string" },
+              patterns: { type: "array", items: { type: "string" } },
+              recommendations: { type: "array", items: { type: "string" } },
+              productivity_score: { type: "number" },
+              focus_assessment: {
+                type: "object",
+                properties: { level: { type: "string", enum: ["alto", "medio", "bajo"] }, reason: { type: "string" } },
+                required: ["level", "reason"],
               },
-              required: ["summary", "patterns", "recommendations", "productivity_score", "focus_assessment", "risk_flags"],
+              risk_flags: { type: "array", items: { type: "string" } },
             },
+            required: ["summary", "patterns", "recommendations", "productivity_score", "focus_assessment", "risk_flags"],
           },
-        }],
-        tool_choice: { type: "function", function: { name: "report_activity_analysis" } },
-      }),
-    });
+        },
+      }],
+      tool_choice: { type: "function", function: { name: "report_activity_analysis" } },
+    }, { timeoutMs: 30000 });
 
     if (!aiResp.ok) {
       if (aiResp.status === 429) {

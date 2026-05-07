@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { corsHeaders, corsPreflight, lovableCompatFetch } from "../_shared/cors.ts";
 import { AuthError, authErrorResponse, requireAuth, requireRole } from "../_shared/auth.ts";
 
 serve(async (req) => {
@@ -47,9 +47,6 @@ serve(async (req) => {
       };
     });
 
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not set");
-
     const prompt = `Eres un PM senior. Recomienda los mejores ${team_size} candidatos del equipo SYSDE para este proyecto.
 
 CLIENTE: ${clientCtx ? JSON.stringify({ name: clientCtx.name, industry: clientCtx.industry, modules: clientCtx.modules, type: clientCtx.client_type }) : "N/A"}
@@ -63,51 +60,46 @@ ${JSON.stringify(memberSummary, null, 2)}
 
 Devuelve SOLO JSON con candidatos rankeados, justificación y skill gaps.`;
 
-    const aiRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(30000),
-      body: JSON.stringify({
-        model: "gemini-2.5-flash-lite",
-        messages: [
-          { role: "system", content: "Eres un experto en asignación de equipos. Responde SOLO con la herramienta provista." },
-          { role: "user", content: prompt },
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "recommend_team",
-            description: "Devuelve recomendación de equipo",
-            parameters: {
-              type: "object",
-              properties: {
-                recommendations: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      member_id: { type: "string" },
-                      member_name: { type: "string" },
-                      match_score: { type: "number", minimum: 0, maximum: 100 },
-                      strengths: { type: "array", items: { type: "string" } },
-                      gaps: { type: "array", items: { type: "string" } },
-                      role_in_project: { type: "string" },
-                      justification: { type: "string" },
-                    },
-                    required: ["member_id", "member_name", "match_score", "strengths", "gaps", "role_in_project", "justification"],
+    const aiRes = await lovableCompatFetch({
+      model: "gemini-2.5-flash-lite",
+      messages: [
+        { role: "system", content: "Eres un experto en asignación de equipos. Responde SOLO con la herramienta provista." },
+        { role: "user", content: prompt },
+      ],
+      tools: [{
+        type: "function",
+        function: {
+          name: "recommend_team",
+          description: "Devuelve recomendación de equipo",
+          parameters: {
+            type: "object",
+            properties: {
+              recommendations: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    member_id: { type: "string" },
+                    member_name: { type: "string" },
+                    match_score: { type: "number", minimum: 0, maximum: 100 },
+                    strengths: { type: "array", items: { type: "string" } },
+                    gaps: { type: "array", items: { type: "string" } },
+                    role_in_project: { type: "string" },
+                    justification: { type: "string" },
                   },
+                  required: ["member_id", "member_name", "match_score", "strengths", "gaps", "role_in_project", "justification"],
                 },
-                team_summary: { type: "string" },
-                missing_skills: { type: "array", items: { type: "string" } },
-                hiring_recommendations: { type: "array", items: { type: "string" } },
               },
-              required: ["recommendations", "team_summary", "missing_skills", "hiring_recommendations"],
+              team_summary: { type: "string" },
+              missing_skills: { type: "array", items: { type: "string" } },
+              hiring_recommendations: { type: "array", items: { type: "string" } },
             },
+            required: ["recommendations", "team_summary", "missing_skills", "hiring_recommendations"],
           },
-        }],
-        tool_choice: { type: "function", function: { name: "recommend_team" } },
-      }),
-    });
+        },
+      }],
+      tool_choice: { type: "function", function: { name: "recommend_team" } },
+    }, { timeoutMs: 30000 });
 
     if (!aiRes.ok) {
       if (aiRes.status === 429) return new Response(JSON.stringify({ error: "Rate limit" }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });

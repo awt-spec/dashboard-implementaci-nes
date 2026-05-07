@@ -1,4 +1,4 @@
-import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { corsHeaders, corsPreflight, lovableCompatFetch } from "../_shared/cors.ts";
 import { AuthError, authErrorResponse, canAccessMember, requireAuth } from "../_shared/auth.ts";
 
 function startOfWeek(d = new Date()) {
@@ -18,8 +18,6 @@ Deno.serve(async (req) => {
     const ctx = await requireAuth(req);
 
     const { member_id } = await req.json().catch(() => ({}));
-    const apiKey = Deno.env.get("GEMINI_API_KEY");
-    if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
 
     const supabase = ctx.adminClient;
 
@@ -90,19 +88,14 @@ Responde en JSON estricto:
 }
 Devuelve 3 sugerencias máximo. NO uses markdown, solo JSON.`;
 
-    const r = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(30000),
-      body: JSON.stringify({
-        model: "gemini-2.5-flash-lite",
-        messages: [
-          { role: "system", content: "Eres un coach que produce JSON válido." },
-          { role: "user", content: prompt },
-        ],
-        response_format: { type: "json_object" },
-      }),
-    });
+    const r = await lovableCompatFetch({
+      model: "gemini-2.5-flash-lite",
+      messages: [
+        { role: "system", content: "Eres un coach que produce JSON válido." },
+        { role: "user", content: prompt },
+      ],
+      response_format: { type: "json_object" },
+    }, { timeoutMs: 30000 });
 
     if (r.status === 429 || r.status === 402) {
       return new Response(JSON.stringify({ error: r.status === 429 ? "Rate limit" : "Sin créditos" }), { status: r.status, headers: { ...cors, "Content-Type": "application/json" } });

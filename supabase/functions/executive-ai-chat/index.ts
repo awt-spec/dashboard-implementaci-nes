@@ -15,7 +15,7 @@
  * redacción confidencial sobre el snapshot de tickets.
  */
 
-import { corsHeaders, corsPreflight, AiError, resolvedModel } from "../_shared/cors.ts";
+import { corsHeaders, corsPreflight, AiError, resolvedModel, lovableCompatFetch } from "../_shared/cors.ts";
 import { AuthError, authErrorResponse, requireAuth, requireRole } from "../_shared/auth.ts";
 import {
   redactConfidentialTickets, logAiCall, checkRateLimit, assertNotCliente,
@@ -38,9 +38,6 @@ Deno.serve(async (req) => {
     await assertNotCliente(ctx);
     await requireRole(ctx, ["admin", "pm", "gerente", "colaborador"]);
     await checkRateLimit(ctx.adminClient, ctx.userId, FUNCTION_NAME, 60); // 60/h, conversacional
-
-    const apiKey = Deno.env.get("GEMINI_API_KEY");
-    if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
 
     const body = await req.json().catch(() => ({}));
     const question: string = (body.question || "").trim();
@@ -227,19 +224,11 @@ Entregables pendientes: ${deliverables.length} (vencidos: ${overdueDeliverables}
       { role: "user", content: question },
     ];
 
-    const aiRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      signal: AbortSignal.timeout(45000),
-      body: JSON.stringify({
-        model: MODEL,
-        messages,
-        temperature: 0.4,
-      }),
-    });
+    const aiRes = await lovableCompatFetch({
+      model: MODEL,
+      messages,
+      temperature: 0.4,
+    }, { timeoutMs: 45000 });
 
     if (!aiRes.ok) {
       const text = await aiRes.text();

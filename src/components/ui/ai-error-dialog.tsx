@@ -60,7 +60,7 @@ function categorize(message: string): {
       description: message,
       Icon: XCircle,
       tone: "destructive",
-      suggestion: "El secret GEMINI_API_KEY en Supabase está mal configurado o expiró.",
+      suggestion: "El secret ANTHROPIC_API_KEY en Supabase está mal configurado o expiró.",
     };
   }
 

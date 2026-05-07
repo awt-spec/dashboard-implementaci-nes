@@ -1,7 +1,5 @@
-import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { corsHeaders, corsPreflight, lovableCompatFetch } from "../_shared/cors.ts";
 import { AuthError, authErrorResponse, requireAuth, requireRole } from "../_shared/auth.ts";
-
-const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 
 Deno.serve(async (req) => {
   const pre = corsPreflight(req);
@@ -14,12 +12,6 @@ Deno.serve(async (req) => {
     const ctx = await requireAuth(req);
     await requireRole(ctx, ["admin", "pm", "gerente"]);
     const sb = ctx.adminClient;
-
-    if (!GEMINI_API_KEY) {
-      return new Response(JSON.stringify({ error: "GEMINI_API_KEY no configurado" }), {
-        status: 500, headers: { ...cors, "Content-Type": "application/json" },
-      });
-    }
 
     const { items, sprints } = await req.json();
 
@@ -83,91 +75,83 @@ ${JSON.stringify(compactItems.slice(0, 100), null, 1)}
 Sprints activos:
 ${JSON.stringify(activeSprints, null, 1)}`;
 
-    const aiResponse = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${GEMINI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      signal: AbortSignal.timeout(30000),
-      body: JSON.stringify({
-        model: "gemini-2.5-flash-lite",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "analyze_team",
-            description: "Reporta análisis del equipo Scrum",
-            parameters: {
-              type: "object",
-              properties: {
-                workload: {
-                  type: "array",
-                  description: "Carga clasificada por persona",
-                  items: {
-                    type: "object",
-                    properties: {
-                      owner: { type: "string" },
-                      level: { type: "string", enum: ["sobrecargado", "saludable", "subutilizado", "sin_carga"] },
-                      items: { type: "number" },
-                      story_points: { type: "number" },
-                      reason: { type: "string" },
-                    },
-                    required: ["owner", "level", "items", "reason"],
+    const aiResponse = await lovableCompatFetch({
+      model: "gemini-2.5-flash-lite",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      tools: [{
+        type: "function",
+        function: {
+          name: "analyze_team",
+          description: "Reporta análisis del equipo Scrum",
+          parameters: {
+            type: "object",
+            properties: {
+              workload: {
+                type: "array",
+                description: "Carga clasificada por persona",
+                items: {
+                  type: "object",
+                  properties: {
+                    owner: { type: "string" },
+                    level: { type: "string", enum: ["sobrecargado", "saludable", "subutilizado", "sin_carga"] },
+                    items: { type: "number" },
+                    story_points: { type: "number" },
+                    reason: { type: "string" },
                   },
+                  required: ["owner", "level", "items", "reason"],
                 },
-                bottlenecks: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      owner: { type: "string" },
-                      severity: { type: "string", enum: ["low", "medium", "high"] },
-                      reason: { type: "string" },
-                      load: { type: "number" },
-                    },
-                    required: ["owner", "severity", "reason", "load"],
-                  },
-                },
-                underutilized: {
-                  type: "array",
-                  description: "Personas con poca o ninguna carga",
-                  items: {
-                    type: "object",
-                    properties: {
-                      owner: { type: "string" },
-                      load: { type: "number" },
-                      suggestion: { type: "string" },
-                    },
-                    required: ["owner", "load", "suggestion"],
-                  },
-                },
-                risks: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      item_id: { type: "string" },
-                      reason: { type: "string" },
-                      recommendation: { type: "string" },
-                    },
-                    required: ["item_id", "reason", "recommendation"],
-                  },
-                },
-                recommendations: { type: "array", items: { type: "string" } },
-                sprint_health: { type: "string", enum: ["saludable", "en_riesgo", "critico"] },
-                team_balance_score: { type: "number", description: "0-100, 100=balanceado" },
               },
-              required: ["workload", "bottlenecks", "underutilized", "risks", "recommendations", "sprint_health", "team_balance_score"],
+              bottlenecks: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    owner: { type: "string" },
+                    severity: { type: "string", enum: ["low", "medium", "high"] },
+                    reason: { type: "string" },
+                    load: { type: "number" },
+                  },
+                  required: ["owner", "severity", "reason", "load"],
+                },
+              },
+              underutilized: {
+                type: "array",
+                description: "Personas con poca o ninguna carga",
+                items: {
+                  type: "object",
+                  properties: {
+                    owner: { type: "string" },
+                    load: { type: "number" },
+                    suggestion: { type: "string" },
+                  },
+                  required: ["owner", "load", "suggestion"],
+                },
+              },
+              risks: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    item_id: { type: "string" },
+                    reason: { type: "string" },
+                    recommendation: { type: "string" },
+                  },
+                  required: ["item_id", "reason", "recommendation"],
+                },
+              },
+              recommendations: { type: "array", items: { type: "string" } },
+              sprint_health: { type: "string", enum: ["saludable", "en_riesgo", "critico"] },
+              team_balance_score: { type: "number", description: "0-100, 100=balanceado" },
             },
+            required: ["workload", "bottlenecks", "underutilized", "risks", "recommendations", "sprint_health", "team_balance_score"],
           },
-        }],
-        tool_choice: { type: "function", function: { name: "analyze_team" } },
-      }),
-    });
+        },
+      }],
+      tool_choice: { type: "function", function: { name: "analyze_team" } },
+    }, { timeoutMs: 30000 });
 
     if (!aiResponse.ok) {
       if (aiResponse.status === 429) {

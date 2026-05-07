@@ -1,4 +1,4 @@
-import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { corsHeaders, corsPreflight, lovableCompatFetch } from "../_shared/cors.ts";
 import { AuthError, authErrorResponse, canAccessMember, requireAuth } from "../_shared/auth.ts";
 
 Deno.serve(async (req) => {
@@ -21,7 +21,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY")!;
     const supabase = ctx.adminClient;
 
     const { data: member } = await supabase.from("sysde_team_members").select("*").eq("id", memberId).maybeSingle();
@@ -56,76 +55,71 @@ ROL OBJETIVO: ${target}
 
 Contexto SYSDE: consultoría SAF+ (banca, pensiones, vehículos). Roles típicos: Junior Dev → Semi-Senior Dev → Senior Dev → Tech Lead → Architect. Especializaciones: Backend Java, Frontend React, DevOps, QA, BA, PM, Soporte.`;
 
-    const aiResp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(30000),
-      body: JSON.stringify({
-        model: "gemini-2.5-flash-lite",
-        messages: [
-          { role: "system", content: "Eres un mentor senior y career coach técnico con 20+ años en consultoría de software. Generas planes de carrera realistas, con pasos concretos y timeline." },
-          { role: "user", content: userPrompt },
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "career_plan",
-            description: "Plan de carrera estructurado",
-            parameters: {
-              type: "object",
-              properties: {
-                ai_summary: { type: "string", description: "Resumen ejecutivo del plan en 2-3 frases" },
-                skills_gap: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      skill: { type: "string" },
-                      priority: { type: "string", enum: ["alta", "media", "baja"] },
-                      reason: { type: "string" },
-                    },
-                    required: ["skill", "priority", "reason"],
+    const aiResp = await lovableCompatFetch({
+      model: "gemini-2.5-flash-lite",
+      messages: [
+        { role: "system", content: "Eres un mentor senior y career coach técnico con 20+ años en consultoría de software. Generas planes de carrera realistas, con pasos concretos y timeline." },
+        { role: "user", content: userPrompt },
+      ],
+      tools: [{
+        type: "function",
+        function: {
+          name: "career_plan",
+          description: "Plan de carrera estructurado",
+          parameters: {
+            type: "object",
+            properties: {
+              ai_summary: { type: "string", description: "Resumen ejecutivo del plan en 2-3 frases" },
+              skills_gap: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    skill: { type: "string" },
+                    priority: { type: "string", enum: ["alta", "media", "baja"] },
+                    reason: { type: "string" },
                   },
-                  description: "Skills que faltan para llegar al rol objetivo",
+                  required: ["skill", "priority", "reason"],
                 },
-                recommended_certifications: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      name: { type: "string" },
-                      issuer: { type: "string" },
-                      timeline_months: { type: "number" },
-                    },
-                    required: ["name", "issuer"],
+                description: "Skills que faltan para llegar al rol objetivo",
+              },
+              recommended_certifications: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    name: { type: "string" },
+                    issuer: { type: "string" },
+                    timeline_months: { type: "number" },
                   },
-                },
-                roadmap: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      milestone: { type: "string" },
-                      timeframe: { type: "string", description: "Ej: '0-3 meses', '6-12 meses'" },
-                      actions: { type: "array", items: { type: "string" } },
-                    },
-                    required: ["milestone", "timeframe", "actions"],
-                  },
-                  description: "3-5 hitos de carrera con acciones",
-                },
-                mentoring_suggestions: {
-                  type: "array",
-                  items: { type: "string" },
-                  description: "Sugerencias de mentoring, comunidades, tipo de mentor que necesita",
+                  required: ["name", "issuer"],
                 },
               },
-              required: ["ai_summary", "skills_gap", "recommended_certifications", "roadmap", "mentoring_suggestions"],
+              roadmap: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    milestone: { type: "string" },
+                    timeframe: { type: "string", description: "Ej: '0-3 meses', '6-12 meses'" },
+                    actions: { type: "array", items: { type: "string" } },
+                  },
+                  required: ["milestone", "timeframe", "actions"],
+                },
+                description: "3-5 hitos de carrera con acciones",
+              },
+              mentoring_suggestions: {
+                type: "array",
+                items: { type: "string" },
+                description: "Sugerencias de mentoring, comunidades, tipo de mentor que necesita",
+              },
             },
+            required: ["ai_summary", "skills_gap", "recommended_certifications", "roadmap", "mentoring_suggestions"],
           },
-        }],
-        tool_choice: { type: "function", function: { name: "career_plan" } },
-      }),
-    });
+        },
+      }],
+      tool_choice: { type: "function", function: { name: "career_plan" } },
+    }, { timeoutMs: 30000 });
 
     if (!aiResp.ok) {
       if (aiResp.status === 429) return new Response(JSON.stringify({ error: "Rate limit excedido" }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });

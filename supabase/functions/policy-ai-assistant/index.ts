@@ -1,17 +1,9 @@
-import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { corsHeaders, corsPreflight, lovableCompatFetch } from "../_shared/cors.ts";
 import { AuthError, authErrorResponse, requireAuth, requireRole } from "../_shared/auth.ts";
 import { normalizeTipo, normalizePrioridad } from "../_shared/ticketStatus.ts";
 
-const GATEWAY = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-
 async function callAI(model: string, messages: any[]) {
-  const apiKey = Deno.env.get("GEMINI_API_KEY");
-  if (!apiKey) throw new Error("GEMINI_API_KEY missing");
-  const res = await fetch(GATEWAY, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model, messages }),
-  });
+  const res = await lovableCompatFetch({ model, messages });
   if (res.status === 429) throw new Error("rate_limited");
   if (res.status === 402) throw new Error("payment_required");
   if (!res.ok) {
@@ -66,7 +58,7 @@ Deno.serve(async (req) => {
     const model = settings?.ai_model || "gemini-2.5-flash-lite";
 
     // La tabla real usa `tipo`, `prioridad`, `estado`, `asunto`, `notas` (español).
-    const ctx = `
+    const ticketCtx = `
 Ticket: ${ticket.asunto || ticket.ticket_id || ticket.id}
 Tipo: ${ticket.tipo || "n/a"} (normalizado: ${normalizeTipo(ticket.tipo)}) | Prioridad: ${ticket.prioridad || "n/a"} (normalizada: ${normalizePrioridad(ticket.prioridad)})
 Estado: ${ticket.estado} | Cliente: ${ticket.client_id}
@@ -82,14 +74,14 @@ Descripción: ${ticket.notas || "(sin descripción)"}
 
     if (mode === "recommend_action") {
       systemPrompt = `Eres el asistente de la Política de Cierre v4.5 de SYSDE. Recomienda la próxima acción concreta para este caso, en español, en menos de 80 palabras. Devuelve una sola acción priorizada (enviar aviso, escalar a sprint, cerrar con diagnóstico, validar con cliente, etc) y la razón en 1 línea.`;
-      userPrompt = ctx;
+      userPrompt = ticketCtx;
     } else if (mode === "generate_notice") {
       const days = compliance?.days_remaining ?? 3;
       systemPrompt = `Redacta un aviso formal en español al cliente sobre el caso. Tono profesional y empático. Sustituye [X días] por ${Math.max(days, 1)} día(s). Incluye número de ticket. Termina con esta firma exacta:\n\n${signature}`;
-      userPrompt = `Tipo de aviso: ${notice_type || "seguimiento"}\n\n${ctx}`;
+      userPrompt = `Tipo de aviso: ${notice_type || "seguimiento"}\n\n${ticketCtx}`;
     } else if (mode === "validate_closing") {
       systemPrompt = `Valida si el caso cumple los 4 elementos obligatorios del diagnóstico v4.5: 1) qué pasó, 2) qué se hizo, 3) estado final, 4) definitiva o temporal. Responde JSON con keys: ok (bool), missing (array de strings), suggestions (string).`;
-      userPrompt = `Checklist actual: ${JSON.stringify(compliance?.checklist || {})}\nElementos requeridos: ${JSON.stringify(checklistDef)}\n\n${ctx}`;
+      userPrompt = `Checklist actual: ${JSON.stringify(compliance?.checklist || {})}\nElementos requeridos: ${JSON.stringify(checklistDef)}\n\n${ticketCtx}`;
     } else {
       return new Response(JSON.stringify({ error: "invalid mode" }), {
         status: 400,

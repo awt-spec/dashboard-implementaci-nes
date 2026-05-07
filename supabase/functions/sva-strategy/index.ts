@@ -2,11 +2,10 @@
 // Cruza: clientes (valor, SLA), equipo (capacidad, skills), backlog (WSJF, SLA urgency),
 // horas trabajadas últimas 2 semanas → plan accionable con foco, asignaciones y clientes prioritarios.
 
-import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { corsHeaders, corsPreflight, lovableCompatFetch } from "../_shared/cors.ts";
 import { AuthError, authErrorResponse, requireAuth, requireRole } from "../_shared/auth.ts";
 import { isTicketClosed, isTaskClosed } from "../_shared/ticketStatus.ts";
 
-const GATEWAY = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 const MODEL = "gemini-2.5-flash-lite";
 
 Deno.serve(async (req) => {
@@ -17,9 +16,6 @@ Deno.serve(async (req) => {
   try {
     const ctx = await requireAuth(req);
     await requireRole(ctx, ["admin", "pm", "gerente"]);
-
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
 
     const sb = ctx.adminClient;
 
@@ -173,99 +169,94 @@ ${JSON.stringify(activeSprints || [], null, 1)}
 Genera el plan de la semana.`;
 
     // ── Llamada al modelo ───────────────────────────────────────────────
-    const aiResp = await fetch(GATEWAY, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(45000),
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "generate_weekly_plan",
-            description: "Plan semanal del SVA",
-            parameters: {
-              type: "object",
-              properties: {
-                executive_summary: { type: "string", description: "2-3 frases con la lectura de la semana" },
-                weekly_focus: {
-                  type: "array",
-                  description: "3-5 objetivos concretos de la semana",
-                  items: { type: "string" },
-                },
-                client_priorities: {
-                  type: "array",
-                  description: "Clientes ordenados por prioridad estratégica",
-                  items: {
-                    type: "object",
-                    properties: {
-                      client_id: { type: "string" },
-                      client_name: { type: "string" },
-                      tier: { type: "string", enum: ["critico", "alto", "medio", "bajo"] },
-                      reason: { type: "string" },
-                      action: { type: "string", description: "Acción concreta esta semana" },
-                    },
-                    required: ["client_id", "client_name", "tier", "reason", "action"],
+    const aiResp = await lovableCompatFetch({
+      model: MODEL,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      tools: [{
+        type: "function",
+        function: {
+          name: "generate_weekly_plan",
+          description: "Plan semanal del SVA",
+          parameters: {
+            type: "object",
+            properties: {
+              executive_summary: { type: "string", description: "2-3 frases con la lectura de la semana" },
+              weekly_focus: {
+                type: "array",
+                description: "3-5 objetivos concretos de la semana",
+                items: { type: "string" },
+              },
+              client_priorities: {
+                type: "array",
+                description: "Clientes ordenados por prioridad estratégica",
+                items: {
+                  type: "object",
+                  properties: {
+                    client_id: { type: "string" },
+                    client_name: { type: "string" },
+                    tier: { type: "string", enum: ["critico", "alto", "medio", "bajo"] },
+                    reason: { type: "string" },
+                    action: { type: "string", description: "Acción concreta esta semana" },
                   },
-                },
-                assignments: {
-                  type: "array",
-                  description: "Asignación por persona para la semana",
-                  items: {
-                    type: "object",
-                    properties: {
-                      member_name: { type: "string" },
-                      primary_client: { type: "string" },
-                      target_hours: { type: "number", description: "Horas planeadas 35-45" },
-                      focus_items: {
-                        type: "array",
-                        description: "2-4 items (IDs o títulos) en los que debe enfocarse",
-                        items: { type: "string" },
-                      },
-                      note: { type: "string", description: "Razón de la asignación y context-switching sugerido" },
-                    },
-                    required: ["member_name", "primary_client", "target_hours", "focus_items", "note"],
-                  },
-                },
-                items_to_defer: {
-                  type: "array",
-                  description: "Items a aplazar, dividir o cerrar sin trabajo",
-                  items: {
-                    type: "object",
-                    properties: {
-                      item_id: { type: "string" },
-                      title: { type: "string" },
-                      action: { type: "string", enum: ["aplazar", "dividir", "cerrar", "reasignar"] },
-                      reason: { type: "string" },
-                    },
-                    required: ["item_id", "title", "action", "reason"],
-                  },
-                },
-                risks_this_week: {
-                  type: "array",
-                  description: "Riesgos principales esta semana",
-                  items: {
-                    type: "object",
-                    properties: {
-                      title: { type: "string" },
-                      severity: { type: "string", enum: ["critico", "alto", "medio"] },
-                      mitigation: { type: "string" },
-                    },
-                    required: ["title", "severity", "mitigation"],
-                  },
+                  required: ["client_id", "client_name", "tier", "reason", "action"],
                 },
               },
-              required: ["executive_summary", "weekly_focus", "client_priorities", "assignments", "items_to_defer", "risks_this_week"],
+              assignments: {
+                type: "array",
+                description: "Asignación por persona para la semana",
+                items: {
+                  type: "object",
+                  properties: {
+                    member_name: { type: "string" },
+                    primary_client: { type: "string" },
+                    target_hours: { type: "number", description: "Horas planeadas 35-45" },
+                    focus_items: {
+                      type: "array",
+                      description: "2-4 items (IDs o títulos) en los que debe enfocarse",
+                      items: { type: "string" },
+                    },
+                    note: { type: "string", description: "Razón de la asignación y context-switching sugerido" },
+                  },
+                  required: ["member_name", "primary_client", "target_hours", "focus_items", "note"],
+                },
+              },
+              items_to_defer: {
+                type: "array",
+                description: "Items a aplazar, dividir o cerrar sin trabajo",
+                items: {
+                  type: "object",
+                  properties: {
+                    item_id: { type: "string" },
+                    title: { type: "string" },
+                    action: { type: "string", enum: ["aplazar", "dividir", "cerrar", "reasignar"] },
+                    reason: { type: "string" },
+                  },
+                  required: ["item_id", "title", "action", "reason"],
+                },
+              },
+              risks_this_week: {
+                type: "array",
+                description: "Riesgos principales esta semana",
+                items: {
+                  type: "object",
+                  properties: {
+                    title: { type: "string" },
+                    severity: { type: "string", enum: ["critico", "alto", "medio"] },
+                    mitigation: { type: "string" },
+                  },
+                  required: ["title", "severity", "mitigation"],
+                },
+              },
             },
+            required: ["executive_summary", "weekly_focus", "client_priorities", "assignments", "items_to_defer", "risks_this_week"],
           },
-        }],
-        tool_choice: { type: "function", function: { name: "generate_weekly_plan" } },
-      }),
-    });
+        },
+      }],
+      tool_choice: { type: "function", function: { name: "generate_weekly_plan" } },
+    }, { timeoutMs: 45000 });
 
     if (aiResp.status === 429) return new Response(JSON.stringify({ error: "Rate limit excedido" }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });
     if (aiResp.status === 402) return new Response(JSON.stringify({ error: "Créditos de IA agotados" }), { status: 402, headers: { ...cors, "Content-Type": "application/json" } });

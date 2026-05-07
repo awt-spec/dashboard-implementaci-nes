@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { corsHeaders, corsPreflight, lovableCompatFetch } from "../_shared/cors.ts";
 import { AuthError, authErrorResponse, requireAuth, requireRole } from "../_shared/auth.ts";
 import {
   redactConfidentialTickets, logAiCall, checkRateLimit, assertNotCliente,
@@ -19,9 +19,6 @@ serve(async (req) => {
     await assertNotCliente(ctx);
     await requireRole(ctx, ["admin", "pm", "gerente"]);
     await checkRateLimit(ctx.adminClient, ctx.userId, FUNCTION_NAME, 20);
-
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
 
     const { ticketIds } = await req.json();
 
@@ -55,59 +52,51 @@ serve(async (req) => {
     const model = "gemini-2.5-flash-lite";
     const startTime = Date.now();
 
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${GEMINI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      signal: AbortSignal.timeout(30000),
-      body: JSON.stringify({
-        model,
-        messages: [
-          {
-            role: "system",
-            content: `Eres un analista de soporte técnico. Clasifica cada ticket en:
+    const response = await lovableCompatFetch({
+      model,
+      messages: [
+        {
+          role: "system",
+          content: `Eres un analista de soporte técnico. Clasifica cada ticket en:
 - classification: una categoría concisa (Bug, Mejora, Configuración, Capacitación, Consulta, Integración, Urgencia Operativa, Mantenimiento)
-- risk_level: critical, high, medium, low (basado en prioridad + días de antigüedad + impacto)  
+- risk_level: critical, high, medium, low (basado en prioridad + días de antigüedad + impacto)
 - summary: resumen ejecutivo de 1 línea del caso en español
 
 Responde SOLO con JSON válido sin markdown.`
-          },
-          {
-            role: "user",
-            content: `Clasifica estos ${tickets.length} tickets:\n${ticketDescriptions}`
-          }
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "classify_tickets",
-            description: "Classify support tickets",
-            parameters: {
-              type: "object",
-              properties: {
-                results: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      ticket_id: { type: "string" },
-                      classification: { type: "string" },
-                      risk_level: { type: "string", enum: ["critical", "high", "medium", "low"] },
-                      summary: { type: "string" }
-                    },
-                    required: ["ticket_id", "classification", "risk_level", "summary"]
-                  }
+        },
+        {
+          role: "user",
+          content: `Clasifica estos ${tickets.length} tickets:\n${ticketDescriptions}`
+        }
+      ],
+      tools: [{
+        type: "function",
+        function: {
+          name: "classify_tickets",
+          description: "Classify support tickets",
+          parameters: {
+            type: "object",
+            properties: {
+              results: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    ticket_id: { type: "string" },
+                    classification: { type: "string" },
+                    risk_level: { type: "string", enum: ["critical", "high", "medium", "low"] },
+                    summary: { type: "string" }
+                  },
+                  required: ["ticket_id", "classification", "risk_level", "summary"]
                 }
-              },
-              required: ["results"]
-            }
+              }
+            },
+            required: ["results"]
           }
-        }],
-        tool_choice: { type: "function", function: { name: "classify_tickets" } },
-      }),
-    });
+        }
+      }],
+      tool_choice: { type: "function", function: { name: "classify_tickets" } },
+    }, { timeoutMs: 30000 });
 
     const elapsed = Date.now() - startTime;
 

@@ -1,4 +1,4 @@
-import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { corsHeaders, corsPreflight, lovableCompatFetch } from "../_shared/cors.ts";
 import { AuthError, authErrorResponse, requireAuth, requireRole } from "../_shared/auth.ts";
 
 Deno.serve(async (req) => {
@@ -10,7 +10,6 @@ Deno.serve(async (req) => {
     const ctx = await requireAuth(req);
     await requireRole(ctx, ["admin", "pm", "gerente"]);
 
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY")!;
     const supabase = ctx.adminClient;
 
     // 1) Pull team, skills, scrum stats in parallel
@@ -83,109 +82,104 @@ Deno.serve(async (req) => {
 
     const userPrompt = `Equipo SYSDE actual (${roster.length} miembros activos):\n\n${JSON.stringify(roster, null, 2)}`;
 
-    const aiResp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(30000),
-      body: JSON.stringify({
-        model: "gemini-2.5-flash-lite",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "team_level_assessment",
-            description: "Evaluación global del nivel técnico del equipo SYSDE",
-            parameters: {
-              type: "object",
-              properties: {
-                overall_score: { type: "number", description: "0-100 nivel global del equipo" },
-                seniority_distribution: {
-                  type: "object",
-                  properties: {
-                    junior: { type: "number" },
-                    semi_senior: { type: "number" },
-                    senior: { type: "number" },
-                    lead: { type: "number" },
-                    architect: { type: "number" },
-                  },
-                },
-                executive_summary: { type: "string", description: "2-4 párrafos. Diagnóstico ejecutivo del nivel del equipo." },
-                strengths: {
-                  type: "array",
-                  items: { type: "string" },
-                  description: "3-6 fortalezas del equipo en su conjunto",
-                },
-                gaps: {
-                  type: "array",
-                  items: { type: "string" },
-                  description: "3-6 brechas críticas a cerrar",
-                },
-                top_performers: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      member_id: { type: "string" },
-                      name: { type: "string" },
-                      reason: { type: "string" },
-                      score: { type: "number", description: "0-100" },
-                    },
-                    required: ["name", "reason", "score"],
-                  },
-                  description: "Top 5 miembros mejor evaluados combinando CV + stats",
-                },
-                at_risk: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      member_id: { type: "string" },
-                      name: { type: "string" },
-                      reason: { type: "string" },
-                      action: { type: "string", description: "Acción concreta sugerida" },
-                    },
-                    required: ["name", "reason", "action"],
-                  },
-                  description: "Miembros con bajo rendimiento o gaps importantes",
-                },
-                hiring_recommendations: {
-                  type: "array",
-                  items: { type: "string" },
-                  description: "Roles/perfiles que faltan o están subdimensionados",
-                },
-                training_plan: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      area: { type: "string" },
-                      priority: { type: "string", enum: ["alta", "media", "baja"] },
-                      members: { type: "array", items: { type: "string" } },
-                    },
-                    required: ["area", "priority"],
-                  },
-                  description: "Plan de capacitación priorizado",
-                },
-                metrics: {
-                  type: "object",
-                  properties: {
-                    avg_seniority_score: { type: "number" },
-                    productivity_score: { type: "number" },
-                    skill_coverage_score: { type: "number" },
-                    bus_factor: { type: "number", description: "Cuántos miembros pueden faltar antes de impactar entregas" },
-                  },
+    const aiResp = await lovableCompatFetch({
+      model: "gemini-2.5-flash-lite",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      tools: [{
+        type: "function",
+        function: {
+          name: "team_level_assessment",
+          description: "Evaluación global del nivel técnico del equipo SYSDE",
+          parameters: {
+            type: "object",
+            properties: {
+              overall_score: { type: "number", description: "0-100 nivel global del equipo" },
+              seniority_distribution: {
+                type: "object",
+                properties: {
+                  junior: { type: "number" },
+                  semi_senior: { type: "number" },
+                  senior: { type: "number" },
+                  lead: { type: "number" },
+                  architect: { type: "number" },
                 },
               },
-              required: ["overall_score", "executive_summary", "strengths", "gaps", "top_performers", "at_risk", "metrics"],
+              executive_summary: { type: "string", description: "2-4 párrafos. Diagnóstico ejecutivo del nivel del equipo." },
+              strengths: {
+                type: "array",
+                items: { type: "string" },
+                description: "3-6 fortalezas del equipo en su conjunto",
+              },
+              gaps: {
+                type: "array",
+                items: { type: "string" },
+                description: "3-6 brechas críticas a cerrar",
+              },
+              top_performers: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    member_id: { type: "string" },
+                    name: { type: "string" },
+                    reason: { type: "string" },
+                    score: { type: "number", description: "0-100" },
+                  },
+                  required: ["name", "reason", "score"],
+                },
+                description: "Top 5 miembros mejor evaluados combinando CV + stats",
+              },
+              at_risk: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    member_id: { type: "string" },
+                    name: { type: "string" },
+                    reason: { type: "string" },
+                    action: { type: "string", description: "Acción concreta sugerida" },
+                  },
+                  required: ["name", "reason", "action"],
+                },
+                description: "Miembros con bajo rendimiento o gaps importantes",
+              },
+              hiring_recommendations: {
+                type: "array",
+                items: { type: "string" },
+                description: "Roles/perfiles que faltan o están subdimensionados",
+              },
+              training_plan: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    area: { type: "string" },
+                    priority: { type: "string", enum: ["alta", "media", "baja"] },
+                    members: { type: "array", items: { type: "string" } },
+                  },
+                  required: ["area", "priority"],
+                },
+                description: "Plan de capacitación priorizado",
+              },
+              metrics: {
+                type: "object",
+                properties: {
+                  avg_seniority_score: { type: "number" },
+                  productivity_score: { type: "number" },
+                  skill_coverage_score: { type: "number" },
+                  bus_factor: { type: "number", description: "Cuántos miembros pueden faltar antes de impactar entregas" },
+                },
+              },
             },
+            required: ["overall_score", "executive_summary", "strengths", "gaps", "top_performers", "at_risk", "metrics"],
           },
-        }],
-        tool_choice: { type: "function", function: { name: "team_level_assessment" } },
-      }),
-    });
+        },
+      }],
+      tool_choice: { type: "function", function: { name: "team_level_assessment" } },
+    }, { timeoutMs: 30000 });
 
     if (!aiResp.ok) {
       if (aiResp.status === 429) return new Response(JSON.stringify({ error: "Rate limit excedido. Intenta en un momento." }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });

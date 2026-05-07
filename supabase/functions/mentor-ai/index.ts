@@ -1,4 +1,4 @@
-import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { corsHeaders, corsPreflight, lovableCompatFetch } from "../_shared/cors.ts";
 import { AuthError, authErrorResponse, canAccessMember, requireAuth } from "../_shared/auth.ts";
 
 Deno.serve(async (req) => {
@@ -26,9 +26,6 @@ Deno.serve(async (req) => {
         status: 403, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
-
-    const apiKey = Deno.env.get("GEMINI_API_KEY");
-    if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
 
     const supabase = ctx.adminClient;
 
@@ -59,18 +56,13 @@ ${(courses || []).map((c: any) => `- [${c.id}] ${c.title} | ${(c.related_skills 
 
 Cuando recomiendes un curso del catálogo, menciona su título exactamente. Da pasos concretos, plazos y ejemplos.`;
 
-    const r = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(30000),
-      body: JSON.stringify({
-        model: "gemini-2.5-flash-lite",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: question },
-        ],
-      }),
-    });
+    const r = await lovableCompatFetch({
+      model: "gemini-2.5-flash-lite",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: question },
+      ],
+    }, { timeoutMs: 30000 });
 
     if (r.status === 429) return new Response(JSON.stringify({ error: "Límite de IA alcanzado, intenta más tarde." }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });
     if (r.status === 402) return new Response(JSON.stringify({ error: "Créditos de IA agotados. Añade fondos en Lovable." }), { status: 402, headers: { ...cors, "Content-Type": "application/json" } });

@@ -1,4 +1,4 @@
-import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { corsHeaders, corsPreflight, lovableCompatFetch } from "../_shared/cors.ts";
 import { AuthError, authErrorResponse, canAccessMember, requireAuth } from "../_shared/auth.ts";
 
 Deno.serve(async (req) => {
@@ -27,7 +27,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY")!;
     const supabase = ctx.adminClient;
 
     // Get clients for matching context
@@ -43,54 +42,49 @@ Deno.serve(async (req) => {
 
     const userPrompt = `CV a analizar:\n\n${cvText.slice(0, 12000)}\n\nClientes activos SYSDE:\n${clientsContext}`;
 
-    const aiResp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(30000),
-      body: JSON.stringify({
-        model: "gemini-2.5-flash-lite",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "analyze_cv",
-            description: "Análisis estructurado del CV",
-            parameters: {
-              type: "object",
-              properties: {
-                summary: { type: "string", description: "Resumen ejecutivo en 2-3 frases" },
-                years_experience: { type: "number" },
-                seniority: { type: "string", enum: ["Junior", "Semi-Senior", "Senior", "Lead", "Architect"] },
-                skills: { type: "array", items: { type: "string" }, description: "Habilidades técnicas principales" },
-                domains: { type: "array", items: { type: "string" }, description: "Áreas de dominio (SAF+, banca, pensiones, etc.)" },
-                certifications: { type: "array", items: { type: "string" } },
-                strengths: { type: "array", items: { type: "string" }, description: "3-5 fortalezas clave" },
-                gaps: { type: "array", items: { type: "string" }, description: "Áreas a desarrollar" },
-                recommended_clients: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      client_id: { type: "string" },
-                      client_name: { type: "string" },
-                      fit_score: { type: "number", description: "0-100" },
-                      reason: { type: "string" }
-                    },
-                    required: ["client_id", "client_name", "fit_score", "reason"]
-                  }
-                },
-                ideal_role: { type: "string" }
+    const aiResp = await lovableCompatFetch({
+      model: "gemini-2.5-flash-lite",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      tools: [{
+        type: "function",
+        function: {
+          name: "analyze_cv",
+          description: "Análisis estructurado del CV",
+          parameters: {
+            type: "object",
+            properties: {
+              summary: { type: "string", description: "Resumen ejecutivo en 2-3 frases" },
+              years_experience: { type: "number" },
+              seniority: { type: "string", enum: ["Junior", "Semi-Senior", "Senior", "Lead", "Architect"] },
+              skills: { type: "array", items: { type: "string" }, description: "Habilidades técnicas principales" },
+              domains: { type: "array", items: { type: "string" }, description: "Áreas de dominio (SAF+, banca, pensiones, etc.)" },
+              certifications: { type: "array", items: { type: "string" } },
+              strengths: { type: "array", items: { type: "string" }, description: "3-5 fortalezas clave" },
+              gaps: { type: "array", items: { type: "string" }, description: "Áreas a desarrollar" },
+              recommended_clients: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    client_id: { type: "string" },
+                    client_name: { type: "string" },
+                    fit_score: { type: "number", description: "0-100" },
+                    reason: { type: "string" }
+                  },
+                  required: ["client_id", "client_name", "fit_score", "reason"]
+                }
               },
-              required: ["summary", "years_experience", "seniority", "skills", "domains", "strengths", "recommended_clients", "ideal_role"]
-            }
+              ideal_role: { type: "string" }
+            },
+            required: ["summary", "years_experience", "seniority", "skills", "domains", "strengths", "recommended_clients", "ideal_role"]
           }
-        }],
-        tool_choice: { type: "function", function: { name: "analyze_cv" } }
-      })
-    });
+        }
+      }],
+      tool_choice: { type: "function", function: { name: "analyze_cv" } }
+    }, { timeoutMs: 30000 });
 
     if (!aiResp.ok) {
       if (aiResp.status === 429) return new Response(JSON.stringify({ error: "Rate limit excedido" }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });

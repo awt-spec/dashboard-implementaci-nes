@@ -331,7 +331,7 @@ export function SecurityTab() {
     {
       icon: Key,
       title: "API Key en Supabase Secrets",
-      description: "GEMINI_API_KEY vive en el vault de Supabase Edge Functions. Nunca se expone al cliente ni queda en el repo.",
+      description: "ANTHROPIC_API_KEY vive en el vault de Supabase Edge Functions. Nunca se expone al cliente ni queda en el repo.",
     },
     {
       icon: Server,
