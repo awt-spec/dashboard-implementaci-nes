@@ -1,4 +1,4 @@
-import { corsHeaders, corsPreflight, anthropicTool, AiError, resolvedModel } from "../_shared/cors.ts";
+import { corsHeaders, corsPreflight, aiTool, AiError, resolvedModel } from "../_shared/cors.ts";
 import { AuthError, authErrorResponse, requireAuth, requireRole } from "../_shared/auth.ts";
 import { isTicketClosed } from "../_shared/ticketStatus.ts";
 import {
@@ -217,7 +217,7 @@ Deno.serve(async (req) => {
 
     const userPrompt = `Analiza el estado integral del cliente y devolvé una estrategia accionable para los próximos 30 días:\n\n${JSON.stringify(context, null, 2)}`;
 
-    const { result: analysis, usage } = await anthropicTool<any>({
+    const { result: analysis, usage } = await aiTool<any>({
       model: MODEL,
       system: systemPrompt,
       userPrompt,

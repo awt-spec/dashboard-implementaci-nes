@@ -22,7 +22,9 @@ brew install supabase/tap/supabase
 supabase login
 
 # vincular el proyecto
-supabase link --project-ref rpiczncifaoxtdidfiqc
+# qorixnxlaiuyxoentrfa = sva-erp PROD (vigente)
+# rpiczncifaoxtdidfiqc = Lovable legacy (NO usar)
+supabase link --project-ref qorixnxlaiuyxoentrfa
 ```
 
 Confirmar:
@@ -50,8 +52,12 @@ Después del deploy hay que configurar los secrets en Supabase Dashboard → Edg
 
 ```
 ALLOWED_ORIGINS  = https://erp.sysde.com,https://staging.sysde.com
-LOVABLE_API_KEY  = (el que ya tienen)
+GEMINI_API_KEY   = AIza...     # IA principal (Gemini 2.5 Flash Lite)
+RESEND_API_KEY   = re_...      # email transaccional
+SLACK_WEBHOOK_URL = https://hooks.slack.com/...
 AZURE_DEVOPS_PAT = (si usan sync-devops)
+# Histórico: LOVABLE_API_KEY ya no se usa — el helper lovableCompatFetch
+# en _shared/cors.ts apunta a Google Gemini OpenAI-compat
 ```
 
 > **Sobre `ALLOWED_ORIGINS`**: si no lo configuras, las funciones solo aceptarán origen `localhost` (modo dev). En producción es obligatorio listar los dominios reales del ERP.

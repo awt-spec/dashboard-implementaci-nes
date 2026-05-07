@@ -1,5 +1,15 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { requireAuth, AuthError, authErrorResponse } from "../_shared/auth.ts";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// manage-users — endpoint con múltiples acciones para CRUD de usuarios.
+//
+// Modelo de autorización: distinto al patrón `requireRole(ctx, [...])` porque
+// este endpoint expone DOS niveles de acción según `body.action`:
+//   • CLIENTE_ACTIONS (admin OR pm) — gestión de usuarios externos cliente
+//   • Resto             (admin only) — staff CRUD, passwords, emails
+// Por eso resolvemos el rol UNA sola vez y bifurcamos por action.
+// ─────────────────────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
   const pre = corsPreflight(req);
@@ -7,21 +17,12 @@ Deno.serve(async (req) => {
   const cors = corsHeaders(req);
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+    const ctx = await requireAuth(req);
 
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header");
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user: caller } } = await supabaseAdmin.auth.getUser(token);
-    if (!caller) throw new Error("Invalid token");
-
-    const { data: callerRoles } = await supabaseAdmin
+    const { data: callerRoles } = await ctx.adminClient
       .from("user_roles")
       .select("role")
-      .eq("user_id", caller.id);
+      .eq("user_id", ctx.userId);
     const callerRoleSet = new Set((callerRoles ?? []).map((r: any) => r.role));
     const isAdmin = callerRoleSet.has("admin");
     const isPM = callerRoleSet.has("pm");
@@ -39,16 +40,16 @@ Deno.serve(async (req) => {
     ]);
     if (CLIENTE_ACTIONS.has(action)) {
       if (!isAdmin && !isPM) {
-        throw new Error("Solo admin o pm pueden gestionar usuarios cliente");
+        throw new AuthError(403, "Solo admin o pm pueden gestionar usuarios cliente");
       }
     } else if (!isAdmin) {
-      throw new Error("Solo administradores pueden gestionar usuarios");
+      throw new AuthError(403, "Solo administradores pueden gestionar usuarios");
     }
 
     if (action === "create") {
       const { email, password, full_name, role } = body;
 
-      const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+      const { data: newUser, error: createErr } = await ctx.adminClient.auth.admin.createUser({
         email,
         password,
         email_confirm: true,
@@ -56,7 +57,7 @@ Deno.serve(async (req) => {
       });
       if (createErr) throw createErr;
 
-      const { error: roleErr } = await supabaseAdmin
+      const { error: roleErr } = await ctx.adminClient
         .from("user_roles")
         .insert({ user_id: newUser.user.id, role });
       if (roleErr) throw roleErr;
@@ -73,7 +74,7 @@ Deno.serve(async (req) => {
         throw new Error("team_member_id y password (>=6 chars) son requeridos");
       }
 
-      const { data: member, error: memberErr } = await supabaseAdmin
+      const { data: member, error: memberErr } = await ctx.adminClient
         .from("sysde_team_members")
         .select("id, name, email, user_id")
         .eq("id", team_member_id)
@@ -83,7 +84,7 @@ Deno.serve(async (req) => {
       if (!member.email) throw new Error("El miembro no tiene email asignado");
       if (member.user_id) throw new Error("Este miembro ya tiene un acceso creado");
 
-      const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+      const { data: newUser, error: createErr } = await ctx.adminClient.auth.admin.createUser({
         email: member.email,
         password,
         email_confirm: true,
@@ -92,13 +93,13 @@ Deno.serve(async (req) => {
       if (createErr) throw createErr;
 
       // Asignar rol colaborador
-      const { error: roleErr } = await supabaseAdmin
+      const { error: roleErr } = await ctx.adminClient
         .from("user_roles")
         .insert({ user_id: newUser.user.id, role: "colaborador" });
       if (roleErr) throw roleErr;
 
       // Vincular miembro <-> usuario
-      const { error: linkErr } = await supabaseAdmin
+      const { error: linkErr } = await ctx.adminClient
         .from("sysde_team_members")
         .update({ user_id: newUser.user.id })
         .eq("id", team_member_id);
@@ -116,7 +117,7 @@ Deno.serve(async (req) => {
         throw new Error("password (>=6 chars) es requerido");
       }
 
-      const { data: members, error: membersErr } = await supabaseAdmin
+      const { data: members, error: membersErr } = await ctx.adminClient
         .from("sysde_team_members")
         .select("id, name, email, user_id, is_active")
         .eq("is_active", true);
@@ -129,7 +130,7 @@ Deno.serve(async (req) => {
           continue;
         }
         try {
-          const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+          const { data: newUser, error: createErr } = await ctx.adminClient.auth.admin.createUser({
             email: m.email,
             password,
             email_confirm: true,
@@ -137,8 +138,8 @@ Deno.serve(async (req) => {
           });
           if (createErr) throw createErr;
 
-          await supabaseAdmin.from("user_roles").insert({ user_id: newUser.user.id, role: "colaborador" });
-          await supabaseAdmin.from("sysde_team_members").update({ user_id: newUser.user.id }).eq("id", m.id);
+          await ctx.adminClient.from("user_roles").insert({ user_id: newUser.user.id, role: "colaborador" });
+          await ctx.adminClient.from("sysde_team_members").update({ user_id: newUser.user.id }).eq("id", m.id);
 
           results.push({ name: m.name, email: m.email, success: true });
         } catch (err: any) {
@@ -153,8 +154,8 @@ Deno.serve(async (req) => {
 
     if (action === "update_role") {
       const { user_id, role } = body;
-      await supabaseAdmin.from("user_roles").delete().eq("user_id", user_id);
-      const { error: insErr } = await supabaseAdmin.from("user_roles").insert({ user_id, role });
+      await ctx.adminClient.from("user_roles").delete().eq("user_id", user_id);
+      const { error: insErr } = await ctx.adminClient.from("user_roles").insert({ user_id, role });
       if (insErr) throw insErr;
 
       return new Response(JSON.stringify({ success: true }), {
@@ -165,8 +166,8 @@ Deno.serve(async (req) => {
     if (action === "delete") {
       const { user_id } = body;
       // Desvincular del equipo si aplica
-      await supabaseAdmin.from("sysde_team_members").update({ user_id: null }).eq("user_id", user_id);
-      const { error } = await supabaseAdmin.auth.admin.deleteUser(user_id);
+      await ctx.adminClient.from("sysde_team_members").update({ user_id: null }).eq("user_id", user_id);
+      const { error } = await ctx.adminClient.auth.admin.deleteUser(user_id);
       if (error) throw error;
 
       return new Response(JSON.stringify({ success: true }), {
@@ -176,7 +177,7 @@ Deno.serve(async (req) => {
 
     if (action === "update_password") {
       const { user_id, password } = body;
-      const { error } = await supabaseAdmin.auth.admin.updateUserById(user_id, { password });
+      const { error } = await ctx.adminClient.auth.admin.updateUserById(user_id, { password });
       if (error) throw error;
 
       return new Response(JSON.stringify({ success: true }), {
@@ -186,10 +187,10 @@ Deno.serve(async (req) => {
 
     if (action === "update_email") {
       const { user_id, email } = body;
-      const { error } = await supabaseAdmin.auth.admin.updateUserById(user_id, { email, email_confirm: true });
+      const { error } = await ctx.adminClient.auth.admin.updateUserById(user_id, { email, email_confirm: true });
       if (error) throw error;
 
-      await supabaseAdmin.from("profiles").update({ email }).eq("user_id", user_id);
+      await ctx.adminClient.from("profiles").update({ email }).eq("user_id", user_id);
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" },
@@ -212,7 +213,7 @@ Deno.serve(async (req) => {
       }
 
       // Ver si ya existe el user por email (para no duplicar)
-      const { data: existingProfile } = await supabaseAdmin
+      const { data: existingProfile } = await ctx.adminClient
         .from("profiles")
         .select("user_id")
         .eq("email", email)
@@ -224,7 +225,7 @@ Deno.serve(async (req) => {
         // Reset password + confirm email para que el password que venga en el
         // request sea el password real del user (útil para seed scripts y
         // para resetear cuando el admin re-invita a un user existente).
-        const { error: updErr } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+        const { error: updErr } = await ctx.adminClient.auth.admin.updateUserById(userId, {
           password,
           email_confirm: true,
           user_metadata: { full_name: full_name ?? email.split("@")[0], role: "cliente" },
@@ -233,7 +234,7 @@ Deno.serve(async (req) => {
       } else {
         // Crear auth user con role=cliente en metadata (para que el trigger
         // handle_new_user inserte el rol correcto en vez del default gerente).
-        const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+        const { data: newUser, error: createErr } = await ctx.adminClient.auth.admin.createUser({
           email,
           password,
           email_confirm: true,
@@ -250,23 +251,23 @@ Deno.serve(async (req) => {
       // frontend los rutee al ClientPortalDashboard y no al dashboard interno.
       // Si había un rol default (ej: gerente) del trigger o asignaciones previas,
       // se borra acá y se asegura que quede sólo cliente.
-      await supabaseAdmin.from("user_roles").delete().eq("user_id", userId).neq("role", "cliente");
+      await ctx.adminClient.from("user_roles").delete().eq("user_id", userId).neq("role", "cliente");
 
       // Idempotente: si el trigger ya insertó cliente, ignora el duplicado.
-      const { error: roleErr } = await supabaseAdmin
+      const { error: roleErr } = await ctx.adminClient
         .from("user_roles")
         .upsert({ user_id: userId, role: "cliente" }, { onConflict: "user_id,role", ignoreDuplicates: true });
       if (roleErr) throw roleErr;
 
       // Upsert assignment (si ya existía para este client_id, actualiza permiso)
-      const { error: assignErr } = await supabaseAdmin
+      const { error: assignErr } = await ctx.adminClient
         .from("cliente_company_assignments")
         .upsert(
           {
             user_id: userId,
             client_id,
             permission_level: perm,
-            created_by: caller.id,
+            created_by: ctx.userId,
           },
           { onConflict: "user_id,client_id" }
         );
@@ -283,7 +284,7 @@ Deno.serve(async (req) => {
       if (!["viewer", "editor", "admin"].includes(permission_level)) {
         throw new Error("permission_level inválido");
       }
-      const { error } = await supabaseAdmin
+      const { error } = await ctx.adminClient
         .from("cliente_company_assignments")
         .update({ permission_level })
         .eq("user_id", user_id)
@@ -298,7 +299,7 @@ Deno.serve(async (req) => {
       const { user_id, client_id, delete_user } = body;
       if (!user_id || !client_id) throw new Error("user_id y client_id son requeridos");
 
-      const { error: delAssignErr } = await supabaseAdmin
+      const { error: delAssignErr } = await ctx.adminClient
         .from("cliente_company_assignments")
         .delete()
         .eq("user_id", user_id)
@@ -307,12 +308,12 @@ Deno.serve(async (req) => {
 
       if (delete_user) {
         // Sólo borra el auth user si no quedan otras asignaciones
-        const { data: remaining } = await supabaseAdmin
+        const { data: remaining } = await ctx.adminClient
           .from("cliente_company_assignments")
           .select("id")
           .eq("user_id", user_id);
         if (!remaining || remaining.length === 0) {
-          await supabaseAdmin.auth.admin.deleteUser(user_id);
+          await ctx.adminClient.auth.admin.deleteUser(user_id);
         }
       }
 
@@ -325,7 +326,7 @@ Deno.serve(async (req) => {
       const { client_id } = body;
       if (!client_id) throw new Error("client_id es requerido");
 
-      const { data: assignments, error } = await supabaseAdmin
+      const { data: assignments, error } = await ctx.adminClient
         .from("cliente_company_assignments")
         .select("id, user_id, permission_level, created_at, created_by")
         .eq("client_id", client_id)
@@ -333,7 +334,7 @@ Deno.serve(async (req) => {
       if (error) throw error;
 
       const userIds = (assignments ?? []).map((a: any) => a.user_id);
-      const { data: profiles } = await supabaseAdmin
+      const { data: profiles } = await ctx.adminClient
         .from("profiles")
         .select("user_id, full_name, email, avatar_url")
         .in("user_id", userIds.length > 0 ? userIds : ["00000000-0000-0000-0000-000000000000"]);
@@ -354,6 +355,8 @@ Deno.serve(async (req) => {
 
     throw new Error("Unknown action");
   } catch (err: any) {
+    // AuthError → response 401/403 limpio. Otros errores → 400 con mensaje.
+    if (err instanceof AuthError) return authErrorResponse(err, cors);
     return new Response(JSON.stringify({ error: err.message }), {
       status: 400,
       headers: { ...cors, "Content-Type": "application/json" },

@@ -138,8 +138,12 @@ export async function lovableCompatFetch(
 /**
  * Wrapper sobre lovableCompatFetch que fuerza tool-use y retorna el input JSON
  * tipado como T.
+ *
+ * Nota histórica: este helper se llamaba `anthropicTool` cuando el plan
+ * original previó usar Claude. La implementación productiva usa Gemini
+ * (OpenAI-compat). El rename refleja esto sin romper la abstracción.
  */
-export async function anthropicTool<T = unknown>(
+export async function aiTool<T = unknown>(
   opts: {
     model?: string;
     system: string;
