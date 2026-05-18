@@ -29,15 +29,22 @@ export function ClientList({ onSelectClient, selectedClientId }: ClientListProps
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("todos");
 
-  // Mostrar todos los clientes con backlog de implementación, no solo los
-  // marcados client_type='implementacion'. CMI vive como soporte pero tiene
-  // un producto Arrendamiento en implementación → debe aparecer aquí también.
-  // Cuando Arrendamiento pase a soporte (sin tasks pendientes), CMI desaparece
-  // automáticamente de esta lista — natural fusion.
-  const clientData = (clients || []).filter((c: any) =>
-    c.client_type === "implementacion"
-    || (c.tasks && c.tasks.length > 0)
-  );
+  // Mostrar clientes con implementación activa.
+  // - Si client_type='implementacion' → siempre aparece (su naturaleza).
+  // - Si client_type='soporte' → solo aparece si tiene al menos UNA task no
+  //   terminal (status ∉ {completada, anulada}). Ejemplo: CMI vive como
+  //   soporte pero tiene Arrendamiento en implementación. Cuando Arrendamiento
+  //   cierre todas sus tasks, CMI desaparece automáticamente.
+  // Fix 2026-05-16: antes contaba tasks.length > 0 incluyendo históricas,
+  // por eso Dos Pinos (1177 tasks, mayoría completada) seguía apareciendo
+  // tras migrar a soporte.
+  const clientData = (clients || []).filter((c: any) => {
+    if (c.client_type === "implementacion") return true;
+    const hasActiveTasks = (c.tasks || []).some(
+      (t: any) => t.status !== "completada" && t.status !== "anulada"
+    );
+    return hasActiveTasks;
+  });
 
   const filtered = clientData.filter(c => {
     const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
