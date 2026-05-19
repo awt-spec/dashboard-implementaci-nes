@@ -29,22 +29,20 @@ export function ClientList({ onSelectClient, selectedClientId }: ClientListProps
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("todos");
 
-  // Mostrar clientes con implementación activa.
-  // - Si client_type='implementacion' → siempre aparece (su naturaleza).
-  // - Si client_type='soporte' → solo aparece si tiene al menos UNA task no
-  //   terminal (status ∉ {completada, anulada}). Ejemplo: CMI vive como
-  //   soporte pero tiene Arrendamiento en implementación. Cuando Arrendamiento
-  //   cierre todas sus tasks, CMI desaparece automáticamente.
-  // Fix 2026-05-16: antes contaba tasks.length > 0 incluyendo históricas,
-  // por eso Dos Pinos (1177 tasks, mayoría completada) seguía apareciendo
-  // tras migrar a soporte.
-  const clientData = (clients || []).filter((c: any) => {
-    if (c.client_type === "implementacion") return true;
-    const hasActiveTasks = (c.tasks || []).some(
-      (t: any) => t.status !== "completada" && t.status !== "anulada"
-    );
-    return hasActiveTasks;
-  });
+  // Solo clientes con client_type='implementacion'. Coherente con el sidebar
+  // que cuenta del mismo modo (`AppSidebar.tsx:53`).
+  //
+  // Fix 2026-05-16: la versión anterior incluía clientes 'soporte' con tasks
+  // no terminales — pero esto producía discrepancias con el sidebar (Dos Pinos
+  // y CMI aparecían en cards pero no en sidebar). AWT confirmó que un cliente
+  // que migró a soporte NO debe aparecer acá.
+  //
+  // Si en el futuro hace falta mostrar un cliente 'soporte' por implementación
+  // activa de un producto específico, agregar bandera explícita en BD
+  // (ej: clients.implementation_active boolean) en lugar de inferir por tasks.
+  const clientData = (clients || []).filter(
+    (c: any) => c.client_type === "implementacion"
+  );
 
   const filtered = clientData.filter(c => {
     const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
