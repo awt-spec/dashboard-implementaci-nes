@@ -145,12 +145,14 @@ export function ReopenReasonsAdminPanel() {
                   size="icon" variant="ghost" className="h-5 w-5"
                   onClick={() => handleMove(r, "up")}
                   disabled={i === 0 || reorder.isPending}
+                  aria-label="Subir orden del motivo"
                 >
                   <ArrowUp className="h-3 w-3" />
                 </Button>
                 <Button
                   size="icon" variant="ghost" className="h-5 w-5"
                   onClick={() => handleMove(r, "down")}
+                  aria-label="Bajar orden del motivo"
                   disabled={i === (reasons?.length ?? 1) - 1 || reorder.isPending}
                 >
                   <ArrowDown className="h-3 w-3" />
@@ -189,7 +191,7 @@ export function ReopenReasonsAdminPanel() {
               </div>
 
               <div className="flex items-center gap-0.5">
-                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(r)}>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(r)} aria-label="Editar motivo">
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
                 <Button
@@ -197,6 +199,7 @@ export function ReopenReasonsAdminPanel() {
                   onClick={() => handleDelete(r)}
                   disabled={r.is_system}
                   title={r.is_system ? "Motivo del sistema, no eliminable" : "Eliminar"}
+                  aria-label={r.is_system ? "Motivo del sistema, no eliminable" : "Eliminar motivo"}
                 >
                   <Trash2 className="h-3.5 w-3.5 text-destructive" />
                 </Button>

@@ -105,7 +105,7 @@ export function QuoteItemsEditor({ items, onChange, currency, readOnly }: Props)
             <div className="col-span-1 flex items-center justify-end gap-1">
               <span className="text-xs font-medium tabular-nums">{itemSubtotal.toFixed(2)}</span>
               {!readOnly && (
-                <Button size="icon" variant="ghost" onClick={() => removeItem(i)} className="h-6 w-6 shrink-0">
+                <Button size="icon" variant="ghost" onClick={() => removeItem(i)} className="h-6 w-6 shrink-0" aria-label="Eliminar línea">
                   <Trash2 className="h-3 w-3 text-destructive" />
                 </Button>
               )}

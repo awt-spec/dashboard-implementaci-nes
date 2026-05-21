@@ -183,6 +183,7 @@ export function QuoteApprovalCard({ quoteId, defaultOpen = false }: Props) {
                         <Button
                           size="icon" variant="ghost" className="h-6 w-6 shrink-0"
                           onClick={() => handleDownload(a.file_path, a.file_name)}
+                          aria-label={`Descargar ${a.file_name}`}
                         >
                           <Download className="h-3 w-3" />
                         </Button>

@@ -205,6 +205,7 @@ function UserSupervisionsTab() {
                         onError: (e: any) => toast.error(e?.message ?? "No se pudo eliminar"),
                       });
                     }}
+                    aria-label="Eliminar supervisión"
                   >
                     <Trash2 className="h-3.5 w-3.5 text-destructive" />
                   </Button>
@@ -418,6 +419,7 @@ function TeamSupervisionsTab() {
                         onError: (e: any) => toast.error(e?.message ?? "No se pudo eliminar"),
                       });
                     }}
+                    aria-label="Eliminar supervisión de equipo"
                   >
                     <Trash2 className="h-3.5 w-3.5 text-destructive" />
                   </Button>

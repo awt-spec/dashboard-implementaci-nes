@@ -336,10 +336,10 @@ function AudienceCard({
           )}
         </div>
         <div className="flex items-center gap-0.5">
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onEdit}>
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onEdit} aria-label="Editar audiencia">
             <Pencil className="h-3.5 w-3.5" />
           </Button>
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onDelete}>
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onDelete} aria-label="Eliminar audiencia">
             <Trash2 className="h-3.5 w-3.5 text-destructive" />
           </Button>
         </div>

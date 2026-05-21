@@ -360,13 +360,21 @@ export function QuoteDetailSheet({ quoteId, open, onOpenChange }: Props) {
                           </p>
                         </div>
                         <div className="flex items-center gap-0.5">
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDownload(a.file_path, a.file_name)}>
+                          <Button
+                            size="icon" variant="ghost" className="h-7 w-7"
+                            onClick={() => handleDownload(a.file_path, a.file_name)}
+                            aria-label={`Descargar ${a.file_name}`}
+                          >
                             <Download className="h-3.5 w-3.5" />
                           </Button>
                           {isStaff && isDraft && (
                             <Button
                               size="icon" variant="ghost" className="h-7 w-7"
-                              onClick={() => deleteAttachment.mutate({ id: a.id, filePath: a.file_path, quoteId: quote.id })}
+                              onClick={() => deleteAttachment.mutate(
+                                { id: a.id, filePath: a.file_path, quoteId: quote.id },
+                                { onError: (e: any) => toast.error(e?.message ?? "No se pudo eliminar el adjunto") },
+                              )}
+                              aria-label={`Eliminar ${a.file_name}`}
                             >
                               <Trash2 className="h-3.5 w-3.5 text-destructive" />
                             </Button>
