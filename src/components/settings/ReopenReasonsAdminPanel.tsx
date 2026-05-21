@@ -159,7 +159,10 @@ export function ReopenReasonsAdminPanel() {
 
               <Switch
                 checked={r.is_active}
-                onCheckedChange={(v) => toggle.mutate({ id: r.id, is_active: v })}
+                onCheckedChange={(v) => toggle.mutate(
+                  { id: r.id, is_active: v },
+                  { onError: (e: any) => toast.error(e?.message ?? "No se pudo cambiar el estado") },
+                )}
               />
 
               <div className="flex-1 min-w-0">

@@ -123,6 +123,15 @@ export function QuoteDetailSheet({ quoteId, open, onOpenChange }: Props) {
 
   const handleSend = async () => {
     if (!quote) return;
+    const validItems = items.filter(i => i.description.trim() && i.quantity > 0);
+    if (validItems.length === 0) {
+      toast.error("La cotización necesita al menos una línea con descripción y cantidad > 0 antes de enviarse");
+      return;
+    }
+    if (!title.trim()) {
+      toast.error("El título es obligatorio");
+      return;
+    }
     try {
       // Save first
       await handleSaveHeader();

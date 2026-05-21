@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, FileText, ChevronRight } from "lucide-react";
+import { Loader2, FileText, ChevronRight, AlertCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuotes } from "@/hooks/useQuotes";
 import { QuoteStatusBadge } from "./QuoteStatusBadge";
@@ -19,7 +19,7 @@ export function QuoteList({ ticketId, clientId, showHeader = true }: Props) {
   const { role } = useAuth();
   const isStaff = role && role !== "cliente";
 
-  const { data: quotes, isLoading } = useQuotes({ ticketId, clientId });
+  const { data: quotes, isLoading, isError, error } = useQuotes({ ticketId, clientId });
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   return (
@@ -43,6 +43,19 @@ export function QuoteList({ ticketId, clientId, showHeader = true }: Props) {
         <div className="flex justify-center py-6">
           <Loader2 className="h-5 w-5 animate-spin text-primary" />
         </div>
+      ) : isError ? (
+        <Card className="border-destructive/40 bg-destructive/5">
+          <CardContent className="p-4 flex items-start gap-2 text-xs text-destructive">
+            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">No se pudo cargar el módulo de cotizaciones</p>
+              <p className="text-[11px] mt-1">
+                {(error as Error)?.message ?? "Error desconocido"}.
+                Si recién se hizo deploy, la migración SQL podría no haberse aplicado todavía.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       ) : !quotes || quotes.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="p-4 text-center">

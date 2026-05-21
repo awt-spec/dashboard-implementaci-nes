@@ -189,7 +189,9 @@ function UserSupervisionsTab() {
                   {sup.is_active && (
                     <Button
                       size="sm" variant="outline"
-                      onClick={() => endSup.mutate(sup.id)}
+                      onClick={() => endSup.mutate(sup.id, {
+                        onError: (e: any) => toast.error(e?.message ?? "No se pudo finalizar"),
+                      })}
                       className="h-7 text-xs gap-1"
                     >
                       <Pause className="h-3 w-3" /> Finalizar
@@ -199,7 +201,9 @@ function UserSupervisionsTab() {
                     size="icon" variant="ghost" className="h-7 w-7"
                     onClick={() => {
                       if (!confirm("¿Eliminar definitivamente esta supervisión? Si era histórica considerá Finalizar en su lugar.")) return;
-                      del.mutate(sup.id);
+                      del.mutate(sup.id, {
+                        onError: (e: any) => toast.error(e?.message ?? "No se pudo eliminar"),
+                      });
                     }}
                   >
                     <Trash2 className="h-3.5 w-3.5 text-destructive" />
@@ -398,7 +402,9 @@ function TeamSupervisionsTab() {
                   {sup.is_active && (
                     <Button
                       size="sm" variant="outline"
-                      onClick={() => endSup.mutate(sup.id)}
+                      onClick={() => endSup.mutate(sup.id, {
+                        onError: (e: any) => toast.error(e?.message ?? "No se pudo finalizar"),
+                      })}
                       className="h-7 text-xs gap-1"
                     >
                       <Pause className="h-3 w-3" /> Finalizar
@@ -408,7 +414,9 @@ function TeamSupervisionsTab() {
                     size="icon" variant="ghost" className="h-7 w-7"
                     onClick={() => {
                       if (!confirm("¿Eliminar definitivamente?")) return;
-                      del.mutate(sup.id);
+                      del.mutate(sup.id, {
+                        onError: (e: any) => toast.error(e?.message ?? "No se pudo eliminar"),
+                      });
                     }}
                   >
                     <Trash2 className="h-3.5 w-3.5 text-destructive" />
