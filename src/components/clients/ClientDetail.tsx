@@ -27,6 +27,9 @@ import { ContactsTab } from "./tabs/ContactsTab";
 import { FunnelTab } from "./tabs/FunnelTab";
 import { ContractsSLATab } from "./ContractsSLATab";
 import { ClientUsersTab } from "./ClientUsersTab";
+import { QuoteList } from "@/components/support/quotes/QuoteList";
+import { AccountStatementPanel } from "./AccountStatementPanel";
+import { ClientAudiencesPanel } from "./ClientAudiencesPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ProjectKPIs } from "@/components/dashboard/ProjectKPIs";
@@ -267,6 +270,8 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
           <TabsTrigger value="minutas">Minutas</TabsTrigger>
           <TabsTrigger value="personas">Personas</TabsTrigger>
           <TabsTrigger value="contratos">Contratos & SLA</TabsTrigger>
+          <TabsTrigger value="cotizaciones">Cotizaciones</TabsTrigger>
+          <TabsTrigger value="estado-cuenta">Estado de cuenta</TabsTrigger>
         </TabsList>
 
         {/* TAREAS — vista diaria del trabajo (lista/kanban/calendario) */}
@@ -320,6 +325,7 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
             <TabsList className="h-8">
               <TabsTrigger value="equipo-cliente" className="text-xs">Equipo Cliente</TabsTrigger>
               <TabsTrigger value="usuarios" className="text-xs">Accesos Plataforma</TabsTrigger>
+              <TabsTrigger value="audiencias" className="text-xs">Audiencias notif.</TabsTrigger>
             </TabsList>
             <TabsContent value="equipo-cliente" className="mt-3">
               <ContactsTab clientId={client.id} />
@@ -327,12 +333,25 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
             <TabsContent value="usuarios" className="mt-3">
               <ClientUsersTab clientId={client.id} clientName={client.name} />
             </TabsContent>
+            <TabsContent value="audiencias" className="mt-3">
+              <ClientAudiencesPanel clientId={client.id} />
+            </TabsContent>
           </Tabs>
         </TabsContent>
 
         {/* CONTRATOS & SLA — vista autocontenida */}
         <TabsContent value="contratos" className="mt-3">
           <ContractsSLATab clientId={client.id} />
+        </TabsContent>
+
+        {/* COTIZACIONES — todas las del cliente (no solo del ticket actual) */}
+        <TabsContent value="cotizaciones" className="mt-3">
+          <QuoteList clientId={client.id} />
+        </TabsContent>
+
+        {/* ESTADO DE CUENTA — gap P2: consolidado consumo + cotizaciones + financials */}
+        <TabsContent value="estado-cuenta" className="mt-3">
+          <AccountStatementPanel clientId={client.id} />
         </TabsContent>
       </Tabs>
 

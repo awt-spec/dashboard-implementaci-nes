@@ -11,6 +11,7 @@ import {
   MessageSquare, History, ScrollText, Lock, Copy,
   Save, Trash2, CheckSquare, ArrowLeft,
   Share2, Sparkles, RotateCcw, Maximize2, Minimize2,
+  FileText,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -37,6 +38,8 @@ import { TicketSLAExplanation } from "./TicketSLAExplanation";
 import { ReopenBadge } from "./ReopenBadge";
 import { ReopenReasonDialog } from "./ReopenReasonDialog";
 import { TicketReopensTimeline } from "./TicketReopensTimeline";
+import { QuoteList } from "./quotes/QuoteList";
+import { useQuotes } from "@/hooks/useQuotes";
 import { isTicketClosed } from "@/lib/ticketStatus";
 import { cn } from "@/lib/utils";
 
@@ -117,6 +120,7 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, canEditInternal 
 
   // ── Subtareas (solo para el counter del tab header) ──
   const { data: subtasks = [] } = useTicketSubtasks(ticket?.id ?? null);
+  const { data: quotes = [] } = useQuotes(ticket?.id ? { ticketId: ticket.id } : undefined);
 
   const client = useMemo(() => clients.find(c => c.id === ticket?.client_id), [clients, ticket]);
 
@@ -382,6 +386,10 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, canEditInternal 
             <TabsTrigger value="estrategia" className="text-[11px] gap-1">
               <Sparkles className="h-3 w-3" /> Estrategia IA
             </TabsTrigger>
+            <TabsTrigger value="cotizaciones" className="text-[11px] gap-1">
+              <FileText className="h-3 w-3" /> Cotizaciones
+              {quotes.length > 0 && <Badge variant="outline" className="ml-0.5 text-[9px] h-3.5 px-1">{quotes.length}</Badge>}
+            </TabsTrigger>
             {canEditInternal && (ticket.reopen_count ?? 0) > 0 && (
               <TabsTrigger value="reopens" className="text-[11px] gap-1">
                 <RotateCcw className="h-3 w-3" /> Reincidencias
@@ -506,6 +514,11 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, canEditInternal 
           {/* ESTRATEGIA IA — diagnóstico + acción + riesgos + casos similares + SLA */}
           <TabsContent value="estrategia" className="mt-3">
             <CaseStrategyPanel ticketId={ticket.id} canEdit={canEditInternal} />
+          </TabsContent>
+
+          {/* COTIZACIONES — gap P1: ciclo comercial dentro del ticket */}
+          <TabsContent value="cotizaciones" className="mt-3">
+            <QuoteList ticketId={ticket.id} clientId={ticket.client_id} />
           </TabsContent>
 
           {/* REINCIDENCIAS — solo cara interna y solo si hubo reopens */}

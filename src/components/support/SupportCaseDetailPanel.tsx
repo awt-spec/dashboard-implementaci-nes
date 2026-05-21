@@ -24,7 +24,9 @@ import {
 import { SupportCaseScrumSection } from "./SupportCaseScrumSection";
 import { CaseCompliancePanel } from "./CaseCompliancePanel";
 import { TicketLegacyView } from "./TicketLegacyView";
-import { Shield, ScrollText } from "lucide-react";
+import { QuoteList } from "./quotes/QuoteList";
+import { useQuotes } from "@/hooks/useQuotes";
+import { Shield, ScrollText, FileText } from "lucide-react";
 import { useSupportClients } from "@/hooks/useSupportTickets";
 
 const TAG_COLORS = ["#6366f1", "#ec4899", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6", "#06b6d4", "#f97316"];
@@ -70,6 +72,9 @@ export function SupportCaseDetailPanel({ ticket }: Props) {
   const { data: dependencies = [] } = useTicketDependencies(t.id);
   const addDep = useAddTicketDependency();
   const removeDep = useRemoveTicketDependency();
+
+  // Quotes (gap P1 — ciclo comercial dentro del ticket)
+  const { data: quotes = [] } = useQuotes({ ticketId: t.id });
   const { data: availableTickets = [] } = useAvailableTickets(t.client_id, t.id);
   const [depTicketId, setDepTicketId] = useState("");
 
@@ -155,6 +160,10 @@ export function SupportCaseDetailPanel({ ticket }: Props) {
         <TabsTrigger value="notes" className="text-[10px] h-6 px-2 gap-1 flex-1">
           <MessageSquare className="h-3 w-3" />Notas
           {notes.length > 0 && <Badge variant="secondary" className="text-[8px] h-3.5 px-1">{notes.length}</Badge>}
+        </TabsTrigger>
+        <TabsTrigger value="quotes" className="text-[10px] h-6 px-2 gap-1 flex-1">
+          <FileText className="h-3 w-3" />Cot
+          {quotes.length > 0 && <Badge variant="secondary" className="text-[8px] h-3.5 px-1">{quotes.length}</Badge>}
         </TabsTrigger>
       </TabsList>
 
@@ -356,6 +365,11 @@ export function SupportCaseDetailPanel({ ticket }: Props) {
             </Button>
           </div>
         </div>
+      </TabsContent>
+
+      {/* Cotizaciones (gap P1 — cierre del ciclo comercial dentro del ticket) */}
+      <TabsContent value="quotes" className="mt-3">
+        <QuoteList ticketId={t.id} clientId={t.client_id} />
       </TabsContent>
     </Tabs>
   );
