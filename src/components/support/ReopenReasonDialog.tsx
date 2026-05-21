@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useSysdeTeamMembers } from "@/hooks/useTeamMembers";
 import { useReopenTicket } from "@/hooks/useReopenTicket";
+import { useReopenReasons } from "@/hooks/useReopenReasons";
 import { useToast } from "@/hooks/use-toast";
 import type { ReopenType } from "@/hooks/useTicketReopens";
 
@@ -31,7 +32,12 @@ interface Props {
   onSuccess?: () => void;
 }
 
-const TYPE_OPTIONS: Array<{ value: ReopenType; label: string; hint: string }> = [
+/**
+ * Fallback al enum hardcoded por si el catálogo de BD aún no está aplicado
+ * (entornos dev/preview) o la query falla. En prod siempre debería ganar el
+ * catálogo cargado vía useReopenReasons.
+ */
+const FALLBACK_TYPE_OPTIONS: Array<{ value: ReopenType; label: string; hint: string }> = [
   {
     value: "cliente_rechazo",
     label: "Cliente rechazó la entrega",
@@ -68,10 +74,23 @@ export function ReopenReasonDialog({
   const { toast } = useToast();
   const { data: members } = useSysdeTeamMembers();
   const reopenMutation = useReopenTicket();
+  const { data: catalogReasons } = useReopenReasons();
 
   const [reason, setReason] = useState("");
   const [reopenType, setReopenType] = useState<ReopenType>("cliente_rechazo");
   const [newResponsible, setNewResponsible] = useState<string>(currentResponsable || "__keep__");
+
+  // Cargar opciones del catálogo o fallback al enum hardcoded
+  const typeOptions = useMemo(() => {
+    if (catalogReasons && catalogReasons.length > 0) {
+      return catalogReasons.map(r => ({
+        value: r.code as ReopenType,
+        label: r.name,
+        hint: r.hint ?? "",
+      }));
+    }
+    return FALLBACK_TYPE_OPTIONS;
+  }, [catalogReasons]);
 
   const nextIteration = currentReopenCount + 1;
   const isCritical = nextIteration >= 3;
@@ -159,11 +178,11 @@ export function ReopenReasonDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {TYPE_OPTIONS.map((opt) => (
+                {typeOptions.map((opt) => (
                   <SelectItem key={opt.value} value={opt.value}>
                     <div className="flex flex-col items-start">
                       <span className="font-medium text-sm">{opt.label}</span>
-                      <span className="text-[10px] text-muted-foreground">{opt.hint}</span>
+                      {opt.hint && <span className="text-[10px] text-muted-foreground">{opt.hint}</span>}
                     </div>
                   </SelectItem>
                 ))}

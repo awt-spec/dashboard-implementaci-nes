@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Settings, Search, X, Shield, Users, Lock, Activity, Brain, Sparkles,
-  BookOpen, ListChecks, Building2, TrendingUp, ChevronRight,
+  BookOpen, ListChecks, Building2, TrendingUp, ChevronRight, RotateCcw, UserCheck,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,8 @@ import { ActivePolicyPanel } from "./ActivePolicyPanel";
 import { BusinessRulesPanel } from "./BusinessRulesPanel";
 import { ClientOverridesPanel } from "./ClientOverridesPanel";
 import { AIStrategyPanel } from "./AIStrategyPanel";
+import { ReopenReasonsAdminPanel } from "./ReopenReasonsAdminPanel";
+import { SupervisionsAdminPanel } from "./SupervisionsAdminPanel";
 
 // ─── Definición de secciones ─────────────────────────────────────────────
 
@@ -83,6 +85,15 @@ const GROUPS: ConfigGroup[] = [
         tone: "bg-info/15 text-info border-info/30",
         roles: ["admin"],
         Component: TeamActivityPanel,
+      },
+      {
+        id: "supervisions",
+        label: "Supervisiones",
+        hint: "Relaciones supervisor↔supervisado",
+        Icon: UserCheck,
+        tone: "bg-violet-500/15 text-violet-500 border-violet-500/30",
+        roles: ["admin"],
+        Component: SupervisionsAdminPanel,
       },
     ],
   },
@@ -169,6 +180,15 @@ const GROUPS: ConfigGroup[] = [
         tone: "bg-violet-500/15 text-violet-500 border-violet-500/30",
         roles: ["admin", "pm"],
         Component: AIStrategyPanel,
+      },
+      {
+        id: "reopen-reasons",
+        label: "Motivos de reapertura",
+        hint: "Catálogo de causas de reincidencia",
+        Icon: RotateCcw,
+        tone: "bg-warning/15 text-warning border-warning/30",
+        roles: ["admin"],
+        Component: ReopenReasonsAdminPanel,
       },
     ],
   },
