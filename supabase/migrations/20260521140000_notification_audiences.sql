@@ -80,11 +80,14 @@ CREATE POLICY "Staff sees all audiences"
   ON public.notification_audiences FOR SELECT
   USING (public.is_staff_user());
 
+-- Cliente solo ve audiencias ACTIVAS de su empresa — una audiencia desactivada
+-- por el admin no debe seguir visible para el cliente.
 CREATE POLICY "Cliente sees own audiences"
   ON public.notification_audiences FOR SELECT
   USING (
     public.has_role(auth.uid(), 'cliente'::app_role)
     AND public.user_can_see_client(client_id)
+    AND is_active = true
   );
 
 -- INSERT/UPDATE/DELETE: admin global, o admin del cliente (cliente_company_assignments con permission_level='admin')

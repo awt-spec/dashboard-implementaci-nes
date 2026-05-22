@@ -193,7 +193,13 @@ BEGIN
     'consumption', jsonb_build_object(
       'total_hours',     v_total_hours,
       'included_hours',  COALESCE(v_active_contract.included_hours, 0),
-      'overage_hours',   GREATEST(v_total_hours - COALESCE(v_active_contract.included_hours, 0), 0),
+      -- overage solo tiene sentido si hay contrato con bolsa; sin contrato es 0
+      -- (no NULL porque el frontend espera number) para no mostrar "sobreconsumo"
+      -- engañoso cuando el cliente simplemente no tiene contrato activo.
+      'overage_hours',   CASE
+                           WHEN v_active_contract.id IS NULL THEN 0
+                           ELSE GREATEST(v_total_hours - COALESCE(v_active_contract.included_hours, 0), 0)
+                         END,
       'utilization_pct', CASE WHEN COALESCE(v_active_contract.included_hours, 0) > 0
                               THEN ROUND((v_total_hours / v_active_contract.included_hours) * 100, 1)
                               ELSE NULL END,
