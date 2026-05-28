@@ -116,6 +116,13 @@ export interface Comment {
   message: string;
   date: string;
   type: "comentario" | "aprobacion" | "solicitud" | "alerta";
+  /** uuid real de la fila (distinto de id que es original_id). Para editar/eliminar. */
+  dbId?: string;
+  /** auth.users id del autor. Permite "editar/eliminar solo los míos". */
+  authorUserId?: string | null;
+  attachmentPath?: string | null;
+  attachmentName?: string | null;
+  editedAt?: string | null;
 }
 
 export interface Risk {

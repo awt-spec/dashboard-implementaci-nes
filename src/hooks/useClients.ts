@@ -159,7 +159,7 @@ async function fetchClients(): Promise<Client[]> {
     fetchAllPages<any>(() => supabase.from("action_items").select("id,client_id,original_id,title,assignee,due_date,status,source,priority,responsible_party,responsible_team,linked_task_id").in("client_id", activeIds)),
     fetchAllPages<any>(() => supabase.from("meeting_minutes").select("id,client_id,original_id,title,date,attendees,summary,agreements,action_items,next_meeting,visible_to_client,presentation_snapshot").in("client_id", activeIds)),
     fetchAllPages<any>(() => supabase.from("email_notifications").select("id,client_id,original_id,subject,to,from,date,status,type,preview").in("client_id", activeIds)),
-    fetchAllPages<any>(() => supabase.from("comments").select("id,client_id,original_id,user,avatar,message,date,type").in("client_id", activeIds)),
+    fetchAllPages<any>(() => supabase.from("comments").select("id,client_id,original_id,user,avatar,message,date,type,author_user_id,attachment_path,attachment_name,attachment_size,edited_at").in("client_id", activeIds)),
     fetchAllPages<any>(() => supabase.from("risks").select("id,client_id,original_id,description,impact,status,mitigation,category").in("client_id", activeIds)),
   ]);
 
@@ -276,6 +276,11 @@ async function fetchClients(): Promise<Client[]> {
           message: cm.message,
           date: cm.date,
           type: cm.type as Comment["type"],
+          dbId: (cm as any).id,
+          authorUserId: (cm as any).author_user_id ?? null,
+          attachmentPath: (cm as any).attachment_path ?? null,
+          attachmentName: (cm as any).attachment_name ?? null,
+          editedAt: (cm as any).edited_at ?? null,
         })),
       risks: risksData
         .filter(r => r.client_id === c.id)
@@ -488,8 +493,28 @@ export function useDeleteMeetingMinute() {
 export function useCreateComment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { client_id: string; original_id: string; user: string; avatar: string; message: string; date: string; type: string }) => {
-      const { error } = await supabase.from("comments").insert([data]);
+    mutationFn: async (data: {
+      client_id: string; original_id: string; user: string; avatar: string;
+      message: string; date: string; type: string;
+      attachment_path?: string | null; attachment_name?: string | null; attachment_size?: number | null;
+    }) => {
+      const { data: userData } = await supabase.auth.getUser();
+      const author_user_id = userData?.user?.id ?? null;
+      const { error } = await supabase.from("comments").insert([{ ...data, author_user_id } as any]);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["clients"] }); },
+  });
+}
+
+export function useUpdateComment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, message }: { id: string; message: string }) => {
+      const { error } = await supabase
+        .from("comments")
+        .update({ message, edited_at: new Date().toISOString() } as any)
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["clients"] }); },
@@ -505,6 +530,22 @@ export function useDeleteComment() {
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["clients"] }); },
   });
+}
+
+/** Sube un archivo adjunto para un comentario al bucket support-ticket-attachments (prefijo comments/). */
+export async function uploadCommentAttachment(clientId: string, file: File): Promise<{ path: string; name: string; size: number } | null> {
+  const ts = Date.now();
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const path = `comments/${clientId}/${ts}_${safeName}`;
+  const { error } = await supabase.storage.from("support-ticket-attachments").upload(path, file, { upsert: false, contentType: file.type });
+  if (error) return null;
+  return { path, name: file.name, size: file.size };
+}
+
+export async function getCommentAttachmentUrl(path: string): Promise<string | null> {
+  const { data, error } = await supabase.storage.from("support-ticket-attachments").createSignedUrl(path, 60 * 60);
+  if (error) return null;
+  return data?.signedUrl ?? null;
 }
 
 // --- CRUD for Action Items ---
