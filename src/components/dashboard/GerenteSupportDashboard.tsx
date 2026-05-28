@@ -6,10 +6,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Headset, AlertTriangle, Clock, CheckCircle2, Activity, Send,
   TrendingUp, Flame, Loader2, Search, ChevronRight,
-  FileText, Ticket, Sparkles,
+  FileText, Ticket, Sparkles, Pencil, Check, X,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { type Client } from "@/data/projectData";
@@ -70,6 +71,36 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
     () => selectedTicketId ? (tickets.find(t => t.id === selectedTicketId) ?? null) : null,
     [tickets, selectedTicketId],
   );
+
+  // PORTAL-009: edición de la solicitud por el cliente (asunto + notas) mientras
+  // está en estado inicial (antes de que soporte la cierre). Gate por permiso de
+  // creación (editor/admin del cliente).
+  const [editingTicket, setEditingTicket] = useState(false);
+  const [editAsunto, setEditAsunto] = useState("");
+  const [editNotas, setEditNotas] = useState("");
+  const [savingTicket, setSavingTicket] = useState(false);
+  const EDITABLE_STATES = ["EN ATENCIÓN", "PENDIENTE", "ON HOLD"];
+  const canEditTicket = canCreateTickets && !!selectedTicket && EDITABLE_STATES.includes(selectedTicket.estado);
+
+  const startEditTicket = () => {
+    if (!selectedTicket) return;
+    setEditAsunto(selectedTicket.asunto);
+    setEditNotas(selectedTicket.notas ?? "");
+    setEditingTicket(true);
+  };
+
+  const saveEditTicket = async () => {
+    if (!selectedTicket) return;
+    if (!editAsunto.trim()) { toast.error("El asunto no puede estar vacío"); return; }
+    setSavingTicket(true);
+    updateTicket.mutate(
+      { id: selectedTicket.id, updates: { asunto: editAsunto.trim(), notas: editNotas.trim() || null } },
+      {
+        onSuccess: () => { toast.success("Solicitud actualizada"); setEditingTicket(false); setSavingTicket(false); },
+        onError: (e: any) => { toast.error(e?.message || "Error al actualizar"); setSavingTicket(false); },
+      },
+    );
+  };
 
   // Dialog para crear una nueva solicitud — usa NewTicketForm (mode="cliente")
   const [requestOpen, setRequestOpen] = useState(false);
@@ -496,7 +527,24 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
                   </Badge>
                   <Badge variant="outline" className="text-[9px]">{selectedTicket.estado}</Badge>
                 </div>
-                <SheetTitle className="text-base text-left">{selectedTicket.asunto}</SheetTitle>
+                {editingTicket ? (
+                  <Input
+                    value={editAsunto}
+                    onChange={(e) => setEditAsunto(e.target.value)}
+                    className="text-base font-semibold"
+                    placeholder="Asunto de la solicitud"
+                    autoFocus
+                  />
+                ) : (
+                  <div className="flex items-start justify-between gap-2">
+                    <SheetTitle className="text-base text-left">{selectedTicket.asunto}</SheetTitle>
+                    {canEditTicket && (
+                      <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={startEditTicket} aria-label="Editar solicitud">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                )}
                 <SheetDescription className="text-left">
                   {selectedTicket.ticket_id} · {selectedTicket.producto}
                 </SheetDescription>
@@ -527,12 +575,33 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
                     <p className="leading-relaxed">{selectedTicket.ai_summary}</p>
                   </div>
                 )}
-                {selectedTicket.notas && (
+                {editingTicket ? (
+                  <div className="space-y-2">
+                    <div>
+                      <p className="text-[9px] uppercase text-muted-foreground mb-1">Notas / descripción</p>
+                      <Textarea
+                        value={editNotas}
+                        onChange={(e) => setEditNotas(e.target.value)}
+                        rows={4}
+                        className="text-xs"
+                        placeholder="Detalle de la solicitud..."
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" className="h-7 text-xs gap-1" onClick={saveEditTicket} disabled={savingTicket}>
+                        {savingTicket ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} Guardar cambios
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={() => setEditingTicket(false)}>
+                        <X className="h-3 w-3" /> Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                ) : selectedTicket.notas ? (
                   <div>
                     <p className="text-[9px] uppercase text-muted-foreground mb-1">Notas</p>
                     <p className="leading-relaxed bg-muted/30 rounded-lg p-2">{selectedTicket.notas}</p>
                   </div>
-                )}
+                ) : null}
                 {selectedTicket.case_agreements?.length > 0 && (
                   <div>
                     <p className="text-[9px] uppercase text-muted-foreground mb-1.5">Acuerdos</p>
