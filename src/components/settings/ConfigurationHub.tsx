@@ -24,6 +24,7 @@ import { ReopenReasonsAdminPanel } from "./ReopenReasonsAdminPanel";
 import { SupervisionsAdminPanel } from "./SupervisionsAdminPanel";
 import { TaskTypesAdminPanel } from "./TaskTypesAdminPanel";
 import { ClientCategoriesAdminPanel } from "./ClientCategoriesAdminPanel";
+import { SvaTeamsAdminPanel } from "./SvaTeamsAdminPanel";
 
 // ─── Definición de secciones ─────────────────────────────────────────────
 
@@ -87,6 +88,15 @@ const GROUPS: ConfigGroup[] = [
         tone: "bg-info/15 text-info border-info/30",
         roles: ["admin"],
         Component: TeamActivityPanel,
+      },
+      {
+        id: "sva-teams",
+        label: "Equipos SVA",
+        hint: "Equipos de servicio + días no laborables",
+        Icon: Users,
+        tone: "bg-primary/15 text-primary border-primary/30",
+        roles: ["admin", "pm"],
+        Component: SvaTeamsAdminPanel,
       },
       {
         id: "supervisions",
