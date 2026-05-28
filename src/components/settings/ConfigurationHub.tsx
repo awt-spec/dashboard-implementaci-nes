@@ -25,6 +25,7 @@ import { SupervisionsAdminPanel } from "./SupervisionsAdminPanel";
 import { TaskTypesAdminPanel } from "./TaskTypesAdminPanel";
 import { ClientCategoriesAdminPanel } from "./ClientCategoriesAdminPanel";
 import { SvaTeamsAdminPanel } from "./SvaTeamsAdminPanel";
+import { PolicyTemplatesAdminPanel } from "./PolicyTemplatesAdminPanel";
 
 // ─── Definición de secciones ─────────────────────────────────────────────
 
@@ -219,6 +220,15 @@ const GROUPS: ConfigGroup[] = [
         tone: "bg-cyan-500/15 text-cyan-500 border-cyan-500/30",
         roles: ["admin", "pm"],
         Component: ClientCategoriesAdminPanel,
+      },
+      {
+        id: "policy-templates",
+        label: "Plantillas de pólizas",
+        hint: "Templates de póliza + paquetes",
+        Icon: BookOpen,
+        tone: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30",
+        roles: ["admin", "pm"],
+        Component: PolicyTemplatesAdminPanel,
       },
     ],
   },
