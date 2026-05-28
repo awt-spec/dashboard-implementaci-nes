@@ -60,5 +60,7 @@ CREATE POLICY "Quotes attachments: delete ownership check"
     )
   );
 
-COMMENT ON POLICY "Quotes attachments: ownership check restrictive" ON storage.objects IS
-  'P2-1: cierra el hueco donde un authenticated user con un file_path filtrado podía leer attachments de cotizaciones ajenas. Solo aplica a quotes/* — no toca paths legacy de tickets/minutes.';
+-- Nota: NO se usa COMMENT ON POLICY ... ON storage.objects porque el rol de
+-- migración de Supabase no es owner de storage.objects (owned by
+-- supabase_storage_admin) y COMMENT exige ownership. La doc de estas policies
+-- vive en este archivo. Las CREATE POLICY sí están permitidas para el rol postgres.
