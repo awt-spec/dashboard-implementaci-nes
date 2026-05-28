@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileSignature, Shield, Plus, Trash2, Clock, Edit2, Lock } from "lucide-react";
+import { FileSignature, Shield, Plus, Trash2, Clock, Edit2, Lock, Package } from "lucide-react";
+import { BilledPackagesTab } from "./BilledPackagesTab";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -57,6 +58,7 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
         <TabsList>
           <TabsTrigger value="contracts" className="gap-2"><FileSignature className="h-4 w-4" /> Contratos</TabsTrigger>
           <TabsTrigger value="slas" className="gap-2"><Shield className="h-4 w-4" /> SLAs</TabsTrigger>
+          <TabsTrigger value="packages" className="gap-2"><Package className="h-4 w-4" /> Paquetes facturados</TabsTrigger>
         </TabsList>
 
         <TabsContent value="contracts" className="space-y-4">
@@ -199,6 +201,11 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
               </Table>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* PAQUETES FACTURADOS — gap Tanda B (ERP-068 a 070) */}
+        <TabsContent value="packages" className="space-y-4">
+          <BilledPackagesTab clientId={clientId} />
         </TabsContent>
       </Tabs>
 
