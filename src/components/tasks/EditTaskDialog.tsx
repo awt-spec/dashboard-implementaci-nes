@@ -15,12 +15,13 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   CalendarIcon, Trash2, MessageSquare, Send, Hash, User, Flag,
   CircleDot, Clock, Save, X, Plus, Link2, Tag, Paperclip,
-  CheckSquare, ArrowRight, FileText, Download, Loader2
+  CheckSquare, ArrowRight, FileText, Download, Loader2, ListTodo
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useUpdateTask, useDeleteTask, useCreateComment } from "@/hooks/useClients";
+import { useTaskTypes } from "@/hooks/useTaskTypes";
 import {
   useSubtasks, useCreateSubtask, useToggleSubtask, useDeleteSubtask,
   useTaskDependencies, useAddDependency, useRemoveDependency, useAvailableTasks,
@@ -69,6 +70,7 @@ export function EditTaskDialog({ task, clientId, open, onOpenChange }: EditTaskD
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState("pendiente");
   const [priority, setPriority] = useState("media");
+  const [taskTypeId, setTaskTypeId] = useState<string>("__none__");
   const [owner, setOwner] = useState("");
   const [dueDate, setDueDate] = useState<Date>();
   const [visibility, setVisibility] = useState("externa");
@@ -84,6 +86,7 @@ export function EditTaskDialog({ task, clientId, open, onOpenChange }: EditTaskD
 
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
+  const { data: taskTypes = [] } = useTaskTypes();
   const createComment = useCreateComment();
 
   // New hooks
@@ -137,6 +140,7 @@ export function EditTaskDialog({ task, clientId, open, onOpenChange }: EditTaskD
       setOwner(task.owner);
       setDueDate(parseDueDate(task.dueDate));
       setVisibility((task as any).visibility || "externa");
+      setTaskTypeId((task as any).task_type_id || "__none__");
       setNewComment("");
       setNewSubtask("");
       setNewTag("");
@@ -162,6 +166,7 @@ export function EditTaskDialog({ task, clientId, open, onOpenChange }: EditTaskD
           status,
           priority,
           visibility,
+          task_type_id: taskTypeId === "__none__" ? null : taskTypeId,
           owner: owner.trim(),
           due_date: dueDate ? format(dueDate, "yyyy-MM-dd") : task!.dueDate,
           assignees: [{ name: owner.trim(), avatar: owner.trim().split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 3) }],
@@ -311,9 +316,31 @@ export function EditTaskDialog({ task, clientId, open, onOpenChange }: EditTaskD
                 </Select>
               </motion.div>
 
-              <motion.div className="rounded-xl border border-border p-3 space-y-2 hover:border-primary/30 transition-colors col-span-2" whileHover={{ scale: 1.01 }}>
+              <motion.div className="rounded-xl border border-border p-3 space-y-2 hover:border-primary/30 transition-colors" whileHover={{ scale: 1.01 }}>
                 <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase font-semibold">
-                  {visibility === "interna" ? "🔒" : "🌐"} Tipo de Tarea
+                  <ListTodo className="h-3 w-3" /> Tipo de Tarea
+                </div>
+                <Select value={taskTypeId} onValueChange={setTaskTypeId}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Sin tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__" className="text-xs text-muted-foreground">Sin tipo</SelectItem>
+                    {taskTypes.map(t => (
+                      <SelectItem key={t.id} value={t.id} className="text-xs">
+                        <span className="flex items-center gap-2">
+                          <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: t.color }} />
+                          {t.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </motion.div>
+
+              <motion.div className="rounded-xl border border-border p-3 space-y-2 hover:border-primary/30 transition-colors" whileHover={{ scale: 1.01 }}>
+                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase font-semibold">
+                  {visibility === "interna" ? "🔒" : "🌐"} Visibilidad
                 </div>
                 <Select value={visibility} onValueChange={setVisibility}>
                   <SelectTrigger className="border-0 p-0 h-auto shadow-none">

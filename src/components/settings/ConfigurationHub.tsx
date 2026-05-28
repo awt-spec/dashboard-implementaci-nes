@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Settings, Search, X, Shield, Users, Lock, Activity, Brain, Sparkles,
-  BookOpen, ListChecks, Building2, TrendingUp, ChevronRight, RotateCcw, UserCheck,
+  BookOpen, ListChecks, Building2, TrendingUp, ChevronRight, RotateCcw, UserCheck, ListTodo, Tag,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -22,6 +22,8 @@ import { ClientOverridesPanel } from "./ClientOverridesPanel";
 import { AIStrategyPanel } from "./AIStrategyPanel";
 import { ReopenReasonsAdminPanel } from "./ReopenReasonsAdminPanel";
 import { SupervisionsAdminPanel } from "./SupervisionsAdminPanel";
+import { TaskTypesAdminPanel } from "./TaskTypesAdminPanel";
+import { ClientCategoriesAdminPanel } from "./ClientCategoriesAdminPanel";
 
 // ─── Definición de secciones ─────────────────────────────────────────────
 
@@ -189,6 +191,24 @@ const GROUPS: ConfigGroup[] = [
         tone: "bg-warning/15 text-warning border-warning/30",
         roles: ["admin"],
         Component: ReopenReasonsAdminPanel,
+      },
+      {
+        id: "task-types",
+        label: "Tipos de tarea",
+        hint: "Catálogo de clasificación de tareas",
+        Icon: ListTodo,
+        tone: "bg-indigo-500/15 text-indigo-500 border-indigo-500/30",
+        roles: ["admin"],
+        Component: TaskTypesAdminPanel,
+      },
+      {
+        id: "client-categories",
+        label: "Categorías de clientes",
+        hint: "Segmentación (Estratégico, Premium...)",
+        Icon: Tag,
+        tone: "bg-cyan-500/15 text-cyan-500 border-cyan-500/30",
+        roles: ["admin", "pm"],
+        Component: ClientCategoriesAdminPanel,
       },
     ],
   },

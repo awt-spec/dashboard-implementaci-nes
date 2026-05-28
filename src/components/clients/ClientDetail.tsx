@@ -30,6 +30,7 @@ import { ClientUsersTab } from "./ClientUsersTab";
 import { QuoteList } from "@/components/support/quotes/QuoteList";
 import { AccountStatementPanel } from "./AccountStatementPanel";
 import { ClientAudiencesPanel } from "./ClientAudiencesPanel";
+import { ClientCategoryBadge } from "./ClientCategoryBadge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ProjectKPIs } from "@/components/dashboard/ProjectKPIs";
@@ -151,6 +152,7 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
                     <Badge className={statusColors[client.status]}>
                       {client.status === "activo" ? "Activo" : client.status === "en-riesgo" ? "En Riesgo" : client.status === "completado" ? "Completado" : "Pausado"}
                     </Badge>
+                    <ClientCategoryBadge clientId={client.id} currentCategoryId={(client as any).category_id} />
                   </div>
                 </div>
                 <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
