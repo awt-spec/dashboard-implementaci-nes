@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Settings, Search, X, Shield, Users, Lock, Activity, Brain, Sparkles,
-  BookOpen, ListChecks, Building2, TrendingUp, ChevronRight, RotateCcw, UserCheck, ListTodo, Tag,
+  BookOpen, ListChecks, Building2, TrendingUp, ChevronRight, RotateCcw, UserCheck, ListTodo, Tag, Boxes,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -26,6 +26,7 @@ import { TaskTypesAdminPanel } from "./TaskTypesAdminPanel";
 import { ClientCategoriesAdminPanel } from "./ClientCategoriesAdminPanel";
 import { SvaTeamsAdminPanel } from "./SvaTeamsAdminPanel";
 import { PolicyTemplatesAdminPanel } from "./PolicyTemplatesAdminPanel";
+import { ProductsAdminPanel } from "./ProductsAdminPanel";
 
 // ─── Definición de secciones ─────────────────────────────────────────────
 
@@ -229,6 +230,15 @@ const GROUPS: ConfigGroup[] = [
         tone: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30",
         roles: ["admin", "pm"],
         Component: PolicyTemplatesAdminPanel,
+      },
+      {
+        id: "products",
+        label: "Productos de software",
+        hint: "Catálogo: productos · módulos · versiones",
+        Icon: Boxes,
+        tone: "bg-orange-500/15 text-orange-500 border-orange-500/30",
+        roles: ["admin", "pm"],
+        Component: ProductsAdminPanel,
       },
     ],
   },
