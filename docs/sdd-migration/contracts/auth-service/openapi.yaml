@@ -1,0 +1,539 @@
+openapi: 3.1.0
+info:
+  title: SVA — Auth Service
+  version: 1.0.0
+  description: |
+    Wrapper sobre Supabase Auth (GoTrue) + gestión de roles + cliente assignments.
+    Reemplaza la edge function `manage-users` y centraliza login/me/logout.
+
+    Stack runtime: Hono + TypeScript en Vercel Edge Functions.
+
+    Convenciones:
+    - JSON keys en `snake_case` (compat con BD).
+    - Errores siguen shape estándar `{ error: { code, message, details?, request_id } }`.
+    - Auth: Bearer JWT emitido por Supabase Auth (validado localmente con `SUPABASE_JWT_SECRET`).
+  contact:
+    name: SVA Engineering
+    url: https://github.com/awt-spec/dashboard-implementaci-nes
+
+servers:
+  - url: https://api.sva.sysde.com/v1/auth
+    description: Production
+  - url: http://localhost:3001/v1/auth
+    description: Local dev
+
+# ─── Security ───────────────────────────────────────────────────────────────
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Supabase JWT en header `Authorization: Bearer <jwt>`
+
+  # ─── Schemas ──────────────────────────────────────────────────────────────
+  schemas:
+
+    # Tipos primitivos compartidos
+    AppRole:
+      type: string
+      enum: [ceo, admin, pm, gerente_soporte, gerente, colaborador, cliente]
+
+    ClientePermission:
+      type: string
+      enum: [viewer, editor, admin]
+
+    UserId:
+      type: string
+      format: uuid
+      example: "d4833603-1234-5678-90ab-cdef01234567"
+
+    # Error estándar
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, request_id]
+          properties:
+            code:
+              type: string
+              example: "UNAUTHORIZED"
+            message:
+              type: string
+              example: "JWT inválido o expirado"
+            details:
+              type: object
+              additionalProperties: true
+            request_id:
+              type: string
+              example: "req_01HXX5KJ8M0..."
+
+    # Login
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: "admin@sysde.com"
+        password:
+          type: string
+          format: password
+          minLength: 8
+
+    LoginResponse:
+      type: object
+      required: [access_token, refresh_token, expires_in, token_type, user]
+      properties:
+        access_token:
+          type: string
+          description: JWT a usar en `Authorization: Bearer`
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+          description: Segundos hasta expiración del access_token
+          example: 3600
+        token_type:
+          type: string
+          enum: [bearer]
+        user:
+          $ref: '#/components/schemas/User'
+
+    # User
+    User:
+      type: object
+      required: [id, email, role]
+      properties:
+        id:
+          $ref: '#/components/schemas/UserId'
+        email:
+          type: string
+          format: email
+        full_name:
+          type: string
+          nullable: true
+        avatar_url:
+          type: string
+          format: uri
+          nullable: true
+        role:
+          $ref: '#/components/schemas/AppRole'
+          description: Mejor rol del usuario (resuelto por prioridad)
+        cliente_assignment:
+          allOf:
+            - $ref: '#/components/schemas/ClienteAssignment'
+          nullable: true
+          description: Presente solo si role=cliente
+        created_at:
+          type: string
+          format: date-time
+
+    ClienteAssignment:
+      type: object
+      required: [client_id, permission_level]
+      properties:
+        client_id:
+          type: string
+        permission_level:
+          $ref: '#/components/schemas/ClientePermission'
+
+    # Refresh
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+
+    # Create user (staff)
+    CreateUserRequest:
+      type: object
+      required: [email, password, full_name, role]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 12
+        full_name:
+          type: string
+          minLength: 2
+        role:
+          $ref: '#/components/schemas/AppRole'
+        send_invite_email:
+          type: boolean
+          default: false
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 12
+        full_name:
+          type: string
+        role:
+          $ref: '#/components/schemas/AppRole'
+      minProperties: 1
+
+    # Cliente users
+    CreateClienteUserRequest:
+      type: object
+      required: [email, password, client_id]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 8
+        full_name:
+          type: string
+        client_id:
+          type: string
+        permission_level:
+          $ref: '#/components/schemas/ClientePermission'
+          default: viewer
+
+    ListClienteUsersResponse:
+      type: object
+      required: [users]
+      properties:
+        users:
+          type: array
+          items:
+            type: object
+            required: [user_id, permission_level, assignment_id]
+            properties:
+              user_id:
+                $ref: '#/components/schemas/UserId'
+              assignment_id:
+                type: string
+                format: uuid
+              permission_level:
+                $ref: '#/components/schemas/ClientePermission'
+              created_at:
+                type: string
+                format: date-time
+              profile:
+                type: object
+                nullable: true
+                properties:
+                  full_name:
+                    type: string
+                  email:
+                    type: string
+                    format: email
+                  avatar_url:
+                    type: string
+                    format: uri
+                    nullable: true
+
+  responses:
+    Unauthorized:
+      description: JWT ausente o inválido
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    Forbidden:
+      description: Rol no autorizado para esta operación
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    RateLimited:
+      description: Rate limit excedido
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: Segundos hasta poder reintentar
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+security:
+  - BearerAuth: []
+
+# ─── Paths ──────────────────────────────────────────────────────────────────
+paths:
+
+  /healthz:
+    get:
+      summary: Liveness probe
+      security: []
+      tags: [meta]
+      responses:
+        '200':
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  version: { type: string, example: 1.0.0 }
+
+  /login:
+    post:
+      summary: Login con email + password
+      description: Devuelve JWT + refresh. Rate limit 10/5min por IP.
+      security: []
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Login OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '400':
+          description: Email/password inválido formato
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '401':
+          description: Credenciales incorrectas
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /refresh:
+    post:
+      summary: Renovar access_token con refresh_token
+      security: []
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefreshRequest' }
+      responses:
+        '200':
+          description: Nuevo access_token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /logout:
+    post:
+      summary: Invalidar session del JWT actual
+      tags: [auth]
+      responses:
+        '204':
+          description: Session invalidated
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /me:
+    get:
+      summary: User + role + cliente_assignment del JWT actual
+      description: Reemplaza la lógica de `useAuth.tsx:49-86` en el frontend.
+      tags: [auth]
+      responses:
+        '200':
+          description: User data
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /users:
+    post:
+      summary: Crear usuario staff (admin only)
+      description: Reemplaza `manage-users action=create`.
+      tags: [users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateUserRequest' }
+      responses:
+        '201':
+          description: Usuario creado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Email ya existe
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /users/{user_id}:
+    parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema: { $ref: '#/components/schemas/UserId' }
+
+    patch:
+      summary: Actualizar user (email, password, role, full_name)
+      description: |
+        Combina las acciones `update_role`, `update_email`, `update_password`
+        de `manage-users` en un solo endpoint.
+      tags: [users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateUserRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Soft delete user (admin only)
+      description: Desvincula del equipo, revoca todas las sessions, marca deleted.
+      tags: [users]
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /cliente-users:
+    post:
+      summary: Crear user cliente + asignación a empresa
+      description: Reemplaza `manage-users action=create_cliente`. Admin/PM only.
+      tags: [cliente-users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateClienteUserRequest' }
+      responses:
+        '201':
+          description: Cliente user creado y asignado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: '#/components/schemas/User' }
+                  assignment_id: { type: string, format: uuid }
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: User ya existe / assignment ya existe
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+    get:
+      summary: Listar users de un cliente
+      tags: [cliente-users]
+      parameters:
+        - name: client_id
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Lista de users
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ListClienteUsersResponse' }
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /cliente-assignments/{user_id}/{client_id}:
+    parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema: { $ref: '#/components/schemas/UserId' }
+      - name: client_id
+        in: path
+        required: true
+        schema: { type: string }
+
+    patch:
+      summary: Cambiar permission_level de una asignación
+      tags: [cliente-users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [permission_level]
+              properties:
+                permission_level:
+                  $ref: '#/components/schemas/ClientePermission'
+      responses:
+        '200':
+          description: Updated
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Revocar asignación cliente↔empresa
+      description: |
+        Si el user no tiene más asignaciones después de esto, opcionalmente
+        elimina el auth user (parámetro `delete_user_if_orphan`).
+      tags: [cliente-users]
+      parameters:
+        - name: delete_user_if_orphan
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        '204':
+          description: Revoked
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+tags:
+  - name: meta
+    description: Health checks y metadata
+  - name: auth
+    description: Login, refresh, logout, me
+  - name: users
+    description: CRUD de usuarios staff
+  - name: cliente-users
+    description: Users externos con role=cliente y asignaciones a empresa

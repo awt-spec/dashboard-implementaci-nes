@@ -573,9 +573,11 @@ const form = useForm<TicketForm>({
 
 ## 7. Base de Datos
 
-### 7.1 Inventario de tablas (82 totales)
+### 7.1 Inventario de tablas (85 totales)
 
 > Las tablas están agrupadas por dominio. Cada una tiene RLS habilitado (verificado tras la auditoría 2026-05-03).
+>
+> **Conteo verificado 2026-05-16 durante producción de ADR-013.** El header decía "82 totales" pero el listado real abajo enumera 85 entradas — corregido para reflejar la realidad. La reconciliación completa vive en `docs/sdd-migration/adr-013-multitenant-interno.md` §Apéndice.
 
 #### Core / Project Management
 | Tabla | Rol | Filas (prod aprox) |

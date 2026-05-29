@@ -1,0 +1,1099 @@
+openapi: 3.1.0
+info:
+  title: SVA — Core Service
+  version: 1.0.0
+  description: |
+    Servicio "saco" que concentra los dominios de negocio del SVA durante la
+    transición Strangler Fig. Internamente organizado por subdominios:
+    `/v1/tickets/*`, `/v1/sprints/*`, `/v1/clients/*`, `/v1/team/*`,
+    `/v1/reporting/*`, y `/v1/public/*` (sin auth).
+
+    Cuando se sub-divida (Fase 4 o 5), cada subdominio se vuelve un servicio
+    independiente sin cambiar las URLs públicas (paths estables).
+
+    Stack: Hono + TS en Vercel Edge.
+
+    Notas:
+    - Auth: JWT del usuario se pasa a Postgres → RLS sigue siendo segunda línea.
+    - JSON keys en `snake_case` (compat con BD).
+    - Errores siguen shape `{ error: { code, message, details?, request_id } }`.
+    - Mutations críticas aceptan `X-Idempotency-Key` (header).
+
+  contact: { name: SVA Engineering }
+
+servers:
+  - url: https://api.sva.sysde.com/v1
+    description: Production (todas las subpaths excepto /auth y /ai)
+  - url: http://localhost:3003/v1
+    description: Local dev
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    IdempotencyKey:
+      name: X-Idempotency-Key
+      in: header
+      schema: { type: string, format: uuid }
+      description: |
+        Mutations idempotentes (24h TTL). Si la misma key llega 2 veces con
+        body idéntico, devuelve la respuesta cacheada. Si body distinto, 409.
+    PageLimit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+    PageOffset:
+      name: offset
+      in: query
+      schema: { type: integer, minimum: 0, default: 0 }
+
+  schemas:
+
+    # ─── Tipos primitivos ────────────────────────────────────────────────
+    UUID: { type: string, format: uuid }
+    ClientId: { type: string }
+
+    TicketEstado:
+      type: string
+      enum:
+        - PENDIENTE
+        - EN ATENCIÓN
+        - VALORACIÓN
+        - COTIZADA
+        - POR CERRAR
+        - ENTREGADA
+        - APROBADA
+        - CERRADA
+        - ANULADA
+        - ON HOLD
+
+    Prioridad:
+      type: string
+      enum:
+        - "Critica, Impacto Negocio"
+        - Alta
+        - Media
+        - Baja
+
+    NivelServicio:
+      type: string
+      enum: [Base, Premium, Platinum]
+
+    SlaStatus:
+      type: string
+      enum: [ok, warning, overdue, no_sla]
+
+    SlaSource:
+      type: string
+      enum: [client_override, policy_v4.5]
+      nullable: true
+
+    Visibility:
+      type: string
+      enum: [interna, externa]
+
+    ScrumStatus:
+      type: string
+      enum: [backlog, ready, in_sprint, in_progress, done]
+
+    ReopenType:
+      type: string
+      enum: [cliente_rechazo, qa_falla, solicitud_relacionada, otro, historico]
+
+    # ─── Envelope errores ────────────────────────────────────────────────
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, request_id]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details: { type: object, additionalProperties: true }
+            request_id: { type: string }
+
+    # ─── Paginación ──────────────────────────────────────────────────────
+    Paginated:
+      type: object
+      required: [items, total]
+      properties:
+        items: { type: array, items: {} }
+        total: { type: integer }
+        limit: { type: integer }
+        offset: { type: integer }
+
+    # ─── Tickets ─────────────────────────────────────────────────────────
+    Ticket:
+      type: object
+      required:
+        - id
+        - client_id
+        - ticket_id
+        - asunto
+        - tipo
+        - prioridad
+        - estado
+      properties:
+        id: { $ref: '#/components/schemas/UUID' }
+        client_id: { $ref: '#/components/schemas/ClientId' }
+        ticket_id:
+          type: string
+          description: Código humano (ej. CFE-12345)
+          example: "CFE-12345"
+        consecutivo_global: { type: integer, nullable: true }
+        consecutivo_cliente: { type: integer, nullable: true }
+        producto: { type: string }
+        asunto: { type: string }
+        tipo: { type: string }
+        prioridad: { $ref: '#/components/schemas/Prioridad' }
+        estado: { $ref: '#/components/schemas/TicketEstado' }
+        responsable: { type: string, nullable: true }
+        assigned_user_id: { $ref: '#/components/schemas/UUID' }
+        descripcion: { type: string, nullable: true }
+        notas: { type: string, nullable: true }
+        is_confidential: { type: boolean, default: false }
+        fuente:
+          type: string
+          enum: [cliente, interno, email, api, devops]
+          nullable: true
+        fecha_registro: { type: string, format: date-time, nullable: true }
+        fecha_entrega: { type: string, format: date-time, nullable: true }
+        fecha_estimada_cierre: { type: string, format: date, nullable: true }
+        dias_antiguedad: { type: integer }
+        # AI fields
+        ai_classification: { type: string, nullable: true }
+        ai_risk_level: { type: string, nullable: true }
+        ai_summary: { type: string, nullable: true }
+        # Scrum
+        sprint_id: { $ref: '#/components/schemas/UUID' }
+        story_points: { type: integer, nullable: true }
+        business_value: { type: integer, nullable: true }
+        effort: { type: integer, nullable: true }
+        scrum_status: { $ref: '#/components/schemas/ScrumStatus' }
+        backlog_rank: { type: integer, nullable: true }
+        # Reopens
+        reopen_count: { type: integer, default: 0 }
+        last_reopen_at: { type: string, format: date-time, nullable: true }
+        last_reopen_reason: { type: string, nullable: true }
+        # Audit
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    TicketCreate:
+      type: object
+      required: [client_id, asunto, tipo, prioridad]
+      properties:
+        client_id: { $ref: '#/components/schemas/ClientId' }
+        asunto: { type: string, minLength: 3, maxLength: 200 }
+        tipo: { type: string }
+        prioridad: { $ref: '#/components/schemas/Prioridad' }
+        producto: { type: string }
+        descripcion: { type: string }
+        fecha_entrega: { type: string, format: date-time }
+        responsable: { type: string }
+        fuente:
+          type: string
+          enum: [cliente, interno, email, api, devops]
+          default: interno
+        is_confidential: { type: boolean, default: false }
+
+    TicketUpdate:
+      type: object
+      properties:
+        asunto: { type: string }
+        tipo: { type: string }
+        prioridad: { $ref: '#/components/schemas/Prioridad' }
+        estado: { $ref: '#/components/schemas/TicketEstado' }
+        producto: { type: string }
+        descripcion: { type: string }
+        notas: { type: string }
+        fecha_entrega: { type: string, format: date-time }
+        responsable: { type: string }
+        assigned_user_id: { $ref: '#/components/schemas/UUID' }
+        story_points: { type: integer }
+        business_value: { type: integer }
+        effort: { type: integer }
+        sprint_id: { $ref: '#/components/schemas/UUID' }
+        scrum_status: { $ref: '#/components/schemas/ScrumStatus' }
+      minProperties: 1
+
+    TicketReopen:
+      type: object
+      required: [iteration_number, reason, reopen_type, reopened_at]
+      properties:
+        id: { $ref: '#/components/schemas/UUID' }
+        ticket_id: { $ref: '#/components/schemas/UUID' }
+        iteration_number: { type: integer, minimum: 1 }
+        reason: { type: string }
+        reopen_type: { $ref: '#/components/schemas/ReopenType' }
+        reopened_from_state: { type: string }
+        reopened_to_state: { type: string }
+        triggered_by_user_id: { $ref: '#/components/schemas/UUID' }
+        triggered_by_name: { type: string }
+        reopened_at: { type: string, format: date-time }
+        resolved_at: { type: string, format: date-time, nullable: true }
+        metadata: { type: object, additionalProperties: true }
+
+    TicketReopenRequest:
+      type: object
+      required: [reason, reopen_type, target_state]
+      properties:
+        reason: { type: string, minLength: 10 }
+        reopen_type: { $ref: '#/components/schemas/ReopenType' }
+        target_state: { $ref: '#/components/schemas/TicketEstado' }
+        new_responsible: { type: string }
+
+    SlaStatusItem:
+      type: object
+      required: [ticket_id, sla_status, sla_source, deadline_days, days_elapsed]
+      properties:
+        ticket_id: { $ref: '#/components/schemas/UUID' }
+        ticket_code: { type: string }
+        client_id: { $ref: '#/components/schemas/ClientId' }
+        sla_status: { $ref: '#/components/schemas/SlaStatus' }
+        sla_source: { $ref: '#/components/schemas/SlaSource' }
+        deadline_days: { type: integer, nullable: true }
+        days_elapsed: { type: integer }
+
+    SlaSummary:
+      type: object
+      required: [total, overdue, warning, ok]
+      properties:
+        total: { type: integer }
+        overdue: { type: integer }
+        warning: { type: integer }
+        ok: { type: integer }
+        no_sla: { type: integer }
+
+    # ─── Subtasks / Notes ───
+    Subtask:
+      type: object
+      required: [id, ticket_id, title, completed]
+      properties:
+        id: { $ref: '#/components/schemas/UUID' }
+        ticket_id: { $ref: '#/components/schemas/UUID' }
+        title: { type: string }
+        completed: { type: boolean }
+        assignee: { type: string, nullable: true }
+        due_date: { type: string, format: date, nullable: true }
+        priority: { type: string, nullable: true }
+        sort_order: { type: integer }
+        created_at: { type: string, format: date-time }
+
+    Note:
+      type: object
+      required: [id, ticket_id, content, visibility, created_at]
+      properties:
+        id: { $ref: '#/components/schemas/UUID' }
+        ticket_id: { $ref: '#/components/schemas/UUID' }
+        content: { type: string }
+        visibility: { type: string, enum: [interna, cliente, publica] }
+        author_id: { $ref: '#/components/schemas/UUID' }
+        author_name: { type: string }
+        created_at: { type: string, format: date-time }
+
+    DecryptResponse:
+      type: object
+      required: [descripcion]
+      properties:
+        descripcion: { type: string }
+        decrypted_at: { type: string, format: date-time }
+        audited: { type: boolean, example: true }
+
+    # ─── Sprints ────────────────────────────────────────────────────────
+    Sprint:
+      type: object
+      required: [id, client_id, name, status]
+      properties:
+        id: { $ref: '#/components/schemas/UUID' }
+        client_id: { $ref: '#/components/schemas/ClientId' }
+        name: { type: string }
+        goal: { type: string, nullable: true }
+        start_date: { type: string, format: date, nullable: true }
+        end_date: { type: string, format: date, nullable: true }
+        status: { type: string, enum: [planificado, activo, completado] }
+        capacity_points: { type: integer }
+        created_at: { type: string, format: date-time }
+
+    Task:
+      type: object
+      required: [id, client_id, title, status, priority]
+      properties:
+        id: { $ref: '#/components/schemas/UUID' }
+        client_id: { $ref: '#/components/schemas/ClientId' }
+        original_id: { type: integer }
+        title: { type: string }
+        status: { type: string, enum: [completada, en-progreso, bloqueada, pendiente] }
+        owner: { type: string }
+        due_date: { type: string }
+        priority: { type: string, enum: [alta, media, baja] }
+        assignees: { type: array, items: { type: object } }
+        description: { type: string, nullable: true }
+        visibility: { $ref: '#/components/schemas/Visibility' }
+        sprint_id: { $ref: '#/components/schemas/UUID' }
+        story_points: { type: integer, nullable: true }
+        business_value: { type: integer, nullable: true }
+        effort: { type: integer, nullable: true }
+        scrum_status: { $ref: '#/components/schemas/ScrumStatus' }
+        assigned_user_id: { $ref: '#/components/schemas/UUID' }
+        checklist: { type: array, items: { type: object } }
+
+    # ─── Clients ────────────────────────────────────────────────────────
+    Client:
+      type: object
+      required: [id, name, country, status, client_type]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        country: { type: string }
+        industry: { type: string }
+        status: { type: string, enum: [activo, en-riesgo, pausado, completado] }
+        progress: { type: integer, minimum: 0, maximum: 100 }
+        contact_name: { type: string }
+        contact_email: { type: string, format: email }
+        contract_start: { type: string }
+        contract_end: { type: string }
+        client_type: { type: string, enum: [implementacion, soporte] }
+        nivel_servicio: { $ref: '#/components/schemas/NivelServicio' }
+        ranking_position: { type: integer, nullable: true }
+        core_version: { type: string, nullable: true }
+        modules:
+          type: array
+          items: { type: string }
+        team_assigned:
+          type: array
+          items: { type: string }
+
+    Minute:
+      type: object
+      required: [id, client_id, title, date]
+      properties:
+        id: { $ref: '#/components/schemas/UUID' }
+        client_id: { $ref: '#/components/schemas/ClientId' }
+        title: { type: string }
+        date: { type: string, format: date }
+        attendees: { type: array, items: { type: string } }
+        summary: { type: string }
+        agreements: { type: array, items: { type: string } }
+        action_items: { type: array, items: { type: string } }
+        next_meeting: { type: string, format: date, nullable: true }
+        visible_to_client: { type: boolean }
+        presentation_snapshot: { type: object, nullable: true }
+
+    ShareTokenResponse:
+      type: object
+      required: [token, url, expires_at]
+      properties:
+        token: { type: string }
+        url: { type: string, format: uri }
+        expires_at: { type: string, format: date-time }
+
+    # ─── Team ───────────────────────────────────────────────────────────
+    TeamMember:
+      type: object
+      required: [id, name, email, is_active]
+      properties:
+        id: { $ref: '#/components/schemas/UUID' }
+        name: { type: string }
+        email: { type: string, format: email }
+        role: { type: string }
+        department: { type: string }
+        is_active: { type: boolean }
+        user_id: { $ref: '#/components/schemas/UUID' }
+
+    TimeEntry:
+      type: object
+      required: [id, member_id, date, hours]
+      properties:
+        id: { $ref: '#/components/schemas/UUID' }
+        member_id: { $ref: '#/components/schemas/UUID' }
+        client_id: { $ref: '#/components/schemas/ClientId' }
+        ticket_id: { $ref: '#/components/schemas/UUID' }
+        task_id: { type: integer, nullable: true }
+        date: { type: string, format: date }
+        hours: { type: number, minimum: 0 }
+        category: { type: string }
+        description: { type: string }
+        is_locked: { type: boolean, default: false }
+        created_at: { type: string, format: date-time }
+
+    # ─── Reporting ──────────────────────────────────────────────────────
+    ExecutiveSummary:
+      type: object
+      properties:
+        total_clients: { type: integer }
+        active_tickets: { type: integer }
+        overdue_tickets: { type: integer }
+        active_sprints: { type: integer }
+        velocity_avg_4w: { type: number }
+        portfolio_health_score: { type: integer, minimum: 0, maximum: 100 }
+
+  responses:
+    Unauthorized:
+      description: JWT inválido
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } }
+    Forbidden:
+      description: Rol o scope insuficiente
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } }
+    NotFound:
+      description: Recurso no encontrado o no accesible al usuario (RLS)
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } }
+    Conflict:
+      description: Estado actual incompatible con la operación
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } }
+    BusinessRuleViolation:
+      description: Falla regla de negocio (ej. transición ticket inválida, SLA exceeded)
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } }
+
+security:
+  - BearerAuth: []
+
+# ─── Paths ──────────────────────────────────────────────────────────────────
+paths:
+
+  /healthz:
+    get:
+      summary: Liveness probe
+      security: []
+      tags: [meta]
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { type: object } } }
+
+  # ════════════════════════════════════════════════════════════════════════
+  # SUBDOMINIO: TICKETS & SUPPORT
+  # ════════════════════════════════════════════════════════════════════════
+
+  /tickets:
+    get:
+      summary: Listar tickets (con filtros)
+      tags: [tickets]
+      parameters:
+        - { name: client_id, in: query, schema: { type: string } }
+        - { name: estado, in: query, schema: { $ref: '#/components/schemas/TicketEstado' } }
+        - { name: prioridad, in: query, schema: { $ref: '#/components/schemas/Prioridad' } }
+        - { name: responsable, in: query, schema: { type: string } }
+        - { name: sla_status, in: query, schema: { $ref: '#/components/schemas/SlaStatus' } }
+        - { name: q, in: query, schema: { type: string }, description: Búsqueda en asunto/descripcion }
+        - { $ref: '#/components/parameters/PageLimit' }
+        - { $ref: '#/components/parameters/PageOffset' }
+      responses:
+        '200':
+          description: Lista
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Paginated'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/Ticket' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+    post:
+      summary: Crear ticket (consecutivos asignados por trigger BD)
+      tags: [tickets]
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TicketCreate' }
+      responses:
+        '201':
+          description: Creado
+          content: { application/json: { schema: { $ref: '#/components/schemas/Ticket' } } }
+        '400':
+          description: Validación falló
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /tickets/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { $ref: '#/components/schemas/UUID' } }
+    get:
+      summary: Detalle del ticket
+      tags: [tickets]
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/Ticket' } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+    patch:
+      summary: Actualizar ticket
+      tags: [tickets]
+      description: |
+        Si el cambio de `estado` provoca reapertura (ENTREGADA/APROBADA → activo),
+        el endpoint requiere body con `reopen_reason` y `reopen_type`. Si no se
+        provee, devuelve 422 BUSINESS_RULE_VIOLATION.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/TicketUpdate'
+                - type: object
+                  properties:
+                    reopen_reason: { type: string }
+                    reopen_type: { $ref: '#/components/schemas/ReopenType' }
+      responses:
+        '200':
+          description: Updated
+          content: { application/json: { schema: { $ref: '#/components/schemas/Ticket' } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/BusinessRuleViolation' }
+
+    delete:
+      summary: Eliminar ticket (admin only)
+      tags: [tickets]
+      responses:
+        '204': { description: Deleted }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /tickets/{id}/reopens:
+    parameters:
+      - { name: id, in: path, required: true, schema: { $ref: '#/components/schemas/UUID' } }
+    get:
+      summary: Historial de reincidencias del ticket
+      tags: [tickets]
+      responses:
+        '200':
+          description: Lista
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/TicketReopen' }
+
+  /tickets/{id}/reopen:
+    parameters:
+      - { name: id, in: path, required: true, schema: { $ref: '#/components/schemas/UUID' } }
+    post:
+      summary: Reabrir ticket (atajo a PATCH con estado activo)
+      tags: [tickets]
+      description: Wrapper sobre PATCH /tickets/{id} para llamada explícita de reapertura.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TicketReopenRequest' }
+      responses:
+        '200':
+          description: Reopened
+          content: { application/json: { schema: { $ref: '#/components/schemas/Ticket' } } }
+
+  /tickets/{id}/subtasks:
+    parameters:
+      - { name: id, in: path, required: true, schema: { $ref: '#/components/schemas/UUID' } }
+    get:
+      summary: Listar subtasks
+      tags: [tickets]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Subtask' } }
+    post:
+      summary: Crear subtask
+      tags: [tickets]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string }
+                assignee: { type: string }
+                due_date: { type: string, format: date }
+                priority: { type: string }
+                sort_order: { type: integer }
+      responses:
+        '201':
+          description: Created
+          content: { application/json: { schema: { $ref: '#/components/schemas/Subtask' } } }
+
+  /tickets/{id}/notes:
+    parameters:
+      - { name: id, in: path, required: true, schema: { $ref: '#/components/schemas/UUID' } }
+    get:
+      summary: Listar notas
+      tags: [tickets]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Note' } }
+    post:
+      summary: Agregar nota
+      tags: [tickets]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content, visibility]
+              properties:
+                content: { type: string }
+                visibility: { type: string, enum: [interna, cliente, publica] }
+      responses:
+        '201':
+          description: Created
+          content: { application/json: { schema: { $ref: '#/components/schemas/Note' } } }
+
+  /tickets/{id}/decrypt:
+    parameters:
+      - { name: id, in: path, required: true, schema: { $ref: '#/components/schemas/UUID' } }
+    post:
+      summary: Descifrar contenido confidencial (admin/pm only — audita acceso)
+      tags: [tickets]
+      description: |
+        Llama a `decrypt_sensitive` SQL con `ENCRYPTION_KEY` server-side. Cada call
+        registra entrada en `ticket_access_log` con action='decrypt'.
+      responses:
+        '200':
+          description: Decrypted
+          content: { application/json: { schema: { $ref: '#/components/schemas/DecryptResponse' } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /tickets/sla-status:
+    get:
+      summary: SLA status por ticket (RPC get_tickets_sla_status)
+      tags: [tickets]
+      parameters:
+        - { name: client_id, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: SLA por ticket con sla_source
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SlaStatusItem' }
+
+  /tickets/sla-summary:
+    get:
+      summary: Resumen SLA global (RPC get_sla_summary)
+      tags: [tickets]
+      responses:
+        '200':
+          description: Counts agregados
+          content: { application/json: { schema: { $ref: '#/components/schemas/SlaSummary' } } }
+
+  /tickets/reopens-summary:
+    get:
+      summary: Resumen de reincidencias (view support_reopens_summary)
+      tags: [tickets]
+      parameters:
+        - { name: client_id, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: Agregado por cliente × responsable × producto
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    client_id: { type: string }
+                    responsible: { type: string }
+                    producto: { type: string }
+                    total_reopens_90d: { type: integer }
+                    rate_pct: { type: number }
+
+  # ════════════════════════════════════════════════════════════════════════
+  # SUBDOMINIO: SCRUM & SPRINTS
+  # ════════════════════════════════════════════════════════════════════════
+
+  /sprints:
+    get:
+      summary: Listar sprints
+      tags: [sprints]
+      parameters:
+        - { name: client_id, in: query, required: true, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string, enum: [planificado, activo, completado] } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Sprint' } }
+    post:
+      summary: Crear sprint
+      tags: [sprints]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [client_id, name]
+              properties:
+                client_id: { type: string }
+                name: { type: string }
+                goal: { type: string }
+                start_date: { type: string, format: date }
+                end_date: { type: string, format: date }
+                capacity_points: { type: integer, default: 0 }
+      responses:
+        '201':
+          description: Created
+          content: { application/json: { schema: { $ref: '#/components/schemas/Sprint' } } }
+
+  /sprints/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { $ref: '#/components/schemas/UUID' } }
+    patch:
+      summary: Actualizar sprint (goal, fechas, capacity)
+      tags: [sprints]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                goal: { type: string }
+                start_date: { type: string, format: date }
+                end_date: { type: string, format: date }
+                capacity_points: { type: integer }
+                status: { type: string, enum: [planificado, activo, completado] }
+      responses:
+        '200':
+          description: Updated
+          content: { application/json: { schema: { $ref: '#/components/schemas/Sprint' } } }
+
+  /sprints/{id}/start:
+    parameters:
+      - { name: id, in: path, required: true, schema: { $ref: '#/components/schemas/UUID' } }
+    post:
+      summary: Iniciar sprint (planificado → activo)
+      tags: [sprints]
+      responses:
+        '200': { description: Started, content: { application/json: { schema: { $ref: '#/components/schemas/Sprint' } } } }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /sprints/{id}/complete:
+    parameters:
+      - { name: id, in: path, required: true, schema: { $ref: '#/components/schemas/UUID' } }
+    post:
+      summary: Completar sprint (activo → completado)
+      tags: [sprints]
+      responses:
+        '200': { description: Completed, content: { application/json: { schema: { $ref: '#/components/schemas/Sprint' } } } }
+
+  /sprints/{id}/tasks:
+    parameters:
+      - { name: id, in: path, required: true, schema: { $ref: '#/components/schemas/UUID' } }
+    get:
+      summary: Tasks del sprint
+      tags: [sprints]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Task' } }
+
+  /tasks/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { $ref: '#/components/schemas/UUID' } }
+    patch:
+      summary: Actualizar task (mover de sprint, asignar, completar)
+      tags: [sprints]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sprint_id: { $ref: '#/components/schemas/UUID' }
+                scrum_status: { $ref: '#/components/schemas/ScrumStatus' }
+                status: { type: string, enum: [completada, en-progreso, bloqueada, pendiente] }
+                assigned_user_id: { $ref: '#/components/schemas/UUID' }
+                story_points: { type: integer }
+                business_value: { type: integer }
+                effort: { type: integer }
+                visibility: { $ref: '#/components/schemas/Visibility' }
+      responses:
+        '200':
+          description: Updated
+          content: { application/json: { schema: { $ref: '#/components/schemas/Task' } } }
+
+  # ════════════════════════════════════════════════════════════════════════
+  # SUBDOMINIO: CLIENTS
+  # ════════════════════════════════════════════════════════════════════════
+
+  /clients:
+    get:
+      summary: Listar clientes
+      tags: [clients]
+      parameters:
+        - { name: client_type, in: query, schema: { type: string, enum: [implementacion, soporte] } }
+        - { name: status, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Client' } }
+    post:
+      summary: Crear cliente (admin/pm)
+      tags: [clients]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Client' }
+      responses:
+        '201':
+          description: Created
+          content: { application/json: { schema: { $ref: '#/components/schemas/Client' } } }
+
+  /clients/{client_id}:
+    parameters:
+      - { name: client_id, in: path, required: true, schema: { type: string } }
+    get:
+      summary: Detalle cliente
+      tags: [clients]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Client' } } } }
+    patch:
+      summary: Actualizar cliente
+      tags: [clients]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/Client' } } }
+      responses:
+        '200': { description: Updated, content: { application/json: { schema: { $ref: '#/components/schemas/Client' } } } }
+
+  /clients/{client_id}/minutes:
+    parameters:
+      - { name: client_id, in: path, required: true, schema: { type: string } }
+    get:
+      summary: Listar minutas del cliente
+      tags: [clients]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Minute' } }
+    post:
+      summary: Crear minuta
+      tags: [clients]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/Minute' } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Minute' } } } }
+
+  /clients/{client_id}/contracts:
+    parameters:
+      - { name: client_id, in: path, required: true, schema: { type: string } }
+    get:
+      summary: Contratos del cliente
+      tags: [clients]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: array, items: { type: object } } } } }
+
+  /clients/{client_id}/deliverables:
+    parameters:
+      - { name: client_id, in: path, required: true, schema: { type: string } }
+    get:
+      summary: Entregables del cliente
+      tags: [clients]
+      responses:
+        '200': { description: OK }
+
+  /clients/{client_id}/share:
+    parameters:
+      - { name: client_id, in: path, required: true, schema: { type: string } }
+    post:
+      summary: Generar token público para SharedPresentation
+      tags: [clients]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scope, expires_in_days]
+              properties:
+                scope: { type: string, enum: [presentation, support, ticket_history] }
+                expires_in_days: { type: integer, minimum: 1, maximum: 90 }
+                snapshot: { type: object, description: Inmutable snapshot del contenido }
+      responses:
+        '201':
+          description: Token creado
+          content: { application/json: { schema: { $ref: '#/components/schemas/ShareTokenResponse' } } }
+
+  # ════════════════════════════════════════════════════════════════════════
+  # SUBDOMINIO: TEAM
+  # ════════════════════════════════════════════════════════════════════════
+
+  /team/members:
+    get:
+      summary: Listar miembros del equipo SYSDE
+      tags: [team]
+      parameters:
+        - { name: is_active, in: query, schema: { type: boolean } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/TeamMember' } }
+
+  /team/members/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { $ref: '#/components/schemas/UUID' } }
+    get:
+      summary: Detalle miembro
+      tags: [team]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/TeamMember' } } } }
+
+  /team/time-entries:
+    get:
+      summary: Listar time entries
+      tags: [team]
+      parameters:
+        - { name: member_id, in: query, schema: { $ref: '#/components/schemas/UUID' } }
+        - { name: client_id, in: query, schema: { type: string } }
+        - { name: week_start, in: query, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/TimeEntry' } }
+    post:
+      summary: Registrar time entry
+      tags: [team]
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/TimeEntry' } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/TimeEntry' } } } }
+        '409':
+          description: Semana bloqueada
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } }
+
+  # ════════════════════════════════════════════════════════════════════════
+  # SUBDOMINIO: REPORTING
+  # ════════════════════════════════════════════════════════════════════════
+
+  /reporting/executive-summary:
+    get:
+      summary: KPIs ejecutivos (CEO/admin/pm only)
+      tags: [reporting]
+      responses:
+        '200':
+          description: KPIs
+          content: { application/json: { schema: { $ref: '#/components/schemas/ExecutiveSummary' } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /reporting/ai-usage:
+    get:
+      summary: Uso de IA por función y modelo (admin/pm/ceo only)
+      tags: [reporting]
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: Stats
+          content: { application/json: { schema: { type: object } } }
+
+  /reporting/portfolio-health:
+    get:
+      summary: Health score por cliente
+      tags: [reporting]
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { type: array, items: { type: object } } } }
+
+  # ════════════════════════════════════════════════════════════════════════
+  # SUBDOMINIO: PUBLIC (sin auth, con token)
+  # ════════════════════════════════════════════════════════════════════════
+
+  /public/presentations/{token}:
+    parameters:
+      - { name: token, in: path, required: true, schema: { type: string } }
+    get:
+      summary: Vista pública de minuta cliente
+      security: []
+      tags: [public]
+      responses:
+        '200':
+          description: Presentación (snapshot inmutable)
+          content: { application/json: { schema: { type: object } } }
+        '404':
+          description: Token inválido o expirado
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } }
+
+  /public/support-presentations/{token}:
+    parameters:
+      - { name: token, in: path, required: true, schema: { type: string } }
+    get:
+      summary: Vista pública de presentación soporte
+      security: []
+      tags: [public]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+
+  /public/ticket-history/{token}:
+    parameters:
+      - { name: token, in: path, required: true, schema: { type: string } }
+    get:
+      summary: Historial público de un ticket
+      security: []
+      tags: [public]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+
+  /public/ticket-history/{token}/view:
+    parameters:
+      - { name: token, in: path, required: true, schema: { type: string } }
+    post:
+      summary: Bump view counter (reemplaza RPC bump_shared_ticket_history_view)
+      security: []
+      tags: [public]
+      responses:
+        '204': { description: Bumped }
+        '404':
+          description: Token inválido
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } }
+
+tags:
+  - { name: meta, description: Health checks }
+  - { name: tickets, description: Tickets & Support — CRUD + reopens + SLA + compliance }
+  - { name: sprints, description: Scrum — sprints + tasks + ceremonies }
+  - { name: clients, description: Clients — CRUD + contracts + minutes + deliverables + sharing }
+  - { name: team, description: Team & People — members + time tracking }
+  - { name: reporting, description: Reporting — executive summary, AI usage, portfolio health }
+  - { name: public, description: Endpoints públicos con token (sin auth) }

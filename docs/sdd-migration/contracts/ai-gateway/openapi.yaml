@@ -1,0 +1,800 @@
+openapi: 3.1.0
+info:
+  title: SVA — AI Gateway
+  version: 1.0.0
+  description: |
+    Gateway centralizado para todas las invocaciones a LLM (Anthropic Claude).
+    Reemplaza 17 edge functions Supabase con endpoints REST versionados.
+
+    Backend: Anthropic Messages API (default `claude-haiku-4-5`).
+    Stack: Hono + TS en Vercel Edge.
+
+    Shape común de respuesta exitosa:
+    ```json
+    { "result": <object>, "usage": { "input_tokens", "output_tokens", "total_tokens" }, "model": "claude-haiku-4-5" }
+    ```
+
+    Rate limits — por user, por endpoint:
+    | Endpoint                  | Limit       |
+    |---------------------------|-------------|
+    | case-strategy             | 10/hr       |
+    | client-strategy           | 10/hr       |
+    | exec-chat                 | 50/hr       |
+    | classify-tickets          | 5/hr (batch)|
+    | analyze-* / mentor / cv   | 20/hr       |
+    | parse-time-entry          | 100/hr      |
+
+  contact: { name: SVA Engineering }
+
+servers:
+  - url: https://api.sva.sysde.com/v1/ai
+    description: Production
+  - url: http://localhost:3002/v1/ai
+    description: Local dev
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+
+    AiUsage:
+      type: object
+      required: [input_tokens, output_tokens, total_tokens]
+      properties:
+        input_tokens: { type: integer }
+        output_tokens: { type: integer }
+        total_tokens: { type: integer }
+        cache_creation_input_tokens:
+          type: integer
+          description: Tokens cargados al cache prompt (cuesta 1.25×)
+        cache_read_input_tokens:
+          type: integer
+          description: Tokens leídos del cache (cuesta 0.10×)
+
+    ModelId:
+      type: string
+      enum:
+        - claude-haiku-4-5
+        - claude-sonnet-4-5
+        - claude-sonnet-4-6
+        - claude-opus-4-5
+        - claude-opus-4-6
+        - claude-opus-4-7
+      default: claude-haiku-4-5
+      description: |
+        Modelo Claude a usar. Default Haiku 4.5 — más barato y rápido.
+        Override por endpoint si necesitás Sonnet/Opus.
+
+    # ─── Envelopes ───
+    AiSuccessEnvelope:
+      type: object
+      required: [result, usage, model]
+      properties:
+        result:
+          oneOf:
+            - type: object
+            - type: string
+            - type: array
+        usage: { $ref: '#/components/schemas/AiUsage' }
+        model: { $ref: '#/components/schemas/ModelId' }
+
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, request_id]
+          properties:
+            code:
+              type: string
+              enum:
+                - INVALID_REQUEST
+                - UNAUTHORIZED
+                - FORBIDDEN_ROLE
+                - FORBIDDEN_CLIENTE
+                - RATE_LIMITED
+                - UPSTREAM_ERROR
+                - AI_TIMEOUT
+                - AI_OVERLOADED
+                - INTERNAL_ERROR
+            message: { type: string }
+            details:
+              type: object
+              additionalProperties: true
+            request_id: { type: string }
+
+    # ─── Request schemas por endpoint (las representativas) ───
+
+    CaseStrategyRequest:
+      type: object
+      required: [ticket_id]
+      properties:
+        ticket_id:
+          type: string
+          format: uuid
+        model:
+          $ref: '#/components/schemas/ModelId'
+
+    CaseStrategyResult:
+      type: object
+      required: [diagnosis, actions, risk_score]
+      properties:
+        diagnosis:
+          type: string
+          description: Análisis del estado actual del caso
+        actions:
+          type: array
+          items:
+            type: object
+            required: [title, priority]
+            properties:
+              title: { type: string }
+              priority: { type: string, enum: [alta, media, baja] }
+              owner: { type: string, nullable: true }
+              due_in_days: { type: integer, nullable: true }
+        risk_score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        similar_cases:
+          type: array
+          items:
+            type: object
+            properties:
+              ticket_id: { type: string, format: uuid }
+              similarity: { type: number, minimum: 0, maximum: 1 }
+
+    ClientStrategyRequest:
+      type: object
+      required: [client_id]
+      properties:
+        client_id: { type: string }
+        timeframe_days: { type: integer, default: 90 }
+        model: { $ref: '#/components/schemas/ModelId' }
+
+    ExecChatRequest:
+      type: object
+      required: [messages]
+      properties:
+        messages:
+          type: array
+          items:
+            type: object
+            required: [role, content]
+            properties:
+              role: { type: string, enum: [user, assistant] }
+              content: { type: string }
+        model: { $ref: '#/components/schemas/ModelId' }
+        scope:
+          type: string
+          enum: [global, client]
+          default: global
+        client_id:
+          type: string
+          description: Requerido si scope=client
+
+    ExecChatResult:
+      type: object
+      required: [reply]
+      properties:
+        reply: { type: string }
+        citations:
+          type: array
+          items:
+            type: object
+            properties:
+              type: { type: string, enum: [ticket, client, sprint, deliverable] }
+              id: { type: string }
+              label: { type: string }
+
+    ClassifyTicketsRequest:
+      type: object
+      properties:
+        ticket_ids:
+          type: array
+          items: { type: string, format: uuid }
+          description: |
+            Si se omite, clasifica todos los tickets sin classification.
+            Si se incluye, clasifica solo los listados (máx 50).
+          maxItems: 50
+
+    ClassifyTicketsResult:
+      type: object
+      required: [classified, errors]
+      properties:
+        classified:
+          type: array
+          items:
+            type: object
+            required: [ticket_id, classification, risk_level]
+            properties:
+              ticket_id: { type: string, format: uuid }
+              classification: { type: string }
+              risk_level: { type: string, enum: [critical, high, medium, low] }
+              summary: { type: string }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              ticket_id: { type: string, format: uuid }
+              error: { type: string }
+
+    ForecastSprintRequest:
+      type: object
+      required: [client_id]
+      properties:
+        client_id: { type: string }
+        backlog_points: { type: integer, minimum: 0 }
+        velocity_history:
+          type: array
+          items: { type: integer }
+          description: Story points completados por sprint, más reciente último
+
+    ForecastSprintResult:
+      type: object
+      required: [avg_velocity, sprints_to_complete, estimated_end_date, confidence]
+      properties:
+        avg_velocity: { type: number }
+        sprints_to_complete: { type: integer }
+        estimated_end_date: { type: string, format: date }
+        confidence: { type: string, enum: [low, medium, high] }
+        risk_factors:
+          type: array
+          items: { type: string }
+
+    SummarizeTranscriptRequest:
+      type: object
+      required: [transcript]
+      properties:
+        transcript:
+          type: string
+          maxLength: 200000
+        client_name: { type: string, nullable: true }
+
+    SummarizeTranscriptResult:
+      type: object
+      required: [title, summary, agreements, action_items]
+      properties:
+        title: { type: string }
+        summary: { type: string }
+        agreements:
+          type: array
+          items: { type: string }
+        action_items:
+          type: array
+          items:
+            type: object
+            properties:
+              title: { type: string }
+              owner: { type: string }
+              due_date: { type: string, format: date, nullable: true }
+        attendees:
+          type: array
+          items: { type: string }
+        task_updates:
+          type: array
+          items:
+            type: object
+            properties:
+              task_id: { type: integer, nullable: true }
+              status_hint: { type: string }
+              note: { type: string }
+
+    ParseTimeEntryRequest:
+      type: object
+      required: [text]
+      properties:
+        text:
+          type: string
+          maxLength: 1000
+          example: "2h en CMI debugging api refactoring"
+
+    ParseTimeEntryResult:
+      type: object
+      required: [hours, confidence]
+      properties:
+        hours: { type: number, minimum: 0 }
+        client_id: { type: string, nullable: true }
+        ticket_id: { type: string, format: uuid, nullable: true }
+        task_id: { type: integer, nullable: true }
+        category: { type: string, nullable: true }
+        confidence: { type: number, minimum: 0, maximum: 1 }
+
+    # Schemas Member (analyze-cv, analyze-career-path, mentor-ai, etc.)
+    MemberIdRequest:
+      type: object
+      required: [member_id]
+      properties:
+        member_id: { type: string, format: uuid }
+        model: { $ref: '#/components/schemas/ModelId' }
+
+    MemberChatRequest:
+      allOf:
+        - $ref: '#/components/schemas/MemberIdRequest'
+        - type: object
+          required: [question]
+          properties:
+            question: { type: string, maxLength: 2000 }
+            conversation_id: { type: string, format: uuid, nullable: true }
+
+  responses:
+    Unauthorized:
+      description: JWT inválido
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Forbidden:
+      description: Rol no autorizado o cliente fuera de scope
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    RateLimited:
+      description: Rate limit excedido
+      headers:
+        Retry-After: { schema: { type: integer } }
+        X-RateLimit-Limit: { schema: { type: integer } }
+        X-RateLimit-Remaining: { schema: { type: integer } }
+        X-RateLimit-Reset: { schema: { type: integer, description: Unix epoch s } }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    UpstreamError:
+      description: Anthropic devolvió error (timeout, 5xx, overloaded)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+security:
+  - BearerAuth: []
+
+paths:
+
+  /healthz:
+    get:
+      summary: Liveness probe
+      security: []
+      tags: [meta]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: object, properties: { status: { type: string } } }
+
+  # ─── Strategy & ejecutivos ──────────────────────────────────────────────
+
+  /case-strategy:
+    post:
+      summary: Estrategia IA para un ticket (tool-use forzado)
+      tags: [strategy]
+      description: |
+        Reemplaza `case-strategy-ai` edge fn. Persiste en `pm_ai_analysis`.
+        Rate limit 10/hr/user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CaseStrategyRequest' }
+      responses:
+        '200':
+          description: Estrategia generada
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/AiSuccessEnvelope'
+                  - type: object
+                    properties:
+                      result: { $ref: '#/components/schemas/CaseStrategyResult' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '502': { $ref: '#/components/responses/UpstreamError' }
+
+  /client-strategy:
+    post:
+      summary: Estrategia IA para un cliente (tool-use forzado)
+      tags: [strategy]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ClientStrategyRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/AiSuccessEnvelope'
+                  - type: object
+                    properties:
+                      result: { type: object, description: ClientStrategy shape — diagnóstico + acciones + health score }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /exec-chat:
+    post:
+      summary: Chat conversacional sobre portafolio (multi-turn)
+      tags: [strategy]
+      description: Reemplaza `executive-ai-chat`. Rate limit 50/hr/user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExecChatRequest' }
+      responses:
+        '200':
+          description: Respuesta del chat
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/AiSuccessEnvelope'
+                  - type: object
+                    properties:
+                      result: { $ref: '#/components/schemas/ExecChatResult' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /pm-analysis:
+    post:
+      summary: Análisis ejecutivo multi-cliente (CEO/PM dashboard)
+      tags: [strategy]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                client_ids:
+                  type: array
+                  items: { type: string }
+                  description: Si se omite, analiza todos los clientes visibles
+                model: { $ref: '#/components/schemas/ModelId' }
+      responses:
+        '200':
+          description: Análisis
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiSuccessEnvelope' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /sva-strategy:
+    post:
+      summary: Plan estratégico semanal del equipo SVA
+      tags: [strategy]
+      responses:
+        '200':
+          description: Plan generado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiSuccessEnvelope' }
+
+  # ─── Tickets ───────────────────────────────────────────────────────────
+
+  /classify-tickets:
+    post:
+      summary: Clasificación automática IA + redacción confidencial
+      tags: [tickets]
+      description: Batch — hasta 50 tickets. Rate limit 5/hr/user.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ClassifyTicketsRequest' }
+      responses:
+        '200':
+          description: Tickets clasificados
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/AiSuccessEnvelope'
+                  - type: object
+                    properties:
+                      result: { $ref: '#/components/schemas/ClassifyTicketsResult' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /evaluate-compliance:
+    post:
+      summary: Evaluar cumplimiento normativo de un ticket
+      tags: [tickets]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ticket_id]
+              properties:
+                ticket_id: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Estado de compliance
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiSuccessEnvelope' }
+
+  /policy-assistant:
+    post:
+      summary: Asistente de Política v4.5 (recomendar acción, generar aviso, validar cierre)
+      tags: [tickets]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mode, ticket_id]
+              properties:
+                mode: { type: string, enum: [recommend_action, generate_notice, validate_closing] }
+                ticket_id: { type: string, format: uuid }
+                notice_type: { type: string, nullable: true }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiSuccessEnvelope' }
+
+  # ─── Scrum ─────────────────────────────────────────────────────────────
+
+  /forecast-sprint:
+    post:
+      summary: Predecir cuándo termina el backlog
+      tags: [scrum]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ForecastSprintRequest' }
+      responses:
+        '200':
+          description: Forecast
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/AiSuccessEnvelope'
+                  - type: object
+                    properties:
+                      result: { $ref: '#/components/schemas/ForecastSprintResult' }
+
+  /analyze-team-scrum:
+    post:
+      summary: Analytics de sprint + carga del equipo
+      tags: [scrum]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sprint_id: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Analytics
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiSuccessEnvelope' }
+
+  # ─── Utilities ─────────────────────────────────────────────────────────
+
+  /summarize-transcript:
+    post:
+      summary: Resume reunión grabada (texto) a JSON estructurado
+      tags: [utilities]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SummarizeTranscriptRequest' }
+      responses:
+        '200':
+          description: Resumen
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/AiSuccessEnvelope'
+                  - type: object
+                    properties:
+                      result: { $ref: '#/components/schemas/SummarizeTranscriptResult' }
+
+  /parse-time-entry:
+    post:
+      summary: Parser texto natural → time entry estructurado
+      tags: [utilities]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ParseTimeEntryRequest' }
+      responses:
+        '200':
+          description: Parsed
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/AiSuccessEnvelope'
+                  - type: object
+                    properties:
+                      result: { $ref: '#/components/schemas/ParseTimeEntryResult' }
+
+  /recommend-team:
+    post:
+      summary: Recomienda equipo para cliente/proyecto
+      tags: [team]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [project_brief]
+              properties:
+                client_id: { type: string, nullable: true }
+                project_brief: { type: string }
+                required_skills:
+                  type: array
+                  items: { type: string }
+                team_size: { type: integer, default: 3 }
+      responses:
+        '200':
+          description: Recomendación
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiSuccessEnvelope' }
+
+  # ─── Member-scoped (analyze-*, mentor, member-chat) ────────────────────
+
+  /analyze-team-level:
+    post:
+      summary: Análisis agregado del equipo
+      tags: [team]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiSuccessEnvelope' }
+
+  /analyze-team-activity:
+    post:
+      summary: Insights de actividad de un colaborador
+      tags: [team]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id]
+              properties:
+                user_id: { type: string, format: uuid }
+                days: { type: integer, default: 14 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiSuccessEnvelope' }
+
+  /analyze-cv:
+    post:
+      summary: Parser de CV con extracción de skills
+      tags: [team]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [member_id, cv_text]
+              properties:
+                member_id: { type: string, format: uuid }
+                cv_text:
+                  type: string
+                  maxLength: 50000
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiSuccessEnvelope' }
+
+  /analyze-career-path:
+    post:
+      summary: Roadmap personalizado de carrera
+      tags: [team]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/MemberIdRequest'
+                - type: object
+                  properties:
+                    target_role: { type: string, nullable: true }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiSuccessEnvelope' }
+
+  /member-chat:
+    post:
+      summary: Chat con agente personal del miembro
+      tags: [team]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MemberChatRequest' }
+      responses:
+        '200':
+          description: Respuesta
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiSuccessEnvelope' }
+
+  /member-digest:
+    post:
+      summary: Digest semanal del miembro
+      tags: [team]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MemberIdRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiSuccessEnvelope' }
+
+  /mentor:
+    post:
+      summary: Mentor técnico según rol/carrera
+      tags: [team]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question]
+              properties:
+                member_id: { type: string, format: uuid, nullable: true }
+                question: { type: string, maxLength: 2000 }
+                conversation_id: { type: string, format: uuid, nullable: true }
+      responses:
+        '200':
+          description: Respuesta del mentor
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiSuccessEnvelope' }
+
+tags:
+  - { name: meta, description: Health checks }
+  - { name: strategy, description: Estrategia ejecutiva (case, client, exec-chat, pm-analysis, sva-strategy) }
+  - { name: tickets, description: IA específica de tickets (classify, compliance, policy) }
+  - { name: scrum, description: Forecast y analytics scrum }
+  - { name: team, description: Member-scoped (CV, mentor, digest, etc.) }
+  - { name: utilities, description: Summarize, parse-time-entry, recommend-team }

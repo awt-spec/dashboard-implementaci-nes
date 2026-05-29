@@ -1,0 +1,128 @@
+id,sistema,etapa,accion_usuario
+PORTAL-001,PORTAL,Solicitud del servicio,Buscar una solicitud de servicio
+PORTAL-002,PORTAL,Solicitud del servicio,Solicitar un requerimiento
+PORTAL-003,PORTAL,Solicitud del servicio,Solicitar una correción
+PORTAL-004,PORTAL,Solicitud del servicio,Hacer una consulta
+PORTAL-005,PORTAL,Dashboard,Consultar cotizaciones pendientes de aprobar
+PORTAL-006,PORTAL,Dashboard,Estado actual de las solicitudes de servicio
+PORTAL-007,PORTAL,Dashboard,Solicitudes pendientes de cerrar
+PORTAL-008,PORTAL,Seguimiento a una solicitud de servicio,Ver detalle en modo lectura de una solicitud de servicio seleccionada
+PORTAL-009,PORTAL,Seguimiento a una solicitud de servicio,Editar una solicitud de servicio seleccionada
+PORTAL-010,PORTAL,Seguimiento a una solicitud de servicio,Consultar una mesa de discusión de una solicitud de servicio seleccionada
+PORTAL-011,PORTAL,Seguimiento a una solicitud de servicio,Crear un comentario en una mesa de discusión
+PORTAL-012,PORTAL,Seguimiento a una solicitud de servicio,"Ver, editar o eliminar un comentario en una mesa de discusión"
+PORTAL-013,PORTAL,Seguimiento a una solicitud de servicio,Adjuntar un archivo a un comentario en una mesa de discusión
+PORTAL-014,PORTAL,Funcionalidades generales,Cambiar contraseña
+PORTAL-015,PORTAL,Funcionalidades generales,Autenticarse
+PORTAL-016,PORTAL,Funcionalidades generales,Autorizar el acceso a cada funcionalidad
+PORTAL-017,PORTAL,Funcionalidades generales,Notificar sobre cambios en solicitudes de servicio y otros eventos
+PORTAL-018,PORTAL,Nuevas funcionalidades extraídas del prototipo (pendientes de clasificar),Consultar minutas compartidas sobre reuniones
+ERP-001,ERP,Administración de actores del sistema,Buscar usuarios
+ERP-002,ERP,Administración de actores del sistema,Crear un usuario interno o externo
+ERP-003,ERP,Administración de actores del sistema,"Ver, editar o eliminar un usuario interno o externo"
+ERP-004,ERP,Administración de actores del sistema,Cambiar contraseña de un usuario
+ERP-005,ERP,Administración de actores del sistema,Asociar o desasociar roles de acceso a un usuario
+ERP-006,ERP,Administración de actores del sistema,Buscar clientes
+ERP-007,ERP,Administración de actores del sistema,Crear un cliente
+ERP-008,ERP,Administración de actores del sistema,"Ver, editar o eliminar un cliente"
+ERP-009,ERP,Administración de actores del sistema,Asociar y desasociar usuarios a un cliente
+ERP-010,ERP,Administración de actores del sistema,Crear una audiencia de usuarios de un cliente para notificaciones
+ERP-011,ERP,Administración de actores del sistema,"Ver, editar o eliminar una audiencia de usuarios de un cliente para notificaciones"
+ERP-012,ERP,Administración de actores del sistema,Buscar roles de acceso
+ERP-013,ERP,Administración de actores del sistema,Crear un rol de acceso para usuarios internos
+ERP-014,ERP,Administración de actores del sistema,Crear un rol d acceso para usuarios externos
+ERP-015,ERP,Administración de actores del sistema,"Ver, editar o eliminar un rol para usuarios internos o externos"
+ERP-016,ERP,Administración de actores del sistema,Buscar equipos de trabajo
+ERP-017,ERP,Administración de actores del sistema,Crear un equipo de trabajo
+ERP-018,ERP,Administración de actores del sistema,"Ver, editar o eliminar un equipo de trabajo"
+ERP-019,ERP,Administración de actores del sistema,Asociar y desasociar usuarios internos a un equipo de trabajo
+ERP-020,ERP,Administración de actores del sistema,Buscar supervisiones de usuarios
+ERP-021,ERP,Administración de actores del sistema,Crear una  supervisión de un usuario
+ERP-022,ERP,Administración de actores del sistema,Eliminar una  supervisión de un usuario
+ERP-023,ERP,Administración de actores del sistema,Buscar supervisiones de equipos de trabajo
+ERP-024,ERP,Administración de actores del sistema,Crear una  supervisión de un equipo
+ERP-025,ERP,Administración de actores del sistema,Eliminar una  supervisión de un equipo
+ERP-026,ERP,Gestión de los equipos de trabajo,Buscar tipos de tarea en el catálogo
+ERP-027,ERP,Gestión de los equipos de trabajo,Crear un tipo de tarea
+ERP-028,ERP,Gestión de los equipos de trabajo,"Ver, editar o eliminar un tipo de tarea"
+ERP-029,ERP,Gestión de los equipos de trabajo,Buscar tareas propias
+ERP-030,ERP,Gestión de los equipos de trabajo,Buscar tareas de supervisados
+ERP-031,ERP,Gestión de los equipos de trabajo,Consultar y gestionar tareas de una persona en vista de calendario
+ERP-032,ERP,Gestión de los equipos de trabajo,Consultar y gestionar tareas de un equipo en vista de calendario
+ERP-033,ERP,Gestión de los equipos de trabajo,Consultar y gestionar tareas de supervisados en vista de calendario
+ERP-034,ERP,Gestión de los equipos de trabajo,Crear una tarea propia o de un supervisado
+ERP-035,ERP,Gestión de los equipos de trabajo,"Ver, editar o eliminar una tarea propia o de un supervisado"
+ERP-036,ERP,Gestión de los equipos de trabajo,Finalizar o cancelar una tarea propia o de un supervisado
+ERP-037,ERP,Gestión de los equipos de trabajo,Registrar un tiempo invertido en una tarea propia o de un supervisado
+ERP-038,ERP,Gestión de los equipos de trabajo,"Ver, editar o eliminar un tiempo invertido en una tarea propia o de un supervisado"
+ERP-039,ERP,Configuración de los productos de software,Buscar productos en el catálogo
+ERP-040,ERP,Configuración de los productos de software,Crear un producto de software
+ERP-041,ERP,Configuración de los productos de software,"Ver, editar o eliminar un producto de software y sus módulos"
+ERP-042,ERP,Configuración de los productos de software,Crear un módulo para un producto de software
+ERP-043,ERP,Configuración de los productos de software,"Ver, editar o eliminar un módulo para un producto de software"
+ERP-044,ERP,Configuración de los productos de software,Buscar versiones implementadas de productos
+ERP-045,ERP,Configuración de los productos de software,Crear una versión implementada de un producto de software
+ERP-046,ERP,Configuración de los productos de software,"Ver, editar o eliminar una versión implementada de un producto de software"
+ERP-047,ERP,Configuración de los productos de software,Asociar o desasociar un módulo a una versión implementada de un producto de software
+ERP-048,ERP,Configuración de servicios de valor agregado (SVA) Aka Customer Success en SaaS,Buscar equipos de servicios de valor agregado
+ERP-049,ERP,Configuración de servicios de valor agregado (SVA) Aka Customer Success en SaaS,Crear un equipo de servicios de valor agregado
+ERP-050,ERP,Configuración de servicios de valor agregado (SVA) Aka Customer Success en SaaS,"Ver, editar o eliminar un equipo de servicios de valor agregado"
+ERP-051,ERP,Configuración de servicios de valor agregado (SVA) Aka Customer Success en SaaS,Agregar o eliminar días no laborales de un equipo de servicios
+ERP-052,ERP,Configuración de servicios de valor agregado (SVA) Aka Customer Success en SaaS,Buscar motivos de cambios e incidencias en el catálogo
+ERP-053,ERP,Configuración de servicios de valor agregado (SVA) Aka Customer Success en SaaS,Crear un motivo de cambios e incidencias en el catálogo
+ERP-054,ERP,Configuración de servicios de valor agregado (SVA) Aka Customer Success en SaaS,"Ver, editar o eliminar un motivo de cambios e incidencias del catálogo"
+ERP-055,ERP,Configuración de servicios de valor agregado (SVA) Aka Customer Success en SaaS,Buscar categorías de clientes en el catálogo
+ERP-056,ERP,Configuración de servicios de valor agregado (SVA) Aka Customer Success en SaaS,Crear una categoría de clientes en el catálogo
+ERP-057,ERP,Configuración de servicios de valor agregado (SVA) Aka Customer Success en SaaS,"Ver, editar o eliminar una categoría de clientes del catálogo"
+ERP-058,ERP,Configuración de servicios de valor agregado (SVA) Aka Customer Success en SaaS,Buscar plantillas de pólizas de servicio
+ERP-059,ERP,Configuración de servicios de valor agregado (SVA) Aka Customer Success en SaaS,Crear una plantilla de póliza de servicios
+ERP-060,ERP,Configuración de servicios de valor agregado (SVA) Aka Customer Success en SaaS,"Ver, editar o eliminar una plantilla de póliza de servicios"
+ERP-061,ERP,Configuración de servicios de valor agregado (SVA) Aka Customer Success en SaaS,Crear un paquete de servicios para una plantilla de póliza
+ERP-062,ERP,Configuración de servicios de valor agregado (SVA) Aka Customer Success en SaaS,"Ver, editar o eliminar un paquete de servicios a una plantilla de póliza"
+ERP-063,ERP,Gestión de contratos y facturación de servicios,Buscar pólizas o contratos de servicio
+ERP-064,ERP,Gestión de contratos y facturación de servicios,Crear una póliza o contrato de servicios
+ERP-065,ERP,Gestión de contratos y facturación de servicios,"Ver, editar o eliminar una póliza o contrato de servicios"
+ERP-066,ERP,Gestión de contratos y facturación de servicios,Crear un paquete de servicios para asociarlo a una póliza o contrato
+ERP-067,ERP,Gestión de contratos y facturación de servicios,"Ver, editar o eliminar un paquete de servicios de póliza o contrato"
+ERP-068,ERP,Gestión de contratos y facturación de servicios,Buscar paquetes de servicio facturados en forma individual
+ERP-069,ERP,Gestión de contratos y facturación de servicios,Crear un paquete de servicios facturado en forma individual
+ERP-070,ERP,Gestión de contratos y facturación de servicios,"Ver, editar o eliminar un paquete de servicios facturado en forma individual"
+ERP-071,ERP,Gestión de contratos y facturación de servicios,Generar un estado de cuenta de un cliente
+ERP-072,ERP,Gestión de contratos y facturación de servicios,Consultar el estado general de los clientes
+ERP-073,ERP,Seguimiento a las solicitudes de servicio,Buscar solicitudes de servicio
+ERP-074,ERP,Seguimiento a las solicitudes de servicio,"Crear una solicitud de consulta, corrección o requerimiento"
+ERP-075,ERP,Seguimiento a las solicitudes de servicio,"Ver, editar o eliminar una solicitud de consulta, corrección o requerimiento"
+ERP-076,ERP,Seguimiento a las solicitudes de servicio,Adjuntar o eliminar un archivo de una solicitud de servicio
+ERP-077,ERP,Seguimiento a las solicitudes de servicio,"Crear, ver, editar o eliminar tareas asociadas a una solicitud de servicio"
+ERP-078,ERP,Seguimiento a las solicitudes de servicio,"Crear, ver, editar o eliminar tareas asociadas a una solicitud de servicio"
+ERP-079,ERP,Seguimiento a las solicitudes de servicio,Crear un cambio o incidencia en una solicitud de servicio
+ERP-080,ERP,Seguimiento a las solicitudes de servicio,"Ver, editar o eliminar un cambio o incidencia de una solicitud de servicio"
+ERP-081,ERP,Seguimiento a las solicitudes de servicio,Consultar una mesa de discusión de una solicitud de servicio
+ERP-082,ERP,Seguimiento a las solicitudes de servicio,Crear un comentario en una mesa de discusión
+ERP-083,ERP,Seguimiento a las solicitudes de servicio,"Ver, editar o eliminar un comentario en una mesa de discusión"
+ERP-084,ERP,Seguimiento a las solicitudes de servicio,Adjuntar un archivo a un comentario en una mesa de discusión
+ERP-085,ERP,Seguimiento a las solicitudes de servicio,Buscar cotizaciones de servicio
+ERP-086,ERP,Seguimiento a las solicitudes de servicio,Crear una cotización asociada a una solicitud específica
+ERP-087,ERP,Seguimiento a las solicitudes de servicio,"Ver, editar o eliminar una cotización asociada a una solicitud específica"
+ERP-088,ERP,Seguimiento a las solicitudes de servicio,Adjuntar un archivo a una cotización de servicio
+ERP-089,ERP,Seguimiento a las solicitudes de servicio,Consultar comentarios pendientes de atender en las solicitudes de servicio
+ERP-090,ERP,Funcionalidades generales,Autenticarse
+ERP-091,ERP,Funcionalidades generales,Autorizar el acceso a cada funcionalidad
+ERP-092,ERP,Nuevas funcionalidades extraídas del prototipo (pendientes de clasificar),Configurar Service Level Agreement (SLA) para un cliente
+ERP-093,ERP,Nuevas funcionalidades extraídas del prototipo (pendientes de clasificar),Crear notas internas asociadas a una solicitud de servicio
+ERP-094,ERP,Nuevas funcionalidades extraídas del prototipo (pendientes de clasificar),"Ver, editar y eliminar notas internas asociadas a una solicitud de servicio"
+ERP-095,ERP,Nuevas funcionalidades extraídas del prototipo (pendientes de clasificar),Planificar y gestionar la asignación de solicitudes de servicio por medio de un board Scrum/Kanban
+ERP-096,ERP,Nuevas funcionalidades extraídas del prototipo (pendientes de clasificar),Pedir estrategia IA para una solicitud de servicio específica
+ERP-097,ERP,Nuevas funcionalidades extraídas del prototipo (pendientes de clasificar),Alertar sobre una solicitud de servicio con más de 3 cambios o incidencias (Ej. Reaperturas)
+ERP-098,ERP,Nuevas funcionalidades extraídas del prototipo (pendientes de clasificar),Consultar la información 360 de un cliente (perspectiva actual SVA más otras implementadas)
+ERP-099,ERP,Nuevas funcionalidades extraídas del prototipo (pendientes de clasificar),Registrar tiempos invertidos por medio de captura IA de texto libre
+ERP-100,ERP,Nuevas funcionalidades extraídas del prototipo (pendientes de clasificar),Cerrar semanalmente el registro de tiempo invertidos
+ERP-101,ERP,Nuevas funcionalidades extraídas del prototipo (pendientes de clasificar),Generar con IA una minuta de una reunión de con un cliente de SVA
+ERP-102,ERP,Nuevas funcionalidades extraídas del prototipo (pendientes de clasificar),"Crear, asociar y compartir una minuta con un cliente"
+ERP-103,ERP,Nuevas funcionalidades extraídas del prototipo (pendientes de clasificar),Consultar el dashboard de colaborador o usuario interno
+ERP-104,ERP,Nuevas funcionalidades extraídas del prototipo (pendientes de clasificar),Pedir asistencia IA para análisis ejecutivo integral
+ERP-105,ERP,Nuevas funcionalidades extraídas del prototipo (pendientes de clasificar),Pedir asistencia IA para el análisis de las solicitudes de servicio
+ERP-106,ERP,Nuevas funcionalidades extraídas del prototipo (pendientes de clasificar),Pedir asistencia IA para el análisis de planificación Scrum/Kanban
+ERP-107,ERP,Nuevas funcionalidades extraídas del prototipo (pendientes de clasificar),Pedir asistencia IA para el análisis de equipos de trabajo (RRHH)
+ERP-108,ERP,Nuevas funcionalidades extraídas del prototipo (pendientes de clasificar),Pedir asistencia IA personal del colaborador o usuario interno
+ERP-109,ERP,Nuevas funcionalidades extraídas del prototipo (pendientes de clasificar),Registrar el inicio de sesión y el detalle de sesión de un usuario
