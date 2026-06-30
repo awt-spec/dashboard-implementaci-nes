@@ -92,7 +92,11 @@ Inicio de la migración de políticas RLS a `has_permission`, con un patrón **a
 | `user_supervisions`, `team_supervisions` | `equipo.supervisiones` | admin |
 | `billed_packages` (insert/update) | `comercial.paquetes_facturados` | admin, pm |
 
-`billed_packages` DELETE se mantiene admin-only (igual que hoy; pm tampoco borra). Total bridged en fase 3: **15 tablas**.
+`billed_packages` DELETE se mantiene admin-only (igual que hoy; pm tampoco borra).
+
+**Batch 3** (`20260630170000_rbac_rls_bridge_batch3.sql`) — tablas de datos de cliente cuyo estado final (políticas `rls_insert_admin_pm`/`rls_update_admin_pm` de `harden_rls`) se confirmó **no sobrescrito** por migraciones posteriores: `client_contracts`, `client_slas`, `client_team_members`, `client_dashboard_config`, `client_rule_overrides`. Permiso `cliente.gestionar_datos` (admin, pm). INSERT/UPDATE bridgeados; DELETE queda admin-only.
+
+**Total bridged en fase 3: 20 tablas.**
 
 ### Gating en el frontend por permiso (2026-06-30)
 
@@ -103,7 +107,13 @@ Cierre del círculo end-to-end para roles personalizados en el shell de admin/pm
 
 **Límite conocido:** los roles `colaborador`, `cliente` y `ceo` se enrutan a shells dedicados (`Index.tsx`) y no pasan por el sidebar de admin; un rol personalizado es aditivo y no cambia el shell de aterrizaje. El gating por permiso aplica para usuarios en el shell admin/pm/gerente_soporte (el caso común de roles personalizados de staff). Extender el acceso a config desde los shells dedicados es una decisión de ruteo a hacer con verificación en runtime.
 
-**Backlog (requiere verificación contra base real):** tablas operativas/multi-rol con políticas heterogéneas —`quotes`, `support_tickets`, `support_ticket_notes`, `comments`, `business_rules`, `client_rule_overrides`, `policy_ai_settings`, `gerente_client_assignments`, `cliente_company_assignments`. Tienen políticas por rol-cliente y reglas finas que conviene migrar una a una probando contra la base, no a ciegas. Las tablas puramente operativas (`clients`, `tasks`, `deliverables`, `phases`, …) usan `auth.uid() IS NOT NULL` con control de rol en la app y no son candidatas directas al bridge.
+**Backlog (requiere verificación contra base real):**
+- `quotes` y `support_tickets`/`support_ticket_notes`: el control de escritura es por `is_staff_user()` / `NOT is_cliente_user()` (ya abierto a todo el staff), no `has_role` — un bridge por permiso no aporta sin antes redefinir su modelo de acceso. Mezclan políticas del rol `cliente`.
+- `clients`, `client_financials`, `client_contacts`: tienen **múltiples overrides** de RLS en migraciones sucesivas; determinar el estado final exacto y bridgearlo requiere verificar contra la base.
+- Grupo operativo de `harden_rls_phase2` (`phases`, `deliverables`, `tasks`, `action_items`, `risks`, `comments`, `meeting_minutes`, …): quedaron en `admin/pm` (rls_*_admin_pm) salvo overrides posteriores; conviene confirmar el estado final tabla por tabla antes de bridgear.
+- `business_rules`, `policy_ai_settings`, `gerente_client_assignments`, `cliente_company_assignments`: políticas por rol-cliente / reglas finas a migrar una a una con verificación.
+
+El patrón aditivo ya está probado en 20 tablas; replicarlo en estas requiere un entorno con la base levantada para confirmar el estado final de cada política antes de redefinirla.
 
 ---
 
