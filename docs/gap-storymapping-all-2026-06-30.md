@@ -71,9 +71,20 @@ Se construyó el modelo de permisos que da enforcement a los roles personalizado
 - `RBACPermissionsTab` ahora es una **matriz editable y persistida** (antes estática), cubriendo todos los roles del catálogo.
 - `RolesCatalogPanel`: diálogo para asignar roles personalizados a usuarios + conteo real por rol.
 
-**Qué queda (fase 3, opcional):** migrar las políticas RLS existentes de `has_role(enum)` a `has_permission(key)` de forma incremental, tabla por tabla, para que el enforcement a nivel de base de datos también sea 100% dinámico. Hoy el modelo dinámico aplica en el gating de la aplicación y queda disponible (`has_permission`) para usarse en RLS; las políticas históricas de los roles de sistema siguen funcionando sin cambios.
+**Fase 3 (iniciada):** migración incremental de políticas RLS al patrón aditivo (abajo).
 
 **Cobertura final del Story Mapping:** 127/127 funcionalidades implementadas. Los roles personalizados ya se crean, configuran (permisos) y asignan a usuarios con enforcement en la app.
+
+### Refactor de roles — fase 3: bridge RLS (2026-06-30)
+
+Inicio de la migración de políticas RLS a `has_permission`, con un patrón **aditivo** y seguro:
+
+- Migración `supabase/migrations/20260630150000_rbac_rls_bridge_config.sql`.
+- Patrón: `USING (has_role(admin) OR has_role(pm) OR has_permission('config.catalogos'))`. Es estrictamente más permisivo — los roles de sistema mantienen su acceso exacto y los roles personalizados con el permiso ganan acceso a nivel de base de datos. Nunca quita acceso.
+- Tablas migradas (catálogos de configuración, escritura `admin`/`pm`): `products`, `product_modules`, `product_versions`, `version_modules`, `sva_teams`, `sva_team_holidays`, `sva_team_members`, `policy_templates`, `policy_template_packages`, `client_categories`.
+- Nuevo permiso `config.catalogos` (módulo "Configuración") sembrado y concedido a admin/pm para reflejar el estado actual; visible/editable en la matriz RBAC.
+
+**Por qué no se migró todo:** las tablas operativas (`clients`, `tasks`, `deliverables`, etc.) hoy tienen RLS `auth.uid() IS NOT NULL` (control de rol en la capa de app), no `has_role`; reemplazarlas por `has_permission` sería restrictivo y debe hacerse con verificación contra la base real. El resto de tablas con `has_role` (quotes, billed_packages, supervisiones, etc.) se migran con el **mismo patrón aditivo**, tabla por tabla, en próximas iteraciones. El patrón ya está probado en este lote.
 
 ---
 
