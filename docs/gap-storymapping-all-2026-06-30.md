@@ -94,6 +94,15 @@ Inicio de la migración de políticas RLS a `has_permission`, con un patrón **a
 
 `billed_packages` DELETE se mantiene admin-only (igual que hoy; pm tampoco borra). Total bridged en fase 3: **15 tablas**.
 
+### Gating en el frontend por permiso (2026-06-30)
+
+Cierre del círculo end-to-end para roles personalizados en el shell de admin/pm:
+- `ConfigurationHub`: cada sección de catálogo acepta un `permission`; se muestra si el rol de sistema coincide **o** el usuario tiene ese permiso (`useMyPermissions`). Mapeo: productos/SVA/plantillas/categorías → `config.catalogos`; tipos de tarea/motivos → `config.catalogos_admin`; supervisiones → `equipo.supervisiones`.
+- `AppSidebar`: el ítem "Configuración" aparece también para quien tenga cualquier permiso de configuración.
+- Verificado con `tsc`, tests (35/35) y **build de producción** (`vite build`) OK.
+
+**Límite conocido:** los roles `colaborador`, `cliente` y `ceo` se enrutan a shells dedicados (`Index.tsx`) y no pasan por el sidebar de admin; un rol personalizado es aditivo y no cambia el shell de aterrizaje. El gating por permiso aplica para usuarios en el shell admin/pm/gerente_soporte (el caso común de roles personalizados de staff). Extender el acceso a config desde los shells dedicados es una decisión de ruteo a hacer con verificación en runtime.
+
 **Backlog (requiere verificación contra base real):** tablas operativas/multi-rol con políticas heterogéneas —`quotes`, `support_tickets`, `support_ticket_notes`, `comments`, `business_rules`, `client_rule_overrides`, `policy_ai_settings`, `gerente_client_assignments`, `cliente_company_assignments`. Tienen políticas por rol-cliente y reglas finas que conviene migrar una a una probando contra la base, no a ciegas. Las tablas puramente operativas (`clients`, `tasks`, `deliverables`, `phases`, …) usan `auth.uid() IS NOT NULL` con control de rol en la app y no son candidatas directas al bridge.
 
 ---
