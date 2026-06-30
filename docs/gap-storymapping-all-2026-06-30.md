@@ -7,6 +7,31 @@
 
 ---
 
+## 0. Actualización — cierre de las 14 parciales (2026-06-30)
+
+Tras el diagnóstico se implementaron las **14 funcionalidades 🟡** de este informe. Resumen de lo entregado:
+
+| id | Estado nuevo | Qué se implementó |
+|---|---|---|
+| ERP-008 | ✅ | Diálogo de edición de campos del cliente en `ClientDetail`. |
+| ERP-012 | ✅ | Panel "Roles" con listado/búsqueda y conteo de usuarios por rol (`RolesCatalogPanel`). |
+| ERP-014 | ✅* | Roles externos (`cliente` + niveles) listados en el catálogo. *Crear tipos de rol nuevos requiere migración del enum `app_role` (fuera de alcance). |
+| ERP-016 | ✅ | Búsqueda + filtro por equipo en `SysdeTeamManager`. |
+| ERP-029 | ✅ | Filtro por responsable ("Mis tareas") en `TasksDashboard`. |
+| ERP-031 | ✅ | Filtro por persona aplicado al calendario de tareas. |
+| ERP-032 | ✅ | Filtro por equipo (department) aplicado al calendario. |
+| ERP-063 | ✅ | Búsqueda + filtros por tipo/estado en la pestaña de contratos. |
+| ERP-066 | ✅ | Selector para asociar paquete facturado a contrato/póliza. |
+| ERP-072 | ✅ | Pestaña "Estado general" con tabla consolidada de clientes. |
+| ERP-084 | ✅ | Adjuntar archivos a notas de la mesa de discusión. |
+| ERP-089 | ✅ | Panel de comentarios pendientes de atender (`PendingCommentsPanel`). |
+| ERP-109 | ✅ | Panel de detalle de sesiones de usuario (`SessionsDetailPanel`). |
+| PORTAL-013 | ✅ | Adjuntar archivos a comentarios (mismo componente, rol cliente). |
+
+Nueva migración: `supabase/migrations/20260630120000_note_attachments.sql`. Todo verificado con `tsc` y la suite de tests (35 passing). El detalle por funcionalidad de abajo refleja el **diagnóstico original** (pre-cambios).
+
+---
+
 ## 1. Resumen ejecutivo
 
 El ERP de SVA **ya cubre la gran mayoría del Story Mapping**: de 127 funcionalidades, **102 están completas (80%)**, 14 parciales y 11 ausentes. El núcleo vivo del negocio —solicitudes de servicio (tickets), cotizaciones, mesa de discusión, contratos/pólizas, catálogos SVA, productos/versiones, registro de tiempos y todo el bloque de IA del prototipo— está **implementado de punta a punta**. El Portal del cliente (rol `cliente` en el mismo SPA) está prácticamente completo (16/18).
