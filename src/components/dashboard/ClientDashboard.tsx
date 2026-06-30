@@ -11,8 +11,9 @@ import {
   TrendingUp, CheckCircle2, FileCheck, Calendar, Building2,
   MessageSquare, ThumbsUp, Send, Bell, AlertTriangle,
   LayoutDashboard, ListTodo, FileText, MessageCircle, BellRing,
-  Settings, GripVertical, Eye, EyeOff, ChevronDown, 
-  CheckSquare, ArrowRight, Users
+  Settings, GripVertical, Eye, EyeOff, ChevronDown,
+  CheckSquare, ArrowRight, Users,
+  RotateCw, Hourglass, PauseCircle, Ban, Package, Search, Info, AlertCircle, Pin
 } from "lucide-react";
 import { isTaskClosed } from "@/lib/ticketStatus";
 import {
@@ -182,7 +183,7 @@ function PhasesWidget({ client }: { client: Client }) {
               <div className="flex items-center gap-2">
                 <span className="text-[10px] text-muted-foreground hidden sm:inline">{phase.startDate} — {phase.endDate}</span>
                 <Badge variant="outline" className="text-[10px]">
-                  {phase.status === "completado" ? "✅ Completado" : phase.status === "en-progreso" ? "🔄 En Progreso" : phase.status === "por-iniciar" ? "⏳ Por Iniciar" : "⏸ Pendiente"}
+                  {phase.status === "completado" ? <span className="inline-flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Completado</span> : phase.status === "en-progreso" ? <span className="inline-flex items-center gap-1"><RotateCw className="h-3 w-3" /> En Progreso</span> : phase.status === "por-iniciar" ? <span className="inline-flex items-center gap-1"><Hourglass className="h-3 w-3" /> Por Iniciar</span> : <span className="inline-flex items-center gap-1"><PauseCircle className="h-3 w-3" /> Pendiente</span>}
                 </Badge>
               </div>
             </div>
@@ -203,10 +204,10 @@ function TaskChartWidget({ tasks }: { tasks: any[] }) {
     bloqueada: tasks.filter(t => t.status === "bloqueada").length,
   };
   const pieData = [
-    { name: "Completadas", value: tasksByStatus.completada, color: "hsl(var(--success))", emoji: "✅" },
-    { name: "En Progreso", value: tasksByStatus["en-progreso"], color: "hsl(var(--info))", emoji: "🔄" },
-    { name: "Pendientes", value: tasksByStatus.pendiente, color: "hsl(var(--warning))", emoji: "⏳" },
-    { name: "Bloqueadas", value: tasksByStatus.bloqueada, color: "hsl(var(--destructive))", emoji: "🚫" },
+    { name: "Completadas", value: tasksByStatus.completada, color: "hsl(var(--success))", Icon: CheckCircle2 },
+    { name: "En Progreso", value: tasksByStatus["en-progreso"], color: "hsl(var(--info))", Icon: RotateCw },
+    { name: "Pendientes", value: tasksByStatus.pendiente, color: "hsl(var(--warning))", Icon: Hourglass },
+    { name: "Bloqueadas", value: tasksByStatus.bloqueada, color: "hsl(var(--destructive))", Icon: Ban },
   ].filter(d => d.value > 0);
 
   const barData = [
@@ -298,7 +299,7 @@ function TaskChartWidget({ tasks }: { tasks: any[] }) {
         <div className="grid grid-cols-4 gap-2 mt-4 pt-3 border-t border-border">
           {pieData.map(d => (
             <motion.div key={d.name} whileHover={{ scale: 1.05 }} className="flex items-center gap-1.5 text-xs p-1.5 rounded-md hover:bg-muted/50 transition-colors cursor-default">
-              <span className="text-sm">{d.emoji}</span>
+              <d.Icon className="h-3.5 w-3.5" />
               <div className="min-w-0">
                 <span className="text-muted-foreground block truncate">{d.name}</span>
                 <span className="font-bold text-foreground">{d.value}</span>
@@ -456,11 +457,11 @@ function TaskListWidget({ tasks }: { tasks: any[] }) {
             {filtered.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">No hay actividades con este filtro</p>
             ) : filtered.map(task => {
-              const statusIcon = task.status === "completada" ? "✅" : task.status === "en-progreso" ? "🔄" : task.status === "bloqueada" ? "🚫" : "⏳";
+              const statusIcon: JSX.Element = task.status === "completada" ? <CheckCircle2 className="h-4 w-4" /> : task.status === "en-progreso" ? <RotateCw className="h-4 w-4" /> : task.status === "bloqueada" ? <Ban className="h-4 w-4" /> : <Hourglass className="h-4 w-4" />;
               const priorityBadge = task.priority === "alta" ? "bg-destructive/10 text-destructive" : task.priority === "media" ? "bg-warning/10 text-warning" : "bg-muted text-muted-foreground";
               return (
                 <motion.div key={task.id} initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }} className="flex items-start gap-3 p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors">
-                  <span className="text-sm mt-0.5">{statusIcon}</span>
+                  <span className="mt-0.5">{statusIcon}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground">{task.title}</p>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -482,10 +483,10 @@ function TaskListWidget({ tasks }: { tasks: any[] }) {
 function DeliverablesWidget({ deliverables }: { deliverables: any[] }) {
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const statusData = [
-    { name: "Aprobados", value: deliverables.filter(d => d.status === "aprobado").length, color: "hsl(var(--success))", emoji: "✅" },
-    { name: "Entregados", value: deliverables.filter(d => d.status === "entregado").length, color: "hsl(var(--info))", emoji: "📦" },
-    { name: "En Revisión", value: deliverables.filter(d => d.status === "en-revision").length, color: "hsl(var(--warning))", emoji: "🔍" },
-    { name: "Pendientes", value: deliverables.filter(d => d.status === "pendiente").length, color: "hsl(var(--destructive))", emoji: "⏳" },
+    { name: "Aprobados", value: deliverables.filter(d => d.status === "aprobado").length, color: "hsl(var(--success))", Icon: CheckCircle2 },
+    { name: "Entregados", value: deliverables.filter(d => d.status === "entregado").length, color: "hsl(var(--info))", Icon: Package },
+    { name: "En Revisión", value: deliverables.filter(d => d.status === "en-revision").length, color: "hsl(var(--warning))", Icon: Search },
+    { name: "Pendientes", value: deliverables.filter(d => d.status === "pendiente").length, color: "hsl(var(--destructive))", Icon: Hourglass },
   ].filter(d => d.value > 0);
 
   const renderLabel = ({ cx, cy, midAngle, outerRadius, percent }: any) => {
@@ -537,7 +538,7 @@ function DeliverablesWidget({ deliverables }: { deliverables: any[] }) {
               className={`flex items-center gap-1.5 text-xs p-1 rounded transition-opacity cursor-default ${activeIdx !== null && activeIdx !== i ? 'opacity-40' : ''}`}
               onMouseEnter={() => setActiveIdx(i)} onMouseLeave={() => setActiveIdx(null)}
             >
-              <span>{d.emoji}</span>
+              <d.Icon className="h-3.5 w-3.5" />
               <span className="text-muted-foreground">{d.name}</span>
               <span className="font-bold text-foreground">{d.value}</span>
             </motion.div>
@@ -546,7 +547,7 @@ function DeliverablesWidget({ deliverables }: { deliverables: any[] }) {
         <ScrollArea className="h-[180px] mt-3">
           <div className="space-y-2 pr-2">
             {deliverables.map(d => {
-              const statusIcon = d.status === "aprobado" ? "✅" : d.status === "entregado" ? "📦" : d.status === "en-revision" ? "🔍" : "⏳";
+              const statusIcon: JSX.Element = d.status === "aprobado" ? <CheckCircle2 className="h-3.5 w-3.5" /> : d.status === "entregado" ? <Package className="h-3.5 w-3.5" /> : d.status === "en-revision" ? <Search className="h-3.5 w-3.5" /> : <Hourglass className="h-3.5 w-3.5" />;
               return (
                 <motion.div key={d.id} whileHover={{ x: 3 }} className="flex items-start gap-2 p-2.5 rounded-lg border border-border text-xs hover:border-primary/20 transition-colors">
                   <span>{statusIcon}</span>
@@ -686,10 +687,10 @@ function FeedbackWidget({ comments, clientId }: { comments: Comment[]; clientId:
 
   // Stats
   const stats = [
-    { type: "comentario", label: "Comentarios", emoji: "💬", count: comments.filter(c => c.type === "comentario").length },
-    { type: "aprobacion", label: "Aprobaciones", emoji: "👍", count: comments.filter(c => c.type === "aprobacion").length },
-    { type: "solicitud", label: "Solicitudes", emoji: "📨", count: comments.filter(c => c.type === "solicitud").length },
-    { type: "alerta", label: "Alertas", emoji: "🔔", count: comments.filter(c => c.type === "alerta").length },
+    { type: "comentario", label: "Comentarios", Icon: MessageSquare, count: comments.filter(c => c.type === "comentario").length },
+    { type: "aprobacion", label: "Aprobaciones", Icon: ThumbsUp, count: comments.filter(c => c.type === "aprobacion").length },
+    { type: "solicitud", label: "Solicitudes", Icon: Send, count: comments.filter(c => c.type === "solicitud").length },
+    { type: "alerta", label: "Alertas", Icon: Bell, count: comments.filter(c => c.type === "alerta").length },
   ];
 
   return (
@@ -703,7 +704,7 @@ function FeedbackWidget({ comments, clientId }: { comments: Comment[]; clientId:
               onClick={() => setFilter(filter === s.type ? "all" : s.type)}
             >
               <CardContent className="p-4 flex items-center gap-3">
-                <span className="text-2xl">{s.emoji}</span>
+                <s.Icon className="h-6 w-6 text-muted-foreground" />
                 <div>
                   <p className="text-lg font-bold text-foreground">{s.count}</p>
                   <p className="text-[10px] text-muted-foreground uppercase">{s.label}</p>
@@ -729,10 +730,10 @@ function FeedbackWidget({ comments, clientId }: { comments: Comment[]; clientId:
               <Select value={type} onValueChange={setType}>
                 <SelectTrigger className="mt-1.5 h-9"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="comentario">💬 Comentario</SelectItem>
-                  <SelectItem value="aprobacion">👍 Aprobación</SelectItem>
-                  <SelectItem value="solicitud">📨 Solicitud</SelectItem>
-                  <SelectItem value="alerta">🔔 Alerta</SelectItem>
+                  <SelectItem value="comentario"><span className="flex items-center gap-1.5"><MessageSquare className="h-3 w-3" /> Comentario</span></SelectItem>
+                  <SelectItem value="aprobacion"><span className="flex items-center gap-1.5"><ThumbsUp className="h-3 w-3" /> Aprobación</span></SelectItem>
+                  <SelectItem value="solicitud"><span className="flex items-center gap-1.5"><Send className="h-3 w-3" /> Solicitud</span></SelectItem>
+                  <SelectItem value="alerta"><span className="flex items-center gap-1.5"><Bell className="h-3 w-3" /> Alerta</span></SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -825,7 +826,13 @@ function FeedbackWidget({ comments, clientId }: { comments: Comment[]; clientId:
 function NotificationsPanel({ clientId }: { clientId: string }) {
   const { notifications, markRead, markAllRead, unreadCount } = useNotifications(clientId);
 
-  const typeIcon: Record<string, string> = { info: "ℹ️", success: "✅", warning: "⚠️", error: "🚨", update: "🔄" };
+  const typeIcon: Record<string, JSX.Element> = {
+    info: <Info className="h-3.5 w-3.5" />,
+    success: <CheckCircle2 className="h-3.5 w-3.5" />,
+    warning: <AlertTriangle className="h-3.5 w-3.5" />,
+    error: <AlertCircle className="h-3.5 w-3.5" />,
+    update: <RotateCw className="h-3.5 w-3.5" />,
+  };
 
   return (
     <Card>
@@ -849,7 +856,7 @@ function NotificationsPanel({ clientId }: { clientId: string }) {
                 onClick={() => !n.is_read && markRead(n.id)}
               >
                 <div className="flex items-start gap-2">
-                  <span className="text-sm">{typeIcon[n.type] || "📌"}</span>
+                  <span className="text-sm">{typeIcon[n.type] || <Pin className="h-3.5 w-3.5" />}</span>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm ${n.is_read ? 'text-muted-foreground' : 'text-foreground font-medium'}`}>{n.title}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">{n.message}</p>

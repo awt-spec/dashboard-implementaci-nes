@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,43 +12,45 @@ import {
 import { AgentConfigDialog } from "./AgentConfigDialog";
 import {
   Bot, Send, Settings2, Sparkles, Loader2, Plus, Trash2, MessageSquare, Wand2,
+  Bug, FlaskConical, Eye, ClipboardList, RotateCw, BarChart3, Mail, AlertTriangle,
+  Wrench, Search, Ticket, Palette, Calendar, Handshake, BookOpen,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-const QUICK_PROMPTS_BY_TEMPLATE: Record<string, Array<{ icon: string; label: string; prompt: string }>> = {
+const QUICK_PROMPTS_BY_TEMPLATE: Record<string, Array<{ icon: ComponentType<any>; label: string; prompt: string }>> = {
   developer: [
-    { icon: "🐛", label: "Ayúdame a depurar", prompt: "Tengo un bug. Te describo síntomas y código, ayúdame a encontrar la causa raíz paso a paso." },
-    { icon: "🧪", label: "Genera tests", prompt: "Te paso una función. Genera tests unitarios cubriendo casos felices, edge cases y errores." },
-    { icon: "👀", label: "Code review", prompt: "Revisa este snippet con foco en legibilidad, performance y seguridad. Sé crítico pero constructivo." },
+    { icon: Bug, label: "Ayúdame a depurar", prompt: "Tengo un bug. Te describo síntomas y código, ayúdame a encontrar la causa raíz paso a paso." },
+    { icon: FlaskConical, label: "Genera tests", prompt: "Te paso una función. Genera tests unitarios cubriendo casos felices, edge cases y errores." },
+    { icon: Eye, label: "Code review", prompt: "Revisa este snippet con foco en legibilidad, performance y seguridad. Sé crítico pero constructivo." },
   ],
   qa: [
-    { icon: "📋", label: "Plan de pruebas", prompt: "Diseña un plan de pruebas para la siguiente funcionalidad." },
-    { icon: "🔁", label: "Casos regresión", prompt: "Sugiere casos de regresión clave para este módulo." },
+    { icon: ClipboardList, label: "Plan de pruebas", prompt: "Diseña un plan de pruebas para la siguiente funcionalidad." },
+    { icon: RotateCw, label: "Casos regresión", prompt: "Sugiere casos de regresión clave para este módulo." },
   ],
   pm: [
-    { icon: "📊", label: "Status semanal", prompt: "Resume el estado de mis proyectos esta semana: logros, próximos pasos, riesgos." },
-    { icon: "✉️", label: "Update a cliente", prompt: "Redacta un update profesional al cliente sobre el estado del proyecto." },
-    { icon: "⚠️", label: "Detecta riesgos", prompt: "Identifica riesgos en mi sprint actual y propone mitigaciones." },
+    { icon: BarChart3, label: "Status semanal", prompt: "Resume el estado de mis proyectos esta semana: logros, próximos pasos, riesgos." },
+    { icon: Mail, label: "Update a cliente", prompt: "Redacta un update profesional al cliente sobre el estado del proyecto." },
+    { icon: AlertTriangle, label: "Detecta riesgos", prompt: "Identifica riesgos en mi sprint actual y propone mitigaciones." },
   ],
   consultant: [
-    { icon: "🛠️", label: "Configuración", prompt: "Necesito guía para configurar el siguiente módulo / parametrización." },
-    { icon: "🔍", label: "Troubleshooting", prompt: "Ayúdame a diagnosticar este problema funcional." },
+    { icon: Wrench, label: "Configuración", prompt: "Necesito guía para configurar el siguiente módulo / parametrización." },
+    { icon: Search, label: "Troubleshooting", prompt: "Ayúdame a diagnosticar este problema funcional." },
   ],
   support: [
-    { icon: "🎫", label: "Diagnóstica ticket", prompt: "Te describo un ticket. Ayúdame a estructurar el diagnóstico." },
-    { icon: "💬", label: "Redacta respuesta", prompt: "Redacta una respuesta empática y clara para el cliente." },
+    { icon: Ticket, label: "Diagnóstica ticket", prompt: "Te describo un ticket. Ayúdame a estructurar el diagnóstico." },
+    { icon: MessageSquare, label: "Redacta respuesta", prompt: "Redacta una respuesta empática y clara para el cliente." },
   ],
   designer: [
-    { icon: "🎨", label: "Feedback UX", prompt: "Te describo un flujo. Dame feedback UX accionable." },
+    { icon: Palette, label: "Feedback UX", prompt: "Te describo un flujo. Dame feedback UX accionable." },
   ],
   default: [],
 };
 
 const COMMON_PROMPTS = [
-  { icon: "📅", label: "Resume mi semana", prompt: "Resume lo que hice esta semana, qué viene la próxima y dónde tengo bloqueos." },
-  { icon: "🤝", label: "Prepara mi 1:1", prompt: "Ayúdame a preparar mi próximo 1:1 con mi líder: logros, dudas, ayuda que necesito." },
-  { icon: "📚", label: "¿Qué aprendo?", prompt: "Basado en mis skills y tareas, ¿qué debería aprender o reforzar esta semana?" },
+  { icon: Calendar, label: "Resume mi semana", prompt: "Resume lo que hice esta semana, qué viene la próxima y dónde tengo bloqueos." },
+  { icon: Handshake, label: "Prepara mi 1:1", prompt: "Ayúdame a preparar mi próximo 1:1 con mi líder: logros, dudas, ayuda que necesito." },
+  { icon: BookOpen, label: "¿Qué aprendo?", prompt: "Basado en mis skills y tareas, ¿qué debería aprender o reforzar esta semana?" },
 ];
 
 export function MemberAIAgentPanel({
@@ -214,7 +216,7 @@ export function MemberAIAgentPanel({
                     className="h-auto py-2.5 px-3 justify-start text-left whitespace-normal"
                     onClick={() => send(p.prompt)}
                   >
-                    <span className="mr-2 text-base">{p.icon}</span>
+                    <p.icon className="mr-2 h-4 w-4 shrink-0" />
                     <span className="text-xs">{p.label}</span>
                   </Button>
                 ))}
@@ -278,7 +280,7 @@ export function MemberAIAgentPanel({
                     className="cursor-pointer hover:bg-accent text-[10px] gap-1"
                     onClick={() => send(p.prompt)}
                   >
-                    <span>{p.icon}</span> {p.label}
+                    <p.icon className="h-3 w-3" /> {p.label}
                   </Badge>
                 ))}
               </div>

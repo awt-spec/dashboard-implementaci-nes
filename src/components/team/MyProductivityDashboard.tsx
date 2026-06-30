@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useMyTimeEntries, useMyTimeGoal, startOfWeek, entryHours } from "@/hooks/useTimeTracking";
-import { Clock, Target, TrendingUp, DollarSign, Plus, Calendar, Settings2 } from "lucide-react";
+import { Clock, Target, TrendingUp, DollarSign, Plus, Calendar, Settings2, CheckCircle2 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { ManualTimeEntryDialog } from "./ManualTimeEntryDialog";
 import { TimesheetView } from "./TimesheetView";
@@ -75,7 +75,7 @@ export function MyProductivityDashboard() {
               <Settings2 className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
             <p className="text-xl font-bold">{billableTarget}%</p>
-            <p className="text-[10px] text-muted-foreground">{stats.billablePct >= billableTarget ? "✓ Alcanzada" : `Faltan ${(billableTarget - stats.billablePct).toFixed(0)}%`}</p>
+            <p className="text-[10px] text-muted-foreground">{stats.billablePct >= billableTarget ? <span className="inline-flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Alcanzada</span> : `Faltan ${(billableTarget - stats.billablePct).toFixed(0)}%`}</p>
             <Progress value={Math.min(100, (stats.billablePct / billableTarget) * 100)} className="h-1 mt-1.5" />
           </CardContent>
         </Card>

@@ -323,7 +323,7 @@ export function TimeAuditPanel() {
                       <td className="px-3 py-1.5">
                         <div className="flex items-center gap-1">
                           {e.is_billable && <Badge className="text-[9px] h-4 bg-success/15 text-success border-success/30">$</Badge>}
-                          {(e as any).is_locked && <Badge variant="outline" className="text-[9px] h-4">🔒</Badge>}
+                          {(e as any).is_locked && <Badge variant="outline" className="text-[9px] h-4"><Lock className="h-3 w-3" /></Badge>}
                           <Badge variant="outline" className={cn("text-[9px] h-4 capitalize",
                             e.approval_status === "approved" && "bg-success/15 text-success border-success/30",
                             e.approval_status === "rejected" && "bg-destructive/15 text-destructive border-destructive/30",

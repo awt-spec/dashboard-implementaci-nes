@@ -8,7 +8,7 @@ import {
   Loader2, Activity, Clock, Users, Zap, Search, RefreshCw, ArrowRight,
   LogIn, Play, Square, Move, Upload, FileText, MessageSquare, CheckSquare,
   PlusCircle, Trash2, Edit3, Eye, Filter, Sparkles, TrendingUp, AlertTriangle,
-  Calendar, Target, Coffee, Sun,
+  Calendar, Target, Coffee, Sun, Check,
 } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -725,7 +725,7 @@ export function TeamActivityPanel({ compact = false }: { compact?: boolean }) {
                           <ul className="space-y-1">
                             {aiAnalysis.recommendations.map((r, i) => (
                               <li key={i} className="text-xs flex items-start gap-1.5 bg-emerald-500/5 p-1.5 rounded border border-emerald-500/20">
-                                <span className="text-emerald-500 mt-0.5">✓</span>
+                                <span className="text-emerald-500 mt-0.5"><Check className="h-3 w-3" /></span>
                                 <span>{r}</span>
                               </li>
                             ))}

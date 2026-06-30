@@ -10,8 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   CheckCircle2, AlertTriangle, Calendar, Activity,
-  MessageSquare, Target, Flame, Send, 
-  FileText, Users, CircleDot, Loader2, 
+  MessageSquare, Target, Flame, Send,
+  FileText, Users, CircleDot, Loader2,
+  Sparkles, AlertCircle, Zap, Circle,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { type Client } from "@/data/projectData";
@@ -27,10 +28,10 @@ interface Props {
 }
 
 const HEALTH_CONFIG = {
-  excellent: { label: "Excelente", color: "from-[hsl(0_72%_45%)] via-[hsl(0_72%_51%)] to-[hsl(0_85%_60%)]", textColor: "text-primary", emoji: "🌟" },
-  good: { label: "Bien", color: "from-[hsl(0_72%_42%)] via-[hsl(0_72%_51%)] to-[hsl(15_85%_55%)]", textColor: "text-primary", emoji: "✅" },
-  warning: { label: "Atención", color: "from-[hsl(20_85%_45%)] via-[hsl(25_92%_50%)] to-[hsl(38_92%_55%)]", textColor: "text-amber-600", emoji: "⚠️" },
-  critical: { label: "Crítico", color: "from-[hsl(0_75%_35%)] via-[hsl(0_72%_45%)] to-[hsl(0_85%_55%)]", textColor: "text-destructive", emoji: "🚨" },
+  excellent: { label: "Excelente", color: "from-[hsl(0_72%_45%)] via-[hsl(0_72%_51%)] to-[hsl(0_85%_60%)]", textColor: "text-primary", Icon: Sparkles },
+  good: { label: "Bien", color: "from-[hsl(0_72%_42%)] via-[hsl(0_72%_51%)] to-[hsl(15_85%_55%)]", textColor: "text-primary", Icon: CheckCircle2 },
+  warning: { label: "Atención", color: "from-[hsl(20_85%_45%)] via-[hsl(25_92%_50%)] to-[hsl(38_92%_55%)]", textColor: "text-amber-600", Icon: AlertTriangle },
+  critical: { label: "Crítico", color: "from-[hsl(0_75%_35%)] via-[hsl(0_72%_45%)] to-[hsl(0_85%_55%)]", textColor: "text-destructive", Icon: AlertCircle },
 };
 
 function getHealth(client: Client): keyof typeof HEALTH_CONFIG {
@@ -177,8 +178,8 @@ export function GerenteMobileDashboard({ client }: Props) {
               </p>
               <h1 className="text-xl md:text-2xl font-black leading-tight truncate">{client.name}</h1>
             </div>
-            <Badge className="bg-white/20 backdrop-blur-sm text-white border-white/30 text-[10px] shrink-0">
-              {healthConfig.emoji} {healthConfig.label}
+            <Badge className="bg-white/20 backdrop-blur-sm text-white border-white/30 text-[10px] shrink-0 gap-1">
+              <healthConfig.Icon className="h-3 w-3" /> {healthConfig.label}
             </Badge>
           </div>
 
@@ -568,9 +569,9 @@ export function GerenteMobileDashboard({ client }: Props) {
                 <Select value={actionPriority} onValueChange={(v: any) => setActionPriority(v)}>
                   <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="alta">🔥 Alta</SelectItem>
-                    <SelectItem value="media">⚡ Media</SelectItem>
-                    <SelectItem value="baja">🟢 Baja</SelectItem>
+                    <SelectItem value="alta"><span className="flex items-center gap-1.5"><Flame className="h-3 w-3" /> Alta</span></SelectItem>
+                    <SelectItem value="media"><span className="flex items-center gap-1.5"><Zap className="h-3 w-3" /> Media</span></SelectItem>
+                    <SelectItem value="baja"><span className="flex items-center gap-1.5"><Circle className="h-3 w-3 fill-success text-success" /> Baja</span></SelectItem>
                   </SelectContent>
                 </Select>
               </div>

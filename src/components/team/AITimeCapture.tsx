@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Wand2, Send, Check, X, Loader2 } from "lucide-react";
+import { Sparkles, Wand2, Send, Check, X, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCreateManualEntry } from "@/hooks/useTimeTracking";
 import { toast } from "sonner";
@@ -66,7 +66,7 @@ export function AITimeCapture() {
         description: parsed.description,
         is_billable: parsed.is_billable,
       });
-      toast.success(`✓ Registradas ${parsed.hours}h`);
+      toast.success(`Registradas ${parsed.hours}h`);
       setText("");
       setParsed(null);
     } catch (e: any) {
@@ -146,7 +146,7 @@ export function AITimeCapture() {
             <div>
               <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Tarea/Ticket</p>
               <p className="text-xs">
-                {parsed.item_id ? "✓ Identificado" : <span className="text-warning">⚠️ {parsed.item_hint || "No identificado — usar registro manual"}</span>}
+                {parsed.item_id ? <span className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Identificado</span> : <span className="text-warning"><AlertTriangle className="h-3 w-3 inline" /> {parsed.item_hint || "No identificado — usar registro manual"}</span>}
               </p>
             </div>
             <div>

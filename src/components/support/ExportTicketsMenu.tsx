@@ -63,7 +63,7 @@ function doExport(
   const csv = toCsv(enriched, DEFAULT_COLUMNS);
   const today = new Date().toISOString().slice(0, 10);
   downloadCsv(`${filename}_${today}`, csv);
-  toast.success(`✓ ${label}: ${tickets.length} casos exportados`);
+  toast.success(`${label}: ${tickets.length} casos exportados`);
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────

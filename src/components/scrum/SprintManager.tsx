@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
-  Plus, Play, Square, Target, Calendar, Trophy, Trash2, ArrowRight, 
+  Plus, Play, Square, Target, Calendar, Trophy, Trash2, ArrowRight,
+  RotateCw, AlertTriangle, CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -191,7 +192,7 @@ export function SprintManager() {
                         <h4 className="font-bold truncate">{selected.name}</h4>
                         <Badge className={`${STATUS_COLORS[selected.status] || ""} text-[10px]`}>{selected.status}</Badge>
                       </div>
-                      {selected.goal && <p className="text-xs text-muted-foreground italic">🎯 {selected.goal}</p>}
+                      {selected.goal && <p className="text-xs text-muted-foreground italic"><Target className="h-3 w-3 inline" /> {selected.goal}</p>}
                       <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
                         {selected.start_date && (
                           <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{selected.start_date} → {selected.end_date}</span>
@@ -208,7 +209,7 @@ export function SprintManager() {
                       {selected.status === "activo" && (
                         <>
                           <Button size="sm" variant="outline" className="h-7 gap-1" onClick={() => setRetroOpen(selected)}>
-                            🔄 Retro
+                            <RotateCw className="h-3 w-3 inline" /> Retro
                           </Button>
                           <Button size="sm" variant="outline" className="h-7 gap-1" onClick={() => handleStatusChange(selected, "completado")}>
                             <Square className="h-3 w-3" /> Cerrar Sprint
@@ -233,7 +234,7 @@ export function SprintManager() {
                         capacityPct > 90 ? "text-warning font-semibold" :
                         "text-muted-foreground"
                       }>
-                        {capacityPct}% {capacityPct > 100 && "⚠ sobrecargado"}
+                        {capacityPct}% {capacityPct > 100 && <span className="inline-flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> sobrecargado</span>}
                       </span>
                     </div>
                     <div className="h-2 rounded-full bg-muted overflow-hidden">
@@ -246,7 +247,7 @@ export function SprintManager() {
                     </div>
                     {selected.status === "activo" && (
                       <div className="flex items-center justify-between text-[10px] pt-1">
-                        <span className="text-success">✅ Completado: {completedPoints} SP ({plannedPoints > 0 ? Math.round((completedPoints / plannedPoints) * 100) : 0}%)</span>
+                        <span className="text-success"><CheckCircle2 className="h-3 w-3 inline" /> Completado: {completedPoints} SP ({plannedPoints > 0 ? Math.round((completedPoints / plannedPoints) * 100) : 0}%)</span>
                       </div>
                     )}
                   </div>

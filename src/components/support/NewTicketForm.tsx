@@ -13,7 +13,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Loader2, Ticket, ChevronDown, ChevronRight, Building2, FileText,
-  Settings, Eye, CheckCircle2, AlertTriangle, Lock, Copy,
+  Settings, Eye, CheckCircle2, AlertTriangle, Lock, Copy, Flame, Circle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSupportClients, useCreateSupportTicket, type SupportTicket } from "@/hooks/useSupportTickets";
@@ -54,10 +54,10 @@ const TIPOS = [
   "Critica, Impacto Negocio",
 ];
 const PRIORIDADES_CLIENTE = [
-  { v: "Critica, Impacto Negocio", l: "🔥 Crítica — Impacto de negocio" },
-  { v: "Alta",  l: "🔴 Alta" },
-  { v: "Media", l: "🟡 Media" },
-  { v: "Baja",  l: "🟢 Baja" },
+  { v: "Critica, Impacto Negocio", l: "Crítica — Impacto de negocio", icon: <Flame className="h-3 w-3" /> },
+  { v: "Alta",  l: "Alta",  icon: <Circle className="h-3 w-3 fill-destructive text-destructive" /> },
+  { v: "Media", l: "Media", icon: <Circle className="h-3 w-3 fill-warning text-warning" /> },
+  { v: "Baja",  l: "Baja",  icon: <Circle className="h-3 w-3 fill-success text-success" /> },
 ];
 const PRIORIDADES_INTERNAS = [
   { v: "critica", l: "Crítica" },
@@ -159,7 +159,7 @@ export function NewTicketForm({
       });
       toast.success(`Caso ${inserted.ticket_id} creado`, {
         description: `Consecutivo cliente #${inserted.consecutivo_cliente} · Global ${inserted.consecutivo_global}${
-          inserted.is_confidential ? " · 🔒 confidencial" : ""
+          inserted.is_confidential ? " · confidencial" : ""
         }`,
       });
       setCreated(inserted);
@@ -338,7 +338,7 @@ export function NewTicketForm({
                 <Select value={watch("prioridad")} onValueChange={(v) => setValue("prioridad", v, { shouldValidate: true })}>
                   <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {PRIORIDADES_CLIENTE.map(p => <SelectItem key={p.v} value={p.v}>{p.l}</SelectItem>)}
+                    {PRIORIDADES_CLIENTE.map(p => <SelectItem key={p.v} value={p.v}><span className="flex items-center gap-1.5">{p.icon} {p.l}</span></SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

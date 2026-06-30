@@ -15,7 +15,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   CalendarIcon, Trash2, MessageSquare, Send, Hash, User, Flag,
   CircleDot, Clock, Save, X, Plus, Link2, Tag, Paperclip,
-  CheckSquare, ArrowRight, FileText, Download, Loader2, ListTodo
+  CheckSquare, ArrowRight, FileText, Download, Loader2, ListTodo,
+  Hourglass, RotateCw, Ban, CheckCircle2, Lock, Globe
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -46,10 +47,10 @@ interface EditTaskDialogProps {
 }
 
 const statusOptions = [
-  { value: "pendiente", label: "Pendiente", emoji: "⏳", color: "bg-muted text-muted-foreground" },
-  { value: "en-progreso", label: "Progreso", emoji: "🔄", color: "bg-info text-info-foreground" },
-  { value: "bloqueada", label: "Bloqueada", emoji: "🚫", color: "bg-destructive text-destructive-foreground" },
-  { value: "completada", label: "Completada", emoji: "✅", color: "bg-success text-success-foreground" },
+  { value: "pendiente", label: "Pendiente", icon: Hourglass, color: "bg-muted text-muted-foreground" },
+  { value: "en-progreso", label: "Progreso", icon: RotateCw, color: "bg-info text-info-foreground" },
+  { value: "bloqueada", label: "Bloqueada", icon: Ban, color: "bg-destructive text-destructive-foreground" },
+  { value: "completada", label: "Completada", icon: CheckCircle2, color: "bg-success text-success-foreground" },
 ];
 
 const priorityOptions = [
@@ -294,10 +295,10 @@ export function EditTaskDialog({ task, clientId, open, onOpenChange }: EditTaskD
                 </div>
                 <Select value={status} onValueChange={setStatus}>
                   <SelectTrigger className="border-0 p-0 h-auto shadow-none">
-                    <Badge className={cn(currentStatus?.color, "text-xs px-2.5 py-1")}>{currentStatus?.emoji} {currentStatus?.label}</Badge>
+                    <Badge className={cn(currentStatus?.color, "text-xs px-2.5 py-1")}><span className="flex items-center gap-1.5">{currentStatus?.icon && <currentStatus.icon className="h-3 w-3" />} {currentStatus?.label}</span></Badge>
                   </SelectTrigger>
                   <SelectContent>
-                    {statusOptions.map(o => <SelectItem key={o.value} value={o.value}><span className="flex items-center gap-2">{o.emoji} {o.label}</span></SelectItem>)}
+                    {statusOptions.map(o => <SelectItem key={o.value} value={o.value}><span className="flex items-center gap-2"><o.icon className="h-3 w-3" /> {o.label}</span></SelectItem>)}
                   </SelectContent>
                 </Select>
               </motion.div>
@@ -340,17 +341,17 @@ export function EditTaskDialog({ task, clientId, open, onOpenChange }: EditTaskD
 
               <motion.div className="rounded-xl border border-border p-3 space-y-2 hover:border-primary/30 transition-colors" whileHover={{ scale: 1.01 }}>
                 <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase font-semibold">
-                  {visibility === "interna" ? "🔒" : "🌐"} Visibilidad
+                  {visibility === "interna" ? <Lock className="h-3 w-3" /> : <Globe className="h-3 w-3" />} Visibilidad
                 </div>
                 <Select value={visibility} onValueChange={setVisibility}>
                   <SelectTrigger className="border-0 p-0 h-auto shadow-none">
                     <Badge variant="outline" className={cn("text-xs px-2.5 py-1 border", visibility === "interna" ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary border-primary/20")}>
-                      {visibility === "interna" ? "🔒 Interna" : "🌐 Externa"}
+                      {visibility === "interna" ? <span className="flex items-center gap-1.5"><Lock className="h-3 w-3" /> Interna</span> : <span className="flex items-center gap-1.5"><Globe className="h-3 w-3" /> Externa</span>}
                     </Badge>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="externa">🌐 Externa (visible para cliente)</SelectItem>
-                    <SelectItem value="interna">🔒 Interna (solo equipo)</SelectItem>
+                    <SelectItem value="externa"><span className="flex items-center gap-1.5"><Globe className="h-3 w-3" /> Externa (visible para cliente)</span></SelectItem>
+                    <SelectItem value="interna"><span className="flex items-center gap-1.5"><Lock className="h-3 w-3" /> Interna (solo equipo)</span></SelectItem>
                   </SelectContent>
                 </Select>
               </motion.div>
@@ -465,7 +466,7 @@ export function EditTaskDialog({ task, clientId, open, onOpenChange }: EditTaskD
               <TabsContent value="dependencies" className="space-y-3 mt-3">
                 {blockingDeps.length > 0 && (
                   <div className="space-y-1.5">
-                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">🚫 Bloqueada por</p>
+                    <p className="text-[10px] text-muted-foreground uppercase font-semibold flex items-center gap-1.5"><Ban className="h-3 w-3" /> Bloqueada por</p>
                     {blockingDeps.map(d => (
                       <div key={d.id} className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-2 group">
                         <ArrowRight className="h-3 w-3 text-destructive shrink-0" />
@@ -482,7 +483,7 @@ export function EditTaskDialog({ task, clientId, open, onOpenChange }: EditTaskD
                 )}
                 {relatedDeps.length > 0 && (
                   <div className="space-y-1.5">
-                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">🔗 Relacionada con</p>
+                    <p className="text-[10px] text-muted-foreground uppercase font-semibold flex items-center gap-1.5"><Link2 className="h-3 w-3" /> Relacionada con</p>
                     {relatedDeps.map(d => (
                       <div key={d.id} className="flex items-center gap-2 rounded-lg border border-border bg-secondary/20 p-2 group">
                         <Link2 className="h-3 w-3 text-primary shrink-0" />
@@ -511,8 +512,8 @@ export function EditTaskDialog({ task, clientId, open, onOpenChange }: EditTaskD
                   <Select value={depType} onValueChange={setDepType}>
                     <SelectTrigger className="h-8 w-[120px] text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="blocks">🚫 Bloquea</SelectItem>
-                      <SelectItem value="related">🔗 Relaciona</SelectItem>
+                      <SelectItem value="blocks"><span className="flex items-center gap-1.5"><Ban className="h-3 w-3" /> Bloquea</span></SelectItem>
+                      <SelectItem value="related"><span className="flex items-center gap-1.5"><Link2 className="h-3 w-3" /> Relaciona</span></SelectItem>
                     </SelectContent>
                   </Select>
                   <Button size="sm" variant="outline" onClick={handleAddDependency} disabled={!depTaskId} className="h-8 shrink-0">

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { TrendingDown, Users, AlertTriangle } from "lucide-react";
+import { TrendingDown, Users, AlertTriangle, CheckCircle2 } from "lucide-react";
 import type { ScrumWorkItem, UnifiedSprint } from "@/hooks/useTeamScrum";
 
 interface Props {
@@ -83,7 +83,7 @@ export function SprintInsightsPanel({ sprint, items }: Props) {
             </div>
             {burndown && (
               <span className={`text-[10px] font-bold ${behind ? "text-destructive" : "text-success"}`}>
-                {behind ? `↑ Atrasado ${Math.round(lastActual - lastIdeal)} SP` : "✓ En camino"}
+                {behind ? `Atrasado ${Math.round(lastActual - lastIdeal)} SP` : <span className="inline-flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> En camino</span>}
               </span>
             )}
           </div>

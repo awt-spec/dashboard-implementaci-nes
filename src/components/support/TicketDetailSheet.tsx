@@ -11,7 +11,7 @@ import {
   MessageSquare, History, ScrollText, Lock, Copy,
   Save, Trash2, CheckSquare, ArrowLeft,
   Share2, Sparkles, RotateCcw, Maximize2, Minimize2,
-  FileText, Paperclip, X, Download,
+  FileText, Paperclip, X, Download, Eye,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -454,8 +454,8 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, canEditInternal 
                   <Select value={noteVisibility} onValueChange={(v: any) => setNoteVisibility(v)}>
                     <SelectTrigger className="h-8 w-[160px] text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="interna">🔒 Solo interna (SVA)</SelectItem>
-                      <SelectItem value="externa">👁 Visible al cliente</SelectItem>
+                      <SelectItem value="interna"><span className="flex items-center gap-1.5"><Lock className="h-3 w-3" /> Solo interna (SVA)</span></SelectItem>
+                      <SelectItem value="externa"><span className="flex items-center gap-1.5"><Eye className="h-3 w-3" /> Visible al cliente</span></SelectItem>
                     </SelectContent>
                   </Select>
                   {/* Adjuntar archivo a la nota (ERP-084 / PORTAL-013) */}
@@ -516,7 +516,9 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, canEditInternal 
                               ? "bg-info/10 text-info border-info/30"
                               : "bg-muted/50"
                           }`}>
-                            {n.visibility === "externa" ? "👁 externa" : "🔒 interna"}
+                            {n.visibility === "externa"
+                              ? <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> externa</span>
+                              : <span className="flex items-center gap-1"><Lock className="h-3 w-3" /> interna</span>}
                           </Badge>
                         </div>
                         {n.content && <p className="text-sm whitespace-pre-wrap">{n.content}</p>}

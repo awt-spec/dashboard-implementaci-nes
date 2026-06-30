@@ -14,9 +14,9 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import {
   MessageSquare, Send, Bell, Plus, MessageCircle,
   Link2, FileCheck, ListTodo, ChevronRight, CheckCircle2,
-  Clock, ArrowLeft, Search, Filter, 
+  Clock, ArrowLeft, Search, Filter,
   Sparkles, CornerDownRight, CircleDot, Inbox,
-  Star, Hash, Zap, Smile
+  Star, Hash, Zap, Smile, ClipboardList, AlertTriangle
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -53,12 +53,12 @@ interface ThreadMessage {
   created_at: string;
 }
 
-const categoryConfig: Record<string, { label: string; emoji: string; icon: typeof MessageCircle; gradient: string; bg: string; text: string }> = {
-  general: { label: "General", emoji: "💬", icon: MessageCircle, gradient: "from-blue-500/20 to-blue-600/10", bg: "bg-blue-500/10", text: "text-blue-600 dark:text-blue-400" },
-  aprobacion: { label: "Aprobación", emoji: "✅", icon: CheckCircle2, gradient: "from-emerald-500/20 to-emerald-600/10", bg: "bg-emerald-500/10", text: "text-emerald-600 dark:text-emerald-400" },
-  solicitud: { label: "Solicitud", emoji: "📋", icon: Inbox, gradient: "from-amber-500/20 to-amber-600/10", bg: "bg-amber-500/10", text: "text-amber-600 dark:text-amber-400" },
-  alerta: { label: "Alerta", emoji: "⚠️", icon: Zap, gradient: "from-red-500/20 to-red-600/10", bg: "bg-red-500/10", text: "text-red-600 dark:text-red-400" },
-  feedback: { label: "Feedback", emoji: "⭐", icon: Star, gradient: "from-purple-500/20 to-purple-600/10", bg: "bg-purple-500/10", text: "text-purple-600 dark:text-purple-400" },
+const categoryConfig: Record<string, { label: string; icon: typeof MessageCircle; gradient: string; bg: string; text: string }> = {
+  general: { label: "General", icon: MessageCircle, gradient: "from-blue-500/20 to-blue-600/10", bg: "bg-blue-500/10", text: "text-blue-600 dark:text-blue-400" },
+  aprobacion: { label: "Aprobación", icon: CheckCircle2, gradient: "from-emerald-500/20 to-emerald-600/10", bg: "bg-emerald-500/10", text: "text-emerald-600 dark:text-emerald-400" },
+  solicitud: { label: "Solicitud", icon: Inbox, gradient: "from-amber-500/20 to-amber-600/10", bg: "bg-amber-500/10", text: "text-amber-600 dark:text-amber-400" },
+  alerta: { label: "Alerta", icon: Zap, gradient: "from-red-500/20 to-red-600/10", bg: "bg-red-500/10", text: "text-red-600 dark:text-red-400" },
+  feedback: { label: "Feedback", icon: Star, gradient: "from-purple-500/20 to-purple-600/10", bg: "bg-purple-500/10", text: "text-purple-600 dark:text-purple-400" },
 };
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof CircleDot }> = {
@@ -268,9 +268,8 @@ export function CommunicationPanel({ client }: CommunicationPanelProps) {
       type: category === "alerta" ? "warning" : "info",
     });
 
-    const catEmoji = categoryConfig[category]?.emoji || "💬";
     const catLabelText = categoryConfig[category]?.label || "General";
-    toast.success(`${catEmoji} Tema creado: "${subject.trim()}"`, {
+    toast.success(`Tema creado: "${subject.trim()}"`, {
       description: `Se notificó al equipo del proyecto · Categoría: ${catLabelText}`,
       duration: 5000,
     });
@@ -358,6 +357,7 @@ export function CommunicationPanel({ client }: CommunicationPanelProps) {
   if (activeThread) {
     const linked = getLinkedLabel(activeThread);
     const catCfg = categoryConfig[activeThread.category] || categoryConfig.general;
+    const CatIcon = catCfg.icon;
     const stCfg = statusConfig[activeThread.status] || statusConfig.abierto;
     const StIcon = stCfg.icon;
     const myName = profile?.full_name || "";
@@ -385,7 +385,7 @@ export function CommunicationPanel({ client }: CommunicationPanelProps) {
           </Button>
           <Avatar className="h-9 w-9 shrink-0">
             <AvatarFallback className={`text-xs font-bold ${catCfg.bg} ${catCfg.text}`}>
-              {catCfg.emoji}
+              <CatIcon className="h-4 w-4" />
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
@@ -416,6 +416,7 @@ export function CommunicationPanel({ client }: CommunicationPanelProps) {
             {(activeThread.messages || []).map((msg, idx) => {
               const isOwn = msg.user_name === myName;
               const msgCat = categoryConfig[msg.message_type] || categoryConfig.general;
+              const MsgCatIcon = msgCat.icon;
               const prevMsg = idx > 0 ? activeThread.messages![idx - 1] : null;
               const showDate = idx === 0 || new Date(msg.created_at).toDateString() !== new Date(prevMsg!.created_at).toDateString();
               const sameAuthorAsPrev = prevMsg && prevMsg.user_name === msg.user_name && (new Date(msg.created_at).getTime() - new Date(prevMsg.created_at).getTime()) < 120000;
@@ -484,7 +485,7 @@ export function CommunicationPanel({ client }: CommunicationPanelProps) {
                                 ? "bg-primary-foreground/15 text-primary-foreground"
                                 : `${msgCat.bg} ${msgCat.text}`
                             }`}>
-                              {msgCat.emoji} {msgCat.label}
+                              <MsgCatIcon className="h-3 w-3" /> {msgCat.label}
                             </span>
                           )}
 
@@ -583,14 +584,14 @@ export function CommunicationPanel({ client }: CommunicationPanelProps) {
             {/* Type selector as emoji button */}
             <Select value={replyType} onValueChange={setReplyType}>
               <SelectTrigger className="h-10 w-10 border-0 bg-muted/40 p-0 shadow-none rounded-full shrink-0 flex items-center justify-center hover:bg-muted/70 transition-colors">
-                <span className="text-base">{(categoryConfig[replyType] || categoryConfig.general).emoji}</span>
+                {(() => { const I = (categoryConfig[replyType] || categoryConfig.general).icon; return <I className="h-4 w-4" />; })()}
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="comentario">💬 Comentario</SelectItem>
-                <SelectItem value="aprobacion">✅ Aprobación</SelectItem>
-                <SelectItem value="solicitud">📋 Solicitud</SelectItem>
-                <SelectItem value="alerta">⚠️ Alerta</SelectItem>
-                <SelectItem value="feedback">⭐ Feedback</SelectItem>
+                <SelectItem value="comentario"><span className="flex items-center gap-1.5"><MessageSquare className="h-3 w-3" /> Comentario</span></SelectItem>
+                <SelectItem value="aprobacion"><span className="flex items-center gap-1.5"><CheckCircle2 className="h-3 w-3" /> Aprobación</span></SelectItem>
+                <SelectItem value="solicitud"><span className="flex items-center gap-1.5"><ClipboardList className="h-3 w-3" /> Solicitud</span></SelectItem>
+                <SelectItem value="alerta"><span className="flex items-center gap-1.5"><AlertTriangle className="h-3 w-3" /> Alerta</span></SelectItem>
+                <SelectItem value="feedback"><span className="flex items-center gap-1.5"><Star className="h-3 w-3" /> Feedback</span></SelectItem>
               </SelectContent>
             </Select>
 
@@ -675,11 +676,14 @@ export function CommunicationPanel({ client }: CommunicationPanelProps) {
             <TabsTrigger value="all" className="text-xs h-6 px-3 data-[state=active]:shadow-sm">
               Todos ({threads.length})
             </TabsTrigger>
-            {stats.filter(s => s.count > 0).map(s => (
-              <TabsTrigger key={s.key} value={s.key} className="text-xs h-6 px-3 data-[state=active]:shadow-sm">
-                {s.emoji} {s.label} ({s.count})
+            {stats.filter(s => s.count > 0).map(s => {
+              const SIcon = s.icon;
+              return (
+              <TabsTrigger key={s.key} value={s.key} className="text-xs h-6 px-3 data-[state=active]:shadow-sm gap-1">
+                <SIcon className="h-3 w-3" /> {s.label} ({s.count})
               </TabsTrigger>
-            ))}
+            );
+            })}
           </TabsList>
         </Tabs>
         <Dialog open={newThreadOpen} onOpenChange={setNewThreadOpen}>
@@ -718,7 +722,7 @@ export function CommunicationPanel({ client }: CommunicationPanelProps) {
                     <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {Object.entries(categoryConfig).map(([k, v]) => (
-                        <SelectItem key={k} value={k}>{v.emoji} {v.label}</SelectItem>
+                        <SelectItem key={k} value={k}><span className="flex items-center gap-1.5"><v.icon className="h-3 w-3" /> {v.label}</span></SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -777,7 +781,7 @@ export function CommunicationPanel({ client }: CommunicationPanelProps) {
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Vista previa de la notificación</p>
                   <div className="flex items-start gap-2">
                     <div className={`h-6 w-6 rounded-md ${categoryConfig[category]?.bg || "bg-muted"} flex items-center justify-center shrink-0`}>
-                      <span className="text-xs">{categoryConfig[category]?.emoji || "💬"}</span>
+                      {(() => { const I = categoryConfig[category]?.icon || MessageCircle; return <I className="h-3.5 w-3.5" />; })()}
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-medium text-foreground truncate">Nuevo tema: "{subject.trim()}"</p>

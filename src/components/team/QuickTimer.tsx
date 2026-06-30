@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Play, Square, Clock, Sparkles } from "lucide-react";
+import { Play, Square, Clock, Sparkles, Code, Wrench, Users, FileText, FlaskConical, Lightbulb, Pin } from "lucide-react";
 import { useMyQuickItems, type QuickItem } from "./QuickLogItems";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -60,7 +60,7 @@ export function QuickTimer() {
     const a: ActiveTimer = { entry_id: (data as any).id, item, started_at: Date.now() };
     setActive(a);
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(a));
-    toast.success(`▶️ Cronómetro iniciado para ${item.title}`);
+    toast.success(`Cronómetro iniciado para ${item.title}`);
   };
 
   const stop = async () => {
@@ -78,7 +78,7 @@ export function QuickTimer() {
     sessionStorage.removeItem(STORAGE_KEY);
     setActive(null);
     setElapsed(0);
-    toast.success(`✓ Registradas ${(seconds / 3600).toFixed(2)}h`);
+    toast.success(`Registradas ${(seconds / 3600).toFixed(2)}h`);
   };
 
   const formatTime = (s: number) => {
@@ -140,13 +140,13 @@ export function QuickTimer() {
               <Select value={category} onValueChange={setCategory}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="desarrollo">💻 Desarrollo</SelectItem>
-                  <SelectItem value="soporte">🛠 Soporte</SelectItem>
-                  <SelectItem value="reunion">👥 Reunión</SelectItem>
-                  <SelectItem value="documentacion">📝 Documentación</SelectItem>
-                  <SelectItem value="testing">🧪 Testing</SelectItem>
-                  <SelectItem value="consultoria">💡 Consultoría</SelectItem>
-                  <SelectItem value="otros">📌 Otros</SelectItem>
+                  <SelectItem value="desarrollo"><span className="flex items-center gap-1.5"><Code className="h-3 w-3" /> Desarrollo</span></SelectItem>
+                  <SelectItem value="soporte"><span className="flex items-center gap-1.5"><Wrench className="h-3 w-3" /> Soporte</span></SelectItem>
+                  <SelectItem value="reunion"><span className="flex items-center gap-1.5"><Users className="h-3 w-3" /> Reunión</span></SelectItem>
+                  <SelectItem value="documentacion"><span className="flex items-center gap-1.5"><FileText className="h-3 w-3" /> Documentación</span></SelectItem>
+                  <SelectItem value="testing"><span className="flex items-center gap-1.5"><FlaskConical className="h-3 w-3" /> Testing</span></SelectItem>
+                  <SelectItem value="consultoria"><span className="flex items-center gap-1.5"><Lightbulb className="h-3 w-3" /> Consultoría</span></SelectItem>
+                  <SelectItem value="otros"><span className="flex items-center gap-1.5"><Pin className="h-3 w-3" /> Otros</span></SelectItem>
                 </SelectContent>
               </Select>
               <Button onClick={start} size="sm" disabled={!selected}>

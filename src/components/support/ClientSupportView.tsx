@@ -17,10 +17,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertTriangle, Clock, CheckCheck, RotateCcw, Search, Plus,
   Inbox, PlayCircle, Eye, Truck, Archive, ChevronDown, ChevronRight,
-  Folder, Flame, type LucideIcon,
+  Folder, Flame, FileSignature, Receipt, Wallet, Headset, type LucideIcon,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
@@ -31,6 +32,9 @@ import { useTicketsSLAStatus } from "@/hooks/useTicketsSLAStatus";
 import { ReopensInsightsPanel } from "./ReopensInsightsPanel";
 import { TicketDetailSheet } from "./TicketDetailSheet";
 import { ReopenBadge } from "./ReopenBadge";
+import { ContractsSLATab } from "@/components/clients/ContractsSLATab";
+import { AccountStatementPanel } from "@/components/clients/AccountStatementPanel";
+import { QuoteList } from "./quotes/QuoteList";
 
 // ─── Estados agrupados por fase del flujo ──────────────────────────────────
 const STATE_GROUPS: Array<{
@@ -265,6 +269,16 @@ export function ClientSupportView({ clientId, clientName, onNewTicket }: Props) 
         />
       </div>
 
+      {/* ═══ Pestañas: Casos + Comercial (contrato/SLA, cotizaciones, estado de cuenta) ═══ */}
+      <Tabs defaultValue="casos" className="space-y-4">
+        <TabsList className="flex-wrap h-auto">
+          <TabsTrigger value="casos" className="gap-1.5 text-xs"><Headset className="h-3.5 w-3.5" /> Casos</TabsTrigger>
+          <TabsTrigger value="contrato" className="gap-1.5 text-xs"><FileSignature className="h-3.5 w-3.5" /> Contrato &amp; SLA</TabsTrigger>
+          <TabsTrigger value="cotizaciones" className="gap-1.5 text-xs"><Receipt className="h-3.5 w-3.5" /> Cotizaciones</TabsTrigger>
+          <TabsTrigger value="estado-cuenta" className="gap-1.5 text-xs"><Wallet className="h-3.5 w-3.5" /> Estado de cuenta</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="casos" className="space-y-4 mt-0">
       {/* ═══ Header: search + nuevo caso ═══ */}
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
@@ -369,6 +383,23 @@ export function ClientSupportView({ clientId, clientName, onNewTicket }: Props) 
           )}
         </Card>
       )}
+        </TabsContent>
+
+        {/* ═══ Comercial: Contrato & SLA ═══ */}
+        <TabsContent value="contrato" className="mt-0">
+          <ContractsSLATab clientId={clientId} />
+        </TabsContent>
+
+        {/* ═══ Comercial: Cotizaciones ═══ */}
+        <TabsContent value="cotizaciones" className="mt-0">
+          <QuoteList clientId={clientId} />
+        </TabsContent>
+
+        {/* ═══ Comercial: Estado de cuenta ═══ */}
+        <TabsContent value="estado-cuenta" className="mt-0">
+          <AccountStatementPanel clientId={clientId} />
+        </TabsContent>
+      </Tabs>
 
       {/* Detail sheet del ticket seleccionado */}
       {selectedTicket && (

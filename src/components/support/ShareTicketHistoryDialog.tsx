@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
   Share2, X, Link2, Copy, Check, Loader2, Lock, Eye, EyeOff, CalendarClock,
+  AlertTriangle,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -194,7 +195,7 @@ export function ShareTicketHistoryDialog({ ticket, clientName, open, onClose }: 
                   </p>
                   <p className="text-[10px] text-muted-foreground">
                     {includeInternalNotes
-                      ? "⚠ El cliente verá las notas privadas (🔒 interna)"
+                      ? <><AlertTriangle className="h-3 w-3 inline" /> El cliente verá las notas privadas (<Lock className="h-3 w-3 inline" /> interna)</>
                       : "Solo se compartirán notas marcadas como 'externa'"}
                   </p>
                 </div>
