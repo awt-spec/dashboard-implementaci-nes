@@ -283,6 +283,14 @@ export interface TicketNote {
   author_name: string;
   visibility: string;
   created_at: string;
+  attachment_path?: string | null;
+  attachment_name?: string | null;
+  attachment_size?: number | null;
+}
+
+/** URL pública de descarga de un adjunto de nota (bucket público). */
+export function noteAttachmentUrl(path: string): string {
+  return supabase.storage.from("support-ticket-attachments").getPublicUrl(path).data.publicUrl;
 }
 
 export function useTicketNotes(ticketId: string | null) {
@@ -305,8 +313,30 @@ export function useTicketNotes(ticketId: string | null) {
 export function useCreateTicketNote() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { ticket_id: string; content: string; author_name: string; visibility?: string }) => {
-      const { error } = await supabase.from("support_ticket_notes").insert([{ ...data, visibility: data.visibility || "interna" }]);
+    mutationFn: async (data: {
+      ticket_id: string;
+      content: string;
+      author_name: string;
+      visibility?: string;
+      file?: File | null;
+    }) => {
+      const { file, ...rest } = data;
+      let attachment: Record<string, unknown> = {};
+      if (file) {
+        const path = `notes/${data.ticket_id}/${Date.now()}_${file.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("support-ticket-attachments")
+          .upload(path, file);
+        if (uploadError) throw uploadError;
+        attachment = {
+          attachment_path: path,
+          attachment_name: file.name,
+          attachment_size: file.size,
+        };
+      }
+      const { error } = await supabase
+        .from("support_ticket_notes")
+        .insert([{ ...rest, visibility: rest.visibility || "interna", ...attachment }]);
       if (error) throw error;
     },
     onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ["ticket-notes", v.ticket_id] }),
