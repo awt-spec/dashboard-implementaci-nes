@@ -1,15 +1,18 @@
 import { useMemo, useState } from "react";
 import { useRoles, useUpsertRole, useDeleteRole, useRoleCounts, type Role, type RoleScope } from "@/hooks/useRoles";
+import { useUserCustomRoles, useAssignCustomRole } from "@/hooks/usePermissions";
+import { useStaffProfiles } from "@/hooks/useSupervisions";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Lock, ShieldAlert, Briefcase, Eye, Users2, Building2, Crown, Headset, Loader2, Plus, Pencil, Trash2, KeyRound } from "lucide-react";
+import { Search, Lock, ShieldAlert, Briefcase, Eye, Users2, Building2, Crown, Headset, Loader2, Plus, Pencil, Trash2, KeyRound, UserCog } from "lucide-react";
 import { toast } from "sonner";
 
 // Iconos/tonos para los roles de sistema; los personalizados usan un default.
@@ -33,10 +36,27 @@ export function RolesCatalogPanel() {
   const { data: counts = {} } = useRoleCounts();
   const upsert = useUpsertRole();
   const del = useDeleteRole();
+  const { data: customAssignments = [] } = useUserCustomRoles();
+  const { data: staff = [] } = useStaffProfiles();
+  const assign = useAssignCustomRole();
 
   const [q, setQ] = useState("");
   const [scope, setScope] = useState<"all" | RoleScope>("all");
   const [draft, setDraft] = useState<Draft | null>(null);
+  const [assignRole, setAssignRole] = useState<Role | null>(null);
+
+  // Conteo de usuarios con cada rol personalizado (user_custom_roles).
+  const customCountByRole = useMemo(() => {
+    const map: Record<string, number> = {};
+    customAssignments.forEach((a) => { map[a.role_key] = (map[a.role_key] || 0) + 1; });
+    return map;
+  }, [customAssignments]);
+  const assignedUserIds = useMemo(
+    () => new Set(customAssignments.filter((a) => a.role_key === assignRole?.key).map((a) => a.user_id)),
+    [customAssignments, assignRole],
+  );
+
+  const userCount = (r: Role) => r.is_system ? (counts[r.key] || 0) : (customCountByRole[r.key] || 0);
 
   const term = q.trim().toLowerCase();
   const filtered = useMemo(
@@ -150,10 +170,15 @@ export function RolesCatalogPanel() {
                         : <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/30">Personalizado</Badge>}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground max-w-md">{r.description}</TableCell>
-                    <TableCell className="text-right tabular-nums font-medium">{counts[r.key] || 0}</TableCell>
+                    <TableCell className="text-right tabular-nums font-medium">{userCount(r)}</TableCell>
                     {isAdmin && (
                       <TableCell>
                         <div className="flex gap-0.5">
+                          {!r.is_system && (
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setAssignRole(r)} aria-label="Asignar usuarios" title="Asignar usuarios">
+                              <UserCog className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(r)} aria-label="Editar rol">
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
@@ -223,6 +248,39 @@ export function RolesCatalogPanel() {
               {upsert.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {draft?.isEdit ? "Guardar" : "Crear"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Asignar usuarios a un rol personalizado */}
+      <Dialog open={!!assignRole} onOpenChange={(o) => !o && setAssignRole(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Asignar "{assignRole?.label}" a usuarios</DialogTitle></DialogHeader>
+          <div className="space-y-1 max-h-[50vh] overflow-auto">
+            {staff.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-4 text-center">Sin usuarios disponibles.</p>
+            ) : staff.map((u) => {
+              const checked = assignedUserIds.has(u.user_id);
+              return (
+                <label key={u.user_id} className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/40 cursor-pointer">
+                  <Checkbox
+                    checked={checked}
+                    disabled={assign.isPending}
+                    onCheckedChange={(v) => assignRole && assign.mutate(
+                      { user_id: u.user_id, role_key: assignRole.key, enabled: !!v },
+                      { onError: (e: any) => toast.error(e.message || "No se pudo actualizar") },
+                    )}
+                  />
+                  <div className="min-w-0">
+                    <p className="text-sm truncate">{u.full_name || u.email}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{u.email} · {u.role}</p>
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignRole(null)}>Cerrar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
