@@ -84,7 +84,17 @@ Inicio de la migración de políticas RLS a `has_permission`, con un patrón **a
 - Tablas migradas (catálogos de configuración, escritura `admin`/`pm`): `products`, `product_modules`, `product_versions`, `version_modules`, `sva_teams`, `sva_team_holidays`, `sva_team_members`, `policy_templates`, `policy_template_packages`, `client_categories`.
 - Nuevo permiso `config.catalogos` (módulo "Configuración") sembrado y concedido a admin/pm para reflejar el estado actual; visible/editable en la matriz RBAC.
 
-**Por qué no se migró todo:** las tablas operativas (`clients`, `tasks`, `deliverables`, etc.) hoy tienen RLS `auth.uid() IS NOT NULL` (control de rol en la capa de app), no `has_role`; reemplazarlas por `has_permission` sería restrictivo y debe hacerse con verificación contra la base real. El resto de tablas con `has_role` (quotes, billed_packages, supervisiones, etc.) se migran con el **mismo patrón aditivo**, tabla por tabla, en próximas iteraciones. El patrón ya está probado en este lote.
+**Batch 2** (`20260630160000_rbac_rls_bridge_batch2.sql`) — mismo patrón aditivo en:
+
+| Tabla(s) | Permiso nuevo | Roles sistema con acceso (sin cambio) |
+|---|---|---|
+| `task_types`, `reopen_reasons` | `config.catalogos_admin` | admin |
+| `user_supervisions`, `team_supervisions` | `equipo.supervisiones` | admin |
+| `billed_packages` (insert/update) | `comercial.paquetes_facturados` | admin, pm |
+
+`billed_packages` DELETE se mantiene admin-only (igual que hoy; pm tampoco borra). Total bridged en fase 3: **15 tablas**.
+
+**Backlog (requiere verificación contra base real):** tablas operativas/multi-rol con políticas heterogéneas —`quotes`, `support_tickets`, `support_ticket_notes`, `comments`, `business_rules`, `client_rule_overrides`, `policy_ai_settings`, `gerente_client_assignments`, `cliente_company_assignments`. Tienen políticas por rol-cliente y reglas finas que conviene migrar una a una probando contra la base, no a ciegas. Las tablas puramente operativas (`clients`, `tasks`, `deliverables`, `phases`, …) usan `auth.uid() IS NOT NULL` con control de rol en la app y no son candidatas directas al bridge.
 
 ---
 
