@@ -30,6 +30,21 @@ Tras el diagnóstico se implementaron las **14 funcionalidades 🟡** de este in
 
 Nueva migración: `supabase/migrations/20260630120000_note_attachments.sql`. Todo verificado con `tsc` y la suite de tests (35 passing). El detalle por funcionalidad de abajo refleja el **diagnóstico original** (pre-cambios).
 
+### Ausentes (❌) — revisión y cierre (2026-06-30)
+
+Al abordar las ausentes se detectó un **falso negativo** del diagnóstico y se cerraron las que eran construibles:
+
+| id | Estado real | Detalle |
+|---|---|---|
+| ERP-020 a 025 | ✅ (ya existían) | Falso negativo: `SupervisionsAdminPanel` (CRUD de supervisiones persona↔persona y persona↔equipo, con búsqueda) **ya estaba implementado y montado** en `ConfigurationHub`. El agente lo marcó ❌ porque buscó en `src/components/admin/`; el panel vive en `src/components/settings/`. Tablas `user_supervisions`/`team_supervisions` + RLS + helpers ya existían. |
+| ERP-030 | ✅ | Filtro "Mis supervisados" en `TasksDashboard` (resuelve supervisados activos del usuario). |
+| ERP-033 | ✅ | El mismo filtro aplica al calendario de tareas. |
+| PORTAL-014 | ✅ | `ChangePasswordDialog` (supabase.auth.updateUser) en el header del Portal Cliente. |
+| ERP-013 | ⛔ Bloqueado | Crear rol interno: requiere convertir el enum `app_role` en tabla + RLS dinámica. Refactor arquitectónico, fuera de alcance. La asignación de roles existentes a usuarios ya existe (ERP-005). |
+| ERP-015 | ⛔ Bloqueado | Ver/editar/eliminar tipos de rol: mismo bloqueo arquitectónico que ERP-013. El catálogo de roles (lectura) está cubierto por ERP-012. |
+
+**Resultado tras esta corrida:** de las 11 ❌ originales, 9 quedan ✅ (6 ya existían, 3 nuevas) y 2 (ERP-013/015) quedan bloqueadas por la arquitectura de roles basada en enum.
+
 ---
 
 ## 1. Resumen ejecutivo
