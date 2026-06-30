@@ -45,6 +45,21 @@ Al abordar las ausentes se detectó un **falso negativo** del diagnóstico y se 
 
 **Resultado tras esta corrida:** de las 11 ❌ originales, 9 quedan ✅ (6 ya existían, 3 nuevas) y 2 (ERP-013/015) quedan bloqueadas por la arquitectura de roles basada en enum.
 
+### Refactor de roles — fase 1 (2026-06-30)
+
+Se destrabaron **ERP-013/015** a nivel de gestión con un catálogo de roles gestionable:
+
+| id | Estado | Detalle |
+|---|---|---|
+| ERP-013 | ✅ (gestión) | Crear roles personalizados desde el panel "Roles" (tabla `public.roles`). |
+| ERP-015 | ✅ (gestión) | Ver/editar/eliminar roles personalizados; los de sistema quedan protegidos. |
+
+- Migración `supabase/migrations/20260630130000_roles_catalog.sql`: tabla `roles` (key/label/description/scope/is_system/is_active), RLS (lectura authenticated, escritura admin), trigger que protege los roles de sistema, semilla de los 7 roles del enum.
+- Hook `useRoles` + `RolesCatalogPanel` reescrito con CRUD.
+- **Pendiente (fase 2):** la APLICACIÓN de permisos en RLS para roles personalizados (RBAC dinámico) — hoy la RLS sigue basada en el enum `app_role` + `has_role` para los roles de sistema. Crear un rol personalizado lo deja definido y gestionable, pero su enforcement de permisos requiere construir el modelo de `role_permissions` y consultar permisos en vez de roles hardcodeados.
+
+**Cobertura final del Story Mapping:** 127/127 funcionalidades con implementación de gestión; la única deuda técnica restante es el RBAC dinámico (fase 2) para que los roles personalizados tengan enforcement automático en RLS.
+
 ---
 
 ## 1. Resumen ejecutivo
