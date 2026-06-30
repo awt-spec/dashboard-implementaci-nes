@@ -4,11 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Download, Calendar, Clock, FileText, Users, AlertTriangle, TrendingUp } from "lucide-react";
+import { Loader2, Download, Calendar, Clock, FileText, Users, AlertTriangle, TrendingUp, ListTree } from "lucide-react";
 import { toast } from "sonner";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip as RTooltip } from "recharts";
 import { useAccountStatement, getPeriodDates, type StatementPeriod } from "@/hooks/useAccountStatement";
 import { exportAccountStatementPdf } from "@/lib/exportAccountStatementPdf";
+import { AccountStatementDetail } from "./AccountStatementDetail";
 
 const PERIOD_OPTIONS: Array<{ value: StatementPeriod; label: string }> = [
   { value: "current_month",    label: "Mes corriente" },
@@ -27,6 +28,7 @@ export function AccountStatementPanel({ clientId }: Props) {
   const [period, setPeriod] = useState<StatementPeriod>("current_month");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
+  const [detailOpen, setDetailOpen] = useState(false);
 
   const dates = useMemo(
     () => getPeriodDates(period, { from: customFrom, to: customTo }),
@@ -87,6 +89,15 @@ export function AccountStatementPanel({ clientId }: Props) {
           <div className="ml-auto flex gap-1.5">
             <Button size="sm" variant="ghost" onClick={() => refetch()} className="h-8 text-xs">
               Actualizar
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setDetailOpen(true)}
+              disabled={!stmt || isLoading}
+              className="h-8 gap-1.5"
+            >
+              <ListTree className="h-3.5 w-3.5" /> Ver detalle
             </Button>
             <Button
               size="sm"
@@ -344,6 +355,13 @@ export function AccountStatementPanel({ clientId }: Props) {
           <p className="text-[10px] text-muted-foreground text-center pt-2 italic">
             Generado el {new Date(stmt.generated_at).toLocaleString()}
           </p>
+
+          <AccountStatementDetail
+            open={detailOpen}
+            onOpenChange={setDetailOpen}
+            stmt={stmt}
+            clientId={clientId}
+          />
         </>
       )}
     </div>
