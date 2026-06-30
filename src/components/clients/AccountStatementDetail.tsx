@@ -45,7 +45,6 @@ export function AccountStatementDetail({ open, onOpenChange, stmt, clientId }: P
   const overageCost = overageHours * hourlyRate;
   const packagesTotal = periodPackages.reduce((s, p) => s + Number(p.total_amount), 0);
   const quotesTotal = stmt.quotes.approved_in_period.reduce((s, q) => s + Number(q.total_amount), 0);
-  const paid = stmt.financials?.paid ?? 0;
 
   const charges: Array<{ concepto: string; detalle: string; monto: number }> = [];
   if (stmt.contract) {
@@ -77,7 +76,6 @@ export function AccountStatementDetail({ open, onOpenChange, stmt, clientId }: P
     });
   }
   const totalCargos = charges.reduce((s, c) => s + c.monto, 0);
-  const saldo = totalCargos - paid;
 
   const handleExport = () => {
     try { exportAccountStatementPdf(stmt); toast.success("PDF descargado"); }
@@ -136,24 +134,40 @@ export function AccountStatementDetail({ open, onOpenChange, stmt, clientId }: P
                     <TableCell className="text-xs text-right tabular-nums">{money(c.monto)}</TableCell>
                   </TableRow>
                 ))}
-                <TableRow className="border-t-2">
-                  <TableCell className="text-xs font-bold" colSpan={2}>Total cargos</TableCell>
-                  <TableCell className="text-xs text-right tabular-nums font-bold">{money(totalCargos)}</TableCell>
-                </TableRow>
-                {paid > 0 && (
-                  <TableRow>
-                    <TableCell className="text-xs text-success" colSpan={2}>(−) Pagos recibidos</TableCell>
-                    <TableCell className="text-xs text-right tabular-nums text-success">−{money(paid)}</TableCell>
-                  </TableRow>
-                )}
-                <TableRow className="bg-muted/40">
-                  <TableCell className="text-sm font-bold" colSpan={2}>Saldo del período</TableCell>
-                  <TableCell className={`text-sm text-right tabular-nums font-bold ${saldo > 0 ? "text-warning" : "text-success"}`}>{money(saldo)}</TableCell>
+                <TableRow className="border-t-2 bg-muted/40">
+                  <TableCell className="text-sm font-bold" colSpan={2}>Total cargos del período</TableCell>
+                  <TableCell className="text-sm text-right tabular-nums font-bold">{money(totalCargos)}</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
           </div>
         </section>
+
+        {/* Estado financiero acumulado (NO del período) */}
+        {stmt.financials && (
+          <section className="space-y-1">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Estado financiero (acumulado)</h3>
+            <p className="text-[10px] text-muted-foreground">Cifras acumuladas históricas del cliente — no corresponden al período seleccionado.</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-center pt-1">
+              <div className="rounded-lg border p-2">
+                <p className="text-[10px] uppercase text-muted-foreground">Valor contrato</p>
+                <p className="text-sm font-bold tabular-nums">{money(Number(stmt.financials.contract_value))}</p>
+              </div>
+              <div className="rounded-lg border p-2">
+                <p className="text-[10px] uppercase text-muted-foreground">Facturado</p>
+                <p className="text-sm font-bold tabular-nums">{money(Number(stmt.financials.billed))}</p>
+              </div>
+              <div className="rounded-lg border p-2">
+                <p className="text-[10px] uppercase text-muted-foreground">Pagado</p>
+                <p className="text-sm font-bold tabular-nums text-success">{money(Number(stmt.financials.paid))}</p>
+              </div>
+              <div className="rounded-lg border p-2">
+                <p className="text-[10px] uppercase text-muted-foreground">Pendiente</p>
+                <p className="text-sm font-bold tabular-nums text-warning">{money(Number(stmt.financials.pending))}</p>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Consumo de horas */}
         <section className="space-y-2">
