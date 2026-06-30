@@ -1,9 +1,10 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Users, Lock, Activity, Brain } from "lucide-react";
+import { Shield, Users, Lock, Activity, Brain, KeyRound } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { SystemUsersTab } from "@/components/admin/SystemUsersTab";
 import { TeamHub } from "@/components/team/TeamHub";
 import { RBACPermissionsTab } from "@/components/admin/RBACPermissionsTab";
+import { RolesCatalogPanel } from "@/components/admin/RolesCatalogPanel";
 import { TeamActivityPanel } from "@/components/admin/TeamActivityPanel";
 import { TeamLevelAIPanel } from "@/components/admin/TeamLevelAIPanel";
 
@@ -30,6 +31,9 @@ export default function AdminUsers() {
           <TabsTrigger value="activity" className="gap-2 data-[state=active]:shadow-sm py-2.5 px-4">
             <Activity className="h-4 w-4" /> Actividad
           </TabsTrigger>
+          <TabsTrigger value="roles" className="gap-2 data-[state=active]:shadow-sm py-2.5 px-4">
+            <KeyRound className="h-4 w-4" /> Roles
+          </TabsTrigger>
           <TabsTrigger value="rbac" className="gap-2 data-[state=active]:shadow-sm py-2.5 px-4">
             <Lock className="h-4 w-4" /> Permisos RBAC
           </TabsTrigger>
@@ -49,6 +53,10 @@ export default function AdminUsers() {
 
         <TabsContent value="activity" className="mt-6">
           <TeamActivityPanel />
+        </TabsContent>
+
+        <TabsContent value="roles" className="mt-6">
+          <RolesCatalogPanel />
         </TabsContent>
 
         <TabsContent value="rbac" className="mt-6">
