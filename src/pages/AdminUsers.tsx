@@ -7,6 +7,7 @@ import { RBACPermissionsTab } from "@/components/admin/RBACPermissionsTab";
 import { RolesCatalogPanel } from "@/components/admin/RolesCatalogPanel";
 import { TeamActivityPanel } from "@/components/admin/TeamActivityPanel";
 import { TeamLevelAIPanel } from "@/components/admin/TeamLevelAIPanel";
+import { SessionsDetailPanel } from "@/components/admin/SessionsDetailPanel";
 
 export default function AdminUsers() {
   const { role: myRole } = useAuth();
@@ -51,8 +52,9 @@ export default function AdminUsers() {
           <TeamLevelAIPanel />
         </TabsContent>
 
-        <TabsContent value="activity" className="mt-6">
+        <TabsContent value="activity" className="mt-6 space-y-6">
           <TeamActivityPanel />
+          <SessionsDetailPanel />
         </TabsContent>
 
         <TabsContent value="roles" className="mt-6">
