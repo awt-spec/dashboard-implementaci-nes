@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileSignature, Shield, Plus, Trash2, Clock, Edit2, Lock, Package } from "lucide-react";
+import { FileSignature, Shield, Plus, Trash2, Clock, Edit2, Lock, Package, Search } from "lucide-react";
 import { BilledPackagesTab } from "./BilledPackagesTab";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -43,8 +43,26 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
   const [contractDialog, setContractDialog] = useState<Partial<ClientContract> | null>(null);
   const [slaDialog, setSlaDialog] = useState<Partial<ClientSLA> | null>(null);
 
+  // Búsqueda/filtros de contratos (ERP-063)
+  const [contractSearch, setContractSearch] = useState("");
+  const [contractType, setContractType] = useState("all");
+  const [contractStatus, setContractStatus] = useState("all");
+
   const totalMonthly = contracts.filter(c => c.is_active).reduce((s, c) => s + Number(c.monthly_value || 0), 0);
   const activeContract = contracts.find(c => c.is_active);
+
+  const term = contractSearch.trim().toLowerCase();
+  const filteredContracts = contracts.filter(c => {
+    if (contractType !== "all" && c.contract_type !== contractType) return false;
+    if (contractStatus === "active" && !c.is_active) return false;
+    if (contractStatus === "inactive" && c.is_active) return false;
+    if (term) {
+      const typeLabel = CONTRACT_TYPES.find(t => t.value === c.contract_type)?.label || c.contract_type;
+      const hay = [typeLabel, c.notes, c.currency].some(f => (f || "").toLowerCase().includes(term));
+      if (!hay) return false;
+    }
+    return true;
+  });
 
   return (
     <div className="space-y-6">
@@ -86,6 +104,34 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
             )}
           </div>
 
+          {/* Búsqueda y filtros de contratos (ERP-063) */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Buscar contrato por tipo, moneda o notas..."
+                value={contractSearch}
+                onChange={e => setContractSearch(e.target.value)}
+                className="h-8 w-[280px] pl-8 text-xs"
+              />
+            </div>
+            <Select value={contractType} onValueChange={setContractType}>
+              <SelectTrigger className="h-8 w-[180px] text-xs"><SelectValue placeholder="Tipo" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los tipos</SelectItem>
+                {CONTRACT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={contractStatus} onValueChange={setContractStatus}>
+              <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue placeholder="Estado" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="active">Activos</SelectItem>
+                <SelectItem value="inactive">Inactivos</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <Card>
             <CardContent className="p-0">
               <Table>
@@ -101,9 +147,9 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {contracts.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} className="text-center py-6 text-muted-foreground text-sm">Sin contratos registrados</TableCell></TableRow>
-                  ) : contracts.map(c => (
+                  {filteredContracts.length === 0 ? (
+                    <TableRow><TableCell colSpan={7} className="text-center py-6 text-muted-foreground text-sm">{contracts.length === 0 ? "Sin contratos registrados" : "Sin contratos que coincidan con la búsqueda"}</TableCell></TableRow>
+                  ) : filteredContracts.map(c => (
                     <TableRow key={c.id}>
                       <TableCell><Badge variant="outline">{CONTRACT_TYPES.find(t => t.value === c.contract_type)?.label || c.contract_type}</Badge></TableCell>
                       <TableCell className="font-medium">${Number(c.monthly_value).toLocaleString()} {c.currency}</TableCell>

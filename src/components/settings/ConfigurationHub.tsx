@@ -6,6 +6,7 @@ import {
   BookOpen, ListChecks, Building2, TrendingUp, ChevronRight, RotateCcw, UserCheck, ListTodo, Tag, Boxes,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useMyPermissions } from "@/hooks/usePermissions";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -39,6 +40,8 @@ interface ConfigSection {
   Icon: typeof Settings;
   tone: string;
   roles: Role[];
+  /** Permiso RBAC que también habilita esta sección (roles personalizados). */
+  permission?: string;
   Component: React.ComponentType;
 }
 
@@ -98,6 +101,7 @@ const GROUPS: ConfigGroup[] = [
         Icon: Users,
         tone: "bg-primary/15 text-primary border-primary/30",
         roles: ["admin", "pm"],
+        permission: "config.catalogos",
         Component: SvaTeamsAdminPanel,
       },
       {
@@ -107,6 +111,7 @@ const GROUPS: ConfigGroup[] = [
         Icon: UserCheck,
         tone: "bg-violet-500/15 text-violet-500 border-violet-500/30",
         roles: ["admin"],
+        permission: "equipo.supervisiones",
         Component: SupervisionsAdminPanel,
       },
     ],
@@ -202,6 +207,7 @@ const GROUPS: ConfigGroup[] = [
         Icon: RotateCcw,
         tone: "bg-warning/15 text-warning border-warning/30",
         roles: ["admin"],
+        permission: "config.catalogos_admin",
         Component: ReopenReasonsAdminPanel,
       },
       {
@@ -211,6 +217,7 @@ const GROUPS: ConfigGroup[] = [
         Icon: ListTodo,
         tone: "bg-indigo-500/15 text-indigo-500 border-indigo-500/30",
         roles: ["admin"],
+        permission: "config.catalogos_admin",
         Component: TaskTypesAdminPanel,
       },
       {
@@ -220,6 +227,7 @@ const GROUPS: ConfigGroup[] = [
         Icon: Tag,
         tone: "bg-cyan-500/15 text-cyan-500 border-cyan-500/30",
         roles: ["admin", "pm"],
+        permission: "config.catalogos",
         Component: ClientCategoriesAdminPanel,
       },
       {
@@ -229,6 +237,7 @@ const GROUPS: ConfigGroup[] = [
         Icon: BookOpen,
         tone: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30",
         roles: ["admin", "pm"],
+        permission: "config.catalogos",
         Component: PolicyTemplatesAdminPanel,
       },
       {
@@ -238,6 +247,7 @@ const GROUPS: ConfigGroup[] = [
         Icon: Boxes,
         tone: "bg-orange-500/15 text-orange-500 border-orange-500/30",
         roles: ["admin", "pm"],
+        permission: "config.catalogos",
         Component: ProductsAdminPanel,
       },
     ],
@@ -250,6 +260,7 @@ const GROUPS: ConfigGroup[] = [
 
 export function ConfigurationHub() {
   const { role } = useAuth();
+  const { data: myPerms } = useMyPermissions();
   const [active, setActive] = useState<string>("accounts");
   const [search, setSearch] = useState("");
 
@@ -257,9 +268,13 @@ export function ConfigurationHub() {
   const visibleGroups = useMemo(() => {
     return GROUPS.map((g) => ({
       ...g,
-      sections: g.sections.filter((s) => role && s.roles.includes(role as Role)),
+      sections: g.sections.filter(
+        (s) =>
+          (role && s.roles.includes(role as Role)) ||
+          (s.permission ? myPerms?.has(s.permission) ?? false : false),
+      ),
     })).filter((g) => g.sections.length > 0);
-  }, [role]);
+  }, [role, myPerms]);
 
   // Aplicar búsqueda
   const filteredGroups = useMemo(() => {

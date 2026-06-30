@@ -16,6 +16,7 @@ import { useSLASummary } from "@/hooks/useSLASummary";
 import { useState, useMemo } from "react";
 // DB is the single source of truth
 import { useAuth } from "@/hooks/useAuth";
+import { useMyPermissions } from "@/hooks/usePermissions";
 
 const statusLabel: Record<string, string> = {
   activo: "Activos",
@@ -49,6 +50,7 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
   const { data: clientsData } = useClients();
   const { data: slaSummary } = useSLASummary();
   const { role, profile, signOut } = useAuth();
+  const { data: myPerms } = useMyPermissions();
   const allClients = clientsData || [];
   const implClients = allClients.filter((c: any) => c.client_type === "implementacion");
   const supportClients = allClients.filter((c: any) => c.client_type === "soporte");
@@ -83,14 +85,20 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
   const implGroups = useMemo(() => groupByStatus(implClients), [implClients, search]);
   const supportGroups = useMemo(() => groupByStatus(supportClients), [supportClients, search]);
 
-  // Build nav items based on role
+  // Build nav items based on role + permisos (roles personalizados con permisos
+  // de configuración también ven "Configuración").
+  const CONFIG_PERMS = ["config.catalogos", "config.catalogos_admin", "equipo.supervisiones"];
+  const hasAnyConfigPerm = CONFIG_PERMS.some((p) => myPerms?.has(p));
   const mainNav = [
-    { id: "overview", title: "Resumen Ejecutivo", icon: LayoutDashboard, roles: ["admin", "pm", "gerente", "gerente_soporte"] },
-    { id: "clients", title: "Implementación", icon: Building2, roles: ["admin", "pm"] },
-    { id: "soporte", title: "Soporte", icon: Headset, roles: ["admin", "pm", "gerente_soporte"] },
-    { id: "team-scrum", title: "Equipo Scrum", icon: Trophy, roles: ["admin", "pm"] },
-    { id: "config", title: "Configuración", icon: Settings, roles: ["admin", "pm", "gerente_soporte"] },
-  ].filter(item => role && item.roles.includes(role));
+    { id: "overview", title: "Resumen Ejecutivo", icon: LayoutDashboard, roles: ["admin", "pm", "gerente", "gerente_soporte"], anyPermission: [] as string[] },
+    { id: "clients", title: "Implementación", icon: Building2, roles: ["admin", "pm"], anyPermission: [] as string[] },
+    { id: "soporte", title: "Soporte", icon: Headset, roles: ["admin", "pm", "gerente_soporte"], anyPermission: [] as string[] },
+    { id: "team-scrum", title: "Equipo Scrum", icon: Trophy, roles: ["admin", "pm"], anyPermission: [] as string[] },
+    { id: "config", title: "Configuración", icon: Settings, roles: ["admin", "pm", "gerente_soporte"], anyPermission: CONFIG_PERMS },
+  ].filter(item =>
+    (role && item.roles.includes(role)) ||
+    (item.anyPermission.length > 0 && hasAnyConfigPerm),
+  );
 
   const renderClientGroup = (
     type: "impl" | "support",

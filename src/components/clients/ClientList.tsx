@@ -1,12 +1,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useClients } from "@/hooks/useClients";
+import { useSupportTickets } from "@/hooks/useSupportTickets";
 import { type Client } from "@/data/projectData";
-import { Building2, MapPin, Search, Loader2, Database, Upload, Download, FileSpreadsheet, GitMerge } from "lucide-react";
+import { Building2, MapPin, Search, Loader2, Database, Upload, Download, FileSpreadsheet, GitMerge, ClipboardList } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState } from "react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { CreateClientDialog } from "./CreateClientDialog";
@@ -25,9 +27,21 @@ interface ClientListProps {
 
 export function ClientList({ onSelectClient, selectedClientId }: ClientListProps) {
   const { data: clients, isLoading } = useClients();
+  const { data: allTickets = [] } = useSupportTickets();
   const { role } = useAuth();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("todos");
+
+  // Tickets abiertos por cliente, para la vista de estado general (ERP-072).
+  const openTicketsByClient = useMemo(() => {
+    const closed = new Set(["CERRADA", "ANULADA"]);
+    const map: Record<string, number> = {};
+    allTickets.forEach((t: any) => {
+      if (closed.has((t.estado || "").toUpperCase())) return;
+      map[t.client_id] = (map[t.client_id] || 0) + 1;
+    });
+    return map;
+  }, [allTickets]);
 
   // Solo clientes con client_type='implementacion'. Coherente con el sidebar
   // que cuenta del mismo modo (`AppSidebar.tsx:53`).
@@ -67,6 +81,7 @@ export function ClientList({ onSelectClient, selectedClientId }: ClientListProps
     <Tabs defaultValue="clientes" className="space-y-4">
       <TabsList className="h-9">
         <TabsTrigger value="clientes" className="gap-1.5"><Building2 className="h-3.5 w-3.5" /> Clientes</TabsTrigger>
+        <TabsTrigger value="estado" className="gap-1.5"><ClipboardList className="h-3.5 w-3.5" /> Estado general</TabsTrigger>
         {canManage && (
           <TabsTrigger value="datos" className="gap-1.5"><Database className="h-3.5 w-3.5" /> Datos & Sync</TabsTrigger>
         )}
@@ -143,6 +158,68 @@ export function ClientList({ onSelectClient, selectedClientId }: ClientListProps
         {filtered.length === 0 && (
           <p className="text-sm text-muted-foreground text-center py-8">No se encontraron clientes</p>
         )}
+      </TabsContent>
+
+      {/* Estado general consolidado de todos los clientes (ERP-072) */}
+      <TabsContent value="estado" className="space-y-4">
+        {(() => {
+          const order: Record<string, number> = { "en-riesgo": 0, activo: 1, pausado: 2, completado: 3 };
+          const all = [...(clients || [])].sort(
+            (a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9) || a.name.localeCompare(b.name),
+          );
+          const totals = {
+            total: all.length,
+            riesgo: all.filter(c => c.status === "en-riesgo").length,
+            tickets: all.reduce((s, c) => s + (openTicketsByClient[c.id] || 0), 0),
+            riesgos: all.reduce((s, c) => s + c.risks.filter(r => r.status === "abierto").length, 0),
+          };
+          return (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <Card><CardContent className="p-3"><p className="text-[10px] uppercase text-muted-foreground">Clientes</p><p className="text-2xl font-bold">{totals.total}</p></CardContent></Card>
+                <Card><CardContent className="p-3"><p className="text-[10px] uppercase text-muted-foreground">En riesgo</p><p className="text-2xl font-bold text-destructive">{totals.riesgo}</p></CardContent></Card>
+                <Card><CardContent className="p-3"><p className="text-[10px] uppercase text-muted-foreground">Tickets abiertos</p><p className="text-2xl font-bold">{totals.tickets}</p></CardContent></Card>
+                <Card><CardContent className="p-3"><p className="text-[10px] uppercase text-muted-foreground">Riesgos abiertos</p><p className="text-2xl font-bold text-warning">{totals.riesgos}</p></CardContent></Card>
+              </div>
+              <Card>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>País</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead className="text-right">Progreso</TableHead>
+                        <TableHead className="text-right">Tareas</TableHead>
+                        <TableHead className="text-right">Tickets abiertos</TableHead>
+                        <TableHead className="text-right">Riesgos</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {all.length === 0 ? (
+                        <TableRow><TableCell colSpan={7} className="text-center py-6 text-muted-foreground text-sm">Sin clientes</TableCell></TableRow>
+                      ) : all.map(c => {
+                        const cfg = statusConfig[c.status];
+                        const openRisks = c.risks.filter(r => r.status === "abierto").length;
+                        return (
+                          <TableRow key={c.id} className="cursor-pointer" onClick={() => onSelectClient(c.id)}>
+                            <TableCell className="font-medium">{c.name}</TableCell>
+                            <TableCell className="text-muted-foreground text-xs">{c.country}</TableCell>
+                            <TableCell><Badge className={`${cfg.className} text-[10px]`}>{cfg.label}</Badge></TableCell>
+                            <TableCell className="text-right tabular-nums">{c.progress}%</TableCell>
+                            <TableCell className="text-right tabular-nums">{c.tasks.length}</TableCell>
+                            <TableCell className="text-right tabular-nums">{openTicketsByClient[c.id] || 0}</TableCell>
+                            <TableCell className={`text-right tabular-nums ${openRisks > 0 ? "text-warning font-semibold" : ""}`}>{openRisks}</TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </>
+          );
+        })()}
       </TabsContent>
 
       {canManage && (

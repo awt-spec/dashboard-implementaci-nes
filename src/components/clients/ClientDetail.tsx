@@ -3,12 +3,14 @@ import { type Client } from "@/data/projectData";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Building2, MapPin, Mail, User, Calendar, TrendingUp,
   CheckCircle2, Loader2, Circle, Clock, AlertTriangle,
-  ArrowLeft, Download, ArrowRightLeft, Plus,
+  ArrowLeft, Download, ArrowRightLeft, Plus, Pencil,
 } from "lucide-react";
 import { NewTicketForm } from "@/components/support/NewTicketForm";
 import { Button } from "@/components/ui/button";
@@ -37,6 +39,14 @@ import { ProjectKPIs } from "@/components/dashboard/ProjectKPIs";
 import { UpcomingDeliverables } from "@/components/dashboard/UpcomingDeliverables";
 import { ClientTechStack } from "./ClientTechStack";
 import { useQueryClient } from "@tanstack/react-query";
+import { useUpdateClient } from "@/hooks/useClients";
+
+const CLIENT_STATUSES = [
+  { value: "activo", label: "Activo" },
+  { value: "en-riesgo", label: "En Riesgo" },
+  { value: "completado", label: "Completado" },
+  { value: "pausado", label: "Pausado" },
+];
 
 const phaseStatusConfig = {
   completado: { label: "Completado", icon: CheckCircle2, className: "bg-success text-success-foreground" },
@@ -54,9 +64,41 @@ interface ClientDetailProps {
 
 export function ClientDetail({ client, onBack }: ClientDetailProps) {
   const queryClient = useQueryClient();
+  const updateClient = useUpdateClient();
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferring, setTransferring] = useState(false);
   const [newCaseOpen, setNewCaseOpen] = useState(false);
+
+  // Edición de campos del cliente (ERP-008)
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: "", country: "", industry: "",
+    contact_name: "", contact_email: "",
+    contract_start: "", contract_end: "", status: "activo",
+  });
+  const openEdit = () => {
+    setEditForm({
+      name: client.name ?? "",
+      country: client.country ?? "",
+      industry: client.industry ?? "",
+      contact_name: client.contactName ?? "",
+      contact_email: client.contactEmail ?? "",
+      contract_start: client.contractStart ?? "",
+      contract_end: client.contractEnd ?? "",
+      status: client.status ?? "activo",
+    });
+    setEditOpen(true);
+  };
+  const handleSaveClient = () => {
+    if (!editForm.name.trim()) { toast.error("El nombre es obligatorio"); return; }
+    updateClient.mutate(
+      { id: client.id, updates: editForm as any },
+      {
+        onSuccess: () => { toast.success("Cliente actualizado"); setEditOpen(false); },
+        onError: (e: any) => toast.error(e.message || "Error al actualizar"),
+      },
+    );
+  };
 
   const handleTransferToSupport = async () => {
     setTransferring(true);
@@ -123,6 +165,9 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
                     >
                       <Plus className="h-3.5 w-3.5" /> Nuevo caso
                     </Button>
+                    <Button variant="outline" size="sm" onClick={openEdit} className="gap-1.5">
+                      <Pencil className="h-3.5 w-3.5" /> Editar
+                    </Button>
                     <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
                       <DialogTrigger asChild>
                         <Button variant="outline" size="sm" className="gap-1.5 border-amber-500/30 text-amber-500 hover:bg-amber-500/10">
@@ -163,6 +208,58 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Editar cliente (ERP-008) */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Editar cliente</DialogTitle></DialogHeader>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2 space-y-1">
+              <Label className="text-xs">Nombre *</Label>
+              <Input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} className="h-8 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">País</Label>
+              <Input value={editForm.country} onChange={e => setEditForm({ ...editForm, country: e.target.value })} className="h-8 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Industria</Label>
+              <Input value={editForm.industry} onChange={e => setEditForm({ ...editForm, industry: e.target.value })} className="h-8 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Contacto</Label>
+              <Input value={editForm.contact_name} onChange={e => setEditForm({ ...editForm, contact_name: e.target.value })} className="h-8 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Email contacto</Label>
+              <Input type="email" value={editForm.contact_email} onChange={e => setEditForm({ ...editForm, contact_email: e.target.value })} className="h-8 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Inicio contrato</Label>
+              <Input type="date" value={editForm.contract_start} onChange={e => setEditForm({ ...editForm, contract_start: e.target.value })} className="h-8 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Fin contrato</Label>
+              <Input type="date" value={editForm.contract_end} onChange={e => setEditForm({ ...editForm, contract_end: e.target.value })} className="h-8 text-sm" />
+            </div>
+            <div className="col-span-2 space-y-1">
+              <Label className="text-xs">Estado</Label>
+              <Select value={editForm.status} onValueChange={v => setEditForm({ ...editForm, status: v })}>
+                <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {CLIENT_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveClient} disabled={updateClient.isPending} className="gap-1.5">
+              {updateClient.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Guardar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Quick stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

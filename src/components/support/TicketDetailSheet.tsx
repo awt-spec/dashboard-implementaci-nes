@@ -11,7 +11,7 @@ import {
   MessageSquare, History, ScrollText, Lock, Copy,
   Save, Trash2, CheckSquare, ArrowLeft,
   Share2, Sparkles, RotateCcw, Maximize2, Minimize2,
-  FileText,
+  FileText, Paperclip, X, Download,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -24,7 +24,7 @@ import {
 } from "@/hooks/useSupportTickets";
 import {
   useTicketNotes, useCreateTicketNote, useDeleteTicketNote,
-  useTicketSubtasks,
+  useTicketSubtasks, noteAttachmentUrl,
 } from "@/hooks/useSupportTicketDetails";
 import { useSysdeTeamMembers } from "@/hooks/useTeamMembers";
 import { useAuth } from "@/hooks/useAuth";
@@ -117,6 +117,7 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, canEditInternal 
   const deleteNote = useDeleteTicketNote();
   const [newNote, setNewNote] = useState("");
   const [noteVisibility, setNoteVisibility] = useState<"interna" | "externa">("interna");
+  const [noteFile, setNoteFile] = useState<File | null>(null);
 
   // ── Subtareas (solo para el counter del tab header) ──
   const { data: subtasks = [] } = useTicketSubtasks(ticket?.id ?? null);
@@ -190,15 +191,20 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, canEditInternal 
   };
 
   const handleAddNote = () => {
-    if (!newNote.trim()) return;
+    // Permitir nota con solo adjunto (sin texto) o solo texto.
+    if (!newNote.trim() && !noteFile) return;
     createNote.mutate(
       {
         ticket_id: ticket.id,
         content: newNote.trim(),
         author_name: profile?.full_name || "Anónimo",
         visibility: noteVisibility,
+        file: noteFile,
       },
-      { onSuccess: () => { setNewNote(""); toast.success("Nota agregada"); } }
+      {
+        onSuccess: () => { setNewNote(""); setNoteFile(null); toast.success("Nota agregada"); },
+        onError: (e: any) => toast.error(e.message),
+      }
     );
   };
 
@@ -452,12 +458,37 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, canEditInternal 
                       <SelectItem value="externa">👁 Visible al cliente</SelectItem>
                     </SelectContent>
                   </Select>
+                  {/* Adjuntar archivo a la nota (ERP-084 / PORTAL-013) */}
+                  <Button asChild size="sm" variant="outline" className="h-8 gap-1 cursor-pointer">
+                    <label>
+                      <Paperclip className="h-3 w-3" />
+                      Adjuntar
+                      <input
+                        type="file"
+                        className="hidden"
+                        onChange={(e) => setNoteFile(e.target.files?.[0] ?? null)}
+                      />
+                    </label>
+                  </Button>
                   <div className="flex-1" />
-                  <Button size="sm" onClick={handleAddNote} disabled={createNote.isPending || !newNote.trim()} className="h-8 gap-1">
+                  <Button size="sm" onClick={handleAddNote} disabled={createNote.isPending || (!newNote.trim() && !noteFile)} className="h-8 gap-1">
                     {createNote.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
                     Agregar
                   </Button>
                 </div>
+                {noteFile && (
+                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground bg-muted/50 rounded px-2 py-1 w-fit">
+                    <Paperclip className="h-3 w-3 shrink-0" />
+                    <span className="truncate max-w-[200px]">{noteFile.name}</span>
+                    <button
+                      onClick={() => setNoteFile(null)}
+                      className="p-0.5 rounded hover:bg-destructive/10 hover:text-destructive"
+                      title="Quitar adjunto"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -488,7 +519,21 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, canEditInternal 
                             {n.visibility === "externa" ? "👁 externa" : "🔒 interna"}
                           </Badge>
                         </div>
-                        <p className="text-sm whitespace-pre-wrap">{n.content}</p>
+                        {n.content && <p className="text-sm whitespace-pre-wrap">{n.content}</p>}
+                        {n.attachment_path && (
+                          <a
+                            href={noteAttachmentUrl(n.attachment_path)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] text-info hover:underline bg-info/5 border border-info/20 rounded px-2 py-1"
+                          >
+                            <Download className="h-3 w-3 shrink-0" />
+                            <span className="truncate max-w-[220px]">{n.attachment_name || "archivo adjunto"}</span>
+                            {typeof n.attachment_size === "number" && (
+                              <span className="text-muted-foreground">({Math.round(n.attachment_size / 1024)} KB)</span>
+                            )}
+                          </a>
+                        )}
                       </div>
                       {canEditInternal && (
                         <button
