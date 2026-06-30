@@ -15,6 +15,15 @@ import {
   useBilledPackages, useUpsertBilledPackage, useDeleteBilledPackage,
   type BilledPackage, type BilledPackageType, type BilledPackageStatus,
 } from "@/hooks/useBilledPackages";
+import { useClientContracts } from "@/hooks/useClientContracts";
+
+const CONTRACT_TYPE_LABELS: Record<string, string> = {
+  bolsa_horas: "Bolsa de horas",
+  fee_mensual: "Fee mensual fijo",
+  proyecto_cerrado: "Proyecto cerrado",
+  tiempo_materiales: "Tiempo y materiales",
+};
+const NO_CONTRACT = "__none__";
 
 const TYPES: Array<{ value: BilledPackageType; label: string }> = [
   { value: "horas",     label: "Bolsa de horas" },
@@ -39,8 +48,13 @@ export function BilledPackagesTab({ clientId }: { clientId: string }) {
   const isAdmin = role === "admin";
 
   const { data: packages = [], isLoading } = useBilledPackages(clientId);
+  const { data: contracts = [] } = useClientContracts(clientId);
   const upsert = useUpsertBilledPackage();
   const del = useDeleteBilledPackage();
+
+  const contractLabel = (c: { contract_type: string; currency?: string; monthly_value?: number }) =>
+    `${CONTRACT_TYPE_LABELS[c.contract_type] || c.contract_type}${c.monthly_value ? ` · $${Number(c.monthly_value).toLocaleString()} ${c.currency || ""}` : ""}`;
+  const contractById = (id?: string | null) => contracts.find(c => c.id === id);
 
   const [dialog, setDialog] = useState<Partial<BilledPackage> | null>(null);
 
@@ -56,6 +70,7 @@ export function BilledPackagesTab({ clientId }: { clientId: string }) {
       await upsert.mutateAsync({
         id: dialog.id,
         client_id: clientId,
+        contract_id: dialog.contract_id ?? null,
         name: dialog.name.trim(),
         description: dialog.description ?? null,
         package_type: dialog.package_type ?? "horas",
@@ -130,6 +145,7 @@ export function BilledPackagesTab({ clientId }: { clientId: string }) {
               <TableRow>
                 <TableHead className="text-xs">Paquete</TableHead>
                 <TableHead className="text-xs">Tipo</TableHead>
+                <TableHead className="text-xs">Contrato</TableHead>
                 <TableHead className="text-xs text-right">Cant.</TableHead>
                 <TableHead className="text-xs text-right">Total</TableHead>
                 <TableHead className="text-xs">Estado</TableHead>
@@ -142,6 +158,11 @@ export function BilledPackagesTab({ clientId }: { clientId: string }) {
                 <TableRow key={p.id}>
                   <TableCell className="text-xs font-medium">{p.name}</TableCell>
                   <TableCell><Badge variant="outline" className="text-[10px]">{TYPES.find(t => t.value === p.package_type)?.label}</Badge></TableCell>
+                  <TableCell className="text-[10px] text-muted-foreground">
+                    {p.contract_id && contractById(p.contract_id)
+                      ? CONTRACT_TYPE_LABELS[contractById(p.contract_id)!.contract_type] || contractById(p.contract_id)!.contract_type
+                      : "—"}
+                  </TableCell>
                   <TableCell className="text-xs text-right tabular-nums">{Number(p.quantity)}</TableCell>
                   <TableCell className="text-xs text-right tabular-nums font-medium">{Number(p.total_amount).toFixed(2)} {p.currency}</TableCell>
                   <TableCell><Badge variant="outline" className={`text-[10px] ${STATUS_META[p.status].className}`}>{STATUS_META[p.status].label}</Badge></TableCell>
@@ -178,6 +199,25 @@ export function BilledPackagesTab({ clientId }: { clientId: string }) {
                 <Label className="text-xs">Nombre *</Label>
                 <Input value={dialog.name ?? ""} onChange={(e) => setDialog({ ...dialog, name: e.target.value })}
                   placeholder="Ej: Bolsa adicional 50h Q2" className="h-8 text-xs" />
+              </div>
+              {/* Asociación a póliza/contrato (ERP-066) */}
+              <div>
+                <Label className="text-xs">Asociar a contrato / póliza</Label>
+                <Select
+                  value={dialog.contract_id ?? NO_CONTRACT}
+                  onValueChange={(v) => setDialog({ ...dialog, contract_id: v === NO_CONTRACT ? null : v })}
+                >
+                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Sin asociar (paquete individual)" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_CONTRACT} className="text-xs">Sin asociar (paquete individual)</SelectItem>
+                    {contracts.map(c => (
+                      <SelectItem key={c.id} value={c.id} className="text-xs">{contractLabel(c)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {contracts.length === 0 && (
+                  <p className="text-[10px] text-muted-foreground mt-1">Este cliente no tiene contratos registrados aún.</p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
