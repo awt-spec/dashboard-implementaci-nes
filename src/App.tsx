@@ -19,6 +19,7 @@ const Report                    = lazy(() => import("./pages/Report"));
 const SharedPresentation        = lazy(() => import("./pages/SharedPresentation"));
 const SharedSupportPresentation = lazy(() => import("./pages/SharedSupportPresentation"));
 const SharedTicketHistory       = lazy(() => import("./pages/SharedTicketHistory"));
+const SharedQuote               = lazy(() => import("./pages/SharedQuote"));
 const MemberProfile             = lazy(() => import("./pages/MemberProfile"));
 const NotFound                  = lazy(() => import("./pages/NotFound"));
 
@@ -63,6 +64,7 @@ const App = () => (
               <Route path="/shared/:token" element={<SharedPresentation />} />
               <Route path="/shared-support/:token" element={<SharedSupportPresentation />} />
               <Route path="/historial-caso/:token" element={<SharedTicketHistory />} />
+              <Route path="/cotizacion/:token" element={<SharedQuote />} />
               <Route path="/team/:memberId" element={<MemberProfile />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileSignature, Shield, Plus, Trash2, Clock, Edit2, Lock, Package, Search } from "lucide-react";
+import { FileSignature, Shield, Plus, Trash2, Clock, Edit2, Lock, Package, Search, Sparkles } from "lucide-react";
+import { ContractAnalysisDialog } from "./ContractAnalysisDialog";
 import { BilledPackagesTab } from "./BilledPackagesTab";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -42,6 +43,7 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
 
   const [contractDialog, setContractDialog] = useState<Partial<ClientContract> | null>(null);
   const [slaDialog, setSlaDialog] = useState<Partial<ClientSLA> | null>(null);
+  const [analysisContract, setAnalysisContract] = useState<any | null>(null);
 
   // Búsqueda/filtros de contratos (ERP-063)
   const [contractSearch, setContractSearch] = useState("");
@@ -160,14 +162,19 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
                         {c.is_active ? <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-[10px]">Activo</Badge> : <Badge variant="secondary" className="text-[10px]">Inactivo</Badge>}
                       </TableCell>
                       <TableCell>
-                        {isAdmin ? (
-                          <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => setContractDialog(c)}><Edit2 className="h-3.5 w-3.5" /></Button>
-                            <Button variant="ghost" size="icon" onClick={() => { if (confirm("¿Eliminar contrato?")) deleteContract.mutate(c.id, { onSuccess: () => toast.success("Eliminado") }); }}>
-                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                            </Button>
-                          </div>
-                        ) : <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" title="Analizar con IA" onClick={() => setAnalysisContract(c)}>
+                            <Sparkles className="h-3.5 w-3.5 text-primary" />
+                          </Button>
+                          {isAdmin ? (
+                            <>
+                              <Button variant="ghost" size="icon" onClick={() => setContractDialog(c)}><Edit2 className="h-3.5 w-3.5" /></Button>
+                              <Button variant="ghost" size="icon" onClick={() => { if (confirm("¿Eliminar contrato?")) deleteContract.mutate(c.id, { onSuccess: () => toast.success("Eliminado") }); }}>
+                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                              </Button>
+                            </>
+                          ) : <Lock className="h-3.5 w-3.5 text-muted-foreground self-center" />}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -303,6 +310,10 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
                 <Label>Notas</Label>
                 <Textarea rows={2} value={contractDialog.notes || ""} onChange={(e) => setContractDialog({ ...contractDialog, notes: e.target.value })} />
               </div>
+              <div className="col-span-2 space-y-1">
+                <Label>Cláusulas / términos del contrato</Label>
+                <Textarea rows={5} value={(contractDialog as any).clauses || ""} onChange={(e) => setContractDialog({ ...contractDialog, clauses: e.target.value } as any)} placeholder="Clausulado del contrato (objeto, alcance, vigencia, pagos, SLA, penalidades, confidencialidad…). Insumo del análisis IA." />
+              </div>
               <div className="col-span-2 flex items-center justify-between pt-2">
                 <div className="flex items-center gap-2">
                   <Switch checked={!!contractDialog.is_active} onCheckedChange={(v) => setContractDialog({ ...contractDialog, is_active: v })} />
@@ -378,6 +389,15 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Análisis IA del contrato */}
+      {analysisContract && (
+        <ContractAnalysisDialog
+          open={!!analysisContract}
+          onOpenChange={(o) => !o && setAnalysisContract(null)}
+          contract={analysisContract}
+        />
+      )}
     </div>
   );
 }

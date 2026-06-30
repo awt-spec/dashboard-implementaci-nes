@@ -6,18 +6,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Trophy, Send, Sparkles, Award } from "lucide-react";
+import { Trophy, Send, Sparkles, Award, Handshake, Lightbulb, Rocket, GraduationCap, PartyPopper } from "lucide-react";
 import { useSysdeTeamMembers } from "@/hooks/useTeamMembers";
 import { useKudos, useGiveKudo, useBadges, useMemberBadges, useAwardBadge } from "@/hooks/useTeamEngagement";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 
 const CATEGORIES = [
-  { value: "teamwork", label: "🤝 Teamwork" },
-  { value: "innovation", label: "💡 Innovación" },
-  { value: "delivery", label: "🚀 Entrega" },
-  { value: "mentor", label: "🧑‍🏫 Mentoría" },
-  { value: "quality", label: "✨ Calidad" },
+  { value: "teamwork", label: "Teamwork", icon: Handshake },
+  { value: "innovation", label: "Innovación", icon: Lightbulb },
+  { value: "delivery", label: "Entrega", icon: Rocket },
+  { value: "mentor", label: "Mentoría", icon: GraduationCap },
+  { value: "quality", label: "Calidad", icon: Sparkles },
 ];
 const EMOJIS = ["👏", "🚀", "🔥", "💪", "🎉", "⭐", "🏆", "❤️"];
 
@@ -103,7 +103,7 @@ export function RecognitionWall() {
               <Button size="sm" className="gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white"><Sparkles className="h-3.5 w-3.5" />Dar Kudo</Button>
             </DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>Reconoce a un compañero 🎉</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle className="flex items-center gap-1.5"><PartyPopper className="h-4 w-4" /> Reconoce a un compañero</DialogTitle></DialogHeader>
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-2">
                   <Select value={from} onValueChange={setFrom}>
@@ -117,7 +117,7 @@ export function RecognitionWall() {
                 </div>
                 <Select value={category} onValueChange={setCategory}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
+                  <SelectContent>{CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}><span className="flex items-center gap-1.5"><c.icon className="h-3 w-3" /> {c.label}</span></SelectItem>)}</SelectContent>
                 </Select>
                 <div className="flex flex-wrap gap-1">
                   {EMOJIS.map(e => (
@@ -152,7 +152,7 @@ export function RecognitionWall() {
                       </div>
                       <p className="text-sm mt-1">{k.message}</p>
                       <div className="flex items-center gap-2 mt-1.5">
-                        <Badge variant="outline" className="text-[10px]">{CATEGORIES.find(c => c.value === k.category)?.label || k.category}</Badge>
+                        <Badge variant="outline" className="text-[10px]">{(() => { const cat = CATEGORIES.find(c => c.value === k.category); return cat ? <span className="flex items-center gap-1.5"><cat.icon className="h-3 w-3" /> {cat.label}</span> : k.category; })()}</Badge>
                         <span className="text-[10px] text-muted-foreground">{formatDistanceToNow(new Date(k.created_at), { addSuffix: true, locale: es })}</span>
                       </div>
                     </div>
@@ -164,7 +164,7 @@ export function RecognitionWall() {
         </Card>
 
         <Card className="p-3">
-          <div className="text-xs font-semibold mb-2 text-muted-foreground">🏆 Leaderboard</div>
+          <div className="text-xs font-semibold mb-2 text-muted-foreground flex items-center gap-1.5"><Trophy className="h-3 w-3" /> Leaderboard</div>
           <div className="space-y-2">
             {leaderboard.map((m: any, i: number) => (
               <div key={m.id} className="flex items-center gap-2 p-2 rounded-md bg-muted/30">

@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { useMyTimeGoal, useUpsertTimeGoal } from "@/hooks/useTimeTracking";
-import { Target } from "lucide-react";
+import { Target, BarChart3, DollarSign } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props { open: boolean; onOpenChange: (v: boolean) => void; }
@@ -57,8 +57,8 @@ export function TimeGoalDialog({ open, onOpenChange }: Props) {
             </div>
           </div>
           <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-            <p>📊 Diariamente: <span className="font-bold text-foreground">{(weekly / 5).toFixed(1)}h</span> en días laborables</p>
-            <p>💰 Objetivo facturable: <span className="font-bold text-foreground">{((weekly * billable) / 100).toFixed(1)}h/sem</span></p>
+            <p><BarChart3 className="h-3 w-3 inline" /> Diariamente: <span className="font-bold text-foreground">{(weekly / 5).toFixed(1)}h</span> en días laborables</p>
+            <p><DollarSign className="h-3 w-3 inline" /> Objetivo facturable: <span className="font-bold text-foreground">{((weekly * billable) / 100).toFixed(1)}h/sem</span></p>
           </div>
         </div>
         <DialogFooter>

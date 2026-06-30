@@ -4,7 +4,7 @@ import { useClients } from "@/hooks/useClients";
 import { useAllSupportTickets, useSupportClients } from "@/hooks/useSupportTickets";
 import { useAuth } from "@/hooks/useAuth";
 // DB is the single source of truth — no static fallback
-import { TrendingUp, CheckCircle, AlertTriangle, Users, Clock, ShieldAlert, Filter, Target, FileCheck, Layers, Loader2, Presentation, AlertOctagon, UserX } from "lucide-react";
+import { TrendingUp, CheckCircle, AlertTriangle, Users, Clock, ShieldAlert, Filter, Target, FileCheck, Layers, Loader2, Presentation, AlertOctagon, UserX, Rocket } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
@@ -245,7 +245,7 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
                criticalSupportOpen > 0 ? `${criticalSupportOpen} caso${criticalSupportOpen === 1 ? "" : "s"} crítico${criticalSupportOpen === 1 ? "" : "s"} sin cerrar` :
                unattendedSupport > 0 ? `${unattendedSupport} caso${unattendedSupport === 1 ? "" : "s"} sin atender — esperan asignación` :
                overdueDeliverables > 0 ? `${overdueDeliverables} entregable${overdueDeliverables === 1 ? "" : "s"} vencido${overdueDeliverables === 1 ? "" : "s"}` :
-               "Todo bajo control 🚀"}
+               <span className="inline-flex items-center gap-1">Todo bajo control <Rocket className="h-3 w-3" /></span>}
             </p>
 
             {/* Insights inline accionables — admin solo ve los más críticos

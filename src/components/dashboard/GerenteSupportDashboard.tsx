@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Headset, AlertTriangle, Clock, CheckCircle2, Activity, Send,
   TrendingUp, Flame, Loader2, Search, ChevronRight,
-  FileText, Ticket, Sparkles, Pencil, Check, X,
+  FileText, Ticket, Sparkles, Pencil, Check, X, AlertCircle,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { type Client } from "@/data/projectData";
@@ -53,10 +53,10 @@ const STATE_STYLES: Record<string, string> = {
 };
 
 function getHealth(openCount: number, criticalCount: number) {
-  if (criticalCount > 0) return { label: "Crítico", emoji: "🚨", color: "from-[hsl(0_75%_35%)] via-[hsl(0_72%_45%)] to-[hsl(0_85%_55%)]" };
-  if (openCount > 15) return { label: "Atención", emoji: "⚠️", color: "from-[hsl(20_85%_45%)] via-[hsl(25_92%_50%)] to-[hsl(38_92%_55%)]" };
-  if (openCount > 5) return { label: "Estable", emoji: "✅", color: "from-[hsl(0_72%_42%)] via-[hsl(0_72%_51%)] to-[hsl(15_85%_55%)]" };
-  return { label: "Excelente", emoji: "🌟", color: "from-[hsl(0_72%_45%)] via-[hsl(0_72%_51%)] to-[hsl(0_85%_60%)]" };
+  if (criticalCount > 0) return { label: "Crítico", Icon: AlertCircle, color: "from-[hsl(0_75%_35%)] via-[hsl(0_72%_45%)] to-[hsl(0_85%_55%)]" };
+  if (openCount > 15) return { label: "Atención", Icon: AlertTriangle, color: "from-[hsl(20_85%_45%)] via-[hsl(25_92%_50%)] to-[hsl(38_92%_55%)]" };
+  if (openCount > 5) return { label: "Estable", Icon: CheckCircle2, color: "from-[hsl(0_72%_42%)] via-[hsl(0_72%_51%)] to-[hsl(15_85%_55%)]" };
+  return { label: "Excelente", Icon: Sparkles, color: "from-[hsl(0_72%_45%)] via-[hsl(0_72%_51%)] to-[hsl(0_85%_60%)]" };
 }
 
 export function GerenteSupportDashboard({ client, canCreateTickets = true, sidebarExtras }: Props) {
@@ -190,8 +190,8 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
                   </p>
                   <h1 className="text-xl md:text-2xl font-black leading-tight truncate">{client.name}</h1>
                 </div>
-                <Badge className="bg-white/20 backdrop-blur-sm text-white border-white/30 text-[10px] shrink-0">
-                  {health.emoji} {health.label}
+                <Badge className="bg-white/20 backdrop-blur-sm text-white border-white/30 text-[10px] shrink-0 gap-1">
+                  <health.Icon className="h-3 w-3" /> {health.label}
                 </Badge>
               </div>
 

@@ -97,9 +97,13 @@ export function ReopensInsightsPanel({ clientId, clientName }: Props) {
               </span>
             )}
           </CardTitle>
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-normal hidden md:inline">
-            Excluye histórico pre-instalación
-          </span>
+          <Badge
+            variant="outline"
+            className="text-[9px] gap-1 text-muted-foreground font-normal hidden md:inline-flex shrink-0"
+            title="No se cuentan las reaperturas marcadas como históricas (casos previos a la puesta en marcha del sistema); solo el patrón actual."
+          >
+            <AlertTriangle className="h-2.5 w-2.5" /> Sin histórico pre-instalación
+          </Badge>
           {expanded
             ? <ChevronUp className="h-4 w-4 text-muted-foreground group-hover:text-foreground shrink-0" />
             : <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-foreground shrink-0" />}
@@ -152,6 +156,27 @@ function RateKPI({
   }
   if (!rate) return null;
 
+  // Sin entregas en el período: no hay tasa que calcular. Evita mostrar
+  // "0.0% Saludable" engañoso cuando en realidad no hay datos.
+  if (rate.entregados_90d === 0) {
+    return (
+      <div className="rounded-lg p-3 flex items-center gap-3 bg-muted/40 border border-dashed">
+        <div className="h-12 w-12 rounded-full flex items-center justify-center bg-background border-2 border-muted-foreground/30 text-muted-foreground">
+          <RotateCcw className="h-6 w-6" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline gap-2">
+            <span className="text-lg font-bold text-muted-foreground">Sin datos</span>
+            <Badge variant="outline" className="text-[10px]">últimos 90 días</Badge>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            No hubo casos entregados en los últimos 90 días, así que todavía no hay tasa de reapertura para evaluar.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const pct = rate.rate_pct;
   // Heurística: <5% sano, 5-15% atención, >15% crítico
   const tone = pct < 5
@@ -175,9 +200,9 @@ function RateKPI({
           </Badge>
         </div>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Tasa de reapertura últimos 90 días ·{" "}
-          <span className="font-semibold">{rate.reopens_90d}</span> reincidencias /{" "}
-          <span className="font-semibold">{rate.entregados_90d}</span> entregados
+          Casos entregados que el cliente <strong>reabrió o devolvió</strong> ·{" "}
+          <span className="font-semibold text-foreground">{rate.reopens_90d}</span> reincidencias de{" "}
+          <span className="font-semibold text-foreground">{rate.entregados_90d}</span> entregados (90 días)
         </p>
       </div>
     </div>

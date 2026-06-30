@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Plus } from "lucide-react";
+import { CalendarIcon, Plus, Circle, Globe, Lock } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useCreateTask } from "@/hooks/useClients";
@@ -125,9 +125,9 @@ export function CreateTaskDialog({ clientId, clientName, trigger }: CreateTaskDi
               <Select value={priority} onValueChange={setPriority}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="alta">🔴 Alta</SelectItem>
-                  <SelectItem value="media">🟡 Media</SelectItem>
-                  <SelectItem value="baja">🟢 Baja</SelectItem>
+                  <SelectItem value="alta"><span className="flex items-center gap-1.5"><Circle className="h-3 w-3 fill-destructive text-destructive" /> Alta</span></SelectItem>
+                  <SelectItem value="media"><span className="flex items-center gap-1.5"><Circle className="h-3 w-3 fill-warning text-warning" /> Media</span></SelectItem>
+                  <SelectItem value="baja"><span className="flex items-center gap-1.5"><Circle className="h-3 w-3 fill-success text-success" /> Baja</span></SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -148,8 +148,8 @@ export function CreateTaskDialog({ clientId, clientName, trigger }: CreateTaskDi
               <Select value={visibility} onValueChange={setVisibility}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="externa">🌐 Externa</SelectItem>
-                  <SelectItem value="interna">🔒 Interna</SelectItem>
+                  <SelectItem value="externa"><span className="flex items-center gap-1.5"><Globe className="h-3 w-3" /> Externa</span></SelectItem>
+                  <SelectItem value="interna"><span className="flex items-center gap-1.5"><Lock className="h-3 w-3" /> Interna</span></SelectItem>
                 </SelectContent>
               </Select>
             </div>

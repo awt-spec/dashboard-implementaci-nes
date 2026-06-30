@@ -20,6 +20,7 @@ import {
 } from "@/hooks/useQuotes";
 import { QuoteStatusBadge } from "./QuoteStatusBadge";
 import { QuoteItemsEditor, type DraftItem } from "./QuoteItemsEditor";
+import { ShareQuoteDialog } from "./ShareQuoteDialog";
 
 interface Props {
   quoteId: string | null;
@@ -225,6 +226,11 @@ export function QuoteDetailSheet({ quoteId, open, onOpenChange }: Props) {
                   </p>
                 </div>
               </div>
+              {isStaff && (
+                <div className="flex justify-end">
+                  <ShareQuoteDialog quote={quote as any} />
+                </div>
+              )}
             </SheetHeader>
 
             <div className="space-y-4 py-4">

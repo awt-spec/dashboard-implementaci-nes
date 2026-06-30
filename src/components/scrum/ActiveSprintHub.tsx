@@ -7,6 +7,8 @@ import { Progress } from "@/components/ui/progress";
 import {
   Target, Zap, AlertTriangle, Users, TrendingDown,
   Flame, Clock, CheckCircle2, AlertCircle, PlayCircle, Sparkles,
+  ClipboardList, Check, Footprints, Flag, Sun, PartyPopper, Rocket,
+  type LucideIcon,
 } from "lucide-react";
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ReferenceLine,
@@ -17,12 +19,12 @@ import {
 } from "@/hooks/useTeamScrum";
 import { useClients } from "@/hooks/useClients";
 
-const COLUMNS = [
-  { key: "backlog", label: "Backlog", icon: "📋", color: "bg-muted/40" },
-  { key: "ready", label: "Listo", icon: "✓", color: "bg-info/10" },
-  { key: "in_progress", label: "En Progreso", icon: "⚡", color: "bg-warning/10" },
-  { key: "in_sprint", label: "En Sprint", icon: "🏃", color: "bg-primary/10" },
-  { key: "done", label: "Hecho", icon: "🏁", color: "bg-success/10" },
+const COLUMNS: { key: string; label: string; icon: LucideIcon; color: string }[] = [
+  { key: "backlog", label: "Backlog", icon: ClipboardList, color: "bg-muted/40" },
+  { key: "ready", label: "Listo", icon: Check, color: "bg-info/10" },
+  { key: "in_progress", label: "En Progreso", icon: Zap, color: "bg-warning/10" },
+  { key: "in_sprint", label: "En Sprint", icon: Footprints, color: "bg-primary/10" },
+  { key: "done", label: "Hecho", icon: Flag, color: "bg-success/10" },
 ];
 
 interface Props {
@@ -252,12 +254,12 @@ function SprintHubContent({
               </div>
               <h2 className="text-xl md:text-2xl font-black truncate">{sprint.name}</h2>
               {sprint.goal && (
-                <p className="text-sm text-muted-foreground mt-1 line-clamp-1">🎯 {sprint.goal}</p>
+                <p className="text-sm text-muted-foreground mt-1 line-clamp-1"><Target className="h-3 w-3 inline" /> {sprint.goal}</p>
               )}
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <Button size="sm" variant="outline" onClick={() => onOpenDaily?.(sprint.id)} className="gap-1.5 h-8">
-                ☀️ Daily
+                <Sun className="h-3 w-3 inline" /> Daily
               </Button>
               <Button size="sm" variant="outline" onClick={() => onOpenRetro?.(sprint.id)} className="gap-1.5 h-8">
                 <Sparkles className="h-3.5 w-3.5" /> Retro
@@ -323,9 +325,9 @@ function SprintHubContent({
           {points.pct === 100 && points.planned > 0 && (
             <motion.div
               initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
-              className="absolute top-3 right-3 text-3xl"
+              className="absolute top-3 right-3"
             >
-              🎉
+              <PartyPopper className="h-7 w-7 text-primary" />
             </motion.div>
           )}
         </AnimatePresence>
@@ -381,9 +383,9 @@ function SprintHubContent({
           <CardTitle className="text-sm flex items-center gap-2">
             <TrendingDown className="h-4 w-4 text-primary" />
             Burndown — {points.variance >= 0 ? (
-              <span className="text-success">vas {points.variance} SP por encima del ideal 🚀</span>
+              <span className="text-success">vas {points.variance} SP por encima del ideal <Rocket className="h-3 w-3 inline" /></span>
             ) : (
-              <span className="text-destructive">vas {Math.abs(points.variance)} SP por debajo del ideal ⚠️</span>
+              <span className="text-destructive">vas {Math.abs(points.variance)} SP por debajo del ideal <AlertTriangle className="h-3 w-3 inline" /></span>
             )}
           </CardTitle>
         </CardHeader>
@@ -432,7 +434,7 @@ function SprintHubContent({
                   className={`rounded-lg ${col.color} border border-border/40 p-2 min-h-[200px] space-y-1.5`}
                 >
                   <div className="flex items-center justify-between text-[11px] font-semibold mb-1.5 px-1">
-                    <span>{col.icon} {col.label}</span>
+                    <span className="inline-flex items-center gap-1"><col.icon className="h-3 w-3" /> {col.label}</span>
                     <Badge variant="outline" className="text-[9px] h-4">{colItems.length}</Badge>
                   </div>
                   <div className="space-y-1.5 max-h-[420px] overflow-auto">

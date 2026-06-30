@@ -83,7 +83,9 @@ function TimelineItem({ event, isLast }: TimelineItemProps) {
                 : "bg-muted/50"
             }`}
           >
-            {event.metadata.visibility === "externa" ? "👁 visible al cliente" : "🔒 sólo interna"}
+            {event.metadata.visibility === "externa"
+              ? <><Eye className="h-3 w-3 inline" /> visible al cliente</>
+              : <><Lock className="h-3 w-3 inline" /> sólo interna</>}
           </Badge>
         )}
       </div>

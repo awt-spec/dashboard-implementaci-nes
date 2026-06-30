@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Save, AlertTriangle, Sun, Coffee, Loader2, Calendar as CalIcon, CheckCircle2,
-  TrendingUp, ArrowRight, ArrowLeft, Edit3, Building2,
+  TrendingUp, ArrowRight, ArrowLeft, Edit3, Building2, Target,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAllSprints, useAllScrumWorkItems } from "@/hooks/useTeamScrum";
@@ -129,7 +129,7 @@ export function DailyStandupPanel() {
         blockers: form.blockers,
         mood: form.mood,
       });
-      toast.success("Check-in guardado · ¡buen día! 👋");
+      toast.success("Check-in guardado · ¡buen día!");
       setEditing(false);
       setStep(0);
     } catch (e: any) {
@@ -179,7 +179,7 @@ export function DailyStandupPanel() {
                   <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="text-xs font-semibold">{sprintClient}</span>
                   <span className="text-xs text-muted-foreground">· {sprint.name}</span>
-                  {sprint.goal && <span className="text-xs text-muted-foreground italic truncate max-w-[280px]">· 🎯 {sprint.goal}</span>}
+                  {sprint.goal && <span className="text-xs text-muted-foreground italic truncate max-w-[280px]">· <Target className="h-3 w-3 inline" /> {sprint.goal}</span>}
                 </div>
               )}
             </div>
@@ -220,7 +220,7 @@ export function DailyStandupPanel() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-3 border-t border-border/60">
             <StatTile
               label="Tu check-in"
-              value={myDaily ? "✓ Listo" : "Pendiente"}
+              value={myDaily ? "Listo" : "Pendiente"}
               tone={myDaily ? "text-success" : "text-warning"}
               hint={myDaily ? `${MOODS[myDaily.mood - 1]} ${MOOD_LABELS[myDaily.mood - 1]}` : "Hacelo abajo"}
             />
@@ -306,7 +306,7 @@ export function DailyStandupPanel() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
                 <SummaryItem label="Ayer hice" Icon={CheckCircle2} tone="text-success" content={myDaily.yesterday || "—"} />
                 <SummaryItem label="Hoy voy a" Icon={TrendingUp} tone="text-info" content={myDaily.today || "—"} />
-                <SummaryItem label="Necesito ayuda" Icon={AlertTriangle} tone="text-destructive" content={myDaily.blockers || "Nada por ahora 🙌"} empty={!myDaily.blockers} />
+                <SummaryItem label="Necesito ayuda" Icon={AlertTriangle} tone="text-destructive" content={myDaily.blockers || "Nada por ahora"} empty={!myDaily.blockers} />
               </div>
             </div>
           ) : (
@@ -563,7 +563,7 @@ export function DailyStandupPanel() {
                         )}
                         {hasBlocker && (
                           <p className="line-clamp-1 text-destructive">
-                            <span className="font-semibold">⚠ Bloqueo:</span> {d.blockers}
+                            <span className="font-semibold"><AlertTriangle className="h-3 w-3 inline" /> Bloqueo:</span> {d.blockers}
                           </p>
                         )}
                       </div>

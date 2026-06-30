@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, X, RotateCcw, Loader2, Smile } from "lucide-react";
+import { Plus, X, RotateCcw, Loader2, Smile, CheckCircle2, AlertTriangle, Rocket, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSprintRetro, useUpsertRetro } from "@/hooks/useSprintCeremonies";
@@ -15,11 +15,11 @@ interface Props {
   onOpenChange: (v: boolean) => void;
 }
 
-const COLUMNS = [
-  { key: "well", label: "✅ Qué funcionó", color: "bg-success/10 border-success/30", btn: "text-success" },
-  { key: "improve", label: "⚠️ Qué mejorar", color: "bg-warning/10 border-warning/30", btn: "text-warning" },
-  { key: "actions", label: "🚀 Acciones", color: "bg-primary/10 border-primary/30", btn: "text-primary" },
-] as const;
+const COLUMNS: { key: string; label: string; Icon: LucideIcon; color: string; btn: string }[] = [
+  { key: "well", label: "Qué funcionó", Icon: CheckCircle2, color: "bg-success/10 border-success/30", btn: "text-success" },
+  { key: "improve", label: "Qué mejorar", Icon: AlertTriangle, color: "bg-warning/10 border-warning/30", btn: "text-warning" },
+  { key: "actions", label: "Acciones", Icon: Rocket, color: "bg-primary/10 border-primary/30", btn: "text-primary" },
+];
 
 export function SprintRetroDialog({ sprint, open, onOpenChange }: Props) {
   const { data: retro } = useSprintRetro(sprint.id);
@@ -113,7 +113,7 @@ export function SprintRetroDialog({ sprint, open, onOpenChange }: Props) {
             return (
               <Card key={col.key} className={col.color}>
                 <CardContent className="p-3 space-y-2">
-                  <h4 className="text-xs font-bold uppercase">{col.label}</h4>
+                  <h4 className="text-xs font-bold uppercase flex items-center gap-1"><col.Icon className="h-3 w-3" /> {col.label}</h4>
                   <div className="space-y-1.5 min-h-[150px]">
                     <AnimatePresence>
                       {list.map((item, i) => (

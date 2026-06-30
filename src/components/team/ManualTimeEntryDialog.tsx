@@ -331,7 +331,7 @@ export function ManualTimeEntryDialog({ open, onOpenChange, defaultClientId, def
             </div>
             {newHours > 0 && (
               <div className="text-[11px] text-muted-foreground">
-                +{newHours}h ahora · {projectedWeek >= target ? "🎯 Meta alcanzada" : `Faltan ${(target - projectedWeek).toFixed(1)}h`}
+                +{newHours}h ahora · {projectedWeek >= target ? <span className="inline-flex items-center gap-1"><Target className="h-3 w-3" /> Meta alcanzada</span> : `Faltan ${(target - projectedWeek).toFixed(1)}h`}
               </div>
             )}
           </div>
