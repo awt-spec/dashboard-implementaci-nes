@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useClients } from "@/hooks/useClients";
 import { useSysdeTeamMembers } from "@/hooks/useTeamMembers";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserSupervisions, useStaffProfiles } from "@/hooks/useSupervisions";
 import { type ClientTask } from "@/data/projectData";
 import { TaskBoard } from "@/components/tasks/TaskBoard";
 import { TaskCalendar } from "@/components/tasks/TaskCalendar";
@@ -27,14 +28,18 @@ const views: { key: ViewType; label: string; icon: typeof LayoutList }[] = [
   { key: "timeline", label: "Timeline", icon: GanttChart },
 ];
 
-// Valor especial del filtro de responsable que representa "mis tareas".
+// Valores especiales del filtro de responsable.
 const MINE = "__mine__";
+const SUPERVISEES = "__supervisees__";
 
 export default function TasksDashboard() {
   const { data: clientsData, isLoading } = useClients();
   const clients = clientsData || [];
   const { data: members = [] } = useSysdeTeamMembers();
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
+  // Supervisiones donde el usuario actual es supervisor (ERP-030/033).
+  const { data: mySupervisions = [] } = useUserSupervisions({ supervisorId: user?.id, onlyActive: true });
+  const { data: staffProfiles = [] } = useStaffProfiles();
 
   const [view, setView] = useState<ViewType>("kanban");
   const [filterClient, setFilterClient] = useState("all");
@@ -62,6 +67,17 @@ export default function TasksDashboard() {
     return map;
   }, [members]);
 
+  // Nombres de los supervisados del usuario actual (mapeando user_id → nombre).
+  const superviseeNames = useMemo(() => {
+    const nameByUserId = new Map<string, string>();
+    staffProfiles.forEach(p => { if (p.full_name) nameByUserId.set(p.user_id, p.full_name); });
+    members.forEach((m: any) => { if (m.user_id && m.name) nameByUserId.set(m.user_id, m.name); });
+    return new Set(
+      mySupervisions.map(s => nameByUserId.get(s.supervised_user_id)).filter(Boolean) as string[],
+    );
+  }, [mySupervisions, staffProfiles, members]);
+  const hasSupervisees = superviseeNames.size > 0;
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -78,9 +94,10 @@ export default function TasksDashboard() {
     list.filter(t => {
       if (filterClient !== "all" && t.clientId !== filterClient) return false;
       if (filterStatus !== "all" && t.status !== filterStatus) return false;
-      // Responsable: "Mis tareas" o un responsable puntual.
+      // Responsable: "Mis tareas", "Mis supervisados" o un responsable puntual.
       if (filterOwner === MINE && t.owner !== myName) return false;
-      if (filterOwner !== "all" && filterOwner !== MINE && t.owner !== filterOwner) return false;
+      if (filterOwner === SUPERVISEES && !superviseeNames.has(t.owner)) return false;
+      if (filterOwner !== "all" && filterOwner !== MINE && filterOwner !== SUPERVISEES && t.owner !== filterOwner) return false;
       // Equipo: tareas cuyo responsable pertenece al department elegido.
       if (filterTeam !== "all" && deptByOwner[t.owner] !== filterTeam) return false;
       if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
@@ -186,6 +203,7 @@ export default function TasksDashboard() {
             <SelectContent>
               <SelectItem value="all">Todos los responsables</SelectItem>
               {myName && <SelectItem value={MINE}>★ Mis tareas</SelectItem>}
+              {hasSupervisees && <SelectItem value={SUPERVISEES}>👥 Mis supervisados</SelectItem>}
               {ownersList.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
             </SelectContent>
           </Select>

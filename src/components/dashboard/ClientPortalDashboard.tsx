@@ -10,6 +10,7 @@ import { ClientHoursPanel } from "./ClientHoursPanel";
 import { NotificationBell } from "./NotificationBell";
 import { QuotesPendingApprovalPanel } from "./QuotesPendingApprovalPanel";
 import { AccountStatementPanel } from "@/components/clients/AccountStatementPanel";
+import { ChangePasswordDialog } from "@/components/auth/ChangePasswordDialog";
 import { projectInfo } from "@/data/projectData";
 
 const PERMISSION_LABEL: Record<string, { label: string; Icon: typeof Shield; tone: string }> = {
@@ -108,6 +109,7 @@ export function ClientPortalDashboard() {
             {permMeta.label}
           </Badge>
           <NotificationBell />
+          <ChangePasswordDialog />
           <div className="hidden sm:flex flex-col items-end">
             <p className="text-[11px] font-semibold leading-tight truncate max-w-[180px]">
               {profile?.full_name ?? profile?.email ?? "Usuario"}
