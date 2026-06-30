@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { UserPlus, Trash2, Users, Briefcase, Building2, CheckCircle2, XCircle, FileText, Sparkles, KeyRound, ShieldCheck, ExternalLink } from "lucide-react";
+import { UserPlus, Trash2, Users, Briefcase, Building2, CheckCircle2, XCircle, FileText, Sparkles, KeyRound, ShieldCheck, ExternalLink, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -34,6 +34,8 @@ export function SysdeTeamManager() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("Consultor");
   const [department, setDepartment] = useState("Soporte");
+  const [q, setQ] = useState("");
+  const [deptFilter, setDeptFilter] = useState("all");
 
   const handleCreate = () => {
     if (!name.trim()) return;
@@ -111,6 +113,17 @@ export function SysdeTeamManager() {
 
   const activeMembers = members.filter(m => m.is_active);
 
+  // Búsqueda explícita de equipos/miembros (ERP-016): por nombre, email, rol y
+  // departamento, más filtro por departamento (equipo).
+  const term = q.trim().toLowerCase();
+  const departments = Array.from(new Set(members.map((m: any) => m.department).filter(Boolean))).sort() as string[];
+  const filteredMembers = members.filter((m: any) => {
+    if (deptFilter !== "all" && m.department !== deptFilter) return false;
+    if (!term) return true;
+    return [m.name, m.email, m.role, m.department]
+      .some((f: string | null) => (f || "").toLowerCase().includes(term));
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -172,6 +185,27 @@ export function SysdeTeamManager() {
         </div>
       </div>
 
+      {/* Búsqueda + filtro por equipo (ERP-016) */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nombre, email, rol o equipo..."
+            value={q}
+            onChange={e => setQ(e.target.value)}
+            className="h-8 w-[280px] pl-8 text-xs"
+          />
+        </div>
+        <Select value={deptFilter} onValueChange={setDeptFilter}>
+          <SelectTrigger className="h-8 w-[170px] text-xs"><SelectValue placeholder="Equipo" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los equipos</SelectItem>
+            {departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <span className="text-xs text-muted-foreground">{filteredMembers.length} resultado(s)</span>
+      </div>
+
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -190,9 +224,9 @@ export function SysdeTeamManager() {
             <TableBody>
               {isLoading ? (
                 <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Cargando...</TableCell></TableRow>
-              ) : members.length === 0 ? (
-                <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No hay miembros del equipo. Agrega el primer miembro.</TableCell></TableRow>
-              ) : members.map((m: any) => (
+              ) : filteredMembers.length === 0 ? (
+                <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">{members.length === 0 ? "No hay miembros del equipo. Agrega el primer miembro." : "Sin resultados para la búsqueda."}</TableCell></TableRow>
+              ) : filteredMembers.map((m: any) => (
                 <TableRow key={m.id} className={!m.is_active ? "opacity-50" : ""}>
                   <TableCell className="font-medium">
                     <Link to={`/team/${m.id}`} className="hover:text-primary hover:underline inline-flex items-center gap-1">

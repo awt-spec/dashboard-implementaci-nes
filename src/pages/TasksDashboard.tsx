@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useClients } from "@/hooks/useClients";
+import { useSysdeTeamMembers } from "@/hooks/useTeamMembers";
+import { useAuth } from "@/hooks/useAuth";
 import { type ClientTask } from "@/data/projectData";
 import { TaskBoard } from "@/components/tasks/TaskBoard";
 import { TaskCalendar } from "@/components/tasks/TaskCalendar";
@@ -25,16 +27,40 @@ const views: { key: ViewType; label: string; icon: typeof LayoutList }[] = [
   { key: "timeline", label: "Timeline", icon: GanttChart },
 ];
 
+// Valor especial del filtro de responsable que representa "mis tareas".
+const MINE = "__mine__";
+
 export default function TasksDashboard() {
   const { data: clientsData, isLoading } = useClients();
   const clients = clientsData || [];
+  const { data: members = [] } = useSysdeTeamMembers();
+  const { profile } = useAuth();
 
   const [view, setView] = useState<ViewType>("kanban");
   const [filterClient, setFilterClient] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [filterOwner, setFilterOwner] = useState("all");
+  const [filterTeam, setFilterTeam] = useState("all");
   const [search, setSearch] = useState("");
   const [editingTask, setEditingTask] = useState<TaskWithClient | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+
+  // Responsable (owner es un nombre) y equipo (department del miembro).
+  const myName = profile?.full_name ?? "";
+  const ownersList = useMemo(
+    () => Array.from(new Set(members.map(m => m.name).filter(Boolean))).sort(),
+    [members],
+  );
+  const teamsList = useMemo(
+    () => Array.from(new Set(members.map(m => m.department).filter(Boolean))).sort() as string[],
+    [members],
+  );
+  // owner -> department, para filtrar tareas por equipo.
+  const deptByOwner = useMemo(() => {
+    const map: Record<string, string> = {};
+    members.forEach(m => { if (m.name && m.department) map[m.name] = m.department; });
+    return map;
+  }, [members]);
 
   if (isLoading) {
     return (
@@ -52,6 +78,11 @@ export default function TasksDashboard() {
     list.filter(t => {
       if (filterClient !== "all" && t.clientId !== filterClient) return false;
       if (filterStatus !== "all" && t.status !== filterStatus) return false;
+      // Responsable: "Mis tareas" o un responsable puntual.
+      if (filterOwner === MINE && t.owner !== myName) return false;
+      if (filterOwner !== "all" && filterOwner !== MINE && t.owner !== filterOwner) return false;
+      // Equipo: tareas cuyo responsable pertenece al department elegido.
+      if (filterTeam !== "all" && deptByOwner[t.owner] !== filterTeam) return false;
       if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
@@ -149,6 +180,25 @@ export default function TasksDashboard() {
               <SelectItem value="completada">Completada</SelectItem>
             </SelectContent>
           </Select>
+          {/* Responsable: incluye "Mis tareas" (ERP-029/031) */}
+          <Select value={filterOwner} onValueChange={setFilterOwner}>
+            <SelectTrigger className="h-8 w-[150px] text-xs"><SelectValue placeholder="Responsable" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los responsables</SelectItem>
+              {myName && <SelectItem value={MINE}>★ Mis tareas</SelectItem>}
+              {ownersList.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {/* Equipo: filtra por department del responsable (ERP-032) */}
+          {teamsList.length > 0 && (
+            <Select value={filterTeam} onValueChange={setFilterTeam}>
+              <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue placeholder="Equipo" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los equipos</SelectItem>
+                {teamsList.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
           <CreateTaskDialog clientId={activeClientId} />
         </div>
       </div>
