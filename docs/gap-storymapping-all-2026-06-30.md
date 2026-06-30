@@ -58,7 +58,22 @@ Se destrabaron **ERP-013/015** a nivel de gestión con un catálogo de roles ges
 - Hook `useRoles` + `RolesCatalogPanel` reescrito con CRUD.
 - **Pendiente (fase 2):** la APLICACIÓN de permisos en RLS para roles personalizados (RBAC dinámico) — hoy la RLS sigue basada en el enum `app_role` + `has_role` para los roles de sistema. Crear un rol personalizado lo deja definido y gestionable, pero su enforcement de permisos requiere construir el modelo de `role_permissions` y consultar permisos en vez de roles hardcodeados.
 
-**Cobertura final del Story Mapping:** 127/127 funcionalidades con implementación de gestión; la única deuda técnica restante es el RBAC dinámico (fase 2) para que los roles personalizados tengan enforcement automático en RLS.
+### Refactor de roles — fase 2: RBAC dinámico (2026-06-30)
+
+Se construyó el modelo de permisos que da enforcement a los roles personalizados:
+
+- Migración `supabase/migrations/20260630140000_rbac_permissions.sql`:
+  - `permissions` (catálogo módulo+acción, sembrado desde la matriz que estaba hardcodeada en `RBACPermissionsTab`).
+  - `role_permissions` (rol→permiso, sembrado para admin/pm/gerente).
+  - `user_custom_roles` (asignar roles personalizados a usuarios; los de sistema siguen en `user_roles`/enum).
+  - Funciones `has_permission(user, key)` y `get_my_permissions()` que resuelven roles de sistema **+** personalizados.
+- Hooks `usePermissions`: catálogo, matriz por rol (toggle), permisos efectivos del usuario (`useMyPermissions` / `useHasPermission`), asignación de roles personalizados.
+- `RBACPermissionsTab` ahora es una **matriz editable y persistida** (antes estática), cubriendo todos los roles del catálogo.
+- `RolesCatalogPanel`: diálogo para asignar roles personalizados a usuarios + conteo real por rol.
+
+**Qué queda (fase 3, opcional):** migrar las políticas RLS existentes de `has_role(enum)` a `has_permission(key)` de forma incremental, tabla por tabla, para que el enforcement a nivel de base de datos también sea 100% dinámico. Hoy el modelo dinámico aplica en el gating de la aplicación y queda disponible (`has_permission`) para usarse en RLS; las políticas históricas de los roles de sistema siguen funcionando sin cambios.
+
+**Cobertura final del Story Mapping:** 127/127 funcionalidades implementadas. Los roles personalizados ya se crean, configuran (permisos) y asignan a usuarios con enforcement en la app.
 
 ---
 
