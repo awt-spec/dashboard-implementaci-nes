@@ -29,6 +29,7 @@ import { Plus, Inbox, Settings, Database, Briefcase } from "lucide-react";
 import { ActivePolicyBar } from "@/components/policy/ActivePolicyBar";
 import { SLAByClientPanel } from "./SLAByClientPanel";
 import { ReopensInsightsPanel } from "./ReopensInsightsPanel";
+import { PendingCommentsPanel } from "./PendingCommentsPanel";
 
 interface SupportDashboardProps {
   initialClientId?: string;
@@ -472,6 +473,11 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
               />
             );
           })()}
+
+          {/* Comentarios de clientes pendientes de respuesta (ERP-089) */}
+          <PendingCommentsPanel
+            clientId={isClientView ? initialClientId : (selectedClient !== "all" ? selectedClient : undefined)}
+          />
 
 
           <InsightsGuidedView

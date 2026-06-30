@@ -355,6 +355,78 @@ export function useDeleteTicketNote() {
   });
 }
 
+// ─── Comentarios pendientes de atender (ERP-089) ───
+// Una solicitud tiene un "comentario pendiente de atender" cuando su última
+// nota externa (visible al cliente) fue escrita por alguien que NO es del
+// staff de SYSDE — es decir, el cliente comentó y nadie de SVA respondió aún.
+export interface PendingComment {
+  ticket_uuid: string;
+  ticket_code: string;
+  asunto: string;
+  client_id: string;
+  estado: string;
+  note_id: string;
+  content: string;
+  author_name: string;
+  created_at: string;
+}
+
+export function usePendingComments(clientId?: string) {
+  return useQuery({
+    queryKey: ["pending-comments", clientId ?? "all"],
+    queryFn: async (): Promise<PendingComment[]> => {
+      // 1. Nombres del staff SYSDE (para distinguir cliente vs interno).
+      const { data: staff } = await (supabase.from("sysde_team_members" as any).select("name") as any);
+      const staffNames = new Set(
+        (staff || []).map((m: any) => (m.name || "").trim().toLowerCase()).filter(Boolean),
+      );
+      // 2. Notas externas, más recientes primero.
+      const { data: notes, error } = await supabase
+        .from("support_ticket_notes")
+        .select("id, ticket_id, content, author_name, created_at, visibility")
+        .eq("visibility", "externa")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      // 3. Última nota externa por ticket.
+      const latestByTicket = new Map<string, any>();
+      for (const n of notes || []) {
+        if (!latestByTicket.has(n.ticket_id)) latestByTicket.set(n.ticket_id, n);
+      }
+      // 4. Pendiente = autor de la última nota externa no es staff.
+      const pendingNotes = Array.from(latestByTicket.values()).filter(
+        (n) => !staffNames.has((n.author_name || "").trim().toLowerCase()),
+      );
+      if (pendingNotes.length === 0) return [];
+      // 5. Datos del ticket; descartar cerrados/anulados.
+      const { data: tickets } = await supabase
+        .from("support_tickets")
+        .select("id, ticket_id, asunto, client_id, estado")
+        .in("id", pendingNotes.map((n) => n.ticket_id));
+      const tmap = new Map((tickets || []).map((t: any) => [t.id, t]));
+      const closed = new Set(["CERRADA", "ANULADA"]);
+      return pendingNotes
+        .map((n) => {
+          const t: any = tmap.get(n.ticket_id);
+          if (!t) return null;
+          if (closed.has((t.estado || "").toUpperCase())) return null;
+          if (clientId && t.client_id !== clientId) return null;
+          return {
+            ticket_uuid: n.ticket_id,
+            ticket_code: t.ticket_id,
+            asunto: t.asunto,
+            client_id: t.client_id,
+            estado: t.estado,
+            note_id: n.id,
+            content: n.content,
+            author_name: n.author_name,
+            created_at: n.created_at,
+          } as PendingComment;
+        })
+        .filter(Boolean) as PendingComment[];
+    },
+  });
+}
+
 // ─── Dependencies ───
 export interface TicketDependency {
   id: string;
