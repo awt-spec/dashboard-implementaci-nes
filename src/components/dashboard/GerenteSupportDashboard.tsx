@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Headset, AlertTriangle, Clock, CheckCircle2, Activity, Send,
   TrendingUp, Flame, Loader2, Search, ChevronRight,
-  FileText, Ticket, Sparkles, Pencil, Check, X, AlertCircle,
+  FileText, Ticket, Sparkles, Pencil, Check, X, AlertCircle, Wallet,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { type Client } from "@/data/projectData";
@@ -243,13 +243,19 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
             <MiniStat icon={Clock} label=">30 días" value={oldTickets.length} tone="destructive" />
           </div>
 
-          {sidebarExtras}
+          {/* En desktop los extras (cotizaciones / estado de cuenta / horas) van en
+              el sidebar; en móvil se muestran dentro de la pestaña "Cuenta" para no
+              empujar los casos hacia abajo con scroll infinito. */}
+          {sidebarExtras && <div className="hidden lg:block">{sidebarExtras}</div>}
         </div>
 
         {/* ─── RIGHT / MAIN COLUMN ─── */}
         <div className="min-w-0 mt-4 lg:mt-0">
           <Tabs value={tab} onValueChange={setTab}>
-            <TabsList className="grid grid-cols-3 w-full sticky top-0 z-10 bg-background/95 backdrop-blur-sm h-11">
+            <TabsList className={cn(
+              "grid w-full sticky top-0 z-10 bg-background/95 backdrop-blur-sm h-11",
+              sidebarExtras ? "grid-cols-4 lg:grid-cols-3" : "grid-cols-3",
+            )}>
               <TabsTrigger value="resumen" className="text-xs gap-1.5">
                 <Activity className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Resumen</span>
               </TabsTrigger>
@@ -264,6 +270,12 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
               <TabsTrigger value="historial" className="text-xs gap-1.5">
                 <CheckCircle2 className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Historial</span>
               </TabsTrigger>
+              {/* Solo en móvil: los extras (cuenta) van como pestaña, no como scroll */}
+              {sidebarExtras && (
+                <TabsTrigger value="cuenta" className="text-xs gap-1.5 lg:hidden">
+                  <Wallet className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Cuenta</span>
+                </TabsTrigger>
+              )}
             </TabsList>
 
             {/* RESUMEN */}
@@ -511,6 +523,13 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
                 ))
               )}
             </TabsContent>
+
+            {/* CUENTA (solo móvil) — cotizaciones, estado de cuenta, horas */}
+            {sidebarExtras && (
+              <TabsContent value="cuenta" className="mt-4 lg:hidden">
+                {sidebarExtras}
+              </TabsContent>
+            )}
           </Tabs>
         </div>
       </div>
