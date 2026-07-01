@@ -4,11 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Download, Calendar, Clock, FileText, Users, AlertTriangle, TrendingUp, ListTree } from "lucide-react";
+import { Loader2, Download, Calendar, Clock, FileText, Users, AlertTriangle, TrendingUp, ListTree, Package, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip as RTooltip } from "recharts";
 import { useAccountStatement, getPeriodDates, type StatementPeriod } from "@/hooks/useAccountStatement";
 import { exportAccountStatementPdf } from "@/lib/exportAccountStatementPdf";
+import { useSysdeStatementData, toSysdeExportData } from "@/hooks/useSysdeStatementData";
 import { AccountStatementDetail } from "./AccountStatementDetail";
 
 const PERIOD_OPTIONS: Array<{ value: StatementPeriod; label: string }> = [
@@ -24,6 +25,13 @@ interface Props {
   clientId: string;
 }
 
+const n2 = (v: number) => Number(v || 0).toLocaleString("es-CR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtDate = (d?: string | null) => {
+  if (!d) return "—";
+  const [y, m, day] = d.slice(0, 10).split("-");
+  return `${day}/${m}/${y}`;
+};
+
 export function AccountStatementPanel({ clientId }: Props) {
   const [period, setPeriod] = useState<StatementPeriod>("current_month");
   const [customFrom, setCustomFrom] = useState("");
@@ -37,10 +45,12 @@ export function AccountStatementPanel({ clientId }: Props) {
 
   const { data: stmt, isLoading, error, refetch } = useAccountStatement(clientId, dates);
 
-  const handleExport = () => {
+  const { loadingPkgs, pkgRows, rows, totals } = useSysdeStatementData(stmt, clientId);
+
+  const handleExport = async () => {
     if (!stmt) return;
     try {
-      exportAccountStatementPdf(stmt);
+      await exportAccountStatementPdf(stmt, toSysdeExportData({ pkgRows, rows, totals }));
       toast.success("PDF descargado");
     } catch (e: any) {
       toast.error(e?.message || "Error al generar PDF");
@@ -226,6 +236,65 @@ export function AccountStatementPanel({ clientId }: Props) {
             </Card>
           )}
 
+          {/* Paquetes de servicio — estructura SYSDE (pólizas) */}
+          <Card>
+            <CardHeader className="pb-2 flex-row items-center gap-2 space-y-0">
+              <Package className="h-3.5 w-3.5 text-muted-foreground" />
+              <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">
+                Paquetes de servicio ({pkgRows.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {loadingPkgs ? (
+                <div className="py-4 flex justify-center"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+              ) : pkgRows.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic py-2">Sin paquetes en el período.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-[10px] uppercase text-muted-foreground border-b">
+                        <th className="text-left font-medium py-1.5 pr-2">Póliza</th>
+                        <th className="text-left font-medium py-1.5 px-2">Paquete</th>
+                        <th className="text-right font-medium py-1.5 px-2">Contratadas</th>
+                        <th className="text-right font-medium py-1.5 px-2">Consumidas</th>
+                        <th className="text-right font-medium py-1.5 px-2">Saldo</th>
+                        <th className="text-left font-medium py-1.5 px-2">Vigencia</th>
+                        <th className="text-center font-medium py-1.5 pl-2">Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pkgRows.map(p => (
+                        <tr key={p.id} className="border-b last:border-0">
+                          <td className="py-1.5 pr-2 tabular-nums">{p.policy_number}</td>
+                          <td className="py-1.5 px-2 tabular-nums">{p.package_number}</td>
+                          <td className="py-1.5 px-2 text-right tabular-nums">{n2(p.hours_contracted)}</td>
+                          <td className="py-1.5 px-2 text-right tabular-nums">{n2(p.consumed)}</td>
+                          <td className={`py-1.5 px-2 text-right tabular-nums font-medium ${p.balance < 0 ? "text-destructive" : ""}`}>{n2(p.balance)}</td>
+                          <td className="py-1.5 px-2 text-muted-foreground whitespace-nowrap">{fmtDate(p.start_date)} – {fmtDate(p.end_date)}</td>
+                          <td className="py-1.5 pl-2 text-center">
+                            <Badge variant={p.estado === "Activo" ? "default" : "secondary"} className="text-[9px] h-4 px-1.5">{p.estado}</Badge>
+                          </td>
+                        </tr>
+                      ))}
+                      <tr className="font-semibold border-t-2 border-border">
+                        <td className="py-1.5 pr-2 text-primary" colSpan={2}>TOTALES</td>
+                        <td className="py-1.5 px-2 text-right tabular-nums">{n2(totals.contracted)}</td>
+                        <td className="py-1.5 px-2 text-right tabular-nums">{n2(totals.consumed)}</td>
+                        <td className="py-1.5 px-2 text-right tabular-nums">{n2(totals.balance)}</td>
+                        <td colSpan={2}></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <div className="mt-2 flex items-center justify-between rounded-md bg-primary/10 px-3 py-2">
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-primary">Total saldo horas activas</span>
+                    <span className="text-sm font-bold tabular-nums">{n2(totals.saldoActivas)} h</span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Sparkline por día */}
           {stmt.consumption.by_day.length > 0 && (
             <Card>
@@ -272,31 +341,46 @@ export function AccountStatementPanel({ clientId }: Props) {
             </Card>
           )}
 
-          {/* Por ticket/tarea */}
-          {stmt.consumption.by_item.length > 0 && (
+          {/* Solicitudes de servicio — estructura SYSDE */}
+          {rows.length > 0 && (
             <Card>
-              <CardHeader className="pb-2">
+              <CardHeader className="pb-2 flex-row items-center gap-2 space-y-0">
+                <ClipboardList className="h-3.5 w-3.5 text-muted-foreground" />
                 <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Por ticket / tarea ({stmt.consumption.by_item.length})
+                  Solicitudes de servicio ({rows.length})
                 </CardTitle>
               </CardHeader>
-              <CardContent className="pt-0 space-y-1">
-                {stmt.consumption.by_item.map((it, i) => (
-                  <div key={`${it.source}-${it.item_id}-${i}`} className="flex justify-between items-start text-xs py-1.5 border-b last:border-0">
-                    <div className="flex-1 min-w-0 mr-2">
-                      {it.ticket_info ? (
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-semibold tabular-nums text-[10px] text-muted-foreground">{it.ticket_info.ticket_id}</span>
-                          <Badge variant="outline" className="text-[9px] h-3.5 px-1">{it.ticket_info.estado}</Badge>
-                          <span className="truncate text-xs">{it.ticket_info.asunto}</span>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">{it.source}: {it.item_id}</span>
-                      )}
-                    </div>
-                    <span className="font-semibold tabular-nums w-16 text-right shrink-0">{Number(it.hours).toFixed(2)} h</span>
-                  </div>
-                ))}
+              <CardContent className="pt-0 overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-[10px] uppercase text-muted-foreground border-b">
+                      <th className="text-left font-medium py-1.5 pr-2">Id</th>
+                      <th className="text-center font-medium py-1.5 px-2">Paq.</th>
+                      <th className="text-left font-medium py-1.5 px-2">Producto</th>
+                      <th className="text-left font-medium py-1.5 px-2">Asunto</th>
+                      <th className="text-center font-medium py-1.5 px-2">Fecha</th>
+                      <th className="text-left font-medium py-1.5 px-2">Tipo</th>
+                      <th className="text-right font-medium py-1.5 pl-2">Tiempo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map(r => (
+                      <tr key={r.item_id} className="border-b last:border-0">
+                        <td className="py-1.5 pr-2 tabular-nums text-muted-foreground whitespace-nowrap">{r.ticket_code}</td>
+                        <td className="py-1.5 px-2 text-center tabular-nums">{r.package_number ?? "—"}</td>
+                        <td className="py-1.5 px-2 whitespace-nowrap">{r.producto}</td>
+                        <td className="py-1.5 px-2 max-w-[240px] truncate">{r.asunto}</td>
+                        <td className="py-1.5 px-2 text-center text-muted-foreground whitespace-nowrap">{fmtDate(r.fecha_registro)}</td>
+                        <td className="py-1.5 px-2 whitespace-nowrap">{r.tipo}</td>
+                        <td className="py-1.5 pl-2 text-right tabular-nums font-medium">{n2(r.hours)}</td>
+                      </tr>
+                    ))}
+                    <tr className="font-semibold border-t-2 border-border">
+                      <td colSpan={6} className="py-1.5 pr-2 text-right text-primary">Total tiempo invertido</td>
+                      <td className="py-1.5 pl-2 text-right tabular-nums">{n2(totals.invertido)}</td>
+                    </tr>
+                  </tbody>
+                </table>
               </CardContent>
             </Card>
           )}

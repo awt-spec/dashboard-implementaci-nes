@@ -1,230 +1,367 @@
 import jsPDF from "jspdf";
 import type { AccountStatement } from "@/hooks/useAccountStatement";
+import sysdelogo from "@/assets/logo-sysde.png";
 
-const fmtNum = (n: number, decimals = 2) => Number(n).toFixed(decimals);
-const fmtMoney = (n: number, currency: string) => `${fmtNum(n, 2)} ${currency}`;
+/* ── Datos precalculados por AccountStatementDetail ──────────────────────── */
+export interface SysdePackageRow {
+  policy_number: number;
+  package_number: number;
+  hours_contracted: number;
+  consumed: number;
+  balance: number;
+  start_date: string;
+  end_date: string;
+  estado: string;
+}
+export interface SysdeSolicitudRow {
+  ticket_code: string;
+  package_number: number | null;
+  producto: string;
+  consecutivo_cliente: number | null;
+  asunto: string;
+  fecha_registro: string | null;
+  tipo: string;
+  hours: number;
+}
+export interface SysdeExportData {
+  packages: SysdePackageRow[];
+  solicitudes: SysdeSolicitudRow[];
+  totals: {
+    contracted: number;
+    consumed: number;
+    balance: number;
+    saldoActivas: number;
+    invertido: number;
+  };
+}
 
-export function exportAccountStatementPdf(stmt: AccountStatement) {
+/* ── Helpers ─────────────────────────────────────────────────────────────── */
+const RED: [number, number, number] = [139, 30, 30]; // #8B1E1E
+const n2 = (v: number) =>
+  Number(v || 0).toLocaleString("es-CR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtDate = (d?: string | null) => {
+  if (!d) return "—";
+  const [y, m, day] = d.slice(0, 10).split("-");
+  return `${day}/${m}/${y}`;
+};
+
+/** Carga el logo (asset de Vite) como dataURL para incrustarlo en el PDF. */
+async function loadLogo(): Promise<{ data: string; w: number; h: number } | null> {
+  try {
+    const res = await fetch(sysdelogo);
+    const blob = await res.blob();
+    const data: string = await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result as string);
+      r.onerror = reject;
+      r.readAsDataURL(blob);
+    });
+    const dims = await new Promise<{ w: number; h: number }>((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+      img.onerror = () => resolve({ w: 0, h: 0 });
+      img.src = data;
+    });
+    return { data, w: dims.w, h: dims.h };
+  } catch {
+    return null;
+  }
+}
+
+interface Col {
+  header: string;
+  width: number;
+  align?: "left" | "right" | "center";
+  wrap?: boolean;
+}
+
+/* ── Generador principal ─────────────────────────────────────────────────── */
+export async function exportAccountStatementPdf(stmt: AccountStatement, data: SysdeExportData) {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
-  const margin = 15;
+  const margin = 12;
+  const contentW = pageW - margin * 2;
   let y = margin;
 
-  const checkPage = (needed = 10) => {
-    if (y + needed > pageH - margin) {
+  const footerH = 18;
+  const ensure = (needed: number) => {
+    if (y + needed > pageH - footerH) {
       doc.addPage();
       y = margin;
     }
   };
 
-  // Header
+  /* Tabla genérica con encabezado rojo, ajuste de línea y salto de página. */
+  const drawTable = (
+    title: string,
+    cols: Col[],
+    rows: string[][],
+    opts?: { boldRows?: Set<number>; redText?: Set<number> },
+  ) => {
+    const totalW = cols.reduce((s, c) => s + c.width, 0);
+    const scale = contentW / totalW;
+    const w = cols.map((c) => c.width * scale);
+    const x0 = margin;
+
+    // Título de la sección (banda con borde rojo)
+    ensure(16);
+    doc.setDrawColor(...RED);
+    doc.setLineWidth(0.3);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(0);
+    const titleH = 6;
+    doc.rect(x0, y, contentW, titleH);
+    doc.text(title, x0 + contentW / 2, y + 4.2, { align: "center" });
+    y += titleH;
+
+    // Encabezado de columnas (fondo rojo, texto blanco)
+    const drawHeader = () => {
+      const rowH = 8;
+      doc.setFillColor(...RED);
+      doc.rect(x0, y, contentW, rowH, "F");
+      doc.setTextColor(255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(6.5);
+      let cx = x0;
+      cols.forEach((c, i) => {
+        const lines = doc.splitTextToSize(c.header, w[i] - 2);
+        const ty = y + rowH / 2 - (lines.length - 1) * 1.3 + 1.2;
+        doc.text(lines, cx + w[i] / 2, ty, { align: "center" });
+        cx += w[i];
+      });
+      // líneas verticales del header
+      doc.setDrawColor(255);
+      doc.setLineWidth(0.1);
+      let vx = x0;
+      for (let i = 0; i < cols.length; i++) {
+        doc.line(vx, y, vx, y + rowH);
+        vx += w[i];
+      }
+      doc.line(vx, y, vx, y + rowH);
+      y += rowH;
+    };
+    drawHeader();
+
+    // Filas
+    doc.setTextColor(0);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.8);
+    rows.forEach((cells, ri) => {
+      const isBold = opts?.boldRows?.has(ri);
+      const isRed = opts?.redText?.has(ri);
+      doc.setFont("helvetica", isBold ? "bold" : "normal");
+      // altura por wrap
+      const wrapped = cells.map((cell, i) =>
+        cols[i].wrap ? doc.splitTextToSize(cell || "", w[i] - 2) : [cell || ""],
+      );
+      const maxLines = Math.max(1, ...wrapped.map((l) => l.length));
+      const rowH = Math.max(5.5, maxLines * 3 + 1.5);
+
+      if (y + rowH > pageH - footerH) {
+        doc.addPage();
+        y = margin;
+        drawHeader();
+        doc.setFont("helvetica", isBold ? "bold" : "normal");
+        doc.setFontSize(6.8);
+      }
+
+      // fondo tenue para totales
+      if (isBold) {
+        doc.setFillColor(245, 235, 235);
+        doc.rect(x0, y, contentW, rowH, "F");
+      }
+
+      if (isRed) doc.setTextColor(...RED);
+      else doc.setTextColor(0, 0, 0);
+      let cx = x0;
+      cols.forEach((c, i) => {
+        const lines = wrapped[i];
+        const tx = c.align === "right" ? cx + w[i] - 1.5 : c.align === "center" ? cx + w[i] / 2 : cx + 1.5;
+        const ty = y + 3.3;
+        doc.text(lines, tx, ty, { align: c.align ?? "left" });
+        cx += w[i];
+      });
+
+      // bordes de celda
+      doc.setDrawColor(210);
+      doc.setLineWidth(0.1);
+      let vx = x0;
+      for (let i = 0; i < cols.length; i++) {
+        doc.line(vx, y, vx, y + rowH);
+        vx += w[i];
+      }
+      doc.line(vx, y, vx, y + rowH);
+      doc.line(x0, y + rowH, x0 + contentW, y + rowH);
+      y += rowH;
+    });
+    doc.setTextColor(0);
+  };
+
+  /* ── Encabezado con logo ── */
+  const logo = await loadLogo();
+  if (logo && logo.w > 0) {
+    const logoH = 12;
+    const logoW = (logo.w / logo.h) * logoH;
+    doc.addImage(logo.data, "PNG", margin, y, logoW, logoH);
+  }
+  // franja roja a la derecha
+  doc.setFillColor(...RED);
+  doc.rect(pageW - margin - 8, y, 8, 14, "F");
+  y += 18;
+
+  doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
-  doc.setFont("helvetica", "bold");
-  doc.text("Estado de Cuenta", margin, y);
-  y += 8;
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "normal");
-  doc.text(stmt.client.name, margin, y);
-  y += 5;
+  doc.setTextColor(0);
+  doc.text("ESTADO DE CUENTA", margin, y);
+  y += 9;
+
   doc.setFontSize(9);
-  doc.setTextColor(100);
-  doc.text(
-    `Período: ${stmt.period.start} → ${stmt.period.end}  ·  Generado: ${stmt.generated_at.slice(0, 10)}`,
-    margin, y,
-  );
+  doc.setFont("helvetica", "bold");
+  doc.text("Estimado cliente: ", margin, y);
+  const w1 = doc.getTextWidth("Estimado cliente: ");
+  doc.setTextColor(...RED);
+  doc.text(stmt.client.name, margin + w1, y);
   doc.setTextColor(0);
+  y += 6;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.text("Estado de cuenta para el periodo definido entre las siguientes fechas:", margin, y);
+  doc.setFont("helvetica", "bold");
+  doc.text(`${fmtDate(stmt.period.start)}   ${fmtDate(stmt.period.end)}`, pageW - margin, y, { align: "right" });
   y += 8;
 
-  // Contract block
-  if (stmt.contract) {
-    doc.setDrawColor(220);
-    doc.setLineWidth(0.2);
-    doc.line(margin, y, pageW - margin, y);
-    y += 5;
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.text("Contrato activo", margin, y);
-    y += 5;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.text(`Tipo: ${stmt.contract.contract_type}`, margin, y);
-    doc.text(`Bolsa: ${stmt.contract.included_hours} h/mes`, margin + 60, y);
-    doc.text(`Tarifa: ${fmtMoney(stmt.contract.hourly_rate, stmt.currency)}/h`, margin + 120, y);
-    y += 5;
-    doc.text(`Valor mensual: ${fmtMoney(stmt.contract.monthly_value, stmt.currency)}`, margin, y);
-    if (stmt.contract.start_date) {
-      doc.text(`Vigente desde: ${stmt.contract.start_date}`, margin + 60, y);
-    }
-    y += 8;
+  /* ── Tabla: Paquetes de servicio ── */
+  const pkgCols: Col[] = [
+    { header: "Póliza", width: 14, align: "center" },
+    { header: "Paquete Servicio", width: 20, align: "center" },
+    { header: "Horas contratadas", width: 18, align: "right" },
+    { header: "Horas consumidas", width: 18, align: "right" },
+    { header: "Saldo horas póliza", width: 18, align: "right" },
+    { header: "Fecha inicial", width: 16, align: "center" },
+    { header: "Fecha vencimiento", width: 18, align: "center" },
+    { header: "Estado", width: 14, align: "center" },
+  ];
+  const pkgRows: string[][] = data.packages.map((p) => [
+    String(p.policy_number),
+    String(p.package_number),
+    n2(p.hours_contracted),
+    n2(p.consumed),
+    n2(p.balance),
+    fmtDate(p.start_date),
+    fmtDate(p.end_date),
+    p.estado,
+  ]);
+  if (pkgRows.length === 0) {
+    pkgRows.push(["—", "—", "0.00", "0.00", "0.00", "—", "—", "—"]);
   }
+  const totalRowIdx = pkgRows.length;
+  pkgRows.push([
+    "TOTALES",
+    "",
+    n2(data.totals.contracted),
+    n2(data.totals.consumed),
+    n2(data.totals.balance),
+    "",
+    "",
+    "",
+  ]);
+  drawTable("Paquetes de servicio", pkgCols, pkgRows, {
+    boldRows: new Set([totalRowIdx]),
+    redText: new Set([totalRowIdx]),
+  });
 
-  // Consumption summary
-  doc.setDrawColor(220);
-  doc.line(margin, y, pageW - margin, y);
-  y += 5;
-  doc.setFontSize(11);
+  // Banda TOTAL SALDO HORAS ACTIVAS
+  ensure(9);
+  const bandH = 7;
+  doc.setFillColor(...RED);
+  doc.rect(margin, y, contentW - 34, bandH, "F");
+  doc.setTextColor(255);
   doc.setFont("helvetica", "bold");
-  doc.text("Consumo del período", margin, y);
-  y += 6;
-  doc.setFontSize(20);
-  doc.setTextColor(200, 32, 15);
-  doc.text(fmtNum(stmt.consumption.total_hours, 1), margin, y);
-  doc.setFontSize(10);
-  doc.setTextColor(0);
-  doc.setFont("helvetica", "normal");
-  doc.text(" horas trabajadas", margin + 25, y);
-  y += 6;
-
-  if (stmt.consumption.included_hours > 0) {
-    doc.setFontSize(9);
-    doc.setTextColor(80);
-    const remaining = stmt.consumption.included_hours - stmt.consumption.total_hours;
-    if (remaining >= 0) {
-      doc.text(
-        `Saldo: ${fmtNum(remaining, 1)} h restantes de ${stmt.consumption.included_hours} h contratadas (${stmt.consumption.utilization_pct ?? 0}% utilización)`,
-        margin, y,
-      );
-    } else {
-      doc.setTextColor(200, 32, 15);
-      doc.text(
-        `Sobreconsumo: ${fmtNum(stmt.consumption.overage_hours, 1)} h sobre la bolsa de ${stmt.consumption.included_hours} h`,
-        margin, y,
-      );
-      doc.setTextColor(80);
-    }
-    doc.setTextColor(0);
-    y += 6;
-  }
-
-  // Por colaborador
-  if (stmt.consumption.by_user.length > 0) {
-    checkPage(20);
-    y += 4;
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.text("Desglose por colaborador", margin, y);
-    y += 5;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    // Tabla simple
-    doc.setDrawColor(220);
-    doc.line(margin, y + 1, pageW - margin, y + 1);
-    doc.text("Colaborador", margin + 1, y);
-    doc.text("Entradas", pageW - margin - 40, y);
-    doc.text("Horas", pageW - margin - 15, y, { align: "right" });
-    y += 5;
-    for (const u of stmt.consumption.by_user) {
-      checkPage(6);
-      doc.text(u.user_name.substring(0, 50), margin + 1, y);
-      doc.text(String(u.entries_count), pageW - margin - 40, y);
-      doc.text(fmtNum(u.hours, 2), pageW - margin - 1, y, { align: "right" });
-      y += 5;
-    }
-    y += 3;
-  }
-
-  // Por ticket/tarea (max 15)
-  if (stmt.consumption.by_item.length > 0) {
-    checkPage(20);
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.text("Desglose por ticket/tarea (top 15)", margin, y);
-    y += 5;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setDrawColor(220);
-    doc.line(margin, y + 1, pageW - margin, y + 1);
-    doc.text("Item", margin + 1, y);
-    doc.text("Horas", pageW - margin - 1, y, { align: "right" });
-    y += 5;
-    for (const it of stmt.consumption.by_item.slice(0, 15)) {
-      checkPage(6);
-      const label = it.ticket_info
-        ? `${it.ticket_info.ticket_id} — ${it.ticket_info.asunto}`
-        : `${it.source}: ${it.item_id}`;
-      doc.text(label.substring(0, 80), margin + 1, y);
-      doc.text(fmtNum(it.hours, 2), pageW - margin - 1, y, { align: "right" });
-      y += 5;
-    }
-    y += 3;
-  }
-
-  // Cotizaciones aprobadas
-  if (stmt.quotes.approved_in_period.length > 0) {
-    checkPage(20);
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.text("Cotizaciones aprobadas en el período", margin, y);
-    y += 5;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setDrawColor(220);
-    doc.line(margin, y + 1, pageW - margin, y + 1);
-    doc.text("Número", margin + 1, y);
-    doc.text("Concepto", margin + 35, y);
-    doc.text("Monto", pageW - margin - 1, y, { align: "right" });
-    y += 5;
-    for (const q of stmt.quotes.approved_in_period) {
-      checkPage(6);
-      doc.text(q.quote_number, margin + 1, y);
-      doc.text((q.title || "").substring(0, 60), margin + 35, y);
-      doc.text(fmtMoney(q.total_amount, q.currency), pageW - margin - 1, y, { align: "right" });
-      y += 5;
-    }
-    const totalApproved = stmt.quotes.approved_in_period.reduce((s, q) => s + Number(q.total_amount), 0);
-    doc.setFont("helvetica", "bold");
-    doc.text(`Total aprobado en el período: ${fmtMoney(totalApproved, stmt.currency)}`, pageW - margin - 1, y, { align: "right" });
-    doc.setFont("helvetica", "normal");
-    y += 8;
-  }
-
-  if (stmt.quotes.pending_count > 0) {
-    checkPage(10);
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "italic");
-    doc.setTextColor(100);
-    doc.text(
-      `Hay ${stmt.quotes.pending_count} cotizaciones pendientes de aprobación por un total de ${fmtMoney(stmt.quotes.pending_total, stmt.currency)}.`,
-      margin, y,
-    );
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(0);
-    y += 6;
-  }
-
-  // Financials
-  if (stmt.financials) {
-    checkPage(30);
-    doc.setDrawColor(220);
-    doc.line(margin, y, pageW - margin, y);
-    y += 5;
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
-    doc.text("Estado financiero", margin, y);
-    y += 6;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.text(`Valor del contrato: ${fmtMoney(stmt.financials.contract_value, stmt.currency)}`, margin, y);
-    y += 5;
-    doc.text(`Facturado: ${fmtMoney(stmt.financials.billed, stmt.currency)}`, margin, y);
-    y += 5;
-    doc.text(`Pagado: ${fmtMoney(stmt.financials.paid, stmt.currency)}`, margin, y);
-    y += 5;
-    doc.text(`Pendiente: ${fmtMoney(stmt.financials.pending, stmt.currency)}`, margin, y);
-    y += 8;
-  }
-
-  // Footer
   doc.setFontSize(8);
-  doc.setTextColor(140);
-  doc.text(
-    `Generado por SYSDE ERP el ${new Date().toLocaleString()}`,
-    margin, pageH - 8,
-  );
+  doc.text("TOTAL SALDO HORAS ACTIVAS:", margin + 2, y + 4.7);
+  doc.setDrawColor(...RED);
+  doc.setLineWidth(0.3);
+  doc.rect(margin + contentW - 34, y, 34, bandH);
+  doc.setTextColor(0);
+  doc.text(n2(data.totals.saldoActivas), margin + contentW - 2, y + 4.7, { align: "right" });
+  y += bandH + 8;
+
+  /* ── Tabla: Solicitudes de servicio ── */
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(0);
+  ensure(8);
+  doc.text("Estado cuenta definido con el siguiente detalle de consumo:", margin, y);
+  y += 5;
+
+  const solCols: Col[] = [
+    { header: "Id", width: 14, align: "center" },
+    { header: "Paquete Servicio", width: 14, align: "center" },
+    { header: "Producto", width: 20, align: "left", wrap: true },
+    { header: "Cons. cliente", width: 12, align: "center" },
+    { header: "Asunto", width: 40, align: "left", wrap: true },
+    { header: "Fecha registro", width: 15, align: "center" },
+    { header: "Tipo", width: 14, align: "left", wrap: true },
+    { header: "Medio descuento", width: 14, align: "center" },
+    { header: "Tiempo invertido", width: 14, align: "right" },
+  ];
+  const solRows: string[][] = data.solicitudes.map((r) => [
+    r.ticket_code,
+    r.package_number != null ? String(r.package_number) : "—",
+    r.producto || "—",
+    r.consecutivo_cliente != null ? String(r.consecutivo_cliente) : "—",
+    r.asunto || "—",
+    fmtDate(r.fecha_registro),
+    r.tipo || "—",
+    "Póliza",
+    n2(r.hours),
+  ]);
+  if (solRows.length === 0) {
+    solRows.push(["—", "—", "—", "—", "Sin consumo registrado en el período", "—", "—", "—", "0.00"]);
+    drawTable("Solicitudes de servicio", solCols, solRows);
+  } else {
+    const totalIdx = solRows.length;
+    solRows.push(["", "", "", "", "", "", "", "TOTAL TIEMPO INVERTIDO", n2(data.totals.invertido)]);
+    drawTable("Solicitudes de servicio", solCols, solRows, {
+      boldRows: new Set([totalIdx]),
+      redText: new Set([totalIdx]),
+    });
+  }
+
+  /* ── Pie SYSDE en todas las páginas ── */
+  const pages = doc.getNumberOfPages();
+  for (let p = 1; p <= pages; p++) {
+    doc.setPage(p);
+    doc.setDrawColor(...RED);
+    doc.setLineWidth(0.3);
+    doc.line(margin, pageH - footerH + 2, pageW - margin, pageH - footerH + 2);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(...RED);
+    doc.text("SYSDE", margin, pageH - footerH + 7);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.5);
+    doc.setTextColor(90);
+    doc.text("MetroPark Free Zone, P.O. box: 12133-1000", margin, pageH - footerH + 11);
+    doc.text("Costa Rica. Tel.: (506) 2293-2864. Fax: (506) 2293-2812", margin, pageH - footerH + 14);
+    doc.text(
+      new Date(stmt.generated_at).toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }),
+      pageW - margin,
+      pageH - footerH + 11,
+      { align: "right" },
+    );
+    doc.text(`Página ${p} de ${pages}`, pageW - margin, pageH - footerH + 14, { align: "right" });
+  }
   doc.setTextColor(0);
 
-  // Save
   const fname = `estado-cuenta_${stmt.client.name.replace(/\s+/g, "-")}_${stmt.period.start}_${stmt.period.end}.pdf`;
   doc.save(fname);
 }
