@@ -1,10 +1,9 @@
-import { useMemo } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { type AccountStatement } from "@/hooks/useAccountStatement";
-import { useServicePackages, useTicketsByIds } from "@/hooks/useServicePackages";
+import { useSysdeStatementData, toSysdeExportData } from "@/hooks/useSysdeStatementData";
 import { exportAccountStatementPdf } from "@/lib/exportAccountStatementPdf";
 import sysdelogo from "@/assets/logo-sysde.png";
 
@@ -28,67 +27,14 @@ const n2 = (v: number) => Number(v).toLocaleString("es-CR", { minimumFractionDig
  * tabla de "Solicitudes de servicio" (detalle de consumo por caso).
  */
 export function AccountStatementDetail({ open, onOpenChange, stmt, clientId }: Props) {
-  const { data: packages = [], isLoading: loadingPkgs } = useServicePackages(clientId);
+  const { loadingPkgs, pkgRows, rows, totals } = useSysdeStatementData(stmt, clientId);
+  const { contracted: totContract, consumed: totConsumed, balance: totBalance, saldoActivas, invertido: totalInvertido } = totals;
 
-  // Solicitudes = consumo por ticket en el período (from stmt.consumption.by_item).
-  const items = useMemo(
-    () => stmt.consumption.by_item.filter(it => it.source === "ticket"),
-    [stmt.consumption.by_item],
-  );
-  const ticketIds = useMemo(() => items.map(it => it.item_id), [items]);
-  const { data: ticketMap } = useTicketsByIds(ticketIds);
-
-  const pStart = stmt.period.start, pEnd = stmt.period.end;
-  const today = new Date().toISOString().slice(0, 10);
-
-  // Paquetes que solapan el período del estado de cuenta.
-  const shownPkgs = useMemo(
-    () => packages.filter(p => p.start_date <= pEnd && p.end_date >= pStart)
-      .sort((a, b) => a.start_date.localeCompare(b.start_date)),
-    [packages, pStart, pEnd],
-  );
-
-  // Atribuir cada solicitud a un paquete (por fecha_registro; fallback = paquete
-  // vigente con vencimiento más tardío). Calcular horas consumidas por paquete.
-  const { rows, consumedByPkg, totalInvertido } = useMemo(() => {
-    const consumed: Record<string, number> = {};
-    const fallback = [...shownPkgs].sort((a, b) => b.end_date.localeCompare(a.end_date))[0];
-    const rows = items.map(it => {
-      const t = ticketMap?.get(it.item_id);
-      const freg = t?.fecha_registro?.slice(0, 10) ?? null;
-      let pkg = freg ? shownPkgs.find(p => freg >= p.start_date && freg <= p.end_date) : undefined;
-      if (!pkg) pkg = fallback;
-      if (pkg) consumed[pkg.id] = (consumed[pkg.id] ?? 0) + Number(it.hours);
-      return {
-        item_id: it.item_id,
-        hours: Number(it.hours),
-        ticket_code: t?.ticket_id ?? it.ticket_info?.ticket_id ?? "—",
-        consecutivo_cliente: t?.consecutivo_cliente ?? null,
-        producto: t?.producto ?? "—",
-        asunto: t?.asunto ?? it.ticket_info?.asunto ?? "—",
-        fecha_registro: freg,
-        tipo: t?.tipo ?? "—",
-        package_number: pkg?.package_number ?? null,
-      };
-    }).sort((a, b) => (a.fecha_registro ?? "").localeCompare(b.fecha_registro ?? ""));
-    const totalInvertido = rows.reduce((s, r) => s + r.hours, 0);
-    return { rows, consumedByPkg: consumed, totalInvertido };
-  }, [items, ticketMap, shownPkgs]);
-
-  const pkgRows = shownPkgs.map(p => {
-    const consumed = consumedByPkg[p.id] ?? 0;
-    const balance = Number(p.hours_contracted) - consumed;
-    const estado = p.end_date >= today ? "Activo" : "Vencido";
-    return { ...p, consumed, balance, estado };
-  });
-  const totContract = pkgRows.reduce((s, p) => s + Number(p.hours_contracted), 0);
-  const totConsumed = pkgRows.reduce((s, p) => s + p.consumed, 0);
-  const totBalance = pkgRows.reduce((s, p) => s + p.balance, 0);
-  const saldoActivas = pkgRows.filter(p => p.estado === "Activo").reduce((s, p) => s + p.balance, 0);
-
-  const handleExport = () => {
-    try { exportAccountStatementPdf(stmt); toast.success("PDF descargado"); }
-    catch (e: any) { toast.error(e?.message || "Error al generar PDF"); }
+  const handleExport = async () => {
+    try {
+      await exportAccountStatementPdf(stmt, toSysdeExportData({ pkgRows, rows, totals }));
+      toast.success("PDF descargado");
+    } catch (e: any) { toast.error(e?.message || "Error al generar PDF"); }
   };
 
   const RED = "#8B1E1E";
@@ -111,8 +57,8 @@ export function AccountStatementDetail({ open, onOpenChange, stmt, clientId }: P
             </p>
             <div className="flex items-center gap-6 text-sm">
               <span>Estado de cuenta para el periodo definido entre las siguientes fechas:</span>
-              <span className="font-bold">{fmtDate(pStart)}</span>
-              <span className="font-bold">{fmtDate(pEnd)}</span>
+              <span className="font-bold">{fmtDate(stmt.period.start)}</span>
+              <span className="font-bold">{fmtDate(stmt.period.end)}</span>
             </div>
           </div>
 

@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip as RTooltip } from "recharts";
 import { useAccountStatement, getPeriodDates, type StatementPeriod } from "@/hooks/useAccountStatement";
 import { exportAccountStatementPdf } from "@/lib/exportAccountStatementPdf";
+import { useSysdeStatementData, toSysdeExportData } from "@/hooks/useSysdeStatementData";
 import { AccountStatementDetail } from "./AccountStatementDetail";
 
 const PERIOD_OPTIONS: Array<{ value: StatementPeriod; label: string }> = [
@@ -37,10 +38,12 @@ export function AccountStatementPanel({ clientId }: Props) {
 
   const { data: stmt, isLoading, error, refetch } = useAccountStatement(clientId, dates);
 
-  const handleExport = () => {
+  const { pkgRows, rows, totals } = useSysdeStatementData(stmt, clientId);
+
+  const handleExport = async () => {
     if (!stmt) return;
     try {
-      exportAccountStatementPdf(stmt);
+      await exportAccountStatementPdf(stmt, toSysdeExportData({ pkgRows, rows, totals }));
       toast.success("PDF descargado");
     } catch (e: any) {
       toast.error(e?.message || "Error al generar PDF");
