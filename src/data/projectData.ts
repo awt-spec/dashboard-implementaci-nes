@@ -70,6 +70,9 @@ export interface ClientTask {
   assignees: TaskAssignee[];
   description?: string;
   visibility?: string;
+  epic?: string;
+  storyPoints?: number;
+  scrumStatus?: string;
 }
 
 export interface ActionItem {
