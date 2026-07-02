@@ -137,6 +137,10 @@ export function useAccountStatement(
       if (error) throw error;
       return data as unknown as AccountStatement;
     },
-    staleTime: 60_000,
+    // Estado de cuenta = instrumento de OUTPUT en vivo (S2-05): se actualiza
+    // solo, disponible a cualquier hora, sin sumas/Excel.
+    staleTime: 20_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
   });
 }
