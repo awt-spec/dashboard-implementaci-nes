@@ -29,6 +29,8 @@ export interface Phase {
   progress: number;
   startDate: string;
   endDate: string;
+  /** Épica vinculada; si está set, el % se calcula del backlog (read-only). */
+  epic?: string;
 }
 
 export interface DeliverableDetail {

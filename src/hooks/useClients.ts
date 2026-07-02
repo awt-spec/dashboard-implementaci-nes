@@ -153,7 +153,7 @@ async function fetchClients(): Promise<Client[]> {
   // Tasks va paginado porque con 2100+ items post-import el default de 1000 truncaba
   // el backlog de los clientes con más volumen (Dos Pinos 1177).
   const [phases, deliverables, tasks, actionItems, meetingMinutes, emailNotifications, comments, risks] = await Promise.all([
-    fetchAllPages<any>(() => supabase.from("phases").select("id,client_id,name,status,progress,start_date,end_date").in("client_id", activeIds)),
+    fetchAllPages<any>(() => supabase.from("phases").select("id,client_id,name,status,progress,start_date,end_date,epic").in("client_id", activeIds)),
     fetchAllPages<any>(() => supabase.from("deliverables").select("id,client_id,original_id,name,type,status,due_date,delivered_date,approved_by,version,detail,responsible_party,responsible_team,linked_task_id").in("client_id", activeIds)),
     fetchAllPages<any>(() => supabase.from("tasks").select("id,client_id,original_id,title,status,owner,due_date,priority,assignees,description,visibility,epic,story_points,scrum_status").in("client_id", activeIds)),
     fetchAllPages<any>(() => supabase.from("action_items").select("id,client_id,original_id,title,assignee,due_date,status,source,priority,responsible_party,responsible_team,linked_task_id").in("client_id", activeIds)),
@@ -197,6 +197,7 @@ async function fetchClients(): Promise<Client[]> {
           progress: p.progress,
           startDate: p.start_date,
           endDate: p.end_date,
+          epic: (p as any).epic || undefined,
         })),
       deliverables: deliverablesData
         .filter(d => d.client_id === c.id)
