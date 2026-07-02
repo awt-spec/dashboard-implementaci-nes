@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/u
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Settings2, Server, SlidersHorizontal, GraduationCap, Code2, CheckCircle2, CircleDot, Circle, Ban, User } from "lucide-react";
 import { toast } from "sonner";
-import { useUpdateHuBilling, BILLING_STATUS, type EpicKey, type BillingStatus, type EpicSummary, type EpicHU } from "@/hooks/useEpics";
+import { useUpdateHuBilling, useUpdateHuEpic, EPICS, BILLING_STATUS, type EpicKey, type BillingStatus, type EpicSummary, type EpicHU } from "@/hooks/useEpics";
 
 const EPIC_ICON: Record<EpicKey, typeof Server> = {
   administracion: Settings2,
@@ -44,12 +44,22 @@ interface Props {
  *  y facturación editable. Reutilizado por el panel de épicas y por las fases. */
 export function EpicDetailDialog({ clientId, epic, onOpenChange }: Props) {
   const updateBilling = useUpdateHuBilling(clientId);
+  const updateEpic = useUpdateHuEpic(clientId);
   const changeBilling = (id: string, billing_status: BillingStatus) => {
     updateBilling.mutate(
       { id, billing_status },
       {
         onSuccess: () => toast.success("Estado de facturación actualizado"),
         onError: (e: any) => toast.error(e?.message || "Error al actualizar"),
+      },
+    );
+  };
+  const changeEpic = (id: string, epicKey: EpicKey) => {
+    updateEpic.mutate(
+      { id, epic: epicKey },
+      {
+        onSuccess: () => toast.success("Épica reasignada"),
+        onError: (e: any) => toast.error(e?.message || "Error al reasignar"),
       },
     );
   };
@@ -81,6 +91,7 @@ export function EpicDetailDialog({ clientId, epic, onOpenChange }: Props) {
                     <th className="text-left font-medium py-1.5 px-2">Estado</th>
                     <th className="text-right font-medium py-1.5 px-2">Pts</th>
                     <th className="text-left font-medium py-1.5 px-2">Responsable</th>
+                    <th className="text-left font-medium py-1.5 px-2">Épica</th>
                     <th className="text-left font-medium py-1.5 pl-2">Facturación</th>
                   </tr>
                 </thead>
@@ -102,6 +113,16 @@ export function EpicDetailDialog({ clientId, epic, onOpenChange }: Props) {
                           {h.owner ? (
                             <span className="inline-flex items-center gap-1"><User className="h-3 w-3 text-muted-foreground" />{h.owner}</span>
                           ) : <span className="text-muted-foreground">—</span>}
+                        </td>
+                        <td className="py-1.5 px-2">
+                          <Select value={h.epic ?? epic.key} onValueChange={(v) => changeEpic(h.id, v as EpicKey)}>
+                            <SelectTrigger className="h-6 border-0 bg-transparent p-0 shadow-none w-auto gap-1 text-[11px]">
+                              <span className="underline decoration-dotted underline-offset-2">{EPICS.find(e => e.key === (h.epic ?? epic.key))?.label ?? "—"}</span>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {EPICS.map(e => <SelectItem key={e.key} value={e.key} className="text-xs">{e.label}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
                         </td>
                         <td className="py-1.5 pl-2">
                           <Select value={h.billing_status} onValueChange={(v) => changeBilling(h.id, v as BillingStatus)}>

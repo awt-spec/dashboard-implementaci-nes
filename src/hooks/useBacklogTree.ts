@@ -1,6 +1,55 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEpics, EPICS, type EpicKey, type EpicHU } from "@/hooks/useEpics";
+
+export interface BacklogItemInput {
+  id?: string;
+  client_id: string;
+  item_type: "feature" | "task";
+  epic?: string | null;
+  parent_hu_id?: string | null;
+  title: string;
+  state?: string | null;
+  assigned_to?: string | null;
+  iteration?: string | null;
+  effort?: number | null;
+}
+
+export function useUpsertBacklogItem(clientId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (item: BacklogItemInput) => {
+      const row = {
+        client_id: item.client_id,
+        item_type: item.item_type,
+        epic: item.epic ?? null,
+        parent_hu_id: item.parent_hu_id ?? null,
+        title: item.title,
+        state: item.state ?? null,
+        assigned_to: item.assigned_to ?? null,
+        iteration: item.iteration ?? null,
+        effort: item.effort ?? null,
+      };
+      const q = item.id
+        ? (supabase.from("backlog_items" as any).update(row).eq("id", item.id) as any)
+        : (supabase.from("backlog_items" as any).insert(row) as any);
+      const { error } = await q;
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["backlog-items", clientId] }),
+  });
+}
+
+export function useDeleteBacklogItem(clientId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase.from("backlog_items" as any).delete().eq("id", id) as any);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["backlog-items", clientId] }),
+  });
+}
 
 export interface BacklogTaskNode {
   id: string;
