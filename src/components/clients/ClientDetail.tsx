@@ -31,7 +31,7 @@ import { ContractsSLATab } from "./ContractsSLATab";
 import { ClientUsersTab } from "./ClientUsersTab";
 import { QuoteList } from "@/components/support/quotes/QuoteList";
 import { AccountStatementPanel } from "./AccountStatementPanel";
-import { EpicsProgressPanel } from "./EpicsProgressPanel";
+import { EpicsSection } from "./EpicsSection";
 import { EpicDetailDialog } from "./EpicDetailDialog";
 import { summarizeEpicsFromTasks, useEpics, EPICS, EPIC_LABEL, type EpicSummary } from "@/hooks/useEpics";
 import { ClientAudiencesPanel } from "./ClientAudiencesPanel";
@@ -410,7 +410,7 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
         {/* Épicas: % de avance por épica (calculado del backlog) + disparadores
             de facturación por HU (feedback Mafe/Eduardo). */}
         <div className="mt-4">
-          <EpicsProgressPanel clientId={client.id} />
+          <EpicsSection clientId={client.id} />
         </div>
       </motion.div>
 
