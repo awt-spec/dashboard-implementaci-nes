@@ -164,3 +164,18 @@ export function useUpdateHuBilling(clientId?: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["epics", clientId] }),
   });
 }
+
+/** Reasigna la épica de una HU. */
+export function useUpdateHuEpic(clientId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, epic }: { id: string; epic: EpicKey }) => {
+      const { error } = await (supabase.from("tasks").update({ epic } as any).eq("id", id) as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["epics", clientId] });
+      qc.invalidateQueries({ queryKey: ["backlog-items", clientId] });
+    },
+  });
+}
