@@ -11,6 +11,7 @@ import { useAccountStatement, getPeriodDates, type StatementPeriod } from "@/hoo
 import { exportAccountStatementPdf } from "@/lib/exportAccountStatementPdf";
 import { useSysdeStatementData, toSysdeExportData } from "@/hooks/useSysdeStatementData";
 import { AccountStatementDetail } from "./AccountStatementDetail";
+import { AccountStatementDocument } from "./AccountStatementDocument";
 
 const PERIOD_OPTIONS: Array<{ value: StatementPeriod; label: string }> = [
   { value: "current_month",    label: "Mes corriente" },
@@ -33,10 +34,11 @@ const fmtDate = (d?: string | null) => {
 };
 
 export function AccountStatementPanel({ clientId }: Props) {
-  const [period, setPeriod] = useState<StatementPeriod>("current_month");
+  const [period, setPeriod] = useState<StatementPeriod>("year_to_date");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const [detailOpen, setDetailOpen] = useState(false);
+  const [view, setView] = useState<"documento" | "analisis">("documento");
 
   const dates = useMemo(
     () => getPeriodDates(period, { from: customFrom, to: customTo }),
@@ -97,6 +99,21 @@ export function AccountStatementPanel({ clientId }: Props) {
             {dates.from} → {dates.to}
           </span>
           <div className="ml-auto flex gap-1.5">
+            {/* Toggle de vista: documento SYSDE (default) o análisis */}
+            <div className="flex items-center rounded-md border border-border overflow-hidden h-8">
+              <button
+                onClick={() => setView("documento")}
+                className={`px-2.5 h-full text-xs ${view === "documento" ? "bg-primary text-primary-foreground" : "bg-transparent text-muted-foreground"}`}
+              >
+                Documento
+              </button>
+              <button
+                onClick={() => setView("analisis")}
+                className={`px-2.5 h-full text-xs ${view === "analisis" ? "bg-primary text-primary-foreground" : "bg-transparent text-muted-foreground"}`}
+              >
+                Análisis
+              </button>
+            </div>
             <Button size="sm" variant="ghost" onClick={() => refetch()} className="h-8 text-xs">
               Actualizar
             </Button>
@@ -107,7 +124,7 @@ export function AccountStatementPanel({ clientId }: Props) {
               disabled={!stmt || isLoading}
               className="h-8 gap-1.5"
             >
-              <ListTree className="h-3.5 w-3.5" /> Ver detalle
+              <ListTree className="h-3.5 w-3.5" /> Ampliar
             </Button>
             <Button
               size="sm"
@@ -135,7 +152,14 @@ export function AccountStatementPanel({ clientId }: Props) {
         </Card>
       )}
 
-      {stmt && !isLoading && (
+      {/* Vista principal: documento SYSDE */}
+      {stmt && !isLoading && view === "documento" && (
+        <div className="rounded-lg border border-border overflow-hidden">
+          <AccountStatementDocument stmt={stmt} clientId={clientId} />
+        </div>
+      )}
+
+      {stmt && !isLoading && view === "analisis" && (
         <>
           {/* Resumen — 3 KPIs */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -439,14 +463,17 @@ export function AccountStatementPanel({ clientId }: Props) {
           <p className="text-[10px] text-muted-foreground text-center pt-2 italic">
             Generado el {new Date(stmt.generated_at).toLocaleString()}
           </p>
-
-          <AccountStatementDetail
-            open={detailOpen}
-            onOpenChange={setDetailOpen}
-            stmt={stmt}
-            clientId={clientId}
-          />
         </>
+      )}
+
+      {/* Modal de detalle ampliado (disponible en ambas vistas) */}
+      {stmt && (
+        <AccountStatementDetail
+          open={detailOpen}
+          onOpenChange={setDetailOpen}
+          stmt={stmt}
+          clientId={clientId}
+        />
       )}
     </div>
   );
