@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { type Client } from "@/data/projectData";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import {
   Building2, MapPin, Mail, User, Calendar, TrendingUp,
   CheckCircle2, Loader2, Circle, Clock, AlertTriangle,
-  ArrowLeft, Download, ArrowRightLeft, Plus, Pencil,
+  ArrowLeft, Download, ArrowRightLeft, Plus, Pencil, Link2,
 } from "lucide-react";
 import { NewTicketForm } from "@/components/support/NewTicketForm";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,7 @@ import { ClientUsersTab } from "./ClientUsersTab";
 import { QuoteList } from "@/components/support/quotes/QuoteList";
 import { AccountStatementPanel } from "./AccountStatementPanel";
 import { EpicsProgressPanel } from "./EpicsProgressPanel";
+import { summarizeEpicsFromTasks, EPICS, EPIC_LABEL } from "@/hooks/useEpics";
 import { ClientAudiencesPanel } from "./ClientAudiencesPanel";
 import { ClientCategoryBadge } from "./ClientCategoryBadge";
 import { supabase } from "@/integrations/supabase/client";
@@ -126,7 +127,7 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
 
   const gaugeData = [{ value: client.progress }, { value: 100 - client.progress }];
 
-  const handlePhaseUpdate = async (phaseName: string, field: string, value: string | number) => {
+  const handlePhaseUpdate = async (phaseName: string, field: string, value: string | number | null) => {
     const { data } = await supabase.from("phases").select("id").eq("client_id", client.id).eq("name", phaseName).single();
     if (!data) return;
     const { error } = await supabase.from("phases").update({ [field]: value } as any).eq("id", data.id);
@@ -134,6 +135,13 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
     toast.success("Fase actualizada");
     queryClient.invalidateQueries({ queryKey: ["clients"] });
   };
+
+  // % por épica calculado del backlog — para fases vinculadas a una épica.
+  const epicProgress = useMemo(() => {
+    const map: Record<string, number> = {};
+    summarizeEpicsFromTasks(client.tasks).summaries.forEach(s => { map[s.key] = s.progress; });
+    return map;
+  }, [client.tasks]);
 
   return (
     <div className="space-y-6">
@@ -319,6 +327,8 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
             <CardContent className="space-y-3">
               {client.phases.map(phase => {
                 const config = phaseStatusConfig[phase.status];
+                const linked = phase.epic && phase.epic in EPIC_LABEL;
+                const autoPct = linked ? (epicProgress[phase.epic!] ?? 0) : phase.progress;
                 return (
                   <div key={phase.name} className="space-y-1.5">
                     <div className="flex items-center justify-between gap-2">
@@ -328,6 +338,22 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <span className="text-[10px] text-muted-foreground hidden sm:inline">{phase.startDate} — {phase.endDate}</span>
+                        {/* Vínculo a épica: si está vinculada, el % es automático */}
+                        <Select
+                          value={phase.epic ?? "manual"}
+                          onValueChange={v => handlePhaseUpdate(phase.name, "epic", v === "manual" ? null : v)}
+                        >
+                          <SelectTrigger className="h-6 border-0 bg-transparent p-0 shadow-none w-auto">
+                            <Badge variant="outline" className="text-[9px] px-1.5 py-0 gap-1">
+                              <Link2 className="h-2.5 w-2.5" />
+                              {linked ? EPIC_LABEL[phase.epic!] : "Manual"}
+                            </Badge>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="manual">Manual (sin épica)</SelectItem>
+                            {EPICS.map(e => <SelectItem key={e.key} value={e.key}>{e.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
                         <Select value={phase.status} onValueChange={v => handlePhaseUpdate(phase.name, "status", v)}>
                           <SelectTrigger className="h-6 border-0 bg-transparent p-0 shadow-none w-auto">
                             <Badge className={`${config.className} text-[10px] px-1.5 py-0`}>{config.label}</Badge>
@@ -338,16 +364,25 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
                         </Select>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Slider
-                        value={[phase.progress]}
-                        max={100}
-                        step={5}
-                        className="flex-1"
-                        onValueCommit={v => handlePhaseUpdate(phase.name, "progress", v[0])}
-                      />
-                      <span className="text-[10px] text-muted-foreground w-8 text-right">{phase.progress}%</span>
-                    </div>
+                    {linked ? (
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                          <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${autoPct}%` }} />
+                        </div>
+                        <span className="text-[10px] text-primary font-medium w-14 text-right">auto {autoPct}%</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Slider
+                          value={[phase.progress]}
+                          max={100}
+                          step={5}
+                          className="flex-1"
+                          onValueCommit={v => handlePhaseUpdate(phase.name, "progress", v[0])}
+                        />
+                        <span className="text-[10px] text-muted-foreground w-8 text-right">{phase.progress}%</span>
+                      </div>
+                    )}
                   </div>
                 );
               })}
