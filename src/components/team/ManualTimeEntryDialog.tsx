@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useCreateManualEntry, useMyTimeEntries, entryHours, useMyTimeGoal, startOfWeek } from "@/hooks/useTimeTracking";
 import { useMyTeamMember } from "@/hooks/useMyTeamMember";
+import { useFinanceAccess } from "@/hooks/useFinanceAccess";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -40,6 +41,7 @@ interface WorkItem { id: string; title: string; client_id: string | null; source
 export function ManualTimeEntryDialog({ open, onOpenChange, defaultClientId, defaultItem }: Props) {
   const { user } = useAuth();
   const { data: me } = useMyTeamMember();
+  const { canCosts } = useFinanceAccess();
   const create = useCreateManualEntry();
   const { data: weekGoal } = useMyTimeGoal();
   const { data: weekEntries = [] } = useMyTimeEntries(7);
@@ -302,7 +304,7 @@ export function ManualTimeEntryDialog({ open, onOpenChange, defaultClientId, def
                 <DollarSign className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                 <div>
                   <Label className="text-xs font-medium">Facturable al cliente</Label>
-                  {billable && rate > 0 && (
+                  {billable && rate > 0 && canCosts && (
                     <div className="text-[11px] text-muted-foreground mt-0.5">
                       ≈ <span className="font-semibold text-foreground">{currency} {estimatedAmount.toFixed(2)}</span> a {currency} {rate}/h
                     </div>

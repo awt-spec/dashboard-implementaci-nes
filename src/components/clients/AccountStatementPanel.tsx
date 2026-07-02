@@ -12,6 +12,8 @@ import { exportAccountStatementPdf } from "@/lib/exportAccountStatementPdf";
 import { useSysdeStatementData, toSysdeExportData } from "@/hooks/useSysdeStatementData";
 import { AccountStatementDetail } from "./AccountStatementDetail";
 import { AccountStatementDocument } from "./AccountStatementDocument";
+import { Confidential } from "@/components/common/Confidential";
+import { useFinanceAccess } from "@/hooks/useFinanceAccess";
 
 const PERIOD_OPTIONS: Array<{ value: StatementPeriod; label: string }> = [
   { value: "current_month",    label: "Mes corriente" },
@@ -24,6 +26,9 @@ const PERIOD_OPTIONS: Array<{ value: StatementPeriod; label: string }> = [
 
 interface Props {
   clientId: string;
+  /** Si true (vista interna), enmascara montos según permiso financiero. En el
+   *  portal del cliente se pasa false: el cliente ve su propia cuenta. */
+  enforceFinanceGate?: boolean;
 }
 
 const n2 = (v: number) => Number(v || 0).toLocaleString("es-CR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -33,7 +38,7 @@ const fmtDate = (d?: string | null) => {
   return `${day}/${m}/${y}`;
 };
 
-export function AccountStatementPanel({ clientId }: Props) {
+export function AccountStatementPanel({ clientId, enforceFinanceGate = true }: Props) {
   const [period, setPeriod] = useState<StatementPeriod>("year_to_date");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
@@ -48,6 +53,8 @@ export function AccountStatementPanel({ clientId }: Props) {
   const { data: stmt, isLoading, error, refetch } = useAccountStatement(clientId, dates);
 
   const { loadingPkgs, pkgRows, rows, totals } = useSysdeStatementData(stmt, clientId);
+  const { canAmounts: permAmounts } = useFinanceAccess();
+  const canAmounts = !enforceFinanceGate || permAmounts;
 
   const handleExport = async () => {
     if (!stmt) return;
@@ -216,17 +223,19 @@ export function AccountStatementPanel({ clientId }: Props) {
                   <FileText className="h-3.5 w-3.5 text-muted-foreground" />
                 </div>
                 <p className="text-2xl font-bold tabular-nums">
-                  {stmt.quotes.approved_in_period
-                    .reduce((s, q) => s + Number(q.total_amount), 0)
-                    .toFixed(2)}
-                  <span className="text-xs font-normal text-muted-foreground ml-1">{stmt.currency}</span>
+                  <Confidential show={canAmounts}>
+                    {stmt.quotes.approved_in_period
+                      .reduce((s, q) => s + Number(q.total_amount), 0)
+                      .toFixed(2)}
+                    <span className="text-xs font-normal text-muted-foreground ml-1">{stmt.currency}</span>
+                  </Confidential>
                 </p>
                 <p className="text-[10px] text-muted-foreground mt-1">
                   {stmt.quotes.approved_in_period.length} cotizacion(es) en el período
                 </p>
                 {stmt.quotes.pending_count > 0 && (
                   <p className="text-[10px] text-info mt-1">
-                    +{stmt.quotes.pending_count} pendiente(s) ({Number(stmt.quotes.pending_total).toFixed(0)} {stmt.currency})
+                    +{stmt.quotes.pending_count} pendiente(s) (<Confidential show={canAmounts}>{Number(stmt.quotes.pending_total).toFixed(0)} {stmt.currency}</Confidential>)
                   </p>
                 )}
               </CardContent>
@@ -250,11 +259,11 @@ export function AccountStatementPanel({ clientId }: Props) {
                 </div>
                 <div>
                   <p className="text-[10px] uppercase text-muted-foreground">Tarifa</p>
-                  <p className="text-xs font-medium">{Number(stmt.contract.hourly_rate).toFixed(2)} {stmt.currency}/h</p>
+                  <p className="text-xs font-medium"><Confidential show={canAmounts}>{Number(stmt.contract.hourly_rate).toFixed(2)} {stmt.currency}/h</Confidential></p>
                 </div>
                 <div>
                   <p className="text-[10px] uppercase text-muted-foreground">Mensual</p>
-                  <p className="text-xs font-medium">{Number(stmt.contract.monthly_value).toFixed(2)} {stmt.currency}</p>
+                  <p className="text-xs font-medium"><Confidential show={canAmounts}>{Number(stmt.contract.monthly_value).toFixed(2)} {stmt.currency}</Confidential></p>
                 </div>
               </CardContent>
             </Card>
@@ -425,7 +434,7 @@ export function AccountStatementPanel({ clientId }: Props) {
                       <p className="truncate">{q.title}</p>
                     </div>
                     <span className="font-semibold tabular-nums shrink-0">
-                      {Number(q.total_amount).toFixed(2)} {q.currency}
+                      <Confidential show={canAmounts}>{Number(q.total_amount).toFixed(2)} {q.currency}</Confidential>
                     </span>
                   </div>
                 ))}
@@ -442,19 +451,19 @@ export function AccountStatementPanel({ clientId }: Props) {
               <CardContent className="pt-0 grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div>
                   <p className="text-[10px] uppercase text-muted-foreground">Valor contrato</p>
-                  <p className="text-sm font-semibold tabular-nums">{Number(stmt.financials.contract_value).toFixed(2)} {stmt.currency}</p>
+                  <p className="text-sm font-semibold tabular-nums"><Confidential show={canAmounts}>{Number(stmt.financials.contract_value).toFixed(2)} {stmt.currency}</Confidential></p>
                 </div>
                 <div>
                   <p className="text-[10px] uppercase text-muted-foreground">Facturado</p>
-                  <p className="text-sm font-semibold tabular-nums">{Number(stmt.financials.billed).toFixed(2)} {stmt.currency}</p>
+                  <p className="text-sm font-semibold tabular-nums"><Confidential show={canAmounts}>{Number(stmt.financials.billed).toFixed(2)} {stmt.currency}</Confidential></p>
                 </div>
                 <div>
                   <p className="text-[10px] uppercase text-muted-foreground">Pagado</p>
-                  <p className="text-sm font-semibold tabular-nums text-success">{Number(stmt.financials.paid).toFixed(2)} {stmt.currency}</p>
+                  <p className="text-sm font-semibold tabular-nums text-success"><Confidential show={canAmounts}>{Number(stmt.financials.paid).toFixed(2)} {stmt.currency}</Confidential></p>
                 </div>
                 <div>
                   <p className="text-[10px] uppercase text-muted-foreground">Pendiente</p>
-                  <p className="text-sm font-semibold tabular-nums text-warning">{Number(stmt.financials.pending).toFixed(2)} {stmt.currency}</p>
+                  <p className="text-sm font-semibold tabular-nums text-warning"><Confidential show={canAmounts}>{Number(stmt.financials.pending).toFixed(2)} {stmt.currency}</Confidential></p>
                 </div>
               </CardContent>
             </Card>
