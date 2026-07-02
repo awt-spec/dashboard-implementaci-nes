@@ -13,6 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileSignature, Shield, Plus, Trash2, Clock, Edit2, Lock, Package, Search, Sparkles } from "lucide-react";
 import { ContractAnalysisDialog } from "./ContractAnalysisDialog";
 import { BilledPackagesTab } from "./BilledPackagesTab";
+import { Confidential } from "@/components/common/Confidential";
+import { useFinanceAccess } from "@/hooks/useFinanceAccess";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -52,6 +54,7 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
 
   const totalMonthly = contracts.filter(c => c.is_active).reduce((s, c) => s + Number(c.monthly_value || 0), 0);
   const activeContract = contracts.find(c => c.is_active);
+  const { canAmounts } = useFinanceAccess();
 
   const term = contractSearch.trim().toLowerCase();
   const filteredContracts = contracts.filter(c => {
@@ -85,7 +88,7 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
           <div className="grid grid-cols-3 gap-3">
             <Card><CardContent className="p-4">
               <p className="text-[10px] uppercase text-muted-foreground">Valor mensual activo</p>
-              <p className="text-2xl font-bold mt-1">${totalMonthly.toLocaleString()} <span className="text-xs font-normal text-muted-foreground">{activeContract?.currency || "USD"}</span></p>
+              <p className="text-2xl font-bold mt-1"><Confidential show={canAmounts}>${totalMonthly.toLocaleString()} <span className="text-xs font-normal text-muted-foreground">{activeContract?.currency || "USD"}</span></Confidential></p>
             </CardContent></Card>
             <Card><CardContent className="p-4">
               <p className="text-[10px] uppercase text-muted-foreground">Contratos activos</p>
@@ -93,7 +96,7 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
             </CardContent></Card>
             <Card><CardContent className="p-4">
               <p className="text-[10px] uppercase text-muted-foreground">Tarifa hora promedio</p>
-              <p className="text-2xl font-bold mt-1">${contracts.length ? Math.round(contracts.reduce((s, c) => s + Number(c.hourly_rate || 0), 0) / contracts.length) : 0}</p>
+              <p className="text-2xl font-bold mt-1"><Confidential show={canAmounts}>${contracts.length ? Math.round(contracts.reduce((s, c) => s + Number(c.hourly_rate || 0), 0) / contracts.length) : 0}</Confidential></p>
             </CardContent></Card>
           </div>
 
@@ -154,8 +157,8 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
                   ) : filteredContracts.map(c => (
                     <TableRow key={c.id}>
                       <TableCell><Badge variant="outline">{CONTRACT_TYPES.find(t => t.value === c.contract_type)?.label || c.contract_type}</Badge></TableCell>
-                      <TableCell className="font-medium">${Number(c.monthly_value).toLocaleString()} {c.currency}</TableCell>
-                      <TableCell>${Number(c.hourly_rate)}/h</TableCell>
+                      <TableCell className="font-medium"><Confidential show={canAmounts}>${Number(c.monthly_value).toLocaleString()} {c.currency}</Confidential></TableCell>
+                      <TableCell><Confidential show={canAmounts}>${Number(c.hourly_rate)}/h</Confidential></TableCell>
                       <TableCell>{c.included_hours}h</TableCell>
                       <TableCell className="text-xs">{c.start_date || "—"} → {c.end_date || "indef."}</TableCell>
                       <TableCell>
@@ -234,7 +237,7 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
                       <TableCell className="text-xs">{s.case_type === "all" ? "Todos" : s.case_type}</TableCell>
                       <TableCell>{s.response_time_hours}h</TableCell>
                       <TableCell>{s.resolution_time_hours}h</TableCell>
-                      <TableCell className="text-xs">{s.penalty_amount ? `$${s.penalty_amount}` : "—"}</TableCell>
+                      <TableCell className="text-xs">{s.penalty_amount ? <Confidential show={canAmounts}>${s.penalty_amount}</Confidential> : "—"}</TableCell>
                       <TableCell>
                         {s.is_active ? <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-[10px]">Activo</Badge> : <Badge variant="secondary" className="text-[10px]">Inactivo</Badge>}
                       </TableCell>

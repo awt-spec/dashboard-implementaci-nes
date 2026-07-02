@@ -16,6 +16,8 @@ import {
   type BilledPackage, type BilledPackageType, type BilledPackageStatus,
 } from "@/hooks/useBilledPackages";
 import { useClientContracts } from "@/hooks/useClientContracts";
+import { Confidential } from "@/components/common/Confidential";
+import { useFinanceAccess } from "@/hooks/useFinanceAccess";
 
 const CONTRACT_TYPE_LABELS: Record<string, string> = {
   bolsa_horas: "Bolsa de horas",
@@ -49,11 +51,12 @@ export function BilledPackagesTab({ clientId }: { clientId: string }) {
 
   const { data: packages = [], isLoading } = useBilledPackages(clientId);
   const { data: contracts = [] } = useClientContracts(clientId);
+  const { canAmounts } = useFinanceAccess();
   const upsert = useUpsertBilledPackage();
   const del = useDeleteBilledPackage();
 
   const contractLabel = (c: { contract_type: string; currency?: string; monthly_value?: number }) =>
-    `${CONTRACT_TYPE_LABELS[c.contract_type] || c.contract_type}${c.monthly_value ? ` · $${Number(c.monthly_value).toLocaleString()} ${c.currency || ""}` : ""}`;
+    `${CONTRACT_TYPE_LABELS[c.contract_type] || c.contract_type}${c.monthly_value && canAmounts ? ` · $${Number(c.monthly_value).toLocaleString()} ${c.currency || ""}` : ""}`;
   const contractById = (id?: string | null) => contracts.find(c => c.id === id);
 
   const [dialog, setDialog] = useState<Partial<BilledPackage> | null>(null);
@@ -115,11 +118,11 @@ export function BilledPackagesTab({ clientId }: { clientId: string }) {
       <div className="grid grid-cols-3 gap-3">
         <Card><CardContent className="p-4">
           <p className="text-[10px] uppercase text-muted-foreground">Facturado / Pagado</p>
-          <p className="text-2xl font-bold mt-1 tabular-nums">${totalFacturado.toLocaleString()}</p>
+          <p className="text-2xl font-bold mt-1 tabular-nums"><Confidential show={canAmounts}>${totalFacturado.toLocaleString()}</Confidential></p>
         </CardContent></Card>
         <Card><CardContent className="p-4">
           <p className="text-[10px] uppercase text-muted-foreground">Pendiente de facturar</p>
-          <p className="text-2xl font-bold mt-1 tabular-nums text-warning">${totalPendiente.toLocaleString()}</p>
+          <p className="text-2xl font-bold mt-1 tabular-nums text-warning"><Confidential show={canAmounts}>${totalPendiente.toLocaleString()}</Confidential></p>
         </CardContent></Card>
         <Card><CardContent className="p-4">
           <p className="text-[10px] uppercase text-muted-foreground">Total paquetes</p>
@@ -164,7 +167,7 @@ export function BilledPackagesTab({ clientId }: { clientId: string }) {
                       : "—"}
                   </TableCell>
                   <TableCell className="text-xs text-right tabular-nums">{Number(p.quantity)}</TableCell>
-                  <TableCell className="text-xs text-right tabular-nums font-medium">{Number(p.total_amount).toFixed(2)} {p.currency}</TableCell>
+                  <TableCell className="text-xs text-right tabular-nums font-medium"><Confidential show={canAmounts}>{Number(p.total_amount).toFixed(2)} {p.currency}</Confidential></TableCell>
                   <TableCell><Badge variant="outline" className={`text-[10px] ${STATUS_META[p.status].className}`}>{STATUS_META[p.status].label}</Badge></TableCell>
                   <TableCell className="text-[10px] text-muted-foreground">{p.invoice_number || "—"}</TableCell>
                   {canManage && (
