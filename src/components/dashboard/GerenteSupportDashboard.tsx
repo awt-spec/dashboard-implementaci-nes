@@ -172,10 +172,10 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
 
   return (
     <div className="max-w-2xl lg:max-w-7xl mx-auto pb-24 md:pb-6">
-      <div className="lg:grid lg:grid-cols-[380px_1fr] lg:gap-6 lg:items-start">
+      <div className="flex flex-col lg:grid lg:grid-cols-[380px_1fr] lg:gap-6 lg:items-start">
 
-        {/* ─── LEFT / TOP COLUMN ─── */}
-        <div className="lg:sticky lg:top-4 space-y-4">
+        {/* ─── LEFT / TOP COLUMN ─── (en móvil va DEBAJO de las pestañas) */}
+        <div className="order-2 lg:order-none lg:sticky lg:top-4 space-y-4 mt-4 lg:mt-0">
           {/* Hero */}
           <motion.div
             initial={{ opacity: 0, y: -8 }}
@@ -250,8 +250,8 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
           {sidebarExtras && <div className="hidden lg:block">{sidebarExtras}</div>}
         </div>
 
-        {/* ─── RIGHT / MAIN COLUMN ─── */}
-        <div className="min-w-0 mt-4 lg:mt-0">
+        {/* ─── RIGHT / MAIN COLUMN ─── (en móvil va PRIMERO: pestañas arriba) */}
+        <div className="order-1 lg:order-none min-w-0">
           <Tabs value={tab} onValueChange={setTab}>
             <TabsList className={cn(
               "grid w-full sticky top-0 z-10 bg-background/95 backdrop-blur-sm h-11",
