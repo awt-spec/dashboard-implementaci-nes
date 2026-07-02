@@ -12,6 +12,7 @@ import { exportAccountStatementPdf } from "@/lib/exportAccountStatementPdf";
 import { useSysdeStatementData, toSysdeExportData } from "@/hooks/useSysdeStatementData";
 import { AccountStatementDetail } from "./AccountStatementDetail";
 import { AccountStatementDocument } from "./AccountStatementDocument";
+import { HoursBalanceStrip } from "./HoursBalanceStrip";
 import { Confidential } from "@/components/common/Confidential";
 import { useFinanceAccess } from "@/hooks/useFinanceAccess";
 
@@ -144,6 +145,23 @@ export function AccountStatementPanel({ clientId, enforceFinanceGate = true }: P
           </div>
         </CardContent>
       </Card>
+
+      {/* Bolsa de horas: saldo disponible por póliza activa (de un vistazo) */}
+      {stmt && !isLoading && (
+        <HoursBalanceStrip
+          pockets={pkgRows
+            .filter(p => p.estado === "Activo")
+            .map(p => ({
+              id: p.id,
+              policy_number: p.policy_number,
+              package_number: p.package_number,
+              hours_contracted: Number(p.hours_contracted),
+              consumed: p.consumed,
+              balance: p.balance,
+              end_date: p.end_date,
+            }))}
+        />
+      )}
 
       {isLoading && (
         <div className="flex justify-center py-12">
