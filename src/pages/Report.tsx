@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import type { ReportSection } from "@/components/dashboard/ShareReportDialog";
+import { summarizeEpicsFromTasks } from "@/hooks/useEpics";
 
 export default function Report() {
   const [params] = useSearchParams();
@@ -243,6 +244,32 @@ function ClientSections({ sections, client }: { sections: ReportSection[]; clien
                 </div>
               ))}
             </div>
+
+            {/* Avance por épica (calculado del backlog de HU) */}
+            {client.tasks.length > 0 && (() => {
+              const { summaries, overall } = summarizeEpicsFromTasks(client.tasks);
+              return (
+                <div className="mt-5 pt-4 border-t border-border">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-foreground">Avance por épica</h3>
+                    <span className="text-[10px] text-muted-foreground">Global {overall}% · calculado del backlog</span>
+                  </div>
+                  <div className="space-y-3">
+                    {summaries.map((e) => (
+                      <div key={e.key}>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="font-medium text-foreground">{e.label}</span>
+                          <span className="text-muted-foreground">{e.doneCount}/{e.total} HU · {e.progress}%</span>
+                        </div>
+                        <div className="h-2 bg-muted rounded-full overflow-hidden">
+                          <div className="h-full bg-primary rounded-full" style={{ width: `${e.progress}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
       )}

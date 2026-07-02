@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ensureTaskInDb } from "@/lib/ensureTaskInDb";
+import { summarizeEpicsFromTasks } from "@/hooks/useEpics";
 import { useAllPresentationData } from "@/hooks/usePresentationData";
 import {
   SlideLayout, ScaledSlide, SysdeLogo, EditableText, 
@@ -66,13 +67,26 @@ function buildActivityGroups(client: Client): ActivityGroup[] {
       { label: "Gestor de cobro / notificaciones", progress: extractProgress(client.tasks.find(t => t.id === 1008)?.description) ?? 5, taskId: 1008, status: "pending" },
     ]});
   } else {
-    const cp = client.phases.filter(p => p.status === "completado");
-    if (cp.length > 0) groups.push({ title: "FASES COMPLETADAS", items: cp.map(p => ({ label: p.name, progress: 100, status: "completed" as const })) });
-    const at = client.tasks.filter(t => t.status === "en-progreso" || t.status === "pendiente");
-    if (at.length > 0) groups.push({ title: "EJECUCIÓN", items: at.map(t => ({
-      label: t.title, progress: extractProgress(t.description) ?? (t.status === "en-progreso" ? 50 : 0), taskId: t.id,
-      status: t.status === "en-progreso" ? "in-progress" as const : "pending" as const,
-    }))});
+    // Agrupar por épica con el % real calculado del backlog (feedback Mafe/Eduardo).
+    const { summaries } = summarizeEpicsFromTasks(client.tasks);
+    for (const e of summaries) {
+      if (e.total === 0) continue;
+      const active = client.tasks.filter(
+        t => (t.epic ?? "parametrizacion") === e.key && t.status !== "completada",
+      );
+      const items: ActivityItem[] = active.map(t => ({
+        label: t.title,
+        progress: extractProgress(t.description) ?? (t.status === "en-progreso" ? 50 : 0),
+        taskId: t.id,
+        status: t.status === "en-progreso" ? "in-progress" as const : "pending" as const,
+      }));
+      groups.push({
+        title: `${e.label.toUpperCase()} — ${e.progress}%`,
+        items: items.length
+          ? items
+          : [{ label: `${e.doneCount}/${e.total} HU completadas`, progress: 100, status: "completed" as const }],
+      });
+    }
   }
   return groups;
 }

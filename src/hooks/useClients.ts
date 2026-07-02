@@ -155,7 +155,7 @@ async function fetchClients(): Promise<Client[]> {
   const [phases, deliverables, tasks, actionItems, meetingMinutes, emailNotifications, comments, risks] = await Promise.all([
     fetchAllPages<any>(() => supabase.from("phases").select("id,client_id,name,status,progress,start_date,end_date").in("client_id", activeIds)),
     fetchAllPages<any>(() => supabase.from("deliverables").select("id,client_id,original_id,name,type,status,due_date,delivered_date,approved_by,version,detail,responsible_party,responsible_team,linked_task_id").in("client_id", activeIds)),
-    fetchAllPages<any>(() => supabase.from("tasks").select("id,client_id,original_id,title,status,owner,due_date,priority,assignees,description,visibility").in("client_id", activeIds)),
+    fetchAllPages<any>(() => supabase.from("tasks").select("id,client_id,original_id,title,status,owner,due_date,priority,assignees,description,visibility,epic,story_points,scrum_status").in("client_id", activeIds)),
     fetchAllPages<any>(() => supabase.from("action_items").select("id,client_id,original_id,title,assignee,due_date,status,source,priority,responsible_party,responsible_team,linked_task_id").in("client_id", activeIds)),
     fetchAllPages<any>(() => supabase.from("meeting_minutes").select("id,client_id,original_id,title,date,attendees,summary,agreements,action_items,next_meeting,visible_to_client,presentation_snapshot").in("client_id", activeIds)),
     fetchAllPages<any>(() => supabase.from("email_notifications").select("id,client_id,original_id,subject,to,from,date,status,type,preview").in("client_id", activeIds)),
@@ -226,6 +226,9 @@ async function fetchClients(): Promise<Client[]> {
           assignees: t.assignees,
           description: t.description || undefined,
           visibility: t.visibility || "externa",
+          epic: (t as any).epic || undefined,
+          storyPoints: (t as any).story_points ?? undefined,
+          scrumStatus: (t as any).scrum_status || undefined,
         })),
       actionItems: actionItemsData
         .filter(a => a.client_id === c.id)

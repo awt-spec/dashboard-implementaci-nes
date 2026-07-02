@@ -64,6 +64,44 @@ const weightedProgress = (hus: EpicHU[]) => {
   return total ? Math.round((done / total) * 100) : 0;
 };
 
+export interface EpicTaskSummary {
+  key: EpicKey;
+  label: string;
+  total: number;
+  doneCount: number;
+  /** % ponderado por story points (o por conteo si no hay puntos). */
+  progress: number;
+}
+
+/**
+ * Resumen de avance por épica a partir de tareas/HU en formato camelCase
+ * (ClientTask). Reutilizable en reportes y presentaciones (sincrónico, sin hook).
+ */
+export function summarizeEpicsFromTasks(
+  tasks: Array<{ epic?: string | null; storyPoints?: number | null; status?: string; scrumStatus?: string | null }>,
+): { summaries: EpicTaskSummary[]; overall: number } {
+  const norm = tasks.map((t) => ({
+    epic: ((t.epic ?? "parametrizacion") as EpicKey),
+    points: t.storyPoints || 1,
+    done: t.status === "completada" || t.scrumStatus === "done",
+  }));
+  const summaries: EpicTaskSummary[] = EPICS.map((e) => {
+    const items = norm.filter((n) => n.epic === e.key);
+    const total = items.reduce((s, i) => s + i.points, 0);
+    const done = items.filter((i) => i.done).reduce((s, i) => s + i.points, 0);
+    return {
+      key: e.key,
+      label: e.label,
+      total: items.length,
+      doneCount: items.filter((i) => i.done).length,
+      progress: total ? Math.round((done / total) * 100) : 0,
+    };
+  });
+  const gTotal = norm.reduce((s, i) => s + i.points, 0);
+  const gDone = norm.filter((i) => i.done).reduce((s, i) => s + i.points, 0);
+  return { summaries, overall: gTotal ? Math.round((gDone / gTotal) * 100) : 0 };
+}
+
 export function useEpics(clientId?: string) {
   return useQuery({
     queryKey: ["epics", clientId],
