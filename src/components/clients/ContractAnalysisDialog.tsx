@@ -1,10 +1,28 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Loader2, AlertTriangle, ScrollText, CheckCircle2, ListChecks, ShieldAlert } from "lucide-react";
+import { Sparkles, Loader2, AlertTriangle, ScrollText, CheckCircle2, ListChecks, ShieldAlert, Upload, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { useAnalyzeContract, type ContractAnalysis } from "@/hooks/useContractAnalysis";
+
+/** Extrae texto de un PDF (pdfjs) o de un archivo de texto. */
+async function extractTextFromFile(file: File): Promise<string> {
+  if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+    const pdfjs: any = await import("pdfjs-dist/build/pdf.mjs" as any);
+    pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.mjs`;
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjs.getDocument({ data: buf }).promise;
+    let text = "";
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      text += content.items.map((it: any) => it.str).join(" ") + "\n";
+    }
+    return text;
+  }
+  return await file.text();
+}
 
 const SEV_TONE: Record<string, string> = {
   critico: "bg-destructive/15 text-destructive border-destructive/30",
@@ -22,14 +40,41 @@ interface Props {
 export function ContractAnalysisDialog({ open, onOpenChange, contract }: Props) {
   const analyze = useAnalyzeContract();
   const [result, setResult] = useState<ContractAnalysis | null>(contract.ai_analysis ?? null);
+  const [extracting, setExtracting] = useState(false);
+  const [uploadedName, setUploadedName] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  const run = () => {
-    analyze.mutate(contract.id, {
-      onSuccess: (a) => { setResult(a); toast.success("Análisis generado"); },
-      onError: (e: any) => toast.error(e.message),
-    });
+  const run = (documentText?: string) => {
+    analyze.mutate(
+      documentText ? { contractId: contract.id, documentText } : contract.id,
+      {
+        onSuccess: (a) => { setResult(a); toast.success("Análisis generado"); },
+        onError: (e: any) => toast.error(e.message),
+      },
+    );
   };
 
+  const handleUpload = async (file: File) => {
+    if (!file) return;
+    if (file.size > 15 * 1024 * 1024) { toast.error("El archivo no puede pasar de 15MB"); return; }
+    try {
+      setExtracting(true);
+      const text = await extractTextFromFile(file);
+      if (text.trim().length < 50) {
+        toast.error("No se pudo extraer texto suficiente del documento (¿es un PDF escaneado?).");
+        return;
+      }
+      setUploadedName(file.name);
+      toast.success("Documento leído. Analizando con IA...");
+      run(text);
+    } catch (e: any) {
+      toast.error(e?.message || "Error al leer el documento");
+    } finally {
+      setExtracting(false);
+    }
+  };
+
+  const busy = analyze.isPending || extracting;
   const a = result;
 
   return (
@@ -41,23 +86,57 @@ export function ContractAnalysisDialog({ open, onOpenChange, contract }: Props) 
           </DialogTitle>
         </DialogHeader>
 
+        <input
+          ref={fileRef}
+          type="file"
+          accept="application/pdf,.pdf,.txt,.md"
+          className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); e.target.value = ""; }}
+        />
+
         {!a ? (
-          <div className="text-center py-8 space-y-3">
-            <ScrollText className="h-10 w-10 text-muted-foreground/50 mx-auto" />
-            <p className="text-sm text-muted-foreground">
-              Generá un análisis del contrato y su clausulado: obligaciones, riesgos, vacíos y recomendaciones.
-            </p>
-            <Button onClick={run} disabled={analyze.isPending} className="gap-1.5">
-              {analyze.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-              Analizar con IA
-            </Button>
+          <div className="py-6 space-y-4">
+            {/* Zona de carga: subir el documento del contrato para analizarlo */}
+            <button
+              type="button"
+              onClick={() => !busy && fileRef.current?.click()}
+              disabled={busy}
+              className="w-full rounded-lg border-2 border-dashed border-border hover:border-primary/50 hover:bg-muted/30 transition-colors p-6 flex flex-col items-center gap-2 disabled:opacity-60"
+            >
+              {extracting ? <Loader2 className="h-8 w-8 text-primary animate-spin" /> : <Upload className="h-8 w-8 text-muted-foreground/60" />}
+              <p className="text-sm font-medium">Subir contrato (PDF o texto) y analizar</p>
+              <p className="text-[11px] text-muted-foreground">Se extrae el texto y la IA lo analiza automáticamente</p>
+              {uploadedName && (
+                <span className="text-[11px] text-primary flex items-center gap-1 mt-1"><FileText className="h-3 w-3" /> {uploadedName}</span>
+              )}
+            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-[10px] uppercase text-muted-foreground">o</span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+
+            <div className="text-center space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Analizar con el clausulado ya registrado en el contrato.
+              </p>
+              <Button variant="outline" onClick={() => run()} disabled={busy} className="gap-1.5">
+                {analyze.isPending && !extracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                Analizar clausulado registrado
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-2">
               <Badge variant="outline" className="text-[10px]">Confianza {a.confianza}%</Badge>
-              <Button size="sm" variant="outline" onClick={run} disabled={analyze.isPending} className="gap-1.5">
-                {analyze.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+              <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={busy} className="gap-1.5">
+                {extracting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                Subir otro
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => run()} disabled={busy} className="gap-1.5">
+                {analyze.isPending && !extracting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                 Reanalizar
               </Button>
             </div>
