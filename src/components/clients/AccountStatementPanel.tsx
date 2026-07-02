@@ -51,7 +51,10 @@ export function AccountStatementPanel({ clientId, enforceFinanceGate = true }: P
     [period, customFrom, customTo],
   );
 
-  const { data: stmt, isLoading, error, refetch } = useAccountStatement(clientId, dates);
+  const { data: stmt, isLoading, error, refetch, dataUpdatedAt } = useAccountStatement(clientId, dates);
+  const updatedTime = dataUpdatedAt
+    ? new Date(dataUpdatedAt).toLocaleTimeString("es-CR", { hour: "2-digit", minute: "2-digit" })
+    : "—";
 
   const { loadingPkgs, pkgRows, rows, totals } = useSysdeStatementData(stmt, clientId);
   const { canAmounts: permAmounts } = useFinanceAccess();
@@ -106,6 +109,14 @@ export function AccountStatementPanel({ clientId, enforceFinanceGate = true }: P
           <span className="text-[10px] text-muted-foreground ml-2">
             {dates.from} → {dates.to}
           </span>
+          {/* Indicador de estado de cuenta EN VIVO (output en tiempo real, S2-05) */}
+          <span className="flex items-center gap-1.5 ml-2 text-[10px] text-muted-foreground" title="El estado de cuenta se actualiza en vivo. Es informativo (salida); las autorizaciones se gestionan a nivel de solicitud/cotización.">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success/70" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
+            </span>
+            En vivo · {updatedTime}
+          </span>
           <div className="ml-auto flex gap-1.5">
             {/* Toggle de vista: documento SYSDE (default) o análisis */}
             <div className="flex items-center rounded-md border border-border overflow-hidden h-8">
@@ -145,6 +156,12 @@ export function AccountStatementPanel({ clientId, enforceFinanceGate = true }: P
           </div>
         </CardContent>
       </Card>
+
+      {/* Estado de cuenta = salida informativa en vivo. Las autorizaciones
+          (aprobaciones) se gestionan aguas arriba, a nivel de solicitud/cotización. */}
+      <p className="text-[10px] text-muted-foreground px-1 -mt-1">
+        Estado de cuenta informativo, actualizado en vivo. Las autorizaciones se gestionan a nivel de solicitud/cotización.
+      </p>
 
       {/* Bolsa de horas: saldo disponible por póliza activa (de un vistazo) */}
       {stmt && !isLoading && (
