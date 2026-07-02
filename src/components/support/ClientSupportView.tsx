@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { useAllSupportTickets, type SupportTicket } from "@/hooks/useSupportTickets";
 import { useTicketsSLAStatus } from "@/hooks/useTicketsSLAStatus";
 import { ReopensInsightsPanel } from "./ReopensInsightsPanel";
+import { SlaBreachAlert } from "./SlaBreachAlert";
 import { TicketDetailSheet } from "./TicketDetailSheet";
 import { ReopenBadge } from "./ReopenBadge";
 import { ContractsSLATab } from "@/components/clients/ContractsSLATab";
@@ -279,6 +280,9 @@ export function ClientSupportView({ clientId, clientName, onNewTicket }: Props) 
         </TabsList>
 
         <TabsContent value="casos" className="space-y-4 mt-0">
+      {/* SLA: alerta activa de incumplimientos */}
+      <SlaBreachAlert clientId={clientId} onSelectTicket={setSelectedTicketId} />
+
       {/* ═══ Header: search + nuevo caso ═══ */}
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
