@@ -18,6 +18,7 @@ import { useSupportTickets, useUpdateSupportTicket, type SupportTicket } from "@
 import { cn } from "@/lib/utils";
 import { SharedMinutasPanel } from "./SharedMinutasPanel";
 import { NewTicketForm } from "@/components/support/NewTicketForm";
+import { SlaBreachAlert } from "@/components/support/SlaBreachAlert";
 import { isTicketClosed } from "@/lib/ticketStatus";
 import { toast } from "sonner";
 import { PackageCheck, RotateCcw } from "lucide-react";
@@ -280,6 +281,9 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
 
             {/* RESUMEN */}
             <TabsContent value="resumen" className="mt-4 space-y-3">
+              {/* SLA: alerta activa de incumplimientos */}
+              <SlaBreachAlert clientId={client.id} onSelectTicket={setSelectedTicketId} />
+
               {/* Critical alerts */}
               {criticalTickets.length > 0 && (
                 <Card className="border-destructive/40 bg-destructive/5">
