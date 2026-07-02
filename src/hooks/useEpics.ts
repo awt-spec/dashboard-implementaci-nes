@@ -40,6 +40,8 @@ export interface EpicHU {
   story_points: number | null;
   epic: EpicKey | null;
   billing_status: BillingStatus;
+  owner: string | null;
+  priority: string | null;
   done: boolean;
 }
 
@@ -69,7 +71,7 @@ export function useEpics(clientId?: string) {
     queryFn: async () => {
       const { data, error } = await (supabase
         .from("tasks")
-        .select("id, original_id, title, status, scrum_status, story_points, epic, hu_code, billing_status")
+        .select("id, original_id, title, status, scrum_status, story_points, epic, hu_code, billing_status, owner, priority")
         .eq("client_id", clientId) as any);
       if (error) throw error;
 
@@ -82,6 +84,8 @@ export function useEpics(clientId?: string) {
         story_points: t.story_points ?? null,
         epic: (t.epic ?? null) as EpicKey | null,
         billing_status: (t.billing_status ?? "sin_estado") as BillingStatus,
+        owner: t.owner ?? null,
+        priority: t.priority ?? null,
         done: isDone(t),
       }));
 
