@@ -28,7 +28,8 @@ Deno.serve(async (req) => {
     await requireRole(ctx, ["admin", "pm", "gerente", "colaborador"]);
     await checkRateLimit(ctx.adminClient, ctx.userId, FUNCTION_NAME, 20);
 
-    const { contract_id } = await req.json().catch(() => ({}));
+    const { contract_id, document_text } = await req.json().catch(() => ({}));
+    const docText = typeof document_text === "string" ? document_text.slice(0, 60000) : null;
     if (!contract_id || typeof contract_id !== "string") {
       return new Response(JSON.stringify({ error: "contract_id requerido" }), {
         status: 400, headers: { ...cors, "Content-Type": "application/json" },
@@ -68,6 +69,8 @@ Deno.serve(async (req) => {
         notas: contract.notes,
         clausulado: contract.clauses,
       },
+      // Texto completo del documento de contrato subido por el usuario (si aplica).
+      documento_subido: docText ?? undefined,
       slas: slas ?? [],
     };
 
@@ -143,8 +146,12 @@ Deno.serve(async (req) => {
     }).select().single();
 
     // Guardar el análisis en el propio contrato para mostrarlo sin recomputar.
+    // Si se subió un documento y el contrato no tenía clausulado, lo persistimos.
     await db.from("client_contracts")
-      .update({ ai_analysis: { ...analysis, generated_at: new Date().toISOString() } })
+      .update({
+        ai_analysis: { ...analysis, generated_at: new Date().toISOString() },
+        ...(docText && !contract.clauses ? { clauses: docText } : {}),
+      })
       .eq("id", contract_id);
 
     await logAiCall(db, {

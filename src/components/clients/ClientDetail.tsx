@@ -32,7 +32,8 @@ import { ClientUsersTab } from "./ClientUsersTab";
 import { QuoteList } from "@/components/support/quotes/QuoteList";
 import { AccountStatementPanel } from "./AccountStatementPanel";
 import { EpicsProgressPanel } from "./EpicsProgressPanel";
-import { summarizeEpicsFromTasks, EPICS, EPIC_LABEL } from "@/hooks/useEpics";
+import { EpicDetailDialog } from "./EpicDetailDialog";
+import { summarizeEpicsFromTasks, useEpics, EPICS, EPIC_LABEL, type EpicSummary } from "@/hooks/useEpics";
 import { ClientAudiencesPanel } from "./ClientAudiencesPanel";
 import { ClientCategoryBadge } from "./ClientCategoryBadge";
 import { supabase } from "@/integrations/supabase/client";
@@ -142,6 +143,14 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
     summarizeEpicsFromTasks(client.tasks).summaries.forEach(s => { map[s.key] = s.progress; });
     return map;
   }, [client.tasks]);
+
+  // Detalle (zoom) de la épica vinculada a una fase.
+  const { data: epicsData } = useEpics(client.id);
+  const [phaseEpic, setPhaseEpic] = useState<EpicSummary | null>(null);
+  const openPhaseDetail = (epicKey?: string) => {
+    const s = epicsData?.summaries.find(x => x.key === epicKey);
+    if (s) setPhaseEpic(s);
+  };
 
   return (
     <div className="space-y-6">
@@ -365,12 +374,17 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
                       </div>
                     </div>
                     {linked ? (
-                      <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openPhaseDetail(phase.epic)}
+                        className="w-full flex items-center gap-2 group"
+                        title="Ver detalle de HU de esta épica"
+                      >
                         <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                           <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${autoPct}%` }} />
                         </div>
-                        <span className="text-[10px] text-primary font-medium w-14 text-right">auto {autoPct}%</span>
-                      </div>
+                        <span className="text-[10px] text-primary font-medium w-20 text-right group-hover:underline">auto {autoPct}% · ver</span>
+                      </button>
                     ) : (
                       <div className="flex items-center gap-2">
                         <Slider
@@ -389,6 +403,9 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
             </CardContent>
           </Card>
         </div>
+
+        {/* Zoom de una fase vinculada → detalle de HU de su épica. */}
+        <EpicDetailDialog clientId={client.id} epic={phaseEpic} onOpenChange={(o) => !o && setPhaseEpic(null)} />
 
         {/* Épicas: % de avance por épica (calculado del backlog) + disparadores
             de facturación por HU (feedback Mafe/Eduardo). */}

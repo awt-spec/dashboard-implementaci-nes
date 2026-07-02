@@ -18,9 +18,13 @@ export interface ContractAnalysis {
 export function useAnalyzeContract() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (contractId: string): Promise<ContractAnalysis> => {
+    mutationFn: async (
+      arg: string | { contractId: string; documentText?: string },
+    ): Promise<ContractAnalysis> => {
+      const contractId = typeof arg === "string" ? arg : arg.contractId;
+      const documentText = typeof arg === "string" ? undefined : arg.documentText;
       const { data, error } = await supabase.functions.invoke("analyze-contract-ai", {
-        body: { contract_id: contractId },
+        body: { contract_id: contractId, document_text: documentText },
       });
       if (error) {
         const msg = error.message || "";
