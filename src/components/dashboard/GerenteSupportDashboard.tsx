@@ -15,6 +15,7 @@ import {
 import { motion } from "framer-motion";
 import { type Client } from "@/data/projectData";
 import { useSupportTickets, useUpdateSupportTicket, type SupportTicket } from "@/hooks/useSupportTickets";
+import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { SharedMinutasPanel } from "./SharedMinutasPanel";
 import { NewTicketForm } from "@/components/support/NewTicketForm";
@@ -63,6 +64,8 @@ function getHealth(openCount: number, criticalCount: number) {
 export function GerenteSupportDashboard({ client, canCreateTickets = true, sidebarExtras }: Props) {
   const { data: tickets = [], isLoading } = useSupportTickets(client.id);
   const updateTicket = useUpdateSupportTicket();
+  const { role } = useAuth();
+  const isStaff = role !== "cliente";
   const [tab, setTab] = useState("resumen");
   const [search, setSearch] = useState("");
   const [filterPriority, setFilterPriority] = useState<string>("all");
@@ -281,8 +284,9 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
 
             {/* RESUMEN */}
             <TabsContent value="resumen" className="mt-4 space-y-3">
-              {/* SLA: alerta activa de incumplimientos */}
-              <SlaBreachAlert clientId={client.id} onSelectTicket={setSelectedTicketId} />
+              {/* SLA: alerta activa de incumplimientos (herramienta interna;
+                  el cliente no lee client_slas por RLS → se oculta en el portal) */}
+              {isStaff && <SlaBreachAlert clientId={client.id} onSelectTicket={setSelectedTicketId} />}
 
               {/* Critical alerts */}
               {criticalTickets.length > 0 && (
