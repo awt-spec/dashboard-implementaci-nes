@@ -421,25 +421,33 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
                               {t.dias_antiguedad != null && ` · ${t.dias_antiguedad}d`}
                             </p>
                           </button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleReopen(t)}
-                            disabled={updateTicket.isPending}
-                            className="h-7 gap-1 text-[11px]"
-                            title="El caso no está resuelto — reabrir y notificar al SVA"
-                          >
-                            <RotateCcw className="h-3 w-3" /> Reabrir
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => handleValidate(t)}
-                            disabled={updateTicket.isPending}
-                            className="h-7 gap-1 text-[11px] bg-success hover:bg-success/90"
-                            title="Confirmar que la solución es correcta y cerrar el caso"
-                          >
-                            <CheckCircle2 className="h-3 w-3" /> Validar
-                          </Button>
+                          {/* Validar/reabrir son acciones: requieren permiso de
+                              edición (editor/admin), no un viewer de solo lectura. */}
+                          {canCreateTickets ? (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleReopen(t)}
+                                disabled={updateTicket.isPending}
+                                className="h-7 gap-1 text-[11px]"
+                                title="El caso no está resuelto — reabrir y notificar al SVA"
+                              >
+                                <RotateCcw className="h-3 w-3" /> Reabrir
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => handleValidate(t)}
+                                disabled={updateTicket.isPending}
+                                className="h-7 gap-1 text-[11px] bg-success hover:bg-success/90"
+                                title="Confirmar que la solución es correcta y cerrar el caso"
+                              >
+                                <CheckCircle2 className="h-3 w-3" /> Validar
+                              </Button>
+                            </>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground italic px-1">Solo lectura</span>
+                          )}
                         </div>
                       ))}
                     </div>

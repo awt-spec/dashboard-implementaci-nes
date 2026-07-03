@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { FileText, Calendar, CheckCircle2, XCircle, Loader2, ChevronDown, ChevronUp, Paperclip, Download } from "lucide-react";
 import { toast } from "sonner";
 import { useQuote, useApproveQuote, useRejectQuote, getQuoteAttachmentUrl } from "@/hooks/useQuotes";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Props {
   quoteId: string;
@@ -16,6 +17,7 @@ interface Props {
 
 export function QuoteApprovalCard({ quoteId, defaultOpen = false }: Props) {
   const { data: quote, isLoading } = useQuote(quoteId);
+  const { role, clienteAssignment } = useAuth();
   const approve = useApproveQuote();
   const reject = useRejectQuote();
 
@@ -73,7 +75,12 @@ export function QuoteApprovalCard({ quoteId, defaultOpen = false }: Props) {
   };
 
   const expired = quote.valid_until && new Date(quote.valid_until) < new Date();
-  const isPendingDecision = quote.status === "sent" && !expired;
+  // Aprobar/rechazar es una autorización comercial: staff, o cliente con permiso
+  // de edición (editor/admin). Un viewer de solo lectura no puede decidir.
+  const canDecide = role !== "cliente"
+    || clienteAssignment?.permission_level === "editor"
+    || clienteAssignment?.permission_level === "admin";
+  const isPendingDecision = quote.status === "sent" && !expired && canDecide;
 
   return (
     <>
