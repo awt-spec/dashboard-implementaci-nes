@@ -1,5 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+
+// Columnas seguras para el rol CLIENTE: solo lo que su portal necesita. Se
+// excluyen campos internos (prioridad_interna, reopen_count, tiempo_cobrado_
+// minutos, descripcion_cifrada, assigned_user_id, campos scrum, etc.) que hoy
+// viajaban al navegador del cliente por el select("*").
+const CLIENT_SAFE_COLUMNS =
+  "id, client_id, ticket_id, consecutivo_cliente, producto, asunto, descripcion, tipo, prioridad, estado, fecha_registro, fecha_entrega, dias_antiguedad, responsable, ai_summary, notas, case_agreements, case_actions, created_at, updated_at";
 
 export interface CaseAgreementItem {
   text: string;
@@ -97,10 +105,15 @@ export function useSupportClients() {
 }
 
 export function useSupportTickets(clientId?: string) {
+  const { role } = useAuth();
+  const isCliente = role === "cliente";
   return useQuery({
-    queryKey: ["support-tickets", clientId],
+    queryKey: ["support-tickets", clientId, isCliente ? "safe" : "full"],
     queryFn: async () => {
-      let query = supabase.from("support_tickets").select("*").order("dias_antiguedad", { ascending: false });
+      let query = supabase
+        .from("support_tickets")
+        .select(isCliente ? CLIENT_SAFE_COLUMNS : "*")
+        .order("dias_antiguedad", { ascending: false });
       if (clientId) {
         query = query.eq("client_id", clientId);
       }
