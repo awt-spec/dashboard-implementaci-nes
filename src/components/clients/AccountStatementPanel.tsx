@@ -27,9 +27,11 @@ const PERIOD_OPTIONS: Array<{ value: StatementPeriod; label: string }> = [
 
 interface Props {
   clientId: string;
-  /** Si true (vista interna), enmascara montos según permiso financiero. En el
-   *  portal del cliente se pasa false: el cliente ve su propia cuenta. */
+  /** Si true (vista interna), enmascara montos según permiso financiero. */
   enforceFinanceGate?: boolean;
+  /** Si true (portal del cliente), muestra SOLO horas: documento SYSDE + bolsa
+   *  de horas, sin la vista de "Análisis" financiero (montos comerciales). */
+  hoursOnly?: boolean;
 }
 
 const n2 = (v: number) => Number(v || 0).toLocaleString("es-CR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -39,7 +41,7 @@ const fmtDate = (d?: string | null) => {
   return `${day}/${m}/${y}`;
 };
 
-export function AccountStatementPanel({ clientId, enforceFinanceGate = true }: Props) {
+export function AccountStatementPanel({ clientId, enforceFinanceGate = true, hoursOnly = false }: Props) {
   const [period, setPeriod] = useState<StatementPeriod>("year_to_date");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
@@ -118,21 +120,24 @@ export function AccountStatementPanel({ clientId, enforceFinanceGate = true }: P
             En vivo · {updatedTime}
           </span>
           <div className="ml-auto flex gap-1.5">
-            {/* Toggle de vista: documento SYSDE (default) o análisis */}
-            <div className="flex items-center rounded-md border border-border overflow-hidden h-8">
-              <button
-                onClick={() => setView("documento")}
-                className={`px-2.5 h-full text-xs ${view === "documento" ? "bg-primary text-primary-foreground" : "bg-transparent text-muted-foreground"}`}
-              >
-                Documento
-              </button>
-              <button
-                onClick={() => setView("analisis")}
-                className={`px-2.5 h-full text-xs ${view === "analisis" ? "bg-primary text-primary-foreground" : "bg-transparent text-muted-foreground"}`}
-              >
-                Análisis
-              </button>
-            </div>
+            {/* Toggle de vista: documento SYSDE (default) o análisis. En el portal
+                del cliente (hoursOnly) no se ofrece la vista financiera. */}
+            {!hoursOnly && (
+              <div className="flex items-center rounded-md border border-border overflow-hidden h-8">
+                <button
+                  onClick={() => setView("documento")}
+                  className={`px-2.5 h-full text-xs ${view === "documento" ? "bg-primary text-primary-foreground" : "bg-transparent text-muted-foreground"}`}
+                >
+                  Documento
+                </button>
+                <button
+                  onClick={() => setView("analisis")}
+                  className={`px-2.5 h-full text-xs ${view === "analisis" ? "bg-primary text-primary-foreground" : "bg-transparent text-muted-foreground"}`}
+                >
+                  Análisis
+                </button>
+              </div>
+            )}
             <Button size="sm" variant="ghost" onClick={() => refetch()} className="h-8 text-xs">
               Actualizar
             </Button>
@@ -201,7 +206,7 @@ export function AccountStatementPanel({ clientId, enforceFinanceGate = true }: P
         </div>
       )}
 
-      {stmt && !isLoading && view === "analisis" && (
+      {stmt && !isLoading && view === "analisis" && !hoursOnly && (
         <>
           {/* Resumen — 3 KPIs */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

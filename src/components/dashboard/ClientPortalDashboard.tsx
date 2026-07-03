@@ -133,7 +133,7 @@ export function ClientPortalDashboard() {
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
                   Estado de cuenta
                 </p>
-                <AccountStatementPanel clientId={client.id} enforceFinanceGate={false} />
+                <AccountStatementPanel clientId={client.id} hoursOnly />
               </div>
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
