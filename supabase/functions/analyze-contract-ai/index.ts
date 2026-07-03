@@ -122,6 +122,23 @@ Deno.serve(async (req) => {
               description: "Cláusulas faltantes o ambiguas que conviene cerrar. Array vacío si no hay.",
               items: { type: "string" },
             },
+            hitos_facturacion: {
+              type: "array",
+              description: "Hitos FACTURABLES pactados en el contrato (no recurrentes), en orden. Cada uno con la condición que lo dispara y la cláusula que lo origina. Array vacío si el contrato no define hitos facturables explícitos.",
+              items: {
+                type: "object",
+                properties: {
+                  numero: { type: "number", description: "Orden del hito (1, 2, 3…)." },
+                  descripcion: { type: "string", description: "Qué se factura en este hito." },
+                  condicion: { type: "string", description: "Evento/condición que lo dispara (ej. 'cierre de parametrización con acta', 'entrega de ambiente')." },
+                  clausula_referencia: { type: "string", description: "Cláusula/sección del contrato que lo origina (ej. 'Cláusula 5.2')." },
+                  porcentaje: { type: "number", description: "% del contrato/valor que representa, si aplica." },
+                  monto: { type: "number", description: "Monto fijo, si el contrato lo especifica." },
+                  horas: { type: "number", description: "Horas asociadas, si aplica." },
+                },
+                required: ["descripcion", "condicion"],
+              },
+            },
             recomendaciones: {
               type: "array",
               description: "Acciones concretas recomendadas (renegociar, agregar cláusula, etc.).",
@@ -153,6 +170,33 @@ Deno.serve(async (req) => {
         ...(docText && !contract.clauses ? { clauses: docText } : {}),
       })
       .eq("id", contract_id);
+
+    // Persistir los hitos de facturación extraídos como entidades. Solo se
+    // reemplazan los propuestos por IA (los confirmados/cumplidos por humanos
+    // se preservan).
+    const hitos = Array.isArray(analysis.hitos_facturacion) ? analysis.hitos_facturacion : [];
+    if (hitos.length > 0) {
+      await db.from("contract_milestones")
+        .delete()
+        .eq("contract_id", contract_id)
+        .eq("status", "propuesto")
+        .eq("source", "ia");
+      const rows = hitos.map((h: any, i: number) => ({
+        contract_id,
+        client_id: contract.client_id ?? null,
+        numero: h.numero ?? i + 1,
+        descripcion: h.descripcion,
+        condicion: h.condicion ?? null,
+        clausula_referencia: h.clausula_referencia ?? null,
+        porcentaje: h.porcentaje ?? null,
+        monto: h.monto ?? null,
+        horas: h.horas ?? null,
+        moneda: contract.currency ?? null,
+        status: "propuesto",
+        source: "ia",
+      }));
+      await db.from("contract_milestones").insert(rows);
+    }
 
     await logAiCall(db, {
       function_name: FUNCTION_NAME,

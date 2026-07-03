@@ -2,9 +2,10 @@ import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Loader2, AlertTriangle, ScrollText, CheckCircle2, ListChecks, ShieldAlert, Upload, FileText } from "lucide-react";
+import { Sparkles, Loader2, AlertTriangle, ScrollText, CheckCircle2, ListChecks, ShieldAlert, Upload, FileText, Milestone } from "lucide-react";
 import { toast } from "sonner";
 import { useAnalyzeContract, type ContractAnalysis } from "@/hooks/useContractAnalysis";
+import { ContractMilestonesPanel } from "./ContractMilestonesPanel";
 
 /** Extrae texto de un PDF (pdfjs) o de un archivo de texto. */
 async function extractTextFromFile(file: File): Promise<string> {
@@ -143,6 +144,10 @@ export function ContractAnalysisDialog({ open, onOpenChange, contract }: Props) 
 
             <Section icon={<ScrollText className="h-3.5 w-3.5" />} title="Resumen ejecutivo">
               <p className="text-sm">{a.resumen_ejecutivo}</p>
+            </Section>
+
+            <Section icon={<Milestone className="h-3.5 w-3.5" />} title="Hitos de facturación">
+              <ContractMilestonesPanel contractId={contract.id} />
             </Section>
 
             {a.riesgos?.length > 0 && (
