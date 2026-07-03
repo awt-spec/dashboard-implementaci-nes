@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Loader2, TrendingUp, User } from "lucide-react";
+import { Clock, Loader2, TrendingUp } from "lucide-react";
 import { format, startOfMonth, isAfter } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -48,29 +48,13 @@ export function ClientHoursPanel({ clientId }: Props) {
     },
   });
 
-  // Nombres de quienes trabajaron (para mostrar atribución sin exponer user_id)
-  const userIds = useMemo(() => Array.from(new Set(entries.map(e => e.user_id))), [entries]);
-  const { data: profilesMap = new Map<string, string>() } = useQuery({
-    queryKey: ["profiles-names", userIds.join(",")],
-    queryFn: async () => {
-      if (userIds.length === 0) return new Map<string, string>();
-      const { data } = await supabase
-        .from("profiles")
-        .select("user_id, full_name")
-        .in("user_id", userIds);
-      const m = new Map<string, string>();
-      (data || []).forEach((p: any) => m.set(p.user_id, p.full_name || "Equipo SYSDE"));
-      return m;
-    },
-    enabled: userIds.length > 0,
-  });
-
-  const { totalSeconds, thisMonthSeconds, byTicket, byUser } = useMemo(() => {
+  // Nota: no se expone "por miembro del equipo" al cliente (staffing interno).
+  // El cliente ve su total y el consumo por caso, no qué colaborador SYSDE trabajó.
+  const { totalSeconds, thisMonthSeconds, byTicket } = useMemo(() => {
     const monthStart = startOfMonth(new Date());
     let total = 0;
     let thisMonth = 0;
     const ticketAgg = new Map<string, { item_id: string; seconds: number; last: string }>();
-    const userAgg = new Map<string, number>();
 
     entries.forEach(e => {
       const secs = e.duration_seconds ?? 0;
@@ -83,16 +67,10 @@ export function ClientHoursPanel({ clientId }: Props) {
         if (new Date(e.started_at) > new Date(current.last)) current.last = e.started_at;
         ticketAgg.set(e.item_id, current);
       }
-
-      userAgg.set(e.user_id, (userAgg.get(e.user_id) ?? 0) + secs);
     });
 
     const byTicket = Array.from(ticketAgg.values()).sort((a, b) => b.seconds - a.seconds);
-    const byUser = Array.from(userAgg.entries())
-      .map(([user_id, seconds]) => ({ user_id, seconds }))
-      .sort((a, b) => b.seconds - a.seconds);
-
-    return { totalSeconds: total, thisMonthSeconds: thisMonth, byTicket, byUser };
+    return { totalSeconds: total, thisMonthSeconds: thisMonth, byTicket };
   }, [entries]);
 
   if (isLoading) {
@@ -176,26 +154,6 @@ export function ClientHoursPanel({ clientId }: Props) {
         </Card>
       )}
 
-      {/* Hours by team member */}
-      {byUser.length > 0 && (
-        <Card>
-          <CardContent className="p-4 space-y-2">
-            <p className="text-xs font-bold mb-1">Por miembro del equipo</p>
-            <div className="space-y-1">
-              {byUser.slice(0, 10).map(u => {
-                const name = profilesMap.get(u.user_id) ?? "Equipo SYSDE";
-                return (
-                  <div key={u.user_id} className="flex items-center gap-2 text-[11px]">
-                    <User className="h-3 w-3 text-muted-foreground shrink-0" />
-                    <span className="flex-1 truncate">{name}</span>
-                    <span className="font-semibold tabular-nums shrink-0">{fmtHours(u.seconds)}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
