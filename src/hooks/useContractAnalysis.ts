@@ -7,6 +7,7 @@ export interface ContractAnalysis {
   riesgos: { titulo: string; severidad: string; impacto?: string; mitigacion: string }[];
   vacios_o_ambiguedades?: string[];
   recomendaciones: string[];
+  hitos_facturacion?: { numero?: number; descripcion: string; condicion: string; clausula_referencia?: string; porcentaje?: number; monto?: number; horas?: number }[];
   confianza: number;
   generated_at?: string;
 }
