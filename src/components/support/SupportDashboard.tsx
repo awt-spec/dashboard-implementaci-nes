@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
+import { useReadOnly } from "@/hooks/useReadOnly";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Card, CardContent } from "@/components/ui/card";
@@ -37,6 +38,7 @@ interface SupportDashboardProps {
 }
 
 export function SupportDashboard({ initialClientId, onBack }: SupportDashboardProps) {
+  const readOnly = useReadOnly();
   const { data: clients = [] } = useSupportClients();
   const { data: allTickets = [], isLoading, refetch } = useAllSupportTickets();
   const [selectedClient, setSelectedClient] = useState<string>("all");
@@ -188,6 +190,7 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  {!readOnly && (
                   <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
                     <DialogTrigger asChild>
                       <Button variant="outline" size="sm" className="gap-1.5 text-xs border-amber-500/30 text-amber-500 hover:bg-amber-500/10">
@@ -210,6 +213,7 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
+                  )}
                   <Badge className={selectedClientObj.status === "activo" ? "bg-success text-success-foreground" : "bg-muted text-muted-foreground"}>
                     {selectedClientObj.status}
                   </Badge>
@@ -351,38 +355,44 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
           <Input className="pl-8 h-8 text-xs" placeholder="Buscar por ID o asunto..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <Badge variant="outline" className="text-xs">{filteredActive.length} activos de {tickets.length} total</Badge>
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 gap-1.5 text-xs border-violet-500/50 text-violet-400 hover:bg-violet-500/10"
-          onClick={handleClassify}
-          disabled={classifying}
-        >
-          {classifying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-          Clasificar con IA
-        </Button>
+        {!readOnly && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1.5 text-xs border-violet-500/50 text-violet-400 hover:bg-violet-500/10"
+            onClick={handleClassify}
+            disabled={classifying}
+          >
+            {classifying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            Clasificar con IA
+          </Button>
+        )}
         <ExportTicketsMenu
           tickets={allTickets}
           clients={clients}
           currentClientId={isClientView ? initialClientId : (selectedClient !== "all" ? selectedClient : undefined)}
         />
-        <Button
-          size="sm"
-          className="h-8 gap-1.5 text-xs"
-          onClick={() => setNewTicketOpen(true)}
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Nuevo caso
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 w-8 p-0 shrink-0"
-          onClick={() => setConfigOpen(true)}
-          title="Configuración (Comercial · Datos & Sync)"
-        >
-          <Settings className="h-3.5 w-3.5" />
-        </Button>
+        {!readOnly && (
+          <>
+            <Button
+              size="sm"
+              className="h-8 gap-1.5 text-xs"
+              onClick={() => setNewTicketOpen(true)}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Nuevo caso
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 w-8 p-0 shrink-0"
+              onClick={() => setConfigOpen(true)}
+              title="Configuración (Comercial · Datos & Sync)"
+            >
+              <Settings className="h-3.5 w-3.5" />
+            </Button>
+          </>
+        )}
       </div>
       </>
       )}
@@ -435,7 +445,7 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
           <SupportInbox
             clientId={selectedClient !== "all" ? selectedClient : undefined}
             mode="inbox"
-            onNewTicket={() => setNewTicketOpen(true)}
+            onNewTicket={readOnly ? undefined : () => setNewTicketOpen(true)}
           />
         </TabsContent>
 
