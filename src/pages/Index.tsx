@@ -75,14 +75,19 @@ const Index = () => {
   }, [role, didLandRedirect, activeSection]);
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
   const { data: clients } = useClients();
-  const [assignedClientId, setAssignedClientId] = useState<string | null>(null);
+  // Un gerente puede tener 1..N clientes asignados (el diálogo de admin usa
+  // checkboxes multi-selección). Guardamos la lista completa + cuál está activo.
+  const [assignedClientIds, setAssignedClientIds] = useState<string[]>([]);
+  const [selectedGerenteClientId, setSelectedGerenteClientId] = useState<string | null>(null);
   const [loadingAssignment, setLoadingAssignment] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
   }, [dark]);
 
-  // Fetch gerente's assigned client
+  // Fetch gerente's assigned client(s). Antes usaba .maybeSingle(), que ante
+  // 2+ asignaciones devolvía error (PGRST116) y dejaba al gerente sin cliente
+  // ("No tiene proyecto asignado") pese a tener asignaciones. Ahora trae todas.
   useEffect(() => {
     if (role !== "gerente" || !user) return;
     setLoadingAssignment(true);
@@ -90,9 +95,12 @@ const Index = () => {
       .from("gerente_client_assignments")
       .select("client_id")
       .eq("user_id", user.id)
-      .maybeSingle()
       .then(({ data }) => {
-        setAssignedClientId(data?.client_id ?? null);
+        const ids = (data || []).map(a => a.client_id);
+        setAssignedClientIds(ids);
+        setSelectedGerenteClientId(prev =>
+          prev && ids.includes(prev) ? prev : (ids[0] ?? null)
+        );
         setLoadingAssignment(false);
       });
   }, [role, user]);
@@ -141,10 +149,16 @@ const Index = () => {
     ? activeSection.replace("support-client-", "")
     : null;
 
-  // For gerente: find their assigned client
-  const gerenteClient = role === "gerente" && assignedClientId
-    ? clientData.find(c => c.id === assignedClientId)
+  // For gerente: find their currently-selected assigned client
+  const gerenteClient = role === "gerente" && selectedGerenteClientId
+    ? clientData.find(c => c.id === selectedGerenteClientId)
     : null;
+  // Clientes asignados resueltos (para el selector cuando hay más de uno).
+  const gerenteAssignedClients = role === "gerente"
+    ? assignedClientIds
+        .map(id => clientData.find(c => c.id === id))
+        .filter((c): c is NonNullable<typeof c> => Boolean(c))
+    : [];
 
   const getTitle = () => {
     if (role === "gerente" && gerenteClient) {
@@ -225,9 +239,29 @@ const Index = () => {
                   loadingAssignment ? (
                     <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
                   ) : gerenteClient ? (
-                    (gerenteClient as any).client_type === "soporte"
-                      ? <GerenteSupportDashboard client={gerenteClient} />
-                      : <GerenteMobileDashboard client={gerenteClient} />
+                    <div className="space-y-4">
+                      {/* Selector de cliente cuando el gerente tiene más de uno asignado */}
+                      {gerenteAssignedClients.length > 1 && (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {gerenteAssignedClients.map(c => (
+                            <button
+                              key={c.id}
+                              onClick={() => setSelectedGerenteClientId(c.id)}
+                              className={`h-8 px-3 rounded-full border text-xs font-semibold transition-colors ${
+                                c.id === selectedGerenteClientId
+                                  ? "border-primary bg-primary/10 text-primary"
+                                  : "border-border/60 text-muted-foreground hover:bg-accent/50"
+                              }`}
+                            >
+                              {c.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {(gerenteClient as any).client_type === "soporte"
+                        ? <GerenteSupportDashboard client={gerenteClient} />
+                        : <GerenteMobileDashboard client={gerenteClient} />}
+                    </div>
                   ) : (
                     <p className="text-sm text-muted-foreground text-center py-12">No tiene un proyecto asignado. Contacte al administrador.</p>
                   )
