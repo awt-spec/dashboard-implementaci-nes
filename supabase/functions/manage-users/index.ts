@@ -222,6 +222,18 @@ Deno.serve(async (req) => {
       let userId: string;
       if (existingProfile?.user_id) {
         userId = existingProfile.user_id;
+        // Guard de seguridad: este endpoint gestiona SOLO usuarios cliente y se
+        // permite a admin/pm. Si el email ya pertenece a una cuenta interna
+        // (cualquier rol != cliente), rechazar: de lo contrario un pm (o admin)
+        // podría secuestrar una cuenta de staff — reseteando su password (línea
+        // updateUserById) y degradando sus roles a cliente (delete de abajo).
+        const { data: existingRoles } = await ctx.adminClient
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId);
+        if ((existingRoles ?? []).some((r: any) => r.role !== "cliente")) {
+          throw new AuthError(403, "Ese email pertenece a una cuenta interna; no puede gestionarse como usuario cliente.");
+        }
         // Reset password + confirm email para que el password que venga en el
         // request sea el password real del user (útil para seed scripts y
         // para resetear cuando el admin re-invita a un user existente).
@@ -307,6 +319,19 @@ Deno.serve(async (req) => {
       if (delAssignErr) throw delAssignErr;
 
       if (delete_user) {
+        // Guard de seguridad: nunca borrar una cuenta interna por esta vía.
+        // Sin este check, un pm (o admin) podría pasar el user_id de un usuario
+        // de staff/admin con delete_user=true — el delete de asignación de
+        // arriba no afectaría nada, remaining quedaría en 0 y se borraría la
+        // cuenta interna, sorteando la acción `delete` que es admin-only.
+        const { data: targetRoles } = await ctx.adminClient
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user_id);
+        const isInternal = (targetRoles ?? []).some((r: any) => r.role !== "cliente");
+        if (isInternal) {
+          throw new AuthError(403, "No se puede eliminar una cuenta interna desde la gestión de usuarios cliente.");
+        }
         // Sólo borra el auth user si no quedan otras asignaciones
         const { data: remaining } = await ctx.adminClient
           .from("cliente_company_assignments")
