@@ -12,7 +12,8 @@
  *   #C8200F (rojo) · #A81C0C (rojo dk) · #3D3D3D (gris) · #888880 (mid)
  *   #F4F4F2 (light) · #FFFFFF (white)
  */
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, type ReactNode } from "react";
+import { ReadOnlyProvider } from "@/hooks/useReadOnly";
 import { useClients } from "@/hooks/useClients";
 import { useAllSupportTickets, useSupportClients } from "@/hooks/useSupportTickets";
 import { useAIUsageLogs } from "@/hooks/useAIUsageLogs";
@@ -236,16 +237,19 @@ export function CEODashboard() {
   const selectedClient = selectedClientId ? allClients.find(c => c.id === selectedClientId) : null;
 
   const renderContent = () => {
+    // El CEO es observador: RLS le concede solo SELECT. Envolvemos las vistas
+    // de admin reutilizadas en modo solo-lectura para que oculten sus controles
+    // de escritura (que si no fallarían server-side con un error RLS críptico).
+    let content: ReactNode = null;
     if (view === "implementation") {
-      if (selectedClient) {
-        return <ClientDetail client={selectedClient as any} onBack={() => setSelectedClientId(null)} />;
-      }
-      return <ClientList onSelectClient={setSelectedClientId} selectedClientId={undefined} />;
-    }
-    if (view === "support") return <SupportDashboard />;
-    if (view === "scrum") return <TeamScrumDashboard />;
-    if (view === "config") return <ConfigurationHub />;
-    return null;
+      content = selectedClient
+        ? <ClientDetail client={selectedClient as any} onBack={() => setSelectedClientId(null)} />
+        : <ClientList onSelectClient={setSelectedClientId} selectedClientId={undefined} />;
+    } else if (view === "support") content = <SupportDashboard />;
+    else if (view === "scrum") content = <TeamScrumDashboard />;
+    else if (view === "config") content = <ConfigurationHub />;
+    if (!content) return null;
+    return <ReadOnlyProvider value={true}>{content}</ReadOnlyProvider>;
   };
 
   const VIEW_LABELS: Record<View, string> = {

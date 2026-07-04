@@ -43,6 +43,7 @@ import { UpcomingDeliverables } from "@/components/dashboard/UpcomingDeliverable
 import { ClientTechStack } from "./ClientTechStack";
 import { useQueryClient } from "@tanstack/react-query";
 import { useUpdateClient } from "@/hooks/useClients";
+import { useReadOnly } from "@/hooks/useReadOnly";
 
 const CLIENT_STATUSES = [
   { value: "activo", label: "Activo" },
@@ -67,6 +68,7 @@ interface ClientDetailProps {
 
 export function ClientDetail({ client, onBack }: ClientDetailProps) {
   const queryClient = useQueryClient();
+  const readOnly = useReadOnly();
   const updateClient = useUpdateClient();
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferring, setTransferring] = useState(false);
@@ -176,39 +178,43 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => setNewCaseOpen(true)}
-                      className="gap-1.5"
-                    >
-                      <Plus className="h-3.5 w-3.5" /> Nuevo caso
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={openEdit} className="gap-1.5">
-                      <Pencil className="h-3.5 w-3.5" /> Editar
-                    </Button>
-                    <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" size="sm" className="gap-1.5 border-amber-500/30 text-amber-500 hover:bg-amber-500/10">
-                          <ArrowRightLeft className="h-3.5 w-3.5" /> A Soporte
+                    {!readOnly && (
+                      <>
+                        <Button
+                          size="sm"
+                          onClick={() => setNewCaseOpen(true)}
+                          className="gap-1.5"
+                        >
+                          <Plus className="h-3.5 w-3.5" /> Nuevo caso
                         </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Transferir a Soporte</DialogTitle>
-                        </DialogHeader>
-                        <p className="text-sm text-muted-foreground">
-                          ¿Estás seguro de transferir <strong>{client.name}</strong> de Implementación a Soporte?
-                          El cliente aparecerá en el dashboard de soporte.
-                        </p>
-                        <DialogFooter>
-                          <Button variant="outline" onClick={() => setTransferOpen(false)}>Cancelar</Button>
-                          <Button onClick={handleTransferToSupport} disabled={transferring} className="gap-1.5">
-                            {transferring ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowRightLeft className="h-3.5 w-3.5" />}
-                            Transferir
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
+                        <Button variant="outline" size="sm" onClick={openEdit} className="gap-1.5">
+                          <Pencil className="h-3.5 w-3.5" /> Editar
+                        </Button>
+                        <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm" className="gap-1.5 border-amber-500/30 text-amber-500 hover:bg-amber-500/10">
+                              <ArrowRightLeft className="h-3.5 w-3.5" /> A Soporte
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Transferir a Soporte</DialogTitle>
+                            </DialogHeader>
+                            <p className="text-sm text-muted-foreground">
+                              ¿Estás seguro de transferir <strong>{client.name}</strong> de Implementación a Soporte?
+                              El cliente aparecerá en el dashboard de soporte.
+                            </p>
+                            <DialogFooter>
+                              <Button variant="outline" onClick={() => setTransferOpen(false)}>Cancelar</Button>
+                              <Button onClick={handleTransferToSupport} disabled={transferring} className="gap-1.5">
+                                {transferring ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowRightLeft className="h-3.5 w-3.5" />}
+                                Transferir
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+                      </>
+                    )}
                     <Button variant="outline" size="sm" onClick={() => exportClientPdf(client)} className="gap-1.5">
                       <Download className="h-3.5 w-3.5" /> Exportar PDF
                     </Button>
