@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { useReadOnly } from "@/hooks/useReadOnly";
+import { useAuth } from "@/hooks/useAuth";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,6 +40,11 @@ interface SupportDashboardProps {
 
 export function SupportDashboard({ initialClientId, onBack }: SupportDashboardProps) {
   const readOnly = useReadOnly();
+  const { role } = useAuth();
+  // Transferir un cliente de Soporte a Implementación cambia clients.client_type,
+  // que a nivel RLS es admin/pm. gerente_soporte gestiona tickets, no el ciclo de
+  // vida del cliente: ocultamos el botón (si no, el click falla con error RLS).
+  const canTransferClient = role === "admin" || role === "pm";
   const { data: clients = [] } = useSupportClients();
   const { data: allTickets = [], isLoading, refetch } = useAllSupportTickets();
   const [selectedClient, setSelectedClient] = useState<string>("all");
@@ -190,7 +196,7 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {!readOnly && (
+                  {!readOnly && canTransferClient && (
                   <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
                     <DialogTrigger asChild>
                       <Button variant="outline" size="sm" className="gap-1.5 text-xs border-amber-500/30 text-amber-500 hover:bg-amber-500/10">
