@@ -13,14 +13,16 @@ import { requireAuth, requireRole, AuthError, authErrorResponse } from "../_shar
 // Corre con service_role (adminClient) → bypassa RLS para la escritura.
 //
 // Embeddings: Anthropic (el stack de chat) no expone API de embeddings, así que
-// se usa un proveedor dedicado. Default: OpenAI text-embedding-3-small (1536
-// dims, calza con vector(1536)). Requiere el secret OPENAI_API_KEY:
-//   supabase secrets set OPENAI_API_KEY=sk-...
+// se usa Gemini (el secret GEMINI_API_KEY ya existe en el proyecto). Modelo
+// gemini-embedding-001 con outputDimensionality=1536 para calzar vector(1536).
+// La distancia coseno es invariante a la magnitud, así que no hace falta
+// re-normalizar los vectores truncados.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const EMBED_URL = "https://api.openai.com/v1/embeddings";
-const EMBED_MODEL = "text-embedding-3-small"; // 1536 dims
-const EMBED_BATCH = 64;                        // textos por request de embeddings
+const EMBED_MODEL = "gemini-embedding-001";
+const EMBED_DIM = 1536;                         // calza con vector(1536)
+const EMBED_URL = `https://generativelanguage.googleapis.com/v1beta/models/${EMBED_MODEL}:batchEmbedContents`;
+const EMBED_BATCH = 64;                          // textos por request de embeddings
 const CHUNK_SIZE = 1400;                        // ~350 tokens por chunk
 const CHUNK_OVERLAP = 180;                      // solapamiento para no cortar contexto
 
@@ -67,19 +69,25 @@ function chunkText(raw: string): string[] {
   return chunks;
 }
 
-/** Genera embeddings para un lote de textos vía OpenAI. Devuelve number[][]. */
+/** Genera embeddings para un lote de textos vía Gemini. Devuelve number[][]. */
 async function embedBatch(texts: string[], apiKey: string): Promise<number[][]> {
-  const resp = await fetch(EMBED_URL, {
+  const resp = await fetch(`${EMBED_URL}?key=${apiKey}`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: EMBED_MODEL, input: texts }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requests: texts.map((text) => ({
+        model: `models/${EMBED_MODEL}`,
+        content: { parts: [{ text }] },
+        outputDimensionality: EMBED_DIM,
+      })),
+    }),
   });
   if (!resp.ok) {
     const t = await resp.text();
     throw new AuthError(resp.status === 429 ? 429 : 502, `Embeddings ${resp.status}: ${t.slice(0, 200)}`);
   }
   const json = await resp.json();
-  return (json.data as { embedding: number[] }[]).map((d) => d.embedding);
+  return (json.embeddings as { values: number[] }[]).map((e) => e.values);
 }
 
 /** pgvector espera el literal "[a,b,c]" para castear a vector. */
@@ -118,11 +126,11 @@ Deno.serve(async (req) => {
       throw new AuthError(400, "document_text vacío o demasiado corto para ingestar");
     }
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) {
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) {
       throw new AuthError(
         400,
-        "OPENAI_API_KEY no configurada. Set via `supabase secrets set OPENAI_API_KEY=sk-...` (proveedor de embeddings del vector store).",
+        "GEMINI_API_KEY no configurada (proveedor de embeddings del vector store).",
       );
     }
 
@@ -152,7 +160,7 @@ Deno.serve(async (req) => {
     let inserted = 0;
     for (let start = 0; start < chunks.length; start += EMBED_BATCH) {
       const slice = chunks.slice(start, start + EMBED_BATCH);
-      const vectors = await embedBatch(slice, OPENAI_API_KEY);
+      const vectors = await embedBatch(slice, GEMINI_API_KEY);
       const rows = slice.map((content, i) => ({
         document_id: documentId,
         client_id,
