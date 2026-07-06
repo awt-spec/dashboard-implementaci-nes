@@ -6,24 +6,7 @@ import { Sparkles, Loader2, AlertTriangle, ScrollText, CheckCircle2, ListChecks,
 import { toast } from "sonner";
 import { useAnalyzeContract, type ContractAnalysis } from "@/hooks/useContractAnalysis";
 import { ContractMilestonesPanel } from "./ContractMilestonesPanel";
-
-/** Extrae texto de un PDF (pdfjs) o de un archivo de texto. */
-async function extractTextFromFile(file: File): Promise<string> {
-  if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
-    const pdfjs: any = await import("pdfjs-dist/build/pdf.mjs" as any);
-    pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.mjs`;
-    const buf = await file.arrayBuffer();
-    const pdf = await pdfjs.getDocument({ data: buf }).promise;
-    let text = "";
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      text += content.items.map((it: any) => it.str).join(" ") + "\n";
-    }
-    return text;
-  }
-  return await file.text();
-}
+import { extractTextFromFile } from "@/lib/extractPdfText";
 
 const SEV_TONE: Record<string, string> = {
   critico: "bg-destructive/15 text-destructive border-destructive/30",
