@@ -21,13 +21,14 @@ import { logAiCall, checkRateLimit, assertNotCliente } from "../_shared/aiSafety
 //   Los SLAs y paquetes de horas NO se escriben en vivo (client_slas alimenta el
 //   motor de SLA y no tiene flujo de propuesta): se devuelven para revisión.
 //
-// Embeddings de las queries de recuperación: OPENAI_API_KEY (text-embedding-3-small).
+// Embeddings de las queries de recuperación: Gemini (GEMINI_API_KEY, ya
+// configurado), gemini-embedding-001 @ 1536 dims para calzar el vector store.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MODEL = "gemini-2.5-flash-lite"; // el gateway lo normaliza a Claude
 const FUNCTION_NAME = "extract-contract-terms";
-const EMBED_URL = "https://api.openai.com/v1/embeddings";
-const EMBED_MODEL = "text-embedding-3-small";
+const EMBED_MODEL = "gemini-embedding-001";
+const EMBED_DIM = 1536;
 const TOP_K_PER_ASPECT = 6;
 
 // Cada aspecto de extracción tiene una query de recuperación semántica.
@@ -39,17 +40,22 @@ const ASPECTS: { key: string; query: string }[] = [
 ];
 
 async function embedQuery(text: string, apiKey: string): Promise<number[]> {
-  const resp = await fetch(EMBED_URL, {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${EMBED_MODEL}:embedContent?key=${apiKey}`;
+  const resp = await fetch(url, {
     method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: EMBED_MODEL, input: text }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: `models/${EMBED_MODEL}`,
+      content: { parts: [{ text }] },
+      outputDimensionality: EMBED_DIM,
+    }),
   });
   if (!resp.ok) {
     const t = await resp.text();
     throw new AiError(resp.status === 429 ? 429 : 502, `Embeddings ${resp.status}: ${t.slice(0, 200)}`);
   }
   const json = await resp.json();
-  return json.data[0].embedding as number[];
+  return json.embedding.values as number[];
 }
 
 function toVectorLiteral(vec: number[]): string {
@@ -75,10 +81,10 @@ Deno.serve(async (req) => {
     }
     const db = ctx.adminClient;
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) {
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) {
       return new Response(JSON.stringify({
-        error: "OPENAI_API_KEY no configurada. Set via `supabase secrets set OPENAI_API_KEY=sk-...` (embeddings del vector store).",
+        error: "GEMINI_API_KEY no configurada (embeddings del vector store).",
       }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
     }
 
@@ -92,7 +98,7 @@ Deno.serve(async (req) => {
     // ── RAG: recuperar chunks relevantes por aspecto ──────────────────────
     const retrieved = new Map<string, { content: string; chunk_index: number; similarity: number }>();
     for (const aspect of ASPECTS) {
-      const qvec = await embedQuery(aspect.query, OPENAI_API_KEY);
+      const qvec = await embedQuery(aspect.query, GEMINI_API_KEY);
       const { data: rows, error: rpcErr } = await db.rpc("match_contract_chunks", {
         query_embedding: toVectorLiteral(qvec),
         match_count: TOP_K_PER_ASPECT,
