@@ -63,29 +63,45 @@ Deno.serve(async (req) => {
     }
     const db = ctx.adminClient;
 
+    // Clausulado del contrato (fallback de alcance + moneda). Por contract_id si
+    // viene; si no, el contrato activo del cliente.
+    const contractSel = contract_id
+      ? db.from("client_contracts").select("clauses").eq("id", contract_id)
+      : db.from("client_contracts").select("clauses").eq("client_id", client_id).eq("is_active", true).order("included_hours", { ascending: false });
+    const { data: contractRow } = await contractSel.limit(1).maybeSingle();
+    const clausesText = typeof (contractRow as any)?.clauses === "string" ? (contractRow as any).clauses : "";
+
+    // ── Recuperar el alcance: preferimos la KB (RAG); si no hay chunks
+    //    ingestados (o falla), caemos al clausulado del contrato. ────────────
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) {
-      return new Response(JSON.stringify({ error: "GEMINI_API_KEY no configurada (embeddings del vector store)." }), {
-        status: 400, headers: { ...cors, "Content-Type": "application/json" },
-      });
-    }
-
-    // ── Recuperar el alcance del contrato desde la KB ─────────────────────
     const scopeChunks = new Map<string, string>();
-    for (const q of SCOPE_QUERIES) {
-      const qvec = await embedQuery(q, GEMINI_API_KEY);
-      const { data: rows, error: rpcErr } = await db.rpc("match_contract_chunks", {
-        query_embedding: toVectorLiteral(qvec),
-        match_count: 6,
-        p_client_id: client_id,
-      });
-      if (rpcErr) throw rpcErr;
-      for (const r of (rows ?? []) as any[]) scopeChunks.set(r.id, r.content);
+    if (GEMINI_API_KEY) {
+      try {
+        for (const q of SCOPE_QUERIES) {
+          const qvec = await embedQuery(q, GEMINI_API_KEY);
+          const { data: rows } = await db.rpc("match_contract_chunks", {
+            query_embedding: toVectorLiteral(qvec),
+            match_count: 6,
+            p_client_id: client_id,
+          });
+          for (const r of (rows ?? []) as any[]) scopeChunks.set(r.id, r.content);
+        }
+      } catch (_e) { /* si la KB falla, usamos el clausulado */ }
     }
 
-    if (scopeChunks.size === 0) {
+    let scopeText = "";
+    let scopeSource: "kb" | "clausulado" | "" = "";
+    if (scopeChunks.size > 0) {
+      scopeText = [...scopeChunks.values()].join("\n\n---\n\n").slice(0, 20000);
+      scopeSource = "kb";
+    } else if (clausesText.trim().length > 40) {
+      scopeText = clausesText.slice(0, 30000);
+      scopeSource = "clausulado";
+    }
+
+    if (!scopeText) {
       return new Response(JSON.stringify({
-        error: "No hay contrato ingestado para este cliente. Subí el contrato a la Base de conocimiento antes de auditar alcance.",
+        error: "No hay alcance disponible: ni contrato ingestado en la KB ni clausulado registrado en el contrato. Subí el contrato a la Base de conocimiento o registrá su clausulado.",
       }), { status: 409, headers: { ...cors, "Content-Type": "application/json" } });
     }
 
@@ -106,7 +122,6 @@ Deno.serve(async (req) => {
       }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
-    const scopeText = [...scopeChunks.values()].join("\n\n---\n\n").slice(0, 20000);
     const ticketsForPrompt = tickets.map((t: any) => ({
       ticket_id: t.ticket_id,
       asunto: t.asunto,
@@ -162,7 +177,7 @@ Deno.serve(async (req) => {
       executive_summary: audit.resumen ?? "",
       recommendations: [],
       risks: [],
-      metrics: { evaluados: hallazgos.length, fuera, dudoso, scope_chunks: scopeChunks.size },
+      metrics: { evaluados: hallazgos.length, fuera, dudoso, scope_chunks: scopeChunks.size, scope_source: scopeSource },
       full_analysis: audit,
       model: MODEL,
     }).select("id").single();
@@ -188,6 +203,7 @@ Deno.serve(async (req) => {
       fuera,
       dudoso,
       scope_chunks: scopeChunks.size,
+      scope_source: scopeSource,
       analysis_id: saved?.id,
     }), { headers: { ...cors, "Content-Type": "application/json" } });
   } catch (e: any) {
