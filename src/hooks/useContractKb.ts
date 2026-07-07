@@ -58,17 +58,28 @@ function humanizeFnError(msg: string): string {
 export function useIngestContractDoc(clientId?: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (args: { file: File; documentText: string; contractId?: string }) => {
+    // Ingesta con archivo (PDF subido) o solo texto (ej. clausulado ya registrado).
+    mutationFn: async (args: { file?: File; documentText: string; contractId?: string; filename?: string }) => {
       const { file, documentText, contractId } = args;
       if (!clientId) throw new Error("clientId requerido");
 
-      // 1) Subir el PDF original al bucket privado (ruta por cliente + timestamp).
-      const safeName = file.name.replace(/[^\w.\-]+/g, "_");
-      const storagePath = `${clientId}/${Date.now()}-${safeName}`;
-      const { error: upErr } = await supabase.storage
-        .from("contract-docs")
-        .upload(storagePath, file, { contentType: file.type || "application/pdf", upsert: false });
-      if (upErr) throw new Error(humanizeFnError(upErr.message));
+      let storagePath = "";
+      let filename = args.filename ?? "clausulado-registrado.txt";
+      let mimeType = "text/plain";
+      let byteSize = documentText.length;
+
+      // 1) Si viene un archivo, se sube el original al bucket privado.
+      if (file) {
+        const safeName = file.name.replace(/[^\w.\-]+/g, "_");
+        storagePath = `${clientId}/${Date.now()}-${safeName}`;
+        const { error: upErr } = await supabase.storage
+          .from("contract-docs")
+          .upload(storagePath, file, { contentType: file.type || "application/pdf", upsert: false });
+        if (upErr) throw new Error(humanizeFnError(upErr.message));
+        filename = file.name;
+        mimeType = file.type || "application/pdf";
+        byteSize = file.size;
+      }
 
       // 2) Ingestar el texto (chunking + embeddings) en el vector store.
       const { data, error } = await supabase.functions.invoke("ingest-contract-doc", {
@@ -77,9 +88,9 @@ export function useIngestContractDoc(clientId?: string) {
           contract_id: contractId ?? null,
           document_text: documentText,
           storage_path: storagePath,
-          filename: file.name,
-          mime_type: file.type || "application/pdf",
-          byte_size: file.size,
+          filename,
+          mime_type: mimeType,
+          byte_size: byteSize,
         },
       });
       if (error) throw new Error(humanizeFnError(error.message || ""));
