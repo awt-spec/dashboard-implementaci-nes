@@ -115,7 +115,10 @@ async function anthropicFetch(
   body: AnthropicMessagesBody,
   opts: { timeoutMs?: number } = {},
 ): Promise<Response> {
-  const key = Deno.env.get("ANTHROPIC_API_KEY");
+  // El secret del proyecto quedó creado con el nombre mal escrito "Antrophic".
+  // Aceptamos ambos nombres para que la ruta Claude funcione sin renombrar el
+  // secret (lo ideal es renombrarlo a ANTHROPIC_API_KEY y quitar este fallback).
+  const key = Deno.env.get("ANTHROPIC_API_KEY") ?? Deno.env.get("Antrophic");
   if (!key) {
     return new Response(
       JSON.stringify({ error: { message: "ANTHROPIC_API_KEY no configurada" } }),
