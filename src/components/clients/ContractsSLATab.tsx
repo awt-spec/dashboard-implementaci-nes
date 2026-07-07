@@ -10,9 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileSignature, Shield, Plus, Trash2, Clock, Edit2, Lock, Package, Search, Sparkles, ShieldCheck, Database } from "lucide-react";
+import { FileSignature, Shield, Plus, Trash2, Clock, Edit2, Lock, Package, Search, Sparkles, ShieldCheck, Database, Gauge } from "lucide-react";
 import { ContractAnalysisDialog } from "./ContractAnalysisDialog";
 import { ContractKbPanel } from "./ContractKbPanel";
+import { ContractAuditPanel } from "./ContractAuditPanel";
 import { BilledPackagesTab } from "./BilledPackagesTab";
 import { ServicePackagesTab } from "./ServicePackagesTab";
 import { Confidential } from "@/components/common/Confidential";
@@ -85,6 +86,7 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
           <TabsTrigger value="slas" className="gap-2"><Shield className="h-4 w-4" /> SLAs</TabsTrigger>
           <TabsTrigger value="policies" className="gap-2"><ShieldCheck className="h-4 w-4" /> Pólizas</TabsTrigger>
           <TabsTrigger value="packages" className="gap-2"><Package className="h-4 w-4" /> Paquetes facturados</TabsTrigger>
+          <TabsTrigger value="audit" className="gap-2"><Gauge className="h-4 w-4" /> Auditoría</TabsTrigger>
           <TabsTrigger value="kb" className="gap-2"><Database className="h-4 w-4" /> Base de conocimiento</TabsTrigger>
         </TabsList>
 
@@ -270,6 +272,10 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
 
         <TabsContent value="packages" className="space-y-4">
           <BilledPackagesTab clientId={clientId} />
+        </TabsContent>
+
+        <TabsContent value="audit" className="space-y-4">
+          <ContractAuditPanel clientId={clientId} />
         </TabsContent>
 
         <TabsContent value="kb" className="space-y-4">
