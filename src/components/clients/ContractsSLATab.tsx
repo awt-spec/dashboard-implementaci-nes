@@ -275,7 +275,7 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
         </TabsContent>
 
         <TabsContent value="audit" className="space-y-4">
-          <ContractAuditPanel clientId={clientId} />
+          <ContractAuditPanel clientId={clientId} contractId={activeContract?.id} />
         </TabsContent>
 
         <TabsContent value="kb" className="space-y-4">

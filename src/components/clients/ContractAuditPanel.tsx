@@ -1,7 +1,12 @@
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, ShieldAlert, ShieldCheck, AlertTriangle, Gauge } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { Loader2, ShieldAlert, ShieldCheck, AlertTriangle, Gauge, ScanSearch, HelpCircle, XCircle, CheckCircle2 } from "lucide-react";
 import { useContractHoursAudit, type AuditStatus } from "@/hooks/useContractAudit";
+import { useContractScopeAudit, type ScopeAuditResult, type ScopeVerdict } from "@/hooks/useContractScopeAudit";
+import { useAuth } from "@/hooks/useAuth";
 import { useFinanceAccess } from "@/hooks/useFinanceAccess";
 import { Confidential } from "@/components/common/Confidential";
 
@@ -15,9 +20,30 @@ const STATUS_META: Record<AuditStatus, { label: string; tone: string; icon: any;
 
 const fmtH = (h: number) => `${h.toFixed(1)}h`;
 
-export function ContractAuditPanel({ clientId }: { clientId: string }) {
+const VERDICT_META: Record<ScopeVerdict, { label: string; tone: string; icon: any }> = {
+  dentro: { label: "Dentro", tone: "text-success border-success/30 bg-success/10", icon: CheckCircle2 },
+  fuera: { label: "Fuera de alcance", tone: "text-destructive border-destructive/30 bg-destructive/10", icon: XCircle },
+  dudoso: { label: "Dudoso", tone: "text-warning border-warning/30 bg-warning/10", icon: HelpCircle },
+};
+
+export function ContractAuditPanel({ clientId, contractId }: { clientId: string; contractId?: string }) {
   const { data: audit, isLoading } = useContractHoursAudit(clientId);
   const { canAmounts } = useFinanceAccess();
+  const { role } = useAuth();
+  const canManage = role === "admin" || role === "pm";
+  const scopeAudit = useContractScopeAudit(clientId);
+  const [scope, setScope] = useState<ScopeAuditResult | null>(null);
+
+  const runScope = () => {
+    setScope(null);
+    scopeAudit.mutate({ contractId }, {
+      onSuccess: (r) => {
+        setScope(r);
+        toast.success(`Alcance auditado — ${r.fuera} fuera, ${r.dudoso} dudosos de ${r.evaluated}`);
+      },
+      onError: (e: any) => toast.error(e.message),
+    });
+  };
 
   if (isLoading) {
     return <Card><CardContent className="flex items-center justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-primary" /></CardContent></Card>;
@@ -92,6 +118,57 @@ export function ContractAuditPanel({ clientId }: { clientId: string }) {
           )}
         </>
       )}
+
+      {/* ── Capa 2: auditoría de alcance (IA/RAG) ─────────────────────── */}
+      <div className="pt-2 border-t border-border/60">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h3 className="font-semibold flex items-center gap-2"><ScanSearch className="h-4 w-4" /> Auditoría de alcance</h3>
+            <p className="text-xs text-muted-foreground mt-0.5 max-w-lg">
+              Evalúa las gestiones recientes contra el alcance del contrato ingestado en la Base de conocimiento. Marca lo que parece fuera de contrato para revisión.
+            </p>
+          </div>
+          {canManage && (
+            <Button size="sm" variant="outline" onClick={runScope} disabled={scopeAudit.isPending} className="gap-1.5">
+              {scopeAudit.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ScanSearch className="h-3.5 w-3.5 text-primary" />}
+              Auditar alcance
+            </Button>
+          )}
+        </div>
+
+        {scope && (
+          <div className="mt-3 space-y-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="outline" className="text-[11px]">{scope.evaluated} evaluadas</Badge>
+              <Badge variant="outline" className="text-[11px] text-destructive border-destructive/30 bg-destructive/10">{scope.fuera} fuera</Badge>
+              <Badge variant="outline" className="text-[11px] text-warning border-warning/30 bg-warning/10">{scope.dudoso} dudosas</Badge>
+            </div>
+            <p className="text-sm">{scope.audit.resumen}</p>
+            <p className="text-[11px] text-muted-foreground border-l-2 border-primary/40 pl-2">
+              Resultado orientativo (IA): revisá los marcados antes de accionar. No modifica ningún dato.
+            </p>
+            <div className="space-y-2">
+              {scope.audit.hallazgos
+                .slice()
+                .sort((a, b) => (a.veredicto === "fuera" ? 0 : a.veredicto === "dudoso" ? 1 : 2) - (b.veredicto === "fuera" ? 0 : b.veredicto === "dudoso" ? 1 : 2))
+                .map((h, i) => {
+                  const vm = VERDICT_META[h.veredicto];
+                  const VIcon = vm.icon;
+                  return (
+                    <div key={i} className={`rounded-lg border p-2.5 ${h.veredicto === "dentro" ? "opacity-70" : ""}`}>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="outline" className={`text-[10px] gap-1 ${vm.tone}`}><VIcon className="h-3 w-3" />{vm.label}</Badge>
+                        <span className="text-xs font-mono text-muted-foreground">{h.ticket_id}</span>
+                        {h.asunto && <span className="text-xs font-medium truncate">{h.asunto}</span>}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-1">{h.razon}</p>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
