@@ -1,11 +1,13 @@
 import { useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   Upload, FileText, Loader2, Sparkles, Database, Clock, ShieldCheck,
-  Milestone, Bell, Lock,
+  Milestone, Bell, Lock, FileStack,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { extractTextFromFile } from "@/lib/extractPdfText";
@@ -40,6 +42,34 @@ export function ContractKbPanel({ clientId, contractId }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const hasIngested = docs.some((d) => d.status === "ingested");
+
+  // Clausulado ya registrado en el contrato (permite ingestar a la KB sin subir PDF).
+  const { data: clauses } = useQuery({
+    queryKey: ["contract-clauses", clientId, contractId],
+    enabled: canManage && (!!contractId || !!clientId),
+    queryFn: async () => {
+      let q = supabase.from("client_contracts").select("clauses");
+      q = contractId
+        ? q.eq("id", contractId)
+        : q.eq("client_id", clientId).eq("is_active", true).order("included_hours", { ascending: false });
+      const { data } = await q.limit(1).maybeSingle();
+      return (data as any)?.clauses as string | null ?? null;
+    },
+  });
+  const hasClauses = typeof clauses === "string" && clauses.trim().length > 100;
+
+  const ingestClauses = async () => {
+    if (!clauses) return;
+    try {
+      setBusyStage("ingestando");
+      const res = await ingest.mutateAsync({ documentText: clauses, contractId, filename: "Clausulado registrado" });
+      toast.success(`Clausulado ingestado — ${res.chunk_count} fragmentos indexados`);
+    } catch (e: any) {
+      toast.error(e?.message || "Error al ingestar el clausulado");
+    } finally {
+      setBusyStage(null);
+    }
+  };
 
   const handleUpload = async (file: File) => {
     if (!file) return;
@@ -118,6 +148,19 @@ export function ContractKbPanel({ clientId, contractId }: Props) {
             </p>
             <p className="text-[11px] text-muted-foreground">El texto se extrae en tu navegador; se indexa para búsqueda semántica</p>
           </button>
+
+          {/* Ingesta directa del clausulado ya registrado (sin subir archivo) */}
+          {hasClauses && (
+            <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-border bg-muted/20">
+              <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                <FileStack className="h-3.5 w-3.5" /> Este contrato ya tiene clausulado registrado. Podés indexarlo sin subir un PDF.
+              </p>
+              <Button size="sm" variant="ghost" onClick={ingestClauses} disabled={busy} className="gap-1.5 shrink-0">
+                {busyStage === "ingestando" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileStack className="h-3.5 w-3.5" />}
+                Ingestar clausulado
+              </Button>
+            </div>
+          )}
         </>
       )}
 
