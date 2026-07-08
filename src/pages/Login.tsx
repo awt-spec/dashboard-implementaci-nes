@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { LogIn, Eye, EyeOff, Shield, Briefcase, Headphones, Crown, ShieldAlert, User as UserIcon, Headset, type LucideProps } from "lucide-react";
+import { LogIn, Eye, EyeOff, Shield, Briefcase, Headphones, Crown, ShieldAlert, User as UserIcon, Headset, LifeBuoy, type LucideProps } from "lucide-react";
 import sysdelogo from "@/assets/logo-sysde.png";
 import { cn } from "@/lib/utils";
 
@@ -39,6 +39,14 @@ const SYSDE_USERS: DemoAccount[] = [
     Icon: Headset,
     tone: "red",
     hint: "Acceso a clientes y boletas de soporte",
+  },
+  {
+    label: "CSR · Agente de Soporte",
+    email: "csr@sysde.com",
+    pw: "Csr#Demo2026",
+    Icon: LifeBuoy,
+    tone: "info",
+    hint: "Atención de 1ª línea · atiende, responde y captura feedback",
   },
   { label: "Admin", email: "admin@sysde.com", pw: "AdminSysde2026!", Icon: ShieldAlert, tone: "primary" },
   { label: "PM", email: "pm@sysde.com", pw: "PmFernando2026!", Icon: Briefcase, tone: "primary" },
