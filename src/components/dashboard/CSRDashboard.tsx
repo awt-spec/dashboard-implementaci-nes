@@ -16,10 +16,13 @@ import { es } from "date-fns/locale";
 import {
   LifeBuoy, Inbox, ArrowUpRight, CalendarClock, Loader2, PlayCircle,
   ExternalLink, Building2, AlertTriangle, CheckCircle2, Users, Search,
-  Plus, Clock, Star,
+  Plus, Clock, Star, ListChecks, AlertOctagon, Milestone, Briefcase, Sparkles,
 } from "lucide-react";
 import { TicketDetailSheet } from "@/components/support/TicketDetailSheet";
 import { NewTicketForm } from "@/components/support/NewTicketForm";
+import {
+  PendientesModule, ObstaculosModule, HitosModule, ComercialModule, AgendaModule, IAAssistantModule,
+} from "./CSRModules";
 
 const ESCALATION_TARGETS = [
   { key: "María Fernanda", label: "María Fernanda", sub: "Apoyo / negocio" },
@@ -29,6 +32,16 @@ const TARGET_KEYS = ESCALATION_TARGETS.map((t) => t.key);
 const CLOSED = new Set(["CERRADA", "ANULADA", "ENTREGADA", "APROBADA"]);
 
 type Tab = "atender" | "mios" | "escalados" | "todos";
+type WorkView = "bandeja" | "agenda" | "pendientes" | "obstaculos" | "hitos" | "comercial" | "ia";
+const WORKSPACE: { key: WorkView; label: string; Icon: any }[] = [
+  { key: "bandeja", label: "Bandeja", Icon: Inbox },
+  { key: "agenda", label: "Agenda", Icon: CalendarClock },
+  { key: "pendientes", label: "Pendientes", Icon: ListChecks },
+  { key: "obstaculos", label: "Obstáculos", Icon: AlertOctagon },
+  { key: "hitos", label: "Hitos", Icon: Milestone },
+  { key: "comercial", label: "Comercial", Icon: Briefcase },
+  { key: "ia", label: "Asistente IA", Icon: Sparkles },
+];
 
 function prioTone(p?: string) {
   if (/crit/i.test(p || "")) return "bg-destructive/15 text-destructive border-destructive/30";
@@ -81,6 +94,7 @@ export function CSRDashboard() {
   const escalados = useMemo(() => open.filter((t) => t.responsable && TARGET_KEYS.includes(t.responsable)), [open]);
   const mios = useMemo(() => open.filter((t) => t.responsable === agentName), [open, agentName]);
 
+  const [view, setView] = useState<WorkView>("bandeja");
   const [tab, setTab] = useState<Tab>("atender");
   const [search, setSearch] = useState("");
   const [prio, setPrio] = useState("all");
@@ -167,7 +181,30 @@ export function CSRDashboard() {
         </div>
       </header>
 
+      {/* Barra de módulos del workspace */}
+      <div className="border-b border-border bg-card/40">
+        <div className="max-w-6xl mx-auto px-4 md:px-6 flex items-center gap-1 overflow-x-auto">
+          {WORKSPACE.map((w) => (
+            <button
+              key={w.key}
+              onClick={() => setView(w.key)}
+              className={`h-11 px-3 inline-flex items-center gap-1.5 text-xs font-semibold border-b-2 whitespace-nowrap transition-colors ${view === w.key ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            >
+              <w.Icon className="h-3.5 w-3.5" /> {w.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <main className="max-w-6xl mx-auto px-4 md:px-6 py-5 space-y-5">
+        {view === "agenda" && <AgendaModule tickets={open} clientName={clientName} />}
+        {view === "pendientes" && <PendientesModule />}
+        {view === "obstaculos" && <ObstaculosModule />}
+        {view === "hitos" && <HitosModule clientName={clientName} />}
+        {view === "comercial" && <ComercialModule clientName={clientName} />}
+        {view === "ia" && <IAAssistantModule tickets={open} />}
+
+        {view === "bandeja" && <>
         {/* KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {KPIS.map((k) => (
@@ -302,6 +339,7 @@ export function CSRDashboard() {
             </section>
           </aside>
         </div>
+        </>}
       </main>
 
       <TicketDetailSheet ticket={detail} open={!!detail} onOpenChange={(o) => !o && setDetail(null)} canEditInternal />
