@@ -38,6 +38,7 @@ import { TicketSLAExplanation } from "./TicketSLAExplanation";
 import { ReopenBadge } from "./ReopenBadge";
 import { ReopenReasonDialog } from "./ReopenReasonDialog";
 import { TicketReopensTimeline } from "./TicketReopensTimeline";
+import { TicketFeedbackCard } from "./TicketFeedbackCard";
 import { QuoteList } from "./quotes/QuoteList";
 import { useQuotes } from "@/hooks/useQuotes";
 import { isTicketClosed } from "@/lib/ticketStatus";
@@ -292,6 +293,9 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, canEditInternal 
 
         {/* ── BODY scrolleable: state flow + acciones + SLA + tabs ── */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+
+        {/* Feedback / CSAT del cliente — captura al resolver; visible si ya existe */}
+        <TicketFeedbackCard ticketId={ticket.id} clientId={(ticket as any).client_id} canCapture={isClosed && canEditInternal} />
 
         {/* ── Acciones rápidas + Flujo de estados ── */}
         <div className="space-y-3">
