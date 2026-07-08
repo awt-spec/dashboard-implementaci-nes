@@ -92,7 +92,7 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
   const mainNav = [
     { id: "overview", title: "Resumen Ejecutivo", icon: LayoutDashboard, roles: ["admin", "pm", "gerente", "gerente_soporte"], anyPermission: [] as string[] },
     { id: "clients", title: "Implementación", icon: Building2, roles: ["admin", "pm"], anyPermission: [] as string[] },
-    { id: "soporte", title: "Soporte", icon: Headset, roles: ["admin", "pm", "gerente_soporte"], anyPermission: [] as string[] },
+    { id: "soporte", title: "Soporte", icon: Headset, roles: ["admin", "pm", "gerente_soporte", "csr"], anyPermission: [] as string[] },
     { id: "team-scrum", title: "Equipo Scrum", icon: Trophy, roles: ["admin", "pm"], anyPermission: [] as string[] },
     { id: "config", title: "Configuración", icon: Settings, roles: ["admin", "pm", "gerente_soporte"], anyPermission: CONFIG_PERMS },
   ].filter(item =>
@@ -220,7 +220,7 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
             {/* Implementación stack — solo admin y pm (gerente_soporte solo ve soporte).
                 En collapsed mode (icon) toda la sección desaparece — la nav principal
                 arriba ya tiene "Implementación" como entry point. */}
-            {implClients.length > 0 && role !== "gerente_soporte" && (
+            {implClients.length > 0 && role !== "gerente_soporte" && role !== "csr" && (
               <Collapsible open={implOpen} onOpenChange={setImplOpen}>
                 <SidebarGroup className="group-data-[collapsible=icon]:hidden">
                   <CollapsibleTrigger className="w-full group-data-[collapsible=icon]:hidden">
@@ -287,7 +287,7 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-sidebar-foreground truncate">{profile?.full_name || "Usuario"}</p>
               <Badge className={`text-[9px] ${roleBadgeStyle[role || ""] || "bg-muted text-muted-foreground"}`}>
-                {role === "admin" ? "Admin" : role === "pm" ? "PM" : role === "gerente" ? "Gerente" : "—"}
+                {role === "admin" ? "Admin" : role === "pm" ? "PM" : role === "gerente" ? "Gerente" : role === "gerente_soporte" ? "Gte. Soporte" : role === "csr" ? "CSR" : "—"}
               </Badge>
             </div>
           </div>

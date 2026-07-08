@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
-type AppRole = "admin" | "pm" | "gerente" | "colaborador" | "cliente" | "ceo" | "gerente_soporte";
+type AppRole = "admin" | "pm" | "gerente" | "colaborador" | "cliente" | "ceo" | "gerente_soporte" | "csr";
 export type ClientePermission = "viewer" | "editor" | "admin";
 
 export interface ClienteAssignment {
@@ -42,6 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     pm: 4,
     gerente_soporte: 3.5,
     gerente: 3,
+    csr: 2.5,        // agente de soporte de primera línea (bajo el gerente de soporte)
     colaborador: 2,
     cliente: 1,
   };

@@ -45,6 +45,9 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
   // que a nivel RLS es admin/pm. gerente_soporte gestiona tickets, no el ciclo de
   // vida del cliente: ocultamos el botón (si no, el click falla con error RLS).
   const canTransferClient = role === "admin" || role === "pm";
+  // Configuración (comercial · datos & sync) es gestión: el CSR (agente de
+  // primera línea) no la ve.
+  const canConfig = role === "admin" || role === "pm" || role === "gerente_soporte";
   const { data: clients = [] } = useSupportClients();
   const { data: allTickets = [], isLoading, refetch } = useAllSupportTickets();
   const [selectedClient, setSelectedClient] = useState<string>("all");
@@ -388,15 +391,17 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
               <Plus className="h-3.5 w-3.5" />
               Nuevo caso
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 w-8 p-0 shrink-0"
-              onClick={() => setConfigOpen(true)}
-              title="Configuración (Comercial · Datos & Sync)"
-            >
-              <Settings className="h-3.5 w-3.5" />
-            </Button>
+            {canConfig && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 w-8 p-0 shrink-0"
+                onClick={() => setConfigOpen(true)}
+                title="Configuración (Comercial · Datos & Sync)"
+              >
+                <Settings className="h-3.5 w-3.5" />
+              </Button>
+            )}
           </>
         )}
       </div>
