@@ -195,9 +195,35 @@ const QUOTE_TONE: Record<string, string> = {
   draft: "bg-muted text-muted-foreground", sent: "bg-info/15 text-info border-info/30",
   approved: "bg-success/15 text-success border-success/30", rejected: "bg-destructive/15 text-destructive border-destructive/30",
 };
-export function ComercialModule({ clientName }: { clientName: (id?: string | null) => string }) {
+const STAGE_TONE: Record<string, string> = {
+  "Prospecto": "bg-teal-500/15 text-teal-500 border-teal-500/30",
+  "Propuesta en curso": "bg-info/15 text-info border-info/30",
+  "Ganado": "bg-success/15 text-success border-success/30",
+  "Reintentar": "bg-warning/15 text-warning border-warning/30",
+};
+
+export function ComercialModule({ clientName, tickets = [], clients = [] }: { clientName: (id?: string | null) => string; tickets?: any[]; clients?: any[] }) {
   const { data: quotes = [], isLoading } = useCsrQuotes();
   const { canAmounts } = useFinanceAccess();
+
+  // Mapeo de prospectos: cada cliente de soporte con su engagement (# tickets) y
+  // su etapa comercial (derivada de la última cotización). Sin cotización + con
+  // actividad = oportunidad caliente.
+  const prospects = clients.map((c: any) => {
+    const nTickets = tickets.filter((t) => t.client_id === c.id).length;
+    const cQuotes = quotes.filter((q: any) => q.client_id === c.id);
+    const latest = cQuotes[0];
+    let stage = "Prospecto"; let action = "Sin cotización — proponer solución";
+    if (latest) {
+      if (latest.status === "approved") { stage = "Ganado"; action = "Propuesta aprobada — mantener"; }
+      else if (latest.status === "rejected") { stage = "Reintentar"; action = "Propuesta rechazada — replantear"; }
+      else { stage = "Propuesta en curso"; action = "Dar seguimiento a la cotización"; }
+    }
+    return { id: c.id, name: c.name, nTickets, stage, action, hot: cQuotes.length === 0 && nTickets > 0 };
+  }).sort((a, b) => Number(b.hot) - Number(a.hot) || b.nTickets - a.nTickets);
+
+  const oportunidades = prospects.filter((p) => p.hot).length;
+
   return (
     <div className="space-y-4">
       <section className="space-y-2">
@@ -222,11 +248,34 @@ export function ComercialModule({ clientName }: { clientName: (id?: string | nul
         )}
       </section>
       <section className="space-y-2">
-        <h3 className="text-sm font-bold flex items-center gap-2"><Target className="h-4 w-4" /> Mapeo de prospectos</h3>
-        <Card><CardContent className="p-4 text-xs text-muted-foreground space-y-1.5">
-          <p>El mapeo de prospectos (oportunidades por cliente, etapa, siguiente acción) se conecta cuando definamos la fuente: ¿cuentas sin contrato activo, señales de upsell desde tickets, o un CRM externo?</p>
-          <p className="text-[11px]">Dime el criterio y lo poblamos con datos reales.</p>
-        </CardContent></Card>
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold flex items-center gap-2"><Target className="h-4 w-4" /> Mapeo de prospectos</h3>
+          {oportunidades > 0 && <Badge variant="outline" className="text-[10px] bg-teal-500/10 text-teal-500 border-teal-500/30">{oportunidades} oportunidad{oportunidades === 1 ? "" : "es"}</Badge>}
+        </div>
+        <p className="text-[11px] text-muted-foreground">Clientes de soporte por etapa comercial y engagement (# casos). Con actividad y sin cotización = oportunidad.</p>
+        {prospects.length === 0 ? (
+          <Card><CardContent className="py-6 text-center text-sm text-muted-foreground">Sin clientes de soporte.</CardContent></Card>
+        ) : (
+          <div className="space-y-1.5">
+            {prospects.slice(0, 30).map((p) => (
+              <Card key={p.id} className={p.hot ? "border-teal-500/40" : ""}>
+                <CardContent className="p-2.5 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-medium truncate">{p.name}</p>
+                      {p.hot && <Badge variant="outline" className="text-[9px] bg-teal-500/10 text-teal-500 border-teal-500/30">oportunidad</Badge>}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{p.action}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <Badge variant="outline" className={`text-[9px] ${STAGE_TONE[p.stage] || ""}`}>{p.stage}</Badge>
+                    <p className="text-[10px] text-muted-foreground mt-1 tabular-nums">{p.nTickets} caso{p.nTickets === 1 ? "" : "s"}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

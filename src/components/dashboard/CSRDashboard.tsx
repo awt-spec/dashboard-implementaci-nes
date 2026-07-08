@@ -201,7 +201,7 @@ export function CSRDashboard() {
         {view === "pendientes" && <PendientesModule />}
         {view === "obstaculos" && <ObstaculosModule />}
         {view === "hitos" && <HitosModule clientName={clientName} />}
-        {view === "comercial" && <ComercialModule clientName={clientName} />}
+        {view === "comercial" && <ComercialModule clientName={clientName} tickets={tickets} clients={clients} />}
         {view === "ia" && <IAAssistantModule tickets={open} />}
 
         {view === "bandeja" && <>
