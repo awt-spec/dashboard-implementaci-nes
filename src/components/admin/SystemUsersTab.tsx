@@ -26,7 +26,7 @@ import {
   UserPlus, Shield, Briefcase, Eye, Trash2, KeyRound, Link2, Mail, User,
   Loader2, Users2, KeySquare, AlertCircle, Search, X, Copy, RefreshCw, Sparkles,
   CheckCircle2, ShieldAlert, ArrowUpDown, LayoutGrid, List, Filter,
-  ChevronDown, MailX, UserX,
+  ChevronDown, MailX, UserX, Headset, LifeBuoy,
 } from "lucide-react";
 import { GerenteAssignmentsDialog } from "./GerenteAssignmentsDialog";
 import { motion, AnimatePresence } from "framer-motion";
@@ -34,7 +34,7 @@ import { cn } from "@/lib/utils";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────
 
-type StaffRole = "admin" | "pm" | "gerente" | "colaborador";
+type StaffRole = "admin" | "pm" | "gerente" | "gerente_soporte" | "csr" | "colaborador";
 type SortMode = "name_asc" | "name_desc" | "role" | "email";
 type ViewMode = "comfortable" | "compact";
 type TeamFilter = "all" | "with_access" | "no_access" | "inactive" | "no_email";
@@ -76,6 +76,18 @@ const ROLE_META: Record<StaffRole, { label: string; short: string; hint: string;
     hint: "Gerente del lado cliente — ve clientes asignados, no edita.",
     Icon: Eye, tone: "bg-amber-500/15 text-amber-500 border-amber-500/30",
     gradient: "from-amber-500/20 to-amber-500/5", ring: "ring-amber-500/40",
+  },
+  gerente_soporte: {
+    label: "Gerente de Soporte", short: "Gte. Sop.",
+    hint: "Jefe de soporte — bandeja, asignaciones, SLA y minutas de la operación.",
+    Icon: Headset, tone: "bg-cyan-500/15 text-cyan-500 border-cyan-500/30",
+    gradient: "from-cyan-500/20 to-cyan-500/5", ring: "ring-cyan-500/40",
+  },
+  csr: {
+    label: "Agente de Soporte (CSR)", short: "CSR",
+    hint: "Atención de primera línea — atiende y responde tickets, captura feedback. Sin gestión ni finanzas.",
+    Icon: LifeBuoy, tone: "bg-teal-500/15 text-teal-500 border-teal-500/30",
+    gradient: "from-teal-500/20 to-teal-500/5", ring: "ring-teal-500/40",
   },
   colaborador: {
     label: "Colaborador SYSDE", short: "Colab",
@@ -366,7 +378,7 @@ export function SystemUsersTab() {
           {/* Stats por rol — clickables = filtros */}
           {users.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4 pt-4 border-t border-border/40">
-              {(["admin", "pm", "gerente", "colaborador"] as StaffRole[]).map((r) => {
+              {(["admin", "pm", "gerente", "gerente_soporte", "csr", "colaborador"] as StaffRole[]).map((r) => {
                 const m = ROLE_META[r];
                 const n = (stats as any)[r] || 0;
                 const active = roleFilter.has(r);
