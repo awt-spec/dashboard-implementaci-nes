@@ -14,6 +14,7 @@ import { ExecutiveOverview } from "@/components/dashboard/ExecutiveOverview";
 //   • ConfigurationHub     → sección config (admin)
 //   • ClientList, ClientDetail → sección Implementación
 const ColaboradorDashboard    = lazy(() => import("@/pages/ColaboradorDashboard"));
+const CSRDashboard            = lazy(() => import("@/components/dashboard/CSRDashboard").then(m => ({ default: m.CSRDashboard })));
 const CEODashboard            = lazy(() => import("@/components/dashboard/CEODashboard").then(m => ({ default: m.CEODashboard })));
 const ClientPortalDashboard   = lazy(() => import("@/components/dashboard/ClientPortalDashboard").then(m => ({ default: m.ClientPortalDashboard })));
 const GerenteMobileDashboard  = lazy(() => import("@/components/dashboard/GerenteMobileDashboard").then(m => ({ default: m.GerenteMobileDashboard })));
@@ -127,6 +128,11 @@ const Index = () => {
   // Colaborador uses its own full-screen layout (Jira/DevOps style) — no admin sidebar
   if (role === "colaborador") {
     return <Suspense fallback={LazyFallback}><ColaboradorDashboard /></Suspense>;
+  }
+
+  // CSR: cockpit de agente de atención (cola, escalación, sesiones) — vista propia
+  if (role === "csr") {
+    return <Suspense fallback={LazyFallback}><CSRDashboard /></Suspense>;
   }
 
   // Cliente externo: portal dedicado con su empresa scopeada
