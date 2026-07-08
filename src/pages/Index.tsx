@@ -65,10 +65,10 @@ const Index = () => {
     try { localStorage.setItem(ACTIVE_SECTION_KEY, section); } catch { /* quota / private mode */ }
   };
 
-  // gerente_soporte aterriza directo en "soporte" (su área principal).
+  // gerente_soporte y csr aterrizan directo en "soporte" (su área principal).
   // Se ejecuta cuando role llega del backend.
   useEffect(() => {
-    if (role === "gerente_soporte" && !didLandRedirect && activeSection === "overview") {
+    if ((role === "gerente_soporte" || role === "csr") && !didLandRedirect && activeSection === "overview") {
       setActiveSection("soporte");
       setDidLandRedirect(true);
     }
