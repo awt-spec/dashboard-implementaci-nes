@@ -73,6 +73,8 @@ function greeting() {
   if (h < 19) return "Buenas tardes";
   return "Buenas noches";
 }
+// Tipografía de marca SYSDE (display).
+const MONT = { fontFamily: "'Montserrat', system-ui, sans-serif" } as const;
 
 export function CSRDashboard() {
   const { profile, signOut } = useAuth();
@@ -196,11 +198,11 @@ export function CSRDashboard() {
   };
 
   // KPIs accionables: al hacer clic filtran la cola.
-  const KPIS: { key: Tab; label: string; value: number; Icon: any; tone: string; ring: string }[] = [
-    { key: "atender", label: "Por atender", value: porAtender.length, Icon: Inbox, tone: "text-warning", ring: "hover:border-warning/40" },
-    { key: "todos", label: "Urgentes", value: urgentes.length, Icon: Flame, tone: "text-destructive", ring: "hover:border-destructive/40" },
-    { key: "mios", label: "Mis casos", value: mios.length, Icon: CheckCircle2, tone: "text-success", ring: "hover:border-success/40" },
-    { key: "escalados", label: "Escalados", value: escalados.length, Icon: ArrowUpRight, tone: "text-info", ring: "hover:border-info/40" },
+  const KPIS: { key: Tab; label: string; value: number; Icon: any; tone: string; ring: string; bar: string }[] = [
+    { key: "atender", label: "Por atender", value: porAtender.length, Icon: Inbox, tone: "text-warning", ring: "hover:border-warning/40", bar: "bg-warning" },
+    { key: "todos", label: "Urgentes", value: urgentes.length, Icon: Flame, tone: "text-destructive", ring: "hover:border-destructive/40", bar: "bg-destructive" },
+    { key: "mios", label: "Mis casos", value: mios.length, Icon: CheckCircle2, tone: "text-success", ring: "hover:border-success/40", bar: "bg-success" },
+    { key: "escalados", label: "Escalados", value: escalados.length, Icon: ArrowUpRight, tone: "text-info", ring: "hover:border-info/40", bar: "bg-info" },
   ];
   const TABS: { key: Tab; label: string; count: number }[] = [
     { key: "atender", label: "Por atender", count: porAtender.length },
@@ -213,32 +215,30 @@ export function CSRDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-30 border-b border-border bg-card/80 backdrop-blur">
-        <div className="max-w-6xl mx-auto px-4 md:px-6 h-14 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="h-8 w-8 rounded-lg bg-teal-500/15 text-teal-500 flex items-center justify-center shrink-0">
+      {/* ── Header · identidad SYSDE ── */}
+      <header className="sticky top-0 z-30 border-b-2 border-primary bg-card/90 backdrop-blur">
+        <div className="max-w-6xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="h-9 w-9 rounded-md bg-primary text-primary-foreground flex items-center justify-center shrink-0 shadow-sm">
               <LifeBuoy className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-sm font-bold leading-tight truncate">{greeting()}, {firstName} 👋</h1>
-              <p className="text-[11px] text-muted-foreground leading-tight truncate">
-                {open.length === 0
-                  ? "Todo tranquilo — sin casos abiertos."
-                  : <>Tenés <b className="text-foreground">{porAtender.length}</b> por atender{urgentes.length > 0 && <> · <b className="text-destructive">{urgentes.length}</b> urgente{urgentes.length === 1 ? "" : "s"}</>}{escalados.length > 0 && <> · {escalados.length} escalado{escalados.length === 1 ? "" : "s"}</>}</>}
-              </p>
+              <div className="text-[9px] font-extrabold tracking-[0.22em] text-primary uppercase leading-none" style={MONT}>
+                SYSDE · CSR
+              </div>
+              <h1 className="text-[15px] font-bold leading-tight truncate mt-0.5" style={MONT}>{greeting()}, {firstName} 👋</h1>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {csat?.avg != null && (
-              <Badge variant="outline" className="text-[10px] gap-1 bg-warning/10 text-warning border-warning/30" title={`${csat.n} respuestas de clientes`}>
+              <Badge variant="outline" className="text-[10px] gap-1 bg-warning/10 text-warning border-warning/30 hidden sm:inline-flex" title={`${csat.n} respuestas de clientes`}>
                 <Star className="h-3 w-3 fill-warning" /> CSAT {csat.avg.toFixed(1)}
               </Badge>
             )}
-            <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setNewOpen(true)}>
+            <Button size="sm" className="h-8 gap-1.5 text-xs font-bold" onClick={() => setNewOpen(true)}>
               <Plus className="h-3.5 w-3.5" /> Nuevo caso
             </Button>
             <NotificationBell />
-            <Badge variant="outline" className="text-[10px] bg-teal-500/10 text-teal-500 border-teal-500/30 hidden sm:inline-flex">CSR</Badge>
             <Button variant="ghost" size="sm" onClick={signOut} className="h-8 gap-1.5 text-xs" title="Cerrar sesión">
               <LogOut className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Salir</span>
             </Button>
@@ -246,14 +246,39 @@ export function CSRDashboard() {
         </div>
       </header>
 
-      {/* Barra de módulos del workspace */}
-      <div className="border-b border-border bg-card/40">
+      {/* ── Franja de estado en vivo ── */}
+      <div className="border-b border-border bg-muted/30">
+        <div className="max-w-6xl mx-auto px-4 md:px-6 h-9 flex items-center gap-3 overflow-x-auto">
+          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-primary shrink-0" style={MONT}>
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+            </span>
+            En vivo
+          </span>
+          <span className="h-3 w-px bg-border shrink-0" />
+          {open.length === 0 ? (
+            <span className="text-[11px] text-muted-foreground whitespace-nowrap">Todo tranquilo — sin casos abiertos.</span>
+          ) : (
+            <div className="flex items-center gap-3 text-[11px] whitespace-nowrap">
+              <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-warning" /><b className="tabular-nums">{porAtender.length}</b> por atender</span>
+              {urgentes.length > 0 && <span className="inline-flex items-center gap-1.5 text-destructive"><span className="h-1.5 w-1.5 rounded-full bg-destructive" /><b className="tabular-nums">{urgentes.length}</b> urgente{urgentes.length === 1 ? "" : "s"}</span>}
+              {escalados.length > 0 && <span className="inline-flex items-center gap-1.5 text-info"><span className="h-1.5 w-1.5 rounded-full bg-info" /><b className="tabular-nums">{escalados.length}</b> escalado{escalados.length === 1 ? "" : "s"}</span>}
+              <span className="inline-flex items-center gap-1.5 text-success"><span className="h-1.5 w-1.5 rounded-full bg-success" /><b className="tabular-nums">{mios.length}</b> míos</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Barra de módulos del workspace ── */}
+      <div className="border-b border-border bg-card/40 sticky top-16 z-20 backdrop-blur">
         <div className="max-w-6xl mx-auto px-4 md:px-6 flex items-center gap-1 overflow-x-auto">
           {WORKSPACE.map((w) => (
             <button
               key={w.key}
               onClick={() => setView(w.key)}
               className={`h-11 px-3 inline-flex items-center gap-1.5 text-xs font-semibold border-b-2 whitespace-nowrap transition-colors ${view === w.key ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+              style={MONT}
             >
               <w.Icon className="h-3.5 w-3.5" /> {w.label}
               {!!w.count && w.count > 0 && (
@@ -277,13 +302,14 @@ export function CSRDashboard() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {KPIS.map((k) => (
             <button key={k.label} onClick={() => goToTab(k.key)} className="text-left">
-              <Card className={`transition-colors border ${k.ring} ${k.key === "todos" && k.value > 0 ? "border-destructive/30" : ""}`}>
+              <Card className={`overflow-hidden transition-colors border ${k.ring} ${k.key === "todos" && k.value > 0 ? "border-destructive/30" : ""}`}>
+                <div className={`h-1 w-full ${k.value > 0 ? k.bar : "bg-transparent"}`} />
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-1">
                     <k.Icon className={`h-3.5 w-3.5 ${k.tone}`} />
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{k.label}</p>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold" style={MONT}>{k.label}</p>
                   </div>
-                  <p className={`text-2xl font-black tabular-nums ${k.key === "todos" && k.value > 0 ? "text-destructive" : ""}`}>{k.value}</p>
+                  <p className={`text-3xl font-black tabular-nums leading-none ${k.key === "todos" && k.value > 0 ? "text-destructive" : ""}`} style={MONT}>{k.value}</p>
                 </CardContent>
               </Card>
             </button>
@@ -292,11 +318,11 @@ export function CSRDashboard() {
 
         {/* Foco de hoy — priorización determinística inline */}
         {foco.length > 0 && (
-          <Card className="border-teal-500/30 bg-gradient-to-br from-teal-500/[0.06] to-transparent">
+          <Card className="border-primary/30 bg-gradient-to-br from-primary/[0.06] to-transparent">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2.5">
-                <Zap className="h-4 w-4 text-teal-500" />
-                <h2 className="text-sm font-bold">Foco de hoy</h2>
+                <Zap className="h-4 w-4 text-primary" />
+                <h2 className="text-sm font-bold" style={MONT}>Foco de hoy</h2>
                 <span className="text-[11px] text-muted-foreground">lo más urgente que necesita tu atención</span>
               </div>
               <div className="grid sm:grid-cols-2 gap-2">
@@ -433,7 +459,7 @@ export function CSRDashboard() {
 
           <aside className="space-y-5">
             <section className="space-y-2">
-              <h2 className="text-sm font-bold flex items-center gap-2"><CalendarClock className="h-4 w-4" /> Sesiones periódicas</h2>
+              <h2 className="text-sm font-bold flex items-center gap-2" style={MONT}><CalendarClock className="h-4 w-4 text-primary" /> Sesiones periódicas</h2>
               {sessions.length === 0 ? (
                 <Card><CardContent className="py-6 flex flex-col items-center text-center gap-1.5 text-muted-foreground">
                   <CalendarClock className="h-5 w-5 opacity-40" />
@@ -457,7 +483,7 @@ export function CSRDashboard() {
             </section>
 
             <section className="space-y-2">
-              <h2 className="text-sm font-bold flex items-center gap-2"><Users className="h-4 w-4" /> Escalación</h2>
+              <h2 className="text-sm font-bold flex items-center gap-2" style={MONT}><Users className="h-4 w-4 text-primary" /> Escalación</h2>
               <Card><CardContent className="p-3 space-y-2.5">
                 {ESCALATION_TARGETS.map((tg) => (
                   <div key={tg.key} className="flex items-center justify-between">
