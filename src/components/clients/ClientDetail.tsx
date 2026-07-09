@@ -31,6 +31,7 @@ import { ContractsSLATab } from "./ContractsSLATab";
 import { ClientUsersTab } from "./ClientUsersTab";
 import { QuoteList } from "@/components/support/quotes/QuoteList";
 import { AccountStatementPanel } from "./AccountStatementPanel";
+import { AccountStatement360 } from "./AccountStatement360";
 import { EpicsSection } from "./EpicsSection";
 import { EpicDetailDialog } from "./EpicDetailDialog";
 import { summarizeEpicsFromTasks, useEpics, EPICS, EPIC_LABEL, type EpicSummary } from "@/hooks/useEpics";
@@ -514,7 +515,8 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
         </TabsContent>
 
         {/* ESTADO DE CUENTA — gap P2: consolidado consumo + cotizaciones + financials */}
-        <TabsContent value="estado-cuenta" className="mt-3">
+        <TabsContent value="estado-cuenta" className="mt-3 space-y-4">
+          <AccountStatement360 clientId={client.id} />
           <AccountStatementPanel clientId={client.id} />
         </TabsContent>
       </Tabs>
