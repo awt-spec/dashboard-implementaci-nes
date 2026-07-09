@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAllSupportTickets, useSupportClients, useUpdateSupportTicket, type SupportTicket } from "@/hooks/useSupportTickets";
 import { useCsrTasks, useCsrBlockers } from "@/hooks/useCsrWorkspace";
+import { useClientSlaMap, evalSla, type SlaMap } from "@/hooks/useSla";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,23 +47,25 @@ function ageTone(d: number) {
   if (d >= 3) return "text-warning";
   return "text-muted-foreground";
 }
-// Franja de acento por urgencia (columna izquierda de la tarjeta).
-function accentBar(t: SupportTicket) {
+// Severidad del caso. Usa el SLA real del contrato (client_slas) cuando existe;
+// si el cliente no tiene SLA, cae a una heurística por prioridad/antigüedad.
+export interface Severity { urgent: boolean; tone: "destructive" | "warning" | "none"; label: string | null; score: number }
+function severity(t: SupportTicket, slaMap?: SlaMap): Severity {
   const age = t.dias_antiguedad ?? 0;
-  if (/crit/i.test(t.prioridad || "") || age >= 7) return "bg-destructive";
-  if (/alta/i.test(t.prioridad || "") || age >= 3) return "bg-warning";
-  return "bg-transparent";
+  const e = evalSla(t as any, slaMap);
+  if (e.kind === "breach") return { urgent: true, tone: "destructive", label: "SLA vencido", score: 200 + Math.min(age, 30) * 3 };
+  if (e.kind === "risk") {
+    const left = e.hoursLeft != null ? Math.max(0, Math.round(e.hoursLeft)) : null;
+    return { urgent: true, tone: "warning", label: left != null ? `SLA ${left}h` : "SLA en riesgo", score: 120 + Math.min(age, 30) * 3 };
+  }
+  if (e.kind === "ok") return { urgent: false, tone: "none", label: null, score: Math.min(age, 30) };
+  // Sin SLA configurado → heurística.
+  if (/crit/i.test(t.prioridad || "") || age >= 7) return { urgent: true, tone: "destructive", label: "urgente", score: 100 + Math.min(age, 30) * 3 };
+  if (/alta/i.test(t.prioridad || "") && age >= 3) return { urgent: true, tone: "warning", label: "urgente", score: 60 + Math.min(age, 30) * 3 };
+  const base = /crit/i.test(t.prioridad || "") ? 100 : /alta/i.test(t.prioridad || "") ? 50 : 0;
+  return { urgent: false, tone: "none", label: null, score: base + Math.min(age, 30) * 3 };
 }
-// Heurística de urgencia (proxy de SLA en riesgo, ya que el CSR es 1er contacto).
-function isUrgent(t: SupportTicket) {
-  const age = t.dias_antiguedad ?? 0;
-  return /crit/i.test(t.prioridad || "") || age >= 7 || (/alta/i.test(t.prioridad || "") && age >= 3);
-}
-function urgencyScore(t: SupportTicket) {
-  const age = t.dias_antiguedad ?? 0;
-  let s = /crit/i.test(t.prioridad || "") ? 100 : /alta/i.test(t.prioridad || "") ? 50 : 0;
-  return s + Math.min(age, 30) * 3;
-}
+const TONE_BAR: Record<Severity["tone"], string> = { destructive: "bg-destructive", warning: "bg-warning", none: "bg-transparent" };
 function greeting() {
   const h = new Date().getHours();
   if (h < 12) return "Buenos días";
@@ -78,7 +81,10 @@ export function CSRDashboard() {
   const { data: clients = [] } = useSupportClients();
   const { data: csrTasks = [] } = useCsrTasks();
   const { data: csrBlockers = [] } = useCsrBlockers();
+  const { data: slaMap } = useClientSlaMap();
   const update = useUpdateSupportTicket();
+
+  const sevOf = useMemo(() => (t: SupportTicket) => severity(t, slaMap), [slaMap]);
 
   const clientName = useMemo(() => {
     const m = new Map(clients.map((c: any) => [c.id, c.name]));
@@ -112,15 +118,15 @@ export function CSRDashboard() {
   const porAtender = useMemo(() => open.filter((t) => /pendiente/i.test(t.estado) || !t.responsable), [open]);
   const escalados = useMemo(() => open.filter((t) => t.responsable && TARGET_KEYS.includes(t.responsable)), [open]);
   const mios = useMemo(() => open.filter((t) => t.responsable === agentName), [open, agentName]);
-  const urgentes = useMemo(() => open.filter(isUrgent), [open]);
+  const urgentes = useMemo(() => open.filter((t) => sevOf(t).urgent), [open, sevOf]);
 
   // Foco de hoy: lo más urgente que aún no está escalado, priorizado.
   const foco = useMemo(
     () => open
-      .filter((t) => !(t.responsable && TARGET_KEYS.includes(t.responsable)) && isUrgent(t))
-      .sort((a, b) => urgencyScore(b) - urgencyScore(a))
+      .filter((t) => !(t.responsable && TARGET_KEYS.includes(t.responsable)) && sevOf(t).urgent)
+      .sort((a, b) => sevOf(b).score - sevOf(a).score)
       .slice(0, 4),
-    [open],
+    [open, sevOf],
   );
 
   const pendientesOpen = csrTasks.filter((t) => !t.done).length;
@@ -156,8 +162,8 @@ export function CSRDashboard() {
         if (!hay) return false;
       }
       return true;
-    }).sort((a, b) => urgencyScore(b) - urgencyScore(a));
-  }, [base, search, prio, clientName]);
+    }).sort((a, b) => sevOf(b).score - sevOf(a).score);
+  }, [base, search, prio, clientName, sevOf]);
 
   const atender = (t: SupportTicket) => {
     update.mutate(
@@ -176,7 +182,12 @@ export function CSRDashboard() {
         author_name: agentName,
         visibility: "interna",
       } as any);
-      toast.success(`Caso escalado a ${target}`);
+      // Notifica de verdad a los responsables (in-app + email encolado).
+      const { data: notif } = await supabase.functions.invoke("notify-escalation", {
+        body: { ticket_id: escalate.id, target, motivo: motivo.trim() },
+      });
+      const n = (notif as any)?.notified ?? 0;
+      toast.success(n > 0 ? `Escalado a ${target} — se notificó a ${n} responsable${n === 1 ? "" : "s"}` : `Caso escalado a ${target}`);
       setEscalate(null); setMotivo("");
     } catch (e: any) {
       toast.error(e.message || "No se pudo escalar");
@@ -286,11 +297,13 @@ export function CSRDashboard() {
               <div className="grid sm:grid-cols-2 gap-2">
                 {foco.map((t) => {
                   const age = t.dias_antiguedad ?? 0;
+                  const sv = sevOf(t);
                   return (
                     <div key={t.id} className="rounded-lg border border-border/60 bg-card p-2.5 flex items-center gap-2.5">
                       <button className="min-w-0 flex-1 text-left" onClick={() => setDetail(t)}>
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <Badge variant="outline" className={`text-[9px] ${prioTone(t.prioridad)}`}>{t.prioridad}</Badge>
+                          {sv.label && <Badge variant="outline" className={`text-[9px] gap-0.5 ${sv.tone === "destructive" ? "bg-destructive/10 text-destructive border-destructive/30" : "bg-warning/10 text-warning border-warning/30"}`}><Flame className="h-2.5 w-2.5" />{sv.label}</Badge>}
                           <span className={`text-[10px] flex items-center gap-0.5 ${ageTone(age)}`}><Clock className="h-2.5 w-2.5" />{age}d</span>
                         </div>
                         <p className="text-[13px] font-medium truncate mt-0.5">{t.asunto}</p>
@@ -370,11 +383,12 @@ export function CSRDashboard() {
                 {filtered.slice(0, 50).map((t) => {
                   const isEsc = t.responsable && TARGET_KEYS.includes(t.responsable);
                   const age = t.dias_antiguedad ?? 0;
+                  const sv = sevOf(t);
                   return (
                     <Card key={t.id} className={`overflow-hidden ${isEsc ? "border-info/40" : ""}`}>
                       <CardContent className="p-0">
                         <div className="flex items-stretch">
-                          <div className={`w-1 shrink-0 ${accentBar(t)}`} />
+                          <div className={`w-1 shrink-0 ${TONE_BAR[sv.tone]}`} />
                           <div className="flex items-start justify-between gap-3 p-3 flex-1 min-w-0">
                             <button className="min-w-0 text-left flex-1" onClick={() => setDetail(t)}>
                               <div className="flex items-center gap-2 flex-wrap">
@@ -382,7 +396,7 @@ export function CSRDashboard() {
                                 <Badge variant="outline" className={`text-[9px] ${prioTone(t.prioridad)}`}>{t.prioridad}</Badge>
                                 <Badge variant="outline" className="text-[9px]">{t.estado}</Badge>
                                 <span className={`text-[10px] flex items-center gap-0.5 ${ageTone(age)}`}><Clock className="h-2.5 w-2.5" />{age}d</span>
-                                {isUrgent(t) && !isEsc && <Badge variant="outline" className="text-[9px] bg-destructive/10 text-destructive border-destructive/30 gap-0.5"><Flame className="h-2.5 w-2.5" />urgente</Badge>}
+                                {sv.urgent && !isEsc && <Badge variant="outline" className={`text-[9px] gap-0.5 ${sv.tone === "destructive" ? "bg-destructive/10 text-destructive border-destructive/30" : "bg-warning/10 text-warning border-warning/30"}`}><Flame className="h-2.5 w-2.5" />{sv.label}</Badge>}
                                 {isEsc && <Badge variant="outline" className="text-[9px] bg-info/10 text-info border-info/30 gap-0.5"><ArrowUpRight className="h-2.5 w-2.5" />{t.responsable}</Badge>}
                               </div>
                               <p className="text-sm font-medium mt-0.5 truncate">{t.asunto}</p>

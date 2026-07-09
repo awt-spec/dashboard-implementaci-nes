@@ -10,6 +10,7 @@ export type NotificationKind =
   | "subtask_assigned"
   | "minute_shared"
   | "mention"
+  | "escalation"
   | "system";
 
 export interface UserNotification {

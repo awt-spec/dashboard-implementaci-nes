@@ -22,6 +22,7 @@ const KIND_LABEL: Record<NotificationKind, string> = {
   subtask_assigned: "Subtarea",
   minute_shared: "Minuta",
   mention: "Mención",
+  escalation: "Escalación",
   system: "Sistema",
 };
 
@@ -32,6 +33,7 @@ const KIND_CLASSES: Record<NotificationKind, string> = {
   subtask_assigned: "bg-primary/10 text-primary border-primary/30",
   minute_shared: "bg-success/10 text-success border-success/30",
   mention: "bg-destructive/10 text-destructive border-destructive/30",
+  escalation: "bg-warning/15 text-warning border-warning/30",
   system: "bg-muted text-muted-foreground border-border",
 };
 
