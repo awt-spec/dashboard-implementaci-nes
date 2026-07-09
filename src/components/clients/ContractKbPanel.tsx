@@ -15,7 +15,6 @@ import {
   useContractDocuments, useIngestContractDoc, useExtractContractTerms,
   type ContractDocument, type ExtractedTerms,
 } from "@/hooks/useContractKb";
-import { useClientSLAs, useUpsertSLA, useClientContracts } from "@/hooks/useClientContracts";
 
 const STATUS_TONE: Record<ContractDocument["status"], string> = {
   ingested: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
@@ -43,100 +42,27 @@ export function ContractKbPanel({ clientId, contractId }: Props) {
   const [syncing, setSyncing] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Para sincronizar la extracción con el sistema (SLAs + horas del contrato).
-  const { data: existingSLAs = [] } = useClientSLAs(clientId);
-  const { data: contracts = [] } = useClientContracts(clientId);
-  const upsertSLA = useUpsertSLA();
-  const activeContract = contracts.find((c: any) => c.is_active) || contracts[0];
   const qc = useQueryClient();
 
   const hasIngested = docs.some((d) => d.status === "ingested");
 
-  // Calcula la próxima fecha de pago desde el inicio + ciclo (rodada al futuro).
-  const nextPaymentFrom = (start?: string, cycle?: string, explicit?: string): string | null => {
-    if (explicit) return explicit;
-    if (!start) return null;
-    const months = cycle === "anual" ? 12 : cycle === "semestral" ? 6 : cycle === "trimestral" ? 3 : 1;
-    const d = new Date(start); const now = new Date();
-    if (isNaN(d.getTime())) return null;
-    let guard = 0;
-    while (d <= now && guard < 240) { d.setMonth(d.getMonth() + months); guard++; }
-    return d.toISOString().slice(0, 10);
-  };
-
-  // Aplica TODO al sistema: contrato + SLAs + suscripción de facturación.
+  // Aplica TODO al sistema (contrato + SLAs + suscripción). Corre en una edge
+  // function con service_role para no depender de la RLS del navegador — antes
+  // fallaba con "row-level security policy" para roles distintos de admin/pm.
   const applyAll = async () => {
     if (!terms) return;
     setSyncing(true);
     try {
-      const ct = terms.contrato || {};
-      // 1) Contrato (crea si no existe; si existe el activo, lo actualiza).
-      const contractRow: any = {
-        client_id: clientId,
-        contract_type: ct.tipo || activeContract?.contract_type || "fee_mensual",
-        monthly_value: ct.valor_mensual ?? activeContract?.monthly_value ?? 0,
-        hourly_rate: ct.tarifa_hora ?? activeContract?.hourly_rate ?? 0,
-        included_hours: ct.horas_incluidas ?? (terms.paquetes_horas?.[0]?.horas_incluidas) ?? activeContract?.included_hours ?? 0,
-        currency: ct.moneda || activeContract?.currency || "USD",
-        start_date: ct.fecha_inicio || activeContract?.start_date || null,
-        end_date: ct.fecha_fin || activeContract?.end_date || null,
-        auto_renewal: ct.renovacion_automatica ?? activeContract?.auto_renewal ?? false,
-        payment_terms: ct.terminos_pago || activeContract?.payment_terms || null,
-        is_active: true,
-      };
-      let contractId = activeContract?.id as string | undefined;
-      if (contractId) {
-        await supabase.from("client_contracts" as any).update(contractRow).eq("id", contractId);
-      } else {
-        const { data, error } = await supabase.from("client_contracts" as any).insert(contractRow).select("id").single();
-        if (error) throw error;
-        contractId = (data as any)?.id;
-      }
-
-      // 2) SLAs → client_slas (upsert por prioridad+tipo).
-      for (const s of terms.slas ?? []) {
-        const caseType = s.tipo_caso || "all";
-        const match = existingSLAs.find((e: any) => e.priority_level === s.prioridad && (e.case_type || "all") === caseType);
-        await upsertSLA.mutateAsync({
-          ...(match ? { id: match.id } : {}),
-          client_id: clientId,
-          priority_level: s.prioridad,
-          case_type: caseType,
-          response_time_hours: s.tiempo_respuesta_horas ?? 0,
-          resolution_time_hours: s.tiempo_resolucion_horas ?? 0,
-          business_hours_only: s.horario_habil_solo ?? true,
-          penalty_amount: s.penalidad_monto ?? null,
-          penalty_description: s.penalidad_descripcion ?? null,
-          is_active: true,
-        } as any);
-      }
-
-      // 3) Suscripción de facturación (si es recurrente).
-      if (ct.es_suscripcion || ct.tipo === "fee_mensual") {
-        const next = nextPaymentFrom(ct.fecha_inicio, ct.ciclo_facturacion, ct.proxima_fecha_pago);
-        const { data: existingSub } = await supabase.from("billed_packages" as any)
-          .select("id").eq("client_id", clientId).eq("is_subscription", true).limit(1).maybeSingle();
-        // package_type ∈ {horas,servicio,licencia,proyecto,otro}; status ∈
-        // {pendiente,facturado,pagado,anulado}; total_amount es columna generada
-        // (quantity*unit_price) — no se envía.
-        const subRow: any = {
-          client_id: clientId, contract_id: contractId ?? null,
-          name: terms.servicio_contratado?.slice(0, 120) || "Suscripción de servicio",
-          package_type: "servicio", is_subscription: true,
-          billing_cycle: ct.ciclo_facturacion || "mensual",
-          next_payment_date: next,
-          quantity: 1, unit_price: ct.valor_mensual ?? 0,
-          currency: ct.moneda || "USD", status: "pendiente",
-        };
-        if ((existingSub as any)?.id) await supabase.from("billed_packages" as any).update(subRow).eq("id", (existingSub as any).id);
-        else await supabase.from("billed_packages" as any).insert(subRow);
-      }
+      const { data, error } = await supabase.functions.invoke("apply-contract-terms", { body: { clientId, terms } });
+      if (error) throw new Error(error.message || "No se pudo aplicar al sistema");
+      if ((data as any)?.error) throw new Error((data as any).error);
 
       qc.invalidateQueries({ queryKey: ["client-contracts", clientId] });
       qc.invalidateQueries({ queryKey: ["client-slas", clientId] });
       qc.invalidateQueries({ queryKey: ["billed-packages", clientId] });
       qc.invalidateQueries({ queryKey: ["contract-milestones"] });
-      toast.success("Contrato, SLAs y suscripción aplicados al sistema");
+      const slas = (data as any)?.slas ?? 0;
+      toast.success(`Aplicado al sistema: contrato${slas ? ` · ${slas} SLA${slas === 1 ? "" : "s"}` : ""}${(data as any)?.subscription ? " · suscripción" : ""}`);
     } catch (e: any) {
       toast.error(e?.message || "No se pudo aplicar al sistema");
     } finally {
