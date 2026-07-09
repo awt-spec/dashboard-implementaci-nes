@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ import {
   Plus, Trash2, Loader2, CalendarClock, Building2, Sparkles, ListChecks,
   Briefcase, ArrowRight, Flag, Target, Flame, AlertOctagon, Milestone, CalendarX,
   List, CalendarDays, FileText, ChevronLeft, ChevronRight, CheckSquare, Users,
-  ExternalLink, Handshake,
+  ExternalLink, Handshake, Search,
 } from "lucide-react";
 import { Confidential } from "@/components/common/Confidential";
 import { useFinanceAccess } from "@/hooks/useFinanceAccess";
@@ -393,15 +393,7 @@ export function AgendaModule({
 
       {view === "lista" && <AgendaLista events={events} clientName={clientName} onOpen={openEvent} />}
       {view === "calendario" && <AgendaCalendario events={events} cursor={cursor} setCursor={setCursor} clientName={clientName} onOpen={openEvent} />}
-      {view === "minutas" && (
-        <SupportMinutas
-          tickets={allTickets as any}
-          allTickets={allTickets as any}
-          clientName="Soporte General"
-          clientId="all"
-          availableClients={clients}
-        />
-      )}
+      {view === "minutas" && <MinutasView sessions={sessions} clientName={clientName} clients={clients} allTickets={allTickets} onDetail={setDetail} />}
 
       <MinutaDetailDialog minuta={detail} onOpenChange={(o) => !o && setDetail(null)} clientName={clientName} allTickets={allTickets} onOpenCase={(t) => { setDetail(null); onOpenCase?.(t); }} />
     </div>
@@ -513,76 +505,270 @@ function AgendaCalendario({ events, cursor, setCursor, clientName, onOpen }: {
   );
 }
 
+// ── Minutas · lista total + segmentación (búsqueda, cliente, período) ────────
+type Period = "todas" | "mes" | "trim" | "anio";
+const PERIODS: { key: Period; label: string }[] = [
+  { key: "todas", label: "Todo el tiempo" },
+  { key: "mes", label: "Este mes" },
+  { key: "trim", label: "Últimos 3 meses" },
+  { key: "anio", label: "Este año" },
+];
+function inPeriod(d: Date | null, p: Period): boolean {
+  if (p === "todas") return true;
+  if (!d) return false;
+  const now = new Date();
+  if (p === "anio") return d.getFullYear() === now.getFullYear();
+  if (p === "mes") return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  if (p === "trim") return d.getTime() >= addMonths(now, -3).getTime();
+  return true;
+}
+
+function MinutasView({ sessions, clientName, clients = [], allTickets = [], onDetail }: {
+  sessions: AgendaSession[]; clientName: (id?: string | null) => string;
+  clients?: { id: string; name: string }[]; allTickets?: SupportTicket[];
+  onDetail: (m: AgendaSession) => void;
+}) {
+  const qc = useQueryClient();
+  const [search, setSearch] = useState("");
+  const [client, setClient] = useState("all");
+  const [period, setPeriod] = useState<Period>("todas");
+  const [createOpen, setCreateOpen] = useState(false);
+
+  // Clientes que efectivamente tienen minutas (para el segmentador).
+  const clientOpts = useMemo(() => {
+    const ids = new Set(sessions.map((s) => s.client_id));
+    return clients.filter((c) => ids.has(c.id)).sort((a, b) => a.name.localeCompare(b.name));
+  }, [sessions, clients]);
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return sessions.filter((s) => {
+      if (client !== "all" && s.client_id !== client) return false;
+      if (!inPeriod(safeDate(s.date), period)) return false;
+      if (term) {
+        const hay = [s.title, s.summary, clientName(s.client_id)].some((f) => (f || "").toLowerCase().includes(term));
+        if (!hay) return false;
+      }
+      return true;
+    });
+  }, [sessions, search, client, period, clientName]);
+
+  const closeCreate = (o: boolean) => {
+    setCreateOpen(o);
+    if (!o) qc.invalidateQueries({ queryKey: ["csr-agenda-sessions"] });
+  };
+
+  return (
+    <div className="space-y-3">
+      {/* Encabezado + crear */}
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-sm font-bold flex items-center gap-2" style={MONT}>
+          <FileText className="h-4 w-4 text-primary" /> Minutas
+          <span className="text-[11px] font-normal text-muted-foreground tabular-nums">{filtered.length}/{sessions.length}</span>
+        </h3>
+        <Button size="sm" className="h-8 gap-1.5 text-xs font-bold" onClick={() => setCreateOpen(true)}>
+          <Plus className="h-3.5 w-3.5" /> Nueva minuta
+        </Button>
+      </div>
+
+      {/* Segmentación */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-[180px]">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por título, contenido o cliente…" className="h-8 pl-8 text-xs" />
+        </div>
+        <Select value={client} onValueChange={setClient}>
+          <SelectTrigger className="h-8 w-[160px] text-xs"><SelectValue placeholder="Cliente" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los clientes</SelectItem>
+            {clientOpts.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
+          <SelectTrigger className="h-8 w-[150px] text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {PERIODS.map((p) => <SelectItem key={p.key} value={p.key}>{p.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Segmentación rápida por cliente (chips con conteo) */}
+      {clientOpts.length > 1 && (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <button onClick={() => setClient("all")} className={`h-6 px-2.5 rounded-full border text-[10px] font-semibold ${client === "all" ? "border-primary bg-primary/10 text-primary" : "border-border/60 text-muted-foreground hover:bg-accent/50"}`}>Todos</button>
+          {clientOpts.slice(0, 8).map((c) => {
+            const n = sessions.filter((s) => s.client_id === c.id).length;
+            return (
+              <button key={c.id} onClick={() => setClient(c.id)} className={`h-6 px-2.5 rounded-full border text-[10px] font-semibold inline-flex items-center gap-1 ${client === c.id ? "border-primary bg-primary/10 text-primary" : "border-border/60 text-muted-foreground hover:bg-accent/50"}`}>
+                {c.name} <span className="opacity-70 tabular-nums">{n}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Lista */}
+      {filtered.length === 0 ? (
+        <EmptyState icon={<FileText className="h-5 w-5" />} title={sessions.length === 0 ? "Sin minutas registradas" : "Ninguna minuta coincide con el filtro"} hint={sessions.length === 0 ? "Creá la primera con «Nueva minuta»." : "Ajustá la búsqueda, el cliente o el período."} />
+      ) : (
+        <div className="space-y-1.5">
+          {filtered.map((m) => {
+            const d = safeDate(m.date);
+            return (
+              <button key={m.id} onClick={() => onDetail(m)} className="w-full text-left">
+                <Card className="hover:border-primary/40 transition-colors"><CardContent className="p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold truncate">{m.title}</p>
+                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-0.5 flex-wrap">
+                        <span className="flex items-center gap-1"><Building2 className="h-2.5 w-2.5" />{clientName(m.client_id)}</span>
+                        {d && <span className="flex items-center gap-1"><CalendarClock className="h-2.5 w-2.5" />{format(d, "d MMM yyyy", { locale: es })}</span>}
+                      </div>
+                      {m.summary && <p className="text-[11px] text-muted-foreground mt-1 line-clamp-1">{m.summary}</p>}
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {m.cases_referenced?.length > 0 && <Badge variant="outline" className="text-[9px] gap-0.5"><FileText className="h-2.5 w-2.5" />{m.cases_referenced.length}</Badge>}
+                      {m.agreements?.length > 0 && <Badge variant="outline" className="text-[9px] gap-0.5 text-success border-success/30"><Handshake className="h-2.5 w-2.5" />{m.agreements.length}</Badge>}
+                      {m.action_items?.length > 0 && <Badge variant="outline" className="text-[9px] gap-0.5 text-warning border-warning/30"><CheckSquare className="h-2.5 w-2.5" />{m.action_items.length}</Badge>}
+                    </div>
+                  </div>
+                </CardContent></Card>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Creación / gestión completa (reutiliza el gestor existente) */}
+      <Dialog open={createOpen} onOpenChange={closeCreate}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle style={MONT} className="flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Gestión de minutas</DialogTitle></DialogHeader>
+          <SupportMinutas
+            tickets={allTickets as any}
+            allTickets={allTickets as any}
+            clientName="Soporte General"
+            clientId="all"
+            availableClients={clients}
+          />
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function initials(name: string) {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("") || "?";
+}
+
 // Detalle de una sesión/minuta: qué se hizo, acuerdos, pendientes, casos.
 function MinutaDetailDialog({ minuta, onOpenChange, clientName, allTickets = [], onOpenCase }: {
   minuta: AgendaSession | null; onOpenChange: (o: boolean) => void;
   clientName: (id?: string | null) => string; allTickets?: SupportTicket[]; onOpenCase?: (t: SupportTicket) => void;
 }) {
   const findCase = (code: string) => allTickets.find((t) => t.ticket_id === code || t.id === code);
+  const d = minuta ? safeDate(minuta.date) : null;
+  const nCasos = minuta?.cases_referenced?.length || 0;
+  const nAcuerdos = minuta?.agreements?.length || 0;
+  const nPend = minuta?.action_items?.length || 0;
   return (
     <Dialog open={!!minuta} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-lg max-h-[88vh] overflow-y-auto p-0 gap-0">
         {minuta && (
           <>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-base" style={MONT}><FileText className="h-4 w-4 text-primary" /> {minuta.title}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 text-[11px] text-muted-foreground flex-wrap">
-                <span className="flex items-center gap-1"><Building2 className="h-3 w-3" />{clientName(minuta.client_id)}</span>
-                {safeDate(minuta.date) && <span className="flex items-center gap-1"><CalendarClock className="h-3 w-3" />{format(safeDate(minuta.date)!, "d MMM yyyy", { locale: es })}</span>}
+            {/* Cabecera con banda de marca */}
+            <DialogHeader className="p-5 pb-4 border-b border-border bg-gradient-to-br from-primary/[0.07] to-transparent space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="h-9 w-9 rounded-md bg-primary text-primary-foreground flex items-center justify-center shrink-0 shadow-sm">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <DialogTitle className="text-base leading-tight" style={MONT}>{minuta.title}</DialogTitle>
+                  <div className="flex items-center gap-3 text-[11px] text-muted-foreground flex-wrap mt-1">
+                    <span className="flex items-center gap-1"><Building2 className="h-3 w-3" />{clientName(minuta.client_id)}</span>
+                    {d && <span className="flex items-center gap-1"><CalendarClock className="h-3 w-3" />{format(d, "EEEE d 'de' MMMM, yyyy", { locale: es })}</span>}
+                  </div>
+                </div>
               </div>
-
+              {/* Resumen de la sesión en cifras */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <StatPill icon={<FileText className="h-3 w-3" />} n={nCasos} label="casos" />
+                <StatPill icon={<Handshake className="h-3 w-3" />} n={nAcuerdos} label="acuerdos" />
+                <StatPill icon={<CheckSquare className="h-3 w-3" />} n={nPend} label="pendientes" />
+              </div>
               {minuta.attendees?.length > 0 && (
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                  {minuta.attendees.map((a, i) => <Badge key={i} variant="outline" className="text-[9px]">{a}</Badge>)}
+                <div className="flex items-center gap-2">
+                  <div className="flex -space-x-1.5">
+                    {minuta.attendees.slice(0, 5).map((a, i) => (
+                      <div key={i} title={a} className="h-6 w-6 rounded-full bg-muted border-2 border-background flex items-center justify-center text-[9px] font-bold text-foreground/70">{initials(a)}</div>
+                    ))}
+                  </div>
+                  <span className="text-[11px] text-muted-foreground truncate">{minuta.attendees.join(", ")}</span>
                 </div>
               )}
+            </DialogHeader>
 
+            <div className="p-5 space-y-3.5">
               {minuta.summary && (
-                <section>
-                  <h4 className="text-[11px] font-bold uppercase tracking-wide text-foreground/80 mb-1" style={MONT}>Qué se hizo</h4>
-                  <p className="text-[13px] text-foreground/85 whitespace-pre-wrap leading-relaxed">{minuta.summary}</p>
+                <section className="rounded-lg border border-border/70 bg-muted/30 p-3">
+                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1.5" style={MONT}><FileText className="h-3.5 w-3.5" /> Qué se hizo</h4>
+                  <p className="text-[13px] text-foreground/90 whitespace-pre-wrap leading-relaxed">{minuta.summary}</p>
                 </section>
               )}
 
-              {minuta.agreements?.length > 0 && (
-                <section>
-                  <h4 className="text-[11px] font-bold uppercase tracking-wide text-foreground/80 mb-1 flex items-center gap-1.5" style={MONT}><Handshake className="h-3.5 w-3.5 text-primary" /> Acuerdos</h4>
-                  <ul className="space-y-1 text-[12.5px] list-disc pl-5">{minuta.agreements.map((a, i) => <li key={i}>{a}</li>)}</ul>
+              {nAcuerdos > 0 && (
+                <section className="rounded-lg border border-success/25 bg-success/[0.05] p-3">
+                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-success mb-1.5 flex items-center gap-1.5" style={MONT}><Handshake className="h-3.5 w-3.5" /> Acuerdos</h4>
+                  <ul className="space-y-1.5">{minuta.agreements.map((a, i) => (
+                    <li key={i} className="text-[12.5px] flex items-start gap-2"><span className="h-1.5 w-1.5 rounded-full bg-success mt-1.5 shrink-0" />{a}</li>
+                  ))}</ul>
                 </section>
               )}
 
-              {minuta.action_items?.length > 0 && (
-                <section>
-                  <h4 className="text-[11px] font-bold uppercase tracking-wide text-foreground/80 mb-1 flex items-center gap-1.5" style={MONT}><CheckSquare className="h-3.5 w-3.5 text-primary" /> Pendientes</h4>
-                  <ul className="space-y-1 text-[12.5px] list-disc pl-5">{minuta.action_items.map((a, i) => <li key={i}>{a}</li>)}</ul>
+              {nPend > 0 && (
+                <section className="rounded-lg border border-warning/25 bg-warning/[0.05] p-3">
+                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-warning mb-1.5 flex items-center gap-1.5" style={MONT}><CheckSquare className="h-3.5 w-3.5" /> Pendientes</h4>
+                  <ul className="space-y-1.5">{minuta.action_items.map((a, i) => (
+                    <li key={i} className="text-[12.5px] flex items-start gap-2"><CheckSquare className="h-3.5 w-3.5 text-warning/70 mt-0.5 shrink-0" />{a}</li>
+                  ))}</ul>
                 </section>
               )}
 
-              {minuta.cases_referenced?.length > 0 && (
+              {nCasos > 0 && (
                 <section>
-                  <h4 className="text-[11px] font-bold uppercase tracking-wide text-foreground/80 mb-1.5" style={MONT}>Casos tratados</h4>
+                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5" style={MONT}>Casos tratados</h4>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {minuta.cases_referenced.map((c) => {
                       const tk = findCase(c);
                       return tk && onOpenCase ? (
-                        <button key={c} onClick={() => onOpenCase(tk)} className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-1 rounded border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 transition-colors">
-                          {c} <ExternalLink className="h-2.5 w-2.5" />
+                        <button key={c} onClick={() => onOpenCase(tk)} title={tk.asunto} className="inline-flex items-center gap-1 text-[11px] font-mono px-2 py-1 rounded-md border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 transition-colors">
+                          {c} <ExternalLink className="h-3 w-3" />
                         </button>
                       ) : (
-                        <Badge key={c} variant="outline" className="text-[10px] font-mono">{c}</Badge>
+                        <Badge key={c} variant="outline" className="text-[11px] font-mono py-1">{c}</Badge>
                       );
                     })}
                   </div>
+                  {onOpenCase && <p className="text-[10px] text-muted-foreground mt-1.5">Tocá un caso para abrir su detalle.</p>}
                 </section>
+              )}
+
+              {!minuta.summary && nAcuerdos === 0 && nPend === 0 && nCasos === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">Esta minuta no tiene detalle registrado.</p>
               )}
             </div>
           </>
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function StatPill({ icon, n, label }: { icon: React.ReactNode; n: number; label: string }) {
+  return (
+    <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-1 rounded-md border ${n > 0 ? "bg-card border-border text-foreground" : "bg-muted/40 border-transparent text-muted-foreground"}`}>
+      <span className={n > 0 ? "text-primary" : ""}>{icon}</span>
+      <span className="tabular-nums">{n}</span> {label}
+    </span>
   );
 }
 
