@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,11 +9,19 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import {
+  format, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
+  eachDayOfInterval, isSameMonth, isSameDay, addMonths,
+} from "date-fns";
 import { es } from "date-fns/locale";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { SupportMinutas } from "@/components/support/SupportMinutas";
+import type { SupportTicket } from "@/hooks/useSupportTickets";
 import {
   Plus, Trash2, Loader2, CalendarClock, Building2, Sparkles, ListChecks,
   Briefcase, ArrowRight, Flag, Target, Flame, AlertOctagon, Milestone, CalendarX,
+  List, CalendarDays, FileText, ChevronLeft, ChevronRight, CheckSquare, Users,
+  ExternalLink, Handshake,
 } from "lucide-react";
 import { Confidential } from "@/components/common/Confidential";
 import { useFinanceAccess } from "@/hooks/useFinanceAccess";
@@ -309,39 +317,272 @@ export function ComercialModule({ clientName }: { clientName: (id?: string | nul
   );
 }
 
-// ═══ Agenda / Calendario ═══════════════════════════════════════════════════
-export function AgendaModule({ tickets, clientName }: { tickets: any[]; clientName: (id?: string | null) => string }) {
+// ═══ Agenda · Lista / Calendario / Minutas ═════════════════════════════════
+interface AgendaSession {
+  id: string; client_id: string; title: string; date: string; summary: string;
+  cases_referenced: string[]; action_items: string[]; agreements: string[]; attendees: string[];
+}
+interface AgendaEvent {
+  key: string; kind: "sesión" | "entrega"; date: Date; title: string;
+  client_id: string; session?: AgendaSession; ticket?: SupportTicket;
+}
+function safeDate(s?: string | null): Date | null {
+  if (!s) return null;
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+export function AgendaModule({
+  tickets = [], allTickets = [], clientName, clients = [], onOpenCase,
+}: {
+  tickets?: any[]; allTickets?: SupportTicket[]; clientName: (id?: string | null) => string;
+  clients?: { id: string; name: string }[]; onOpenCase?: (t: SupportTicket) => void;
+}) {
+  const [view, setView] = useState<"lista" | "calendario" | "minutas">("lista");
+  const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
+  const [detail, setDetail] = useState<AgendaSession | null>(null);
+
   const { data: sessions = [] } = useQuery({
     queryKey: ["csr-agenda-sessions"],
     queryFn: async () => {
-      const { data } = await supabase.from("support_minutes" as any).select("id, client_id, title, date").order("date", { ascending: false }).limit(20);
-      return (data || []) as any[];
+      const { data } = await supabase.from("support_minutes" as any)
+        .select("id, client_id, title, date, summary, cases_referenced, action_items, agreements, attendees")
+        .order("date", { ascending: false }).limit(200);
+      return (data || []) as unknown as AgendaSession[];
     },
   });
-  const items = [
-    ...sessions.filter((s) => s.date).map((s) => ({ kind: "sesión", date: s.date as string, title: s.title || "Sesión de soporte", client: s.client_id })),
-    ...tickets.filter((t) => t.fecha_entrega).map((t) => ({ kind: "entrega", date: t.fecha_entrega as string, title: `${t.ticket_id} · ${t.asunto}`, client: t.client_id })),
-  ].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 30);
 
-  if (items.length === 0) return <EmptyState icon={<CalendarX className="h-5 w-5" />} title="Sin eventos en la agenda" hint="Se listan sesiones periódicas y fechas de entrega de tus casos." />;
+  const events = useMemo<AgendaEvent[]>(() => {
+    const ev: AgendaEvent[] = [];
+    for (const s of sessions) {
+      const d = safeDate(s.date);
+      if (d) ev.push({ key: `s-${s.id}`, kind: "sesión", date: d, title: s.title || "Sesión de soporte", client_id: s.client_id, session: s });
+    }
+    for (const t of tickets) {
+      const d = safeDate(t.fecha_entrega);
+      if (d) ev.push({ key: `t-${t.id}`, kind: "entrega", date: d, title: `${t.ticket_id} · ${t.asunto}`, client_id: t.client_id, ticket: t });
+    }
+    return ev.sort((a, b) => b.date.getTime() - a.date.getTime());
+  }, [sessions, tickets]);
+
+  const openEvent = (e: AgendaEvent) => {
+    if (e.kind === "sesión" && e.session) setDetail(e.session);
+    else if (e.kind === "entrega" && e.ticket && onOpenCase) onOpenCase(e.ticket);
+  };
+
+  const VIEWS = [
+    { key: "lista" as const, label: "Lista", Icon: List },
+    { key: "calendario" as const, label: "Calendario", Icon: CalendarDays },
+    { key: "minutas" as const, label: "Minutas", Icon: FileText },
+  ];
+
   return (
-    <div className="space-y-1.5">
-      {items.map((it, i) => (
-        <Card key={i}><CardContent className="p-2.5 flex items-center gap-3">
-          <div className="w-14 shrink-0 text-center">
-            <p className="text-[10px] uppercase text-muted-foreground">{format(new Date(it.date), "MMM", { locale: es })}</p>
-            <p className="text-lg font-black leading-none tabular-nums">{format(new Date(it.date), "d")}</p>
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              <Badge variant="outline" className={`text-[9px] ${it.kind === "sesión" ? "bg-info/10 text-info border-info/30" : "bg-warning/10 text-warning border-warning/30"}`}>{it.kind}</Badge>
-              <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Building2 className="h-2.5 w-2.5" />{clientName(it.client)}</span>
-            </div>
-            <p className="text-sm font-medium truncate mt-0.5">{it.title}</p>
-          </div>
-        </CardContent></Card>
-      ))}
+    <div className="space-y-3">
+      {/* Selector de vista */}
+      <div className="flex items-center gap-1.5">
+        {VIEWS.map((v) => (
+          <button
+            key={v.key}
+            onClick={() => setView(v.key)}
+            className={`h-8 px-3 rounded-full border text-xs font-semibold transition-colors inline-flex items-center gap-1.5 ${view === v.key ? "border-primary bg-primary/10 text-primary" : "border-border/60 text-muted-foreground hover:bg-accent/50"}`}
+          >
+            <v.Icon className="h-3.5 w-3.5" /> {v.label}
+          </button>
+        ))}
+      </div>
+
+      {view === "lista" && <AgendaLista events={events} clientName={clientName} onOpen={openEvent} />}
+      {view === "calendario" && <AgendaCalendario events={events} cursor={cursor} setCursor={setCursor} clientName={clientName} onOpen={openEvent} />}
+      {view === "minutas" && (
+        <SupportMinutas
+          tickets={allTickets as any}
+          allTickets={allTickets as any}
+          clientName="Soporte General"
+          clientId="all"
+          availableClients={clients}
+        />
+      )}
+
+      <MinutaDetailDialog minuta={detail} onOpenChange={(o) => !o && setDetail(null)} clientName={clientName} allTickets={allTickets} onOpenCase={(t) => { setDetail(null); onOpenCase?.(t); }} />
     </div>
+  );
+}
+
+const KIND_TONE: Record<string, string> = {
+  "sesión": "bg-info/10 text-info border-info/30",
+  "entrega": "bg-warning/10 text-warning border-warning/30",
+};
+
+function AgendaLista({ events, clientName, onOpen }: { events: AgendaEvent[]; clientName: (id?: string | null) => string; onOpen: (e: AgendaEvent) => void }) {
+  const now = Date.now();
+  const proximas = events.filter((e) => e.date.getTime() >= now).sort((a, b) => a.date.getTime() - b.date.getTime());
+  const pasadas = events.filter((e) => e.date.getTime() < now);
+  if (events.length === 0) return <EmptyState icon={<CalendarX className="h-5 w-5" />} title="Sin eventos en la agenda" hint="Se listan sesiones periódicas y fechas de entrega de tus casos." />;
+  const Row = (e: AgendaEvent) => (
+    <button key={e.key} onClick={() => onOpen(e)} className="w-full text-left">
+      <Card className="hover:border-primary/40 transition-colors"><CardContent className="p-2.5 flex items-center gap-3">
+        <div className="w-12 shrink-0 text-center">
+          <p className="text-[10px] uppercase text-muted-foreground">{format(e.date, "MMM", { locale: es })}</p>
+          <p className="text-lg font-black leading-none tabular-nums">{format(e.date, "d")}</p>
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Badge variant="outline" className={`text-[9px] ${KIND_TONE[e.kind]}`}>{e.kind}</Badge>
+            <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Building2 className="h-2.5 w-2.5" />{clientName(e.client_id)}</span>
+            {e.kind === "sesión" && !!e.session?.cases_referenced?.length && <span className="text-[10px] text-muted-foreground">· {e.session.cases_referenced.length} casos</span>}
+          </div>
+          <p className="text-sm font-medium truncate mt-0.5">{e.title}</p>
+        </div>
+        {e.kind === "sesión" ? <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+      </CardContent></Card>
+    </button>
+  );
+  return (
+    <div className="space-y-4">
+      {proximas.length > 0 && (
+        <section className="space-y-1.5">
+          <h4 className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground" style={MONT}>Próximas ({proximas.length})</h4>
+          {proximas.map(Row)}
+        </section>
+      )}
+      {pasadas.length > 0 && (
+        <section className="space-y-1.5">
+          <h4 className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground" style={MONT}>Pasadas ({pasadas.length})</h4>
+          {pasadas.slice(0, 40).map(Row)}
+        </section>
+      )}
+    </div>
+  );
+}
+
+const WEEKDAYS = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"];
+function AgendaCalendario({ events, cursor, setCursor, clientName, onOpen }: {
+  events: AgendaEvent[]; cursor: Date; setCursor: (d: Date) => void;
+  clientName: (id?: string | null) => string; onOpen: (e: AgendaEvent) => void;
+}) {
+  const days = eachDayOfInterval({
+    start: startOfWeek(startOfMonth(cursor), { weekStartsOn: 1 }),
+    end: endOfWeek(endOfMonth(cursor), { weekStartsOn: 1 }),
+  });
+  const byDay = useMemo(() => {
+    const m = new Map<string, AgendaEvent[]>();
+    for (const e of events) {
+      const k = format(e.date, "yyyy-MM-dd");
+      if (!m.has(k)) m.set(k, []);
+      m.get(k)!.push(e);
+    }
+    return m;
+  }, [events]);
+  const today = new Date();
+  return (
+    <Card><CardContent className="p-3">
+      {/* Navegación de mes */}
+      <div className="flex items-center justify-between mb-3">
+        <button onClick={() => setCursor(addMonths(cursor, -1))} className="h-7 w-7 rounded-md hover:bg-accent flex items-center justify-center"><ChevronLeft className="h-4 w-4" /></button>
+        <p className="text-sm font-bold capitalize" style={MONT}>{format(cursor, "MMMM yyyy", { locale: es })}</p>
+        <button onClick={() => setCursor(addMonths(cursor, 1))} className="h-7 w-7 rounded-md hover:bg-accent flex items-center justify-center"><ChevronRight className="h-4 w-4" /></button>
+      </div>
+      {/* Encabezado de días */}
+      <div className="grid grid-cols-7 gap-1 mb-1">
+        {WEEKDAYS.map((d) => <div key={d} className="text-[10px] font-semibold uppercase text-muted-foreground text-center">{d}</div>)}
+      </div>
+      {/* Celdas */}
+      <div className="grid grid-cols-7 gap-1">
+        {days.map((d) => {
+          const k = format(d, "yyyy-MM-dd");
+          const evs = byDay.get(k) || [];
+          const inMonth = isSameMonth(d, cursor);
+          const isToday = isSameDay(d, today);
+          return (
+            <div key={k} className={`min-h-[64px] rounded-md border p-1 ${inMonth ? "border-border/60" : "border-transparent opacity-40"} ${isToday ? "bg-primary/[0.06] border-primary/40" : ""}`}>
+              <p className={`text-[10px] font-semibold tabular-nums ${isToday ? "text-primary" : "text-muted-foreground"}`}>{format(d, "d")}</p>
+              <div className="space-y-0.5 mt-0.5">
+                {evs.slice(0, 2).map((e) => (
+                  <button key={e.key} onClick={() => onOpen(e)} title={`${clientName(e.client_id)} · ${e.title}`}
+                    className={`w-full truncate text-left text-[9px] px-1 py-0.5 rounded border ${KIND_TONE[e.kind]}`}>
+                    {e.kind === "sesión" ? "◉" : "▸"} {e.title}
+                  </button>
+                ))}
+                {evs.length > 2 && <p className="text-[9px] text-muted-foreground pl-1">+{evs.length - 2}</p>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </CardContent></Card>
+  );
+}
+
+// Detalle de una sesión/minuta: qué se hizo, acuerdos, pendientes, casos.
+function MinutaDetailDialog({ minuta, onOpenChange, clientName, allTickets = [], onOpenCase }: {
+  minuta: AgendaSession | null; onOpenChange: (o: boolean) => void;
+  clientName: (id?: string | null) => string; allTickets?: SupportTicket[]; onOpenCase?: (t: SupportTicket) => void;
+}) {
+  const findCase = (code: string) => allTickets.find((t) => t.ticket_id === code || t.id === code);
+  return (
+    <Dialog open={!!minuta} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        {minuta && (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-base" style={MONT}><FileText className="h-4 w-4 text-primary" /> {minuta.title}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 text-[11px] text-muted-foreground flex-wrap">
+                <span className="flex items-center gap-1"><Building2 className="h-3 w-3" />{clientName(minuta.client_id)}</span>
+                {safeDate(minuta.date) && <span className="flex items-center gap-1"><CalendarClock className="h-3 w-3" />{format(safeDate(minuta.date)!, "d MMM yyyy", { locale: es })}</span>}
+              </div>
+
+              {minuta.attendees?.length > 0 && (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                  {minuta.attendees.map((a, i) => <Badge key={i} variant="outline" className="text-[9px]">{a}</Badge>)}
+                </div>
+              )}
+
+              {minuta.summary && (
+                <section>
+                  <h4 className="text-[11px] font-bold uppercase tracking-wide text-foreground/80 mb-1" style={MONT}>Qué se hizo</h4>
+                  <p className="text-[13px] text-foreground/85 whitespace-pre-wrap leading-relaxed">{minuta.summary}</p>
+                </section>
+              )}
+
+              {minuta.agreements?.length > 0 && (
+                <section>
+                  <h4 className="text-[11px] font-bold uppercase tracking-wide text-foreground/80 mb-1 flex items-center gap-1.5" style={MONT}><Handshake className="h-3.5 w-3.5 text-primary" /> Acuerdos</h4>
+                  <ul className="space-y-1 text-[12.5px] list-disc pl-5">{minuta.agreements.map((a, i) => <li key={i}>{a}</li>)}</ul>
+                </section>
+              )}
+
+              {minuta.action_items?.length > 0 && (
+                <section>
+                  <h4 className="text-[11px] font-bold uppercase tracking-wide text-foreground/80 mb-1 flex items-center gap-1.5" style={MONT}><CheckSquare className="h-3.5 w-3.5 text-primary" /> Pendientes</h4>
+                  <ul className="space-y-1 text-[12.5px] list-disc pl-5">{minuta.action_items.map((a, i) => <li key={i}>{a}</li>)}</ul>
+                </section>
+              )}
+
+              {minuta.cases_referenced?.length > 0 && (
+                <section>
+                  <h4 className="text-[11px] font-bold uppercase tracking-wide text-foreground/80 mb-1.5" style={MONT}>Casos tratados</h4>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {minuta.cases_referenced.map((c) => {
+                      const tk = findCase(c);
+                      return tk && onOpenCase ? (
+                        <button key={c} onClick={() => onOpenCase(tk)} className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-1 rounded border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 transition-colors">
+                          {c} <ExternalLink className="h-2.5 w-2.5" />
+                        </button>
+                      ) : (
+                        <Badge key={c} variant="outline" className="text-[10px] font-mono">{c}</Badge>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 

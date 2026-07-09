@@ -290,7 +290,7 @@ export function CSRDashboard() {
       </div>
 
       <main className="max-w-6xl mx-auto px-4 md:px-6 py-5 space-y-5">
-        {view === "agenda" && <AgendaModule tickets={open} clientName={clientName} />}
+        {view === "agenda" && <AgendaModule tickets={open} allTickets={tickets} clients={clients} clientName={clientName} onOpenCase={setDetail} />}
         {view === "pendientes" && <PendientesModule />}
         {view === "obstaculos" && <ObstaculosModule />}
         {view === "hitos" && <HitosModule clientName={clientName} />}
