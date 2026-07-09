@@ -23,6 +23,9 @@ import {
   useCsrMilestones, useCsrQuotes, useCsrCommercialSignals, useCsrAssistant, type CsrPlan,
 } from "@/hooks/useCsrWorkspace";
 
+// Tipografía de marca SYSDE (display).
+const MONT = { fontFamily: "'Montserrat', system-ui, sans-serif" } as const;
+
 const PRIO_TONE: Record<string, string> = {
   alta: "bg-destructive/15 text-destructive border-destructive/30",
   media: "bg-warning/15 text-warning border-warning/30",
@@ -196,14 +199,14 @@ const QUOTE_TONE: Record<string, string> = {
   approved: "bg-success/15 text-success border-success/30", rejected: "bg-destructive/15 text-destructive border-destructive/30",
 };
 const STAGE_TONE: Record<string, string> = {
-  "Prospecto": "bg-teal-500/15 text-teal-500 border-teal-500/30",
+  "Prospecto": "bg-primary/15 text-primary border-primary/30",
   "Propuesta en curso": "bg-info/15 text-info border-info/30",
   "Ganado": "bg-success/15 text-success border-success/30",
   "Reintentar": "bg-warning/15 text-warning border-warning/30",
 };
 
 const SIGNAL_TONE: Record<string, string> = {
-  hot: "bg-teal-500/15 text-teal-500 border-teal-500/30",
+  hot: "bg-primary/15 text-primary border-primary/30",
   success: "bg-success/15 text-success border-success/30",
   danger: "bg-destructive/15 text-destructive border-destructive/30",
   warn: "bg-warning/15 text-warning border-warning/30",
@@ -247,7 +250,7 @@ export function ComercialModule({ clientName }: { clientName: (id?: string | nul
   return (
     <div className="space-y-4">
       <section className="space-y-2">
-        <h3 className="text-sm font-bold flex items-center gap-2"><Briefcase className="h-4 w-4" /> Cotizaciones</h3>
+        <h3 className="text-sm font-bold flex items-center gap-2" style={MONT}><Briefcase className="h-4 w-4 text-primary" /> Cotizaciones</h3>
         {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mx-auto my-4" /> : quotes.length === 0 ? (
           <EmptyState icon={<Briefcase className="h-5 w-5" />} title="Sin cotizaciones" hint="Cuando se generen cotizaciones para tus clientes, las verás acá." />
         ) : (
@@ -269,8 +272,8 @@ export function ComercialModule({ clientName }: { clientName: (id?: string | nul
       </section>
       <section className="space-y-2">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold flex items-center gap-2"><Target className="h-4 w-4" /> Mapeo de prospectos</h3>
-          {oportunidades > 0 && <Badge variant="outline" className="text-[10px] bg-teal-500/10 text-teal-500 border-teal-500/30">{oportunidades} oportunidad{oportunidades === 1 ? "" : "es"}</Badge>}
+          <h3 className="text-sm font-bold flex items-center gap-2" style={MONT}><Target className="h-4 w-4 text-primary" /> Mapeo de prospectos</h3>
+          {oportunidades > 0 && <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/30">{oportunidades} oportunidad{oportunidades === 1 ? "" : "es"}</Badge>}
         </div>
         <p className="text-[11px] text-muted-foreground">Señales reales por cliente: consumo de la bolsa, hitos por facturar, suscripción vencida, falta de contrato y cotizaciones sin cierre.</p>
         {prospects.length === 0 ? (
@@ -278,12 +281,12 @@ export function ComercialModule({ clientName }: { clientName: (id?: string | nul
         ) : (
           <div className="space-y-1.5">
             {prospects.slice(0, 30).map((p) => (
-              <Card key={p.id} className={p.hot ? "border-teal-500/40" : ""}>
+              <Card key={p.id} className={p.hot ? "border-primary/40" : ""}>
                 <CardContent className="p-2.5 flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-medium truncate">{p.name}</p>
-                      {p.hot && <Badge variant="outline" className="text-[9px] bg-teal-500/10 text-teal-500 border-teal-500/30">oportunidad</Badge>}
+                      {p.hot && <Badge variant="outline" className="text-[9px] bg-primary/10 text-primary border-primary/30">oportunidad</Badge>}
                     </div>
                     {p.chips.length > 0 && (
                       <div className="flex items-center gap-1 flex-wrap mt-1">
