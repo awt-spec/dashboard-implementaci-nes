@@ -14,6 +14,7 @@ import { FileSignature, Shield, Plus, Trash2, Clock, Edit2, Lock, Package, Searc
 import { ContractAnalysisDialog } from "./ContractAnalysisDialog";
 import { ContractKbPanel } from "./ContractKbPanel";
 import { ContractAuditPanel } from "./ContractAuditPanel";
+import { SlaCompliancePanel } from "./SlaCompliancePanel";
 import { BilledPackagesTab } from "./BilledPackagesTab";
 import { ServicePackagesTab } from "./ServicePackagesTab";
 import { Confidential } from "@/components/common/Confidential";
@@ -263,6 +264,9 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
               </Table>
             </CardContent>
           </Card>
+
+          {/* Cumplimiento SLA por caso (transfiere el SLA a los casos abiertos) */}
+          <SlaCompliancePanel clientId={clientId} />
         </TabsContent>
 
         {/* PAQUETES FACTURADOS — gap Tanda B (ERP-068 a 070) */}
