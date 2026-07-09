@@ -116,14 +116,17 @@ export function ContractKbPanel({ clientId, contractId }: Props) {
         const next = nextPaymentFrom(ct.fecha_inicio, ct.ciclo_facturacion, ct.proxima_fecha_pago);
         const { data: existingSub } = await supabase.from("billed_packages" as any)
           .select("id").eq("client_id", clientId).eq("is_subscription", true).limit(1).maybeSingle();
+        // package_type ∈ {horas,servicio,licencia,proyecto,otro}; status ∈
+        // {pendiente,facturado,pagado,anulado}; total_amount es columna generada
+        // (quantity*unit_price) — no se envía.
         const subRow: any = {
           client_id: clientId, contract_id: contractId ?? null,
           name: terms.servicio_contratado?.slice(0, 120) || "Suscripción de servicio",
-          package_type: "suscripcion", is_subscription: true,
+          package_type: "servicio", is_subscription: true,
           billing_cycle: ct.ciclo_facturacion || "mensual",
           next_payment_date: next,
-          quantity: 1, unit_price: ct.valor_mensual ?? null, total_amount: ct.valor_mensual ?? null,
-          currency: ct.moneda || "USD", status: "activo",
+          quantity: 1, unit_price: ct.valor_mensual ?? 0,
+          currency: ct.moneda || "USD", status: "pendiente",
         };
         if ((existingSub as any)?.id) await supabase.from("billed_packages" as any).update(subRow).eq("id", (existingSub as any).id);
         else await supabase.from("billed_packages" as any).insert(subRow);
