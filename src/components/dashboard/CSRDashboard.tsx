@@ -19,10 +19,11 @@ import {
   LifeBuoy, Inbox, ArrowUpRight, CalendarClock, Loader2, PlayCircle,
   ExternalLink, Building2, CheckCircle2, Users, Search,
   Plus, Clock, Star, ListChecks, AlertOctagon, Milestone, Briefcase, Sparkles,
-  Flame, Zap, Hand,
+  Flame, Zap, Hand, LogOut,
 } from "lucide-react";
 import { TicketDetailSheet } from "@/components/support/TicketDetailSheet";
 import { NewTicketForm } from "@/components/support/NewTicketForm";
+import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import {
   PendientesModule, ObstaculosModule, HitosModule, ComercialModule, AgendaModule, IAAssistantModule,
 } from "./CSRModules";
@@ -74,7 +75,7 @@ function greeting() {
 }
 
 export function CSRDashboard() {
-  const { profile } = useAuth();
+  const { profile, signOut } = useAuth();
   const agentName = profile?.full_name || "Agente";
   const firstName = agentName.split(" ")[0];
   const { data: tickets = [], isLoading } = useAllSupportTickets();
@@ -236,7 +237,11 @@ export function CSRDashboard() {
             <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setNewOpen(true)}>
               <Plus className="h-3.5 w-3.5" /> Nuevo caso
             </Button>
+            <NotificationBell />
             <Badge variant="outline" className="text-[10px] bg-teal-500/10 text-teal-500 border-teal-500/30 hidden sm:inline-flex">CSR</Badge>
+            <Button variant="ghost" size="sm" onClick={signOut} className="h-8 gap-1.5 text-xs" title="Cerrar sesión">
+              <LogOut className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Salir</span>
+            </Button>
           </div>
         </div>
       </header>
