@@ -20,7 +20,7 @@ import { useFinanceAccess } from "@/hooks/useFinanceAccess";
 import {
   useCsrTasks, useUpsertCsrTask, useToggleCsrTask, useDeleteCsrTask,
   useCsrBlockers, useUpsertCsrBlocker, useUpdateBlockerStatus,
-  useCsrMilestones, useCsrQuotes, useCsrAssistant, type CsrPlan,
+  useCsrMilestones, useCsrQuotes, useCsrCommercialSignals, useCsrAssistant, type CsrPlan,
 } from "@/hooks/useCsrWorkspace";
 
 const PRIO_TONE: Record<string, string> = {
@@ -202,25 +202,45 @@ const STAGE_TONE: Record<string, string> = {
   "Reintentar": "bg-warning/15 text-warning border-warning/30",
 };
 
-export function ComercialModule({ clientName, tickets = [], clients = [] }: { clientName: (id?: string | null) => string; tickets?: any[]; clients?: any[] }) {
+const SIGNAL_TONE: Record<string, string> = {
+  hot: "bg-teal-500/15 text-teal-500 border-teal-500/30",
+  success: "bg-success/15 text-success border-success/30",
+  danger: "bg-destructive/15 text-destructive border-destructive/30",
+  warn: "bg-warning/15 text-warning border-warning/30",
+  info: "bg-info/15 text-info border-info/30",
+};
+function stageFromQuote(status: string | null): string {
+  if (status === "approved") return "Ganado";
+  if (status === "rejected") return "Reintentar";
+  if (status === "sent" || status === "draft") return "Propuesta en curso";
+  return "Prospecto";
+}
+
+export function ComercialModule({ clientName }: { clientName: (id?: string | null) => string; tickets?: any[]; clients?: any[] }) {
   const { data: quotes = [], isLoading } = useCsrQuotes();
+  const { data: signals = [] } = useCsrCommercialSignals();
   const { canAmounts } = useFinanceAccess();
 
-  // Mapeo de prospectos: cada cliente de soporte con su engagement (# tickets) y
-  // su etapa comercial (derivada de la última cotización). Sin cotización + con
-  // actividad = oportunidad caliente.
-  const prospects = clients.map((c: any) => {
-    const nTickets = tickets.filter((t) => t.client_id === c.id).length;
-    const cQuotes = quotes.filter((q: any) => q.client_id === c.id);
-    const latest = cQuotes[0];
-    let stage = "Prospecto"; let action = "Sin cotización — proponer solución";
-    if (latest) {
-      if (latest.status === "approved") { stage = "Ganado"; action = "Propuesta aprobada — mantener"; }
-      else if (latest.status === "rejected") { stage = "Reintentar"; action = "Propuesta rechazada — replantear"; }
-      else { stage = "Propuesta en curso"; action = "Dar seguimiento a la cotización"; }
-    }
-    return { id: c.id, name: c.name, nTickets, stage, action, hot: cQuotes.length === 0 && nTickets > 0 };
-  }).sort((a, b) => Number(b.hot) - Number(a.hot) || b.nTickets - a.nTickets);
+  // Mapeo de prospectos a partir de SEÑALES REALES (RPC): consumo de la bolsa
+  // de horas del mes, hitos cumplidos sin facturar, suscripción vencida, falta
+  // de contrato con actividad, y cotización sin cierre. Cada señal sugiere una
+  // acción comercial concreta.
+  const prospects = signals.map((s) => {
+    const chips: { label: string; tone: string }[] = [];
+    let action = ""; let hot = false;
+    const pct = s.included_hours > 0 ? (s.consumed_hours_month / s.included_hours) * 100 : 0;
+    if (s.included_hours > 0 && pct >= 80) { chips.push({ label: `Bolsa ${Math.round(pct)}%`, tone: "hot" }); action ||= "Ampliar la bolsa de horas"; hot = true; }
+    if (s.hitos_cumplidos > 0) { chips.push({ label: `${s.hitos_cumplidos} hito${s.hitos_cumplidos === 1 ? "" : "s"} por facturar`, tone: "success" }); action ||= "Facturar hito cumplido"; hot = true; }
+    if (s.sub_vencida) { chips.push({ label: "Suscripción vencida", tone: "danger" }); action ||= "Gestionar renovación / cobro"; hot = true; }
+    if (!s.has_active_contract && s.open_tickets > 0) { chips.push({ label: "Sin contrato activo", tone: "warn" }); action ||= "Formalizar contrato"; hot = true; }
+    if (s.last_quote_status === "sent") { chips.push({ label: "Cotización sin cierre", tone: "info" }); action ||= "Dar seguimiento a la cotización"; }
+    const stage = stageFromQuote(s.last_quote_status);
+    if (!action) action = stage === "Prospecto" ? "Sin cotización — proponer solución" : "Mantener relación";
+    const score = (hot ? 1000 : 0) + chips.length * 100 + s.open_tickets;
+    return { id: s.client_id, name: clientName(s.client_id), nTickets: s.open_tickets, stage, action, chips, hot, score };
+  })
+    .filter((p) => p.nTickets > 0 || p.chips.length > 0)
+    .sort((a, b) => b.score - a.score);
 
   const oportunidades = prospects.filter((p) => p.hot).length;
 
@@ -252,9 +272,9 @@ export function ComercialModule({ clientName, tickets = [], clients = [] }: { cl
           <h3 className="text-sm font-bold flex items-center gap-2"><Target className="h-4 w-4" /> Mapeo de prospectos</h3>
           {oportunidades > 0 && <Badge variant="outline" className="text-[10px] bg-teal-500/10 text-teal-500 border-teal-500/30">{oportunidades} oportunidad{oportunidades === 1 ? "" : "es"}</Badge>}
         </div>
-        <p className="text-[11px] text-muted-foreground">Clientes de soporte por etapa comercial y engagement (# casos). Con actividad y sin cotización = oportunidad.</p>
+        <p className="text-[11px] text-muted-foreground">Señales reales por cliente: consumo de la bolsa, hitos por facturar, suscripción vencida, falta de contrato y cotizaciones sin cierre.</p>
         {prospects.length === 0 ? (
-          <EmptyState icon={<Target className="h-5 w-5" />} title="Sin clientes de soporte" hint="El mapeo se arma con tus clientes y su actividad de casos." />
+          <EmptyState icon={<Target className="h-5 w-5" />} title="Sin señales comerciales" hint="El mapeo se arma con la actividad y los datos de contrato/facturación de tus clientes." />
         ) : (
           <div className="space-y-1.5">
             {prospects.slice(0, 30).map((p) => (
@@ -265,7 +285,12 @@ export function ComercialModule({ clientName, tickets = [], clients = [] }: { cl
                       <p className="text-sm font-medium truncate">{p.name}</p>
                       {p.hot && <Badge variant="outline" className="text-[9px] bg-teal-500/10 text-teal-500 border-teal-500/30">oportunidad</Badge>}
                     </div>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">{p.action}</p>
+                    {p.chips.length > 0 && (
+                      <div className="flex items-center gap-1 flex-wrap mt-1">
+                        {p.chips.map((ch, i) => <Badge key={i} variant="outline" className={`text-[9px] ${SIGNAL_TONE[ch.tone] || ""}`}>{ch.label}</Badge>)}
+                      </div>
+                    )}
+                    <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1"><ArrowRight className="h-3 w-3 text-primary shrink-0" />{p.action}</p>
                   </div>
                   <div className="text-right shrink-0">
                     <Badge variant="outline" className={`text-[9px] ${STAGE_TONE[p.stage] || ""}`}>{p.stage}</Badge>

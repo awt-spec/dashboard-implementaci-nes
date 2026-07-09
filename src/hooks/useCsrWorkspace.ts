@@ -113,6 +113,38 @@ export function useCsrQuotes() {
   });
 }
 
+// ── Señales comerciales reales (RPC) ────────────────────────────────────────
+export interface CommercialSignal {
+  client_id: string;
+  open_tickets: number;
+  has_active_contract: boolean;
+  included_hours: number;
+  consumed_hours_month: number;
+  hitos_cumplidos: number;
+  sub_vencida: boolean;
+  last_quote_status: string | null;
+}
+export function useCsrCommercialSignals() {
+  return useQuery({
+    queryKey: ["csr-commercial-signals"],
+    staleTime: 2 * 60_000,
+    queryFn: async (): Promise<CommercialSignal[]> => {
+      const { data, error } = await (supabase.rpc as any)("get_csr_commercial_signals");
+      if (error) throw error;
+      return ((data as any[]) || []).map((r) => ({
+        client_id: r.client_id,
+        open_tickets: Number(r.open_tickets) || 0,
+        has_active_contract: !!r.has_active_contract,
+        included_hours: Number(r.included_hours) || 0,
+        consumed_hours_month: Number(r.consumed_hours_month) || 0,
+        hitos_cumplidos: Number(r.hitos_cumplidos) || 0,
+        sub_vencida: !!r.sub_vencida,
+        last_quote_status: r.last_quote_status ?? null,
+      }));
+    },
+  });
+}
+
 // ── Asistente IA ────────────────────────────────────────────────────────────
 export interface CsrPlan {
   resumen: string;
