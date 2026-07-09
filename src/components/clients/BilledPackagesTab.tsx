@@ -159,7 +159,25 @@ export function BilledPackagesTab({ clientId }: { clientId: string }) {
             <TableBody>
               {packages.map(p => (
                 <TableRow key={p.id}>
-                  <TableCell className="text-xs font-medium">{p.name}</TableCell>
+                  <TableCell className="text-xs font-medium">
+                    {p.name}
+                    {(p as any).is_subscription && (() => {
+                      const nd = (p as any).next_payment_date as string | null;
+                      const activa = nd ? new Date(nd) >= new Date(new Date().toDateString()) : true;
+                      return (
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          <Badge variant="outline" className="text-[9px] gap-1 bg-primary/10 text-primary border-primary/30">
+                            🔄 Suscripción {(p as any).billing_cycle || "mensual"}
+                          </Badge>
+                          {nd && (
+                            <span className={`text-[10px] ${activa ? "text-success" : "text-destructive"}`}>
+                              {activa ? "activa" : "vencida"} · próx. pago {nd}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </TableCell>
                   <TableCell><Badge variant="outline" className="text-[10px]">{TYPES.find(t => t.value === p.package_type)?.label}</Badge></TableCell>
                   <TableCell className="text-[10px] text-muted-foreground">
                     {p.contract_id && contractById(p.contract_id)

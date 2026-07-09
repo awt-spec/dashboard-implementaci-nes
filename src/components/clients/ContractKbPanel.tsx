@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import {
   useContractDocuments, useIngestContractDoc, useExtractContractTerms,
   type ContractDocument, type ExtractedTerms,
 } from "@/hooks/useContractKb";
-import { useClientSLAs, useUpsertSLA, useClientContracts, useUpsertContract } from "@/hooks/useClientContracts";
+import { useClientSLAs, useUpsertSLA, useClientContracts } from "@/hooks/useClientContracts";
 
 const STATUS_TONE: Record<ContractDocument["status"], string> = {
   ingested: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
@@ -47,18 +47,54 @@ export function ContractKbPanel({ clientId, contractId }: Props) {
   const { data: existingSLAs = [] } = useClientSLAs(clientId);
   const { data: contracts = [] } = useClientContracts(clientId);
   const upsertSLA = useUpsertSLA();
-  const upsertContract = useUpsertContract();
   const activeContract = contracts.find((c: any) => c.is_active) || contracts[0];
+  const qc = useQueryClient();
 
   const hasIngested = docs.some((d) => d.status === "ingested");
 
-  // Aplica los SLAs extraídos → client_slas (upsert por prioridad+tipo).
-  const applySLAs = async () => {
-    const slas = terms?.slas ?? [];
-    if (slas.length === 0) return;
+  // Calcula la próxima fecha de pago desde el inicio + ciclo (rodada al futuro).
+  const nextPaymentFrom = (start?: string, cycle?: string, explicit?: string): string | null => {
+    if (explicit) return explicit;
+    if (!start) return null;
+    const months = cycle === "anual" ? 12 : cycle === "semestral" ? 6 : cycle === "trimestral" ? 3 : 1;
+    const d = new Date(start); const now = new Date();
+    if (isNaN(d.getTime())) return null;
+    let guard = 0;
+    while (d <= now && guard < 240) { d.setMonth(d.getMonth() + months); guard++; }
+    return d.toISOString().slice(0, 10);
+  };
+
+  // Aplica TODO al sistema: contrato + SLAs + suscripción de facturación.
+  const applyAll = async () => {
+    if (!terms) return;
     setSyncing(true);
     try {
-      for (const s of slas) {
+      const ct = terms.contrato || {};
+      // 1) Contrato (crea si no existe; si existe el activo, lo actualiza).
+      const contractRow: any = {
+        client_id: clientId,
+        contract_type: ct.tipo || activeContract?.contract_type || "fee_mensual",
+        monthly_value: ct.valor_mensual ?? activeContract?.monthly_value ?? 0,
+        hourly_rate: ct.tarifa_hora ?? activeContract?.hourly_rate ?? 0,
+        included_hours: ct.horas_incluidas ?? (terms.paquetes_horas?.[0]?.horas_incluidas) ?? activeContract?.included_hours ?? 0,
+        currency: ct.moneda || activeContract?.currency || "USD",
+        start_date: ct.fecha_inicio || activeContract?.start_date || null,
+        end_date: ct.fecha_fin || activeContract?.end_date || null,
+        auto_renewal: ct.renovacion_automatica ?? activeContract?.auto_renewal ?? false,
+        payment_terms: ct.terminos_pago || activeContract?.payment_terms || null,
+        is_active: true,
+      };
+      let contractId = activeContract?.id as string | undefined;
+      if (contractId) {
+        await supabase.from("client_contracts" as any).update(contractRow).eq("id", contractId);
+      } else {
+        const { data, error } = await supabase.from("client_contracts" as any).insert(contractRow).select("id").single();
+        if (error) throw error;
+        contractId = (data as any)?.id;
+      }
+
+      // 2) SLAs → client_slas (upsert por prioridad+tipo).
+      for (const s of terms.slas ?? []) {
         const caseType = s.tipo_caso || "all";
         const match = existingSLAs.find((e: any) => e.priority_level === s.prioridad && (e.case_type || "all") === caseType);
         await upsertSLA.mutateAsync({
@@ -74,29 +110,32 @@ export function ContractKbPanel({ clientId, contractId }: Props) {
           is_active: true,
         } as any);
       }
-      toast.success(`${slas.length} SLA(s) aplicados a la pestaña SLAs`);
-    } catch (e: any) {
-      toast.error(e?.message || "No se pudieron aplicar los SLAs");
-    } finally {
-      setSyncing(false);
-    }
-  };
 
-  // Aplica las horas incluidas extraídas → contrato activo.
-  const applyHours = async () => {
-    const pkg = (terms?.paquetes_horas ?? [])[0];
-    if (!pkg || !activeContract) return;
-    setSyncing(true);
-    try {
-      await upsertContract.mutateAsync({
-        id: activeContract.id,
-        client_id: clientId,
-        ...(pkg.horas_incluidas != null ? { included_hours: pkg.horas_incluidas } : {}),
-        ...(pkg.tarifa_hora != null ? { hourly_rate: pkg.tarifa_hora } : {}),
-      } as any);
-      toast.success("Horas incluidas actualizadas en el contrato");
+      // 3) Suscripción de facturación (si es recurrente).
+      if (ct.es_suscripcion || ct.tipo === "fee_mensual") {
+        const next = nextPaymentFrom(ct.fecha_inicio, ct.ciclo_facturacion, ct.proxima_fecha_pago);
+        const { data: existingSub } = await supabase.from("billed_packages" as any)
+          .select("id").eq("client_id", clientId).eq("is_subscription", true).limit(1).maybeSingle();
+        const subRow: any = {
+          client_id: clientId, contract_id: contractId ?? null,
+          name: terms.servicio_contratado?.slice(0, 120) || "Suscripción de servicio",
+          package_type: "suscripcion", is_subscription: true,
+          billing_cycle: ct.ciclo_facturacion || "mensual",
+          next_payment_date: next,
+          quantity: 1, unit_price: ct.valor_mensual ?? null, total_amount: ct.valor_mensual ?? null,
+          currency: ct.moneda || "USD", status: "activo",
+        };
+        if ((existingSub as any)?.id) await supabase.from("billed_packages" as any).update(subRow).eq("id", (existingSub as any).id);
+        else await supabase.from("billed_packages" as any).insert(subRow);
+      }
+
+      qc.invalidateQueries({ queryKey: ["client-contracts", clientId] });
+      qc.invalidateQueries({ queryKey: ["client-slas", clientId] });
+      qc.invalidateQueries({ queryKey: ["billed-packages", clientId] });
+      qc.invalidateQueries({ queryKey: ["contract-milestones"] });
+      toast.success("Contrato, SLAs y suscripción aplicados al sistema");
     } catch (e: any) {
-      toast.error(e?.message || "No se pudieron aplicar las horas");
+      toast.error(e?.message || "No se pudo aplicar al sistema");
     } finally {
       setSyncing(false);
     }
@@ -282,29 +321,32 @@ export function ContractKbPanel({ clientId, contractId }: Props) {
               </div>
             )}
 
-            {/* Sincronizar la extracción con las pestañas del sistema */}
-            {canManage && ((terms.slas && terms.slas.length > 0) || (terms.paquetes_horas && terms.paquetes_horas.length > 0)) && (
-              <div className="rounded-lg border border-primary/30 bg-primary/5 p-2.5 space-y-2">
-                <p className="text-[11px] font-semibold text-primary flex items-center gap-1"><ArrowRightLeft className="h-3.5 w-3.5" /> Sincronizar con el sistema</p>
-                <div className="flex flex-wrap gap-2">
-                  {terms.slas && terms.slas.length > 0 && (
-                    <Button size="sm" variant="outline" className="h-7 gap-1.5 text-[11px]" onClick={applySLAs} disabled={syncing}>
-                      {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <ShieldCheck className="h-3 w-3" />} Aplicar SLAs ({terms.slas.length}) → pestaña SLAs
-                    </Button>
-                  )}
-                  {terms.paquetes_horas && terms.paquetes_horas.length > 0 && activeContract && (
-                    <Button size="sm" variant="outline" className="h-7 gap-1.5 text-[11px]" onClick={applyHours} disabled={syncing}>
-                      {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Clock className="h-3 w-3" />} Aplicar horas → contrato
-                    </Button>
-                  )}
+            {/* Estructura del contrato extraída */}
+            {terms.contrato && (Object.keys(terms.contrato).length > 0) && (
+              <div className="rounded-lg border border-border bg-muted/20 p-2.5">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">Estructura del contrato</p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
+                  {terms.contrato.tipo && <span><span className="text-muted-foreground">Tipo:</span> {terms.contrato.tipo}</span>}
+                  {terms.contrato.moneda && <span><span className="text-muted-foreground">Moneda:</span> {terms.contrato.moneda}</span>}
+                  {terms.contrato.horas_incluidas != null && <span><span className="text-muted-foreground">Horas:</span> {terms.contrato.horas_incluidas}h</span>}
+                  {terms.contrato.fecha_inicio && <span><span className="text-muted-foreground">Inicio:</span> {terms.contrato.fecha_inicio}</span>}
+                  {terms.contrato.fecha_fin && <span><span className="text-muted-foreground">Fin:</span> {terms.contrato.fecha_fin}</span>}
+                  {terms.contrato.es_suscripcion && <span className="text-primary">Suscripción {terms.contrato.ciclo_facturacion || "mensual"}</span>}
                 </div>
-                <p className="text-[10px] text-muted-foreground">Escribe los valores del contrato en las pestañas SLAs / Contratos (upsert, sin duplicar).</p>
               </div>
             )}
 
-            <p className="text-[11px] text-muted-foreground border-l-2 border-warning pl-2">
-              Los hitos se proponen automáticamente y el stack técnico (core + módulos) se actualiza en el cliente. Los SLAs y horas se aplican con el botón de arriba (revisá antes: alimentan el motor de SLA y el contrato).
-            </p>
+            {/* Aplicar TODO al sistema */}
+            {canManage && (
+              <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 space-y-2">
+                <p className="text-xs font-semibold text-primary flex items-center gap-1.5"><ArrowRightLeft className="h-4 w-4" /> Aplicar al sistema</p>
+                <p className="text-[11px] text-muted-foreground">Registra el contrato (valor, horas, tarifa, vigencia), los SLAs y —si es recurrente— la suscripción con su próxima fecha de pago. Los tabs Contratos / SLAs / Paquetes quedan sincronizados.</p>
+                <Button size="sm" className="gap-1.5" onClick={applyAll} disabled={syncing}>
+                  {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowRightLeft className="h-3.5 w-3.5" />}
+                  Aplicar todo al sistema
+                </Button>
+              </div>
+            )}
 
             {!!terms.slas?.length && (
               <KbSection icon={<ShieldCheck className="h-3.5 w-3.5" />} title={`SLAs (${terms.slas.length})`}>
