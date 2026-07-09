@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   Upload, FileText, Loader2, Sparkles, Database, Clock, ShieldCheck,
-  Milestone, Bell, Lock, FileStack,
+  Milestone, Bell, Lock, FileStack, ArrowRightLeft,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { extractTextFromFile } from "@/lib/extractPdfText";
@@ -15,6 +15,7 @@ import {
   useContractDocuments, useIngestContractDoc, useExtractContractTerms,
   type ContractDocument, type ExtractedTerms,
 } from "@/hooks/useContractKb";
+import { useClientSLAs, useUpsertSLA, useClientContracts, useUpsertContract } from "@/hooks/useClientContracts";
 
 const STATUS_TONE: Record<ContractDocument["status"], string> = {
   ingested: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
@@ -39,9 +40,67 @@ export function ContractKbPanel({ clientId, contractId }: Props) {
   const extract = useExtractContractTerms(clientId);
   const [busyStage, setBusyStage] = useState<null | "leyendo" | "ingestando">(null);
   const [terms, setTerms] = useState<ExtractedTerms | null>(null);
+  const [syncing, setSyncing] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Para sincronizar la extracción con el sistema (SLAs + horas del contrato).
+  const { data: existingSLAs = [] } = useClientSLAs(clientId);
+  const { data: contracts = [] } = useClientContracts(clientId);
+  const upsertSLA = useUpsertSLA();
+  const upsertContract = useUpsertContract();
+  const activeContract = contracts.find((c: any) => c.is_active) || contracts[0];
+
   const hasIngested = docs.some((d) => d.status === "ingested");
+
+  // Aplica los SLAs extraídos → client_slas (upsert por prioridad+tipo).
+  const applySLAs = async () => {
+    const slas = terms?.slas ?? [];
+    if (slas.length === 0) return;
+    setSyncing(true);
+    try {
+      for (const s of slas) {
+        const caseType = s.tipo_caso || "all";
+        const match = existingSLAs.find((e: any) => e.priority_level === s.prioridad && (e.case_type || "all") === caseType);
+        await upsertSLA.mutateAsync({
+          ...(match ? { id: match.id } : {}),
+          client_id: clientId,
+          priority_level: s.prioridad,
+          case_type: caseType,
+          response_time_hours: s.tiempo_respuesta_horas ?? 0,
+          resolution_time_hours: s.tiempo_resolucion_horas ?? 0,
+          business_hours_only: s.horario_habil_solo ?? true,
+          penalty_amount: s.penalidad_monto ?? null,
+          penalty_description: s.penalidad_descripcion ?? null,
+          is_active: true,
+        } as any);
+      }
+      toast.success(`${slas.length} SLA(s) aplicados a la pestaña SLAs`);
+    } catch (e: any) {
+      toast.error(e?.message || "No se pudieron aplicar los SLAs");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  // Aplica las horas incluidas extraídas → contrato activo.
+  const applyHours = async () => {
+    const pkg = (terms?.paquetes_horas ?? [])[0];
+    if (!pkg || !activeContract) return;
+    setSyncing(true);
+    try {
+      await upsertContract.mutateAsync({
+        id: activeContract.id,
+        client_id: clientId,
+        ...(pkg.horas_incluidas != null ? { included_hours: pkg.horas_incluidas } : {}),
+        ...(pkg.tarifa_hora != null ? { hourly_rate: pkg.tarifa_hora } : {}),
+      } as any);
+      toast.success("Horas incluidas actualizadas en el contrato");
+    } catch (e: any) {
+      toast.error(e?.message || "No se pudieron aplicar las horas");
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   // Clausulado ya registrado en el contrato (permite ingestar a la KB sin subir PDF).
   const { data: clauses } = useQuery({
@@ -223,8 +282,28 @@ export function ContractKbPanel({ clientId, contractId }: Props) {
               </div>
             )}
 
+            {/* Sincronizar la extracción con las pestañas del sistema */}
+            {canManage && ((terms.slas && terms.slas.length > 0) || (terms.paquetes_horas && terms.paquetes_horas.length > 0)) && (
+              <div className="rounded-lg border border-primary/30 bg-primary/5 p-2.5 space-y-2">
+                <p className="text-[11px] font-semibold text-primary flex items-center gap-1"><ArrowRightLeft className="h-3.5 w-3.5" /> Sincronizar con el sistema</p>
+                <div className="flex flex-wrap gap-2">
+                  {terms.slas && terms.slas.length > 0 && (
+                    <Button size="sm" variant="outline" className="h-7 gap-1.5 text-[11px]" onClick={applySLAs} disabled={syncing}>
+                      {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <ShieldCheck className="h-3 w-3" />} Aplicar SLAs ({terms.slas.length}) → pestaña SLAs
+                    </Button>
+                  )}
+                  {terms.paquetes_horas && terms.paquetes_horas.length > 0 && activeContract && (
+                    <Button size="sm" variant="outline" className="h-7 gap-1.5 text-[11px]" onClick={applyHours} disabled={syncing}>
+                      {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Clock className="h-3 w-3" />} Aplicar horas → contrato
+                    </Button>
+                  )}
+                </div>
+                <p className="text-[10px] text-muted-foreground">Escribe los valores del contrato en las pestañas SLAs / Contratos (upsert, sin duplicar).</p>
+              </div>
+            )}
+
             <p className="text-[11px] text-muted-foreground border-l-2 border-warning pl-2">
-              SLAs y paquetes de horas se muestran para revisión (no se aplican en vivo). Los hitos se proponen automáticamente. El stack técnico (core + módulos) sí se actualiza en el cliente.
+              Los hitos se proponen automáticamente y el stack técnico (core + módulos) se actualiza en el cliente. Los SLAs y horas se aplican con el botón de arriba (revisá antes: alimentan el motor de SLA y el contrato).
             </p>
 
             {!!terms.slas?.length && (
