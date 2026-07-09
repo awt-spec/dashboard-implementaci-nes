@@ -13,7 +13,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import {
   Plus, Trash2, Loader2, CalendarClock, Building2, Sparkles, ListChecks,
-  Briefcase, ArrowRight, Flag, Target,
+  Briefcase, ArrowRight, Flag, Target, Flame, AlertOctagon, Milestone, CalendarX,
 } from "lucide-react";
 import { Confidential } from "@/components/common/Confidential";
 import { useFinanceAccess } from "@/hooks/useFinanceAccess";
@@ -59,7 +59,7 @@ export function PendientesModule() {
         <Button size="sm" className="h-8 gap-1.5" onClick={add} disabled={upsert.isPending}><Plus className="h-3.5 w-3.5" /> Agregar</Button>
       </div>
       {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mx-auto my-6" /> : tasks.length === 0 ? (
-        <Card><CardContent className="py-6 text-center text-sm text-muted-foreground">Sin pendientes. ✨</CardContent></Card>
+        <EmptyState icon={<ListChecks className="h-5 w-5" />} title="Sin pendientes ✨" hint="Agregá tareas de seguimiento con clientes desde el campo de arriba." />
       ) : (
         <div className="space-y-1.5">
           {tasks.map((t) => (
@@ -117,7 +117,7 @@ export function ObstaculosModule() {
         <Textarea rows={2} value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Detalle (opcional)…" className="text-xs" />
       </CardContent></Card>
       {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mx-auto my-6" /> : blockers.length === 0 ? (
-        <Card><CardContent className="py-6 text-center text-sm text-muted-foreground">Sin obstáculos registrados.</CardContent></Card>
+        <EmptyState icon={<AlertOctagon className="h-5 w-5" />} title="Sin obstáculos registrados" hint="Registrá impedimentos que frenan la atención al cliente para darles seguimiento." />
       ) : (
         <div className="space-y-1.5">
           {blockers.map((b) => {
@@ -162,7 +162,7 @@ export function HitosModule({ clientName }: { clientName: (id?: string | null) =
   const { data: hitos = [], isLoading } = useCsrMilestones();
   const { canAmounts } = useFinanceAccess();
   if (isLoading) return <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mx-auto my-6" />;
-  if (hitos.length === 0) return <Card><CardContent className="py-6 text-center text-sm text-muted-foreground">Sin hitos registrados.</CardContent></Card>;
+  if (hitos.length === 0) return <EmptyState icon={<Milestone className="h-5 w-5" />} title="Sin hitos registrados" hint="Los hitos de facturación aparecen al extraer un contrato desde la ficha del cliente." />;
   return (
     <div className="space-y-1.5">
       {hitos.map((h) => (
@@ -229,7 +229,7 @@ export function ComercialModule({ clientName, tickets = [], clients = [] }: { cl
       <section className="space-y-2">
         <h3 className="text-sm font-bold flex items-center gap-2"><Briefcase className="h-4 w-4" /> Cotizaciones</h3>
         {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mx-auto my-4" /> : quotes.length === 0 ? (
-          <Card><CardContent className="py-6 text-center text-sm text-muted-foreground">Sin cotizaciones.</CardContent></Card>
+          <EmptyState icon={<Briefcase className="h-5 w-5" />} title="Sin cotizaciones" hint="Cuando se generen cotizaciones para tus clientes, las verás acá." />
         ) : (
           <div className="space-y-1.5">
             {quotes.map((q) => (
@@ -254,7 +254,7 @@ export function ComercialModule({ clientName, tickets = [], clients = [] }: { cl
         </div>
         <p className="text-[11px] text-muted-foreground">Clientes de soporte por etapa comercial y engagement (# casos). Con actividad y sin cotización = oportunidad.</p>
         {prospects.length === 0 ? (
-          <Card><CardContent className="py-6 text-center text-sm text-muted-foreground">Sin clientes de soporte.</CardContent></Card>
+          <EmptyState icon={<Target className="h-5 w-5" />} title="Sin clientes de soporte" hint="El mapeo se arma con tus clientes y su actividad de casos." />
         ) : (
           <div className="space-y-1.5">
             {prospects.slice(0, 30).map((p) => (
@@ -295,7 +295,7 @@ export function AgendaModule({ tickets, clientName }: { tickets: any[]; clientNa
     ...tickets.filter((t) => t.fecha_entrega).map((t) => ({ kind: "entrega", date: t.fecha_entrega as string, title: `${t.ticket_id} · ${t.asunto}`, client: t.client_id })),
   ].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 30);
 
-  if (items.length === 0) return <Card><CardContent className="py-6 text-center text-sm text-muted-foreground">Sin eventos en la agenda.</CardContent></Card>;
+  if (items.length === 0) return <EmptyState icon={<CalendarX className="h-5 w-5" />} title="Sin eventos en la agenda" hint="Se listan sesiones periódicas y fechas de entrega de tus casos." />;
   return (
     <div className="space-y-1.5">
       {items.map((it, i) => (
@@ -341,9 +341,20 @@ export function IAAssistantModule({ tickets }: { tickets: any[] }) {
         </div>
       </CardContent></Card>
 
+      {!plan && !assistant.isPending && (
+        <EmptyState icon={<Sparkles className="h-5 w-5" />} title="Tu copiloto está listo" hint="Tocá «Analizar jornada» y te ordeno la cola: qué atender primero, qué es urgente y próximos pasos." />
+      )}
+
       {plan && (
         <div className="space-y-3">
-          <Card><CardContent className="p-3"><p className="text-sm">{plan.resumen}</p></CardContent></Card>
+          <Card className="border-primary/25 bg-gradient-to-br from-primary/[0.05] to-transparent"><CardContent className="p-3"><p className="text-sm">{plan.resumen}</p></CardContent></Card>
+          {plan.urgentes && plan.urgentes.length > 0 && (
+            <Section icon={<Flame className="h-3.5 w-3.5" />} title="Urgente">
+              <ul className="space-y-1">
+                {plan.urgentes.map((u, i) => <li key={i} className="text-xs flex items-start gap-1.5 text-destructive"><Flame className="h-3 w-3 mt-0.5 shrink-0" />{u}</li>)}
+              </ul>
+            </Section>
+          )}
           {plan.prioridades?.length > 0 && (
             <Section icon={<Flag className="h-3.5 w-3.5" />} title="Atender primero">
               {plan.prioridades.map((p, i) => (
@@ -364,6 +375,16 @@ export function IAAssistantModule({ tickets }: { tickets: any[] }) {
         </div>
       )}
     </div>
+  );
+}
+
+function EmptyState({ icon, title, hint }: { icon: React.ReactNode; title: string; hint?: string }) {
+  return (
+    <Card><CardContent className="py-8 flex flex-col items-center text-center gap-1.5">
+      <div className="h-10 w-10 rounded-full bg-muted/60 text-muted-foreground flex items-center justify-center">{icon}</div>
+      <p className="text-sm font-medium">{title}</p>
+      {hint && <p className="text-[11px] text-muted-foreground max-w-[280px]">{hint}</p>}
+    </CardContent></Card>
   );
 }
 
