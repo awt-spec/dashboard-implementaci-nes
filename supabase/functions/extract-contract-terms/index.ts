@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
       .map((r) => `[fragmento ${r.chunk_index}]\n${r.content}`)
       .join("\n\n---\n\n");
 
-    const systemPrompt = `Eres un consultor de contratos de servicios TI de SYSDE (soporte/mantenimiento de software para banca y pensiones en LATAM). Extraes términos operativos y comerciales de contratos con precisión legal, en español neutro. Además de SLAs/horas/hitos/alertas, identificás el SERVICIO contratado y el STACK tecnológico (versión del core y módulos). REGLA CRÍTICA: extrae ÚNICAMENTE lo que esté respaldado por los fragmentos provistos. No inventes valores. Si un dato no aparece, omítelo. Cuando extraigas algo, referencia la cláusula/sección si el fragmento la menciona.`;
+    const systemPrompt = `Eres un consultor de contratos de servicios TI de SYSDE (soporte/mantenimiento de software para banca y pensiones en LATAM). Extraes términos operativos y comerciales de contratos con precisión legal, en español neutro. Además de SLAs/horas/hitos/alertas, identificás la ESTRUCTURA COMERCIAL del contrato (tipo, valor mensual/recurrente, tarifa hora, horas incluidas, moneda, vigencia, si es suscripción y su ciclo de pago), el SERVICIO contratado y el STACK tecnológico (versión del core y módulos). REGLA CRÍTICA: extrae ÚNICAMENTE lo que esté respaldado por los fragmentos provistos. No inventes valores. Si un dato no aparece, omítelo. Cuando extraigas algo, referencia la cláusula/sección si el fragmento la menciona.`;
 
     const userPrompt = `A partir de estos fragmentos recuperados del contrato firmado, extrae los términos estructurados. Fragmentos:\n\n${evidence.slice(0, 48000)}`;
 
@@ -204,6 +204,24 @@ Deno.serve(async (req) => {
                   clausula_referencia: { type: "string" },
                 },
                 required: ["titulo", "condicion"],
+              },
+            },
+            contrato: {
+              type: "object",
+              description: "Estructura comercial del contrato para registrarlo en el sistema. Omití los campos que el documento no especifique.",
+              properties: {
+                tipo: { type: "string", enum: ["bolsa_horas", "fee_mensual", "proyecto_cerrado", "tiempo_materiales"], description: "Tipo de contrato. fee_mensual si es suscripción/fee recurrente." },
+                valor_mensual: { type: "number", description: "Valor mensual/recurrente si aplica." },
+                tarifa_hora: { type: "number" },
+                horas_incluidas: { type: "number" },
+                moneda: { type: "string", description: "USD, CRC, MXN, EUR…" },
+                fecha_inicio: { type: "string", description: "YYYY-MM-DD" },
+                fecha_fin: { type: "string", description: "YYYY-MM-DD" },
+                renovacion_automatica: { type: "boolean" },
+                terminos_pago: { type: "string", description: "Condiciones de pago (ej. 'mensual por adelantado', '30 días')." },
+                es_suscripcion: { type: "boolean", description: "true si el pago es recurrente (fee/suscripción)." },
+                ciclo_facturacion: { type: "string", enum: ["mensual", "trimestral", "semestral", "anual"], description: "Frecuencia del pago recurrente." },
+                proxima_fecha_pago: { type: "string", description: "YYYY-MM-DD si el contrato la especifica." },
               },
             },
             servicio_contratado: { type: "string", description: "Qué servicio/solución se contrata, en 1-2 frases (ej. 'Arrendamiento en la nube de SYSDE SAF+ para crédito y arrendamiento')." },

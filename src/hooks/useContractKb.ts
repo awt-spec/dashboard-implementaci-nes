@@ -22,8 +22,23 @@ export interface ContractDocument {
   created_at: string;
 }
 
+export interface ContractStructure {
+  tipo?: string;
+  valor_mensual?: number;
+  tarifa_hora?: number;
+  horas_incluidas?: number;
+  moneda?: string;
+  fecha_inicio?: string;
+  fecha_fin?: string;
+  renovacion_automatica?: boolean;
+  terminos_pago?: string;
+  es_suscripcion?: boolean;
+  ciclo_facturacion?: string;
+  proxima_fecha_pago?: string;
+}
 export interface ExtractedTerms {
   resumen: string;
+  contrato?: ContractStructure;
   servicio_contratado?: string;
   version_core?: string;
   modulos?: string[];
