@@ -12,6 +12,18 @@ import { AuthError, requireAuth, getUserRole } from "../_shared/auth.ts";
 
 const FUNCTION_NAME = "apply-contract-terms";
 
+// Normaliza la prioridad extraída a la forma canónica (evita "ALTA", "critica", etc.).
+function normPriority(p?: string): string | null {
+  const n = (p || "").toLowerCase();
+  if (/cr[ií]t/.test(n)) return "Crítica";
+  if (/alta/.test(n)) return "Alta";
+  if (/media/.test(n)) return "Media";
+  if (/baja/.test(n)) return "Baja";
+  return null;
+}
+// case_type válido; si la extracción trae una descripción larga → "all".
+const VALID_CASE_TYPES = new Set(["all", "Incidente", "Requerimiento", "Mejora", "Consulta"]);
+
 function nextPaymentFrom(start?: string, cycle?: string, explicit?: string): string | null {
   if (explicit) return explicit;
   if (!start) return null;
@@ -81,11 +93,13 @@ Deno.serve(async (req) => {
       .from("client_slas").select("id, priority_level, case_type").eq("client_id", clientId);
     let slaCount = 0;
     for (const s of (terms.slas ?? []) as any[]) {
-      const caseType = s.tipo_caso || "all";
-      const match = (existingSLAs as any[])?.find((e) => e.priority_level === s.prioridad && (e.case_type || "all") === caseType);
+      const priorityLevel = normPriority(s.prioridad);
+      if (!priorityLevel) continue; // prioridad irreconocible → se omite
+      const caseType = VALID_CASE_TYPES.has(s.tipo_caso) ? s.tipo_caso : "all";
+      const match = (existingSLAs as any[])?.find((e) => e.priority_level === priorityLevel && (e.case_type || "all") === caseType);
       const slaRow: any = {
         client_id: clientId,
-        priority_level: s.prioridad,
+        priority_level: priorityLevel,
         case_type: caseType,
         response_time_hours: s.tiempo_respuesta_horas ?? 0,
         resolution_time_hours: s.tiempo_resolucion_horas ?? 0,
