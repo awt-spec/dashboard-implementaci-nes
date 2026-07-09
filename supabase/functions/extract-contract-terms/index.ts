@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
       .map((r) => `[fragmento ${r.chunk_index}]\n${r.content}`)
       .join("\n\n---\n\n");
 
-    const systemPrompt = `Eres un consultor de contratos de servicios TI de SYSDE (soporte/mantenimiento de software para banca y pensiones en LATAM). Extraes términos operativos y comerciales de contratos con precisión legal, en español neutro. REGLA CRÍTICA: extrae ÚNICAMENTE lo que esté respaldado por los fragmentos provistos. No inventes valores. Si un dato no aparece, omítelo. Cuando extraigas algo, referencia la cláusula/sección si el fragmento la menciona.`;
+    const systemPrompt = `Eres un consultor de contratos de servicios TI de SYSDE (soporte/mantenimiento de software para banca y pensiones en LATAM). Extraes términos operativos y comerciales de contratos con precisión legal, en español neutro. Además de SLAs/horas/hitos/alertas, identificás el SERVICIO contratado y el STACK tecnológico (versión del core y módulos). REGLA CRÍTICA: extrae ÚNICAMENTE lo que esté respaldado por los fragmentos provistos. No inventes valores. Si un dato no aparece, omítelo. Cuando extraigas algo, referencia la cláusula/sección si el fragmento la menciona.`;
 
     const userPrompt = `A partir de estos fragmentos recuperados del contrato firmado, extrae los términos estructurados. Fragmentos:\n\n${evidence.slice(0, 48000)}`;
 
@@ -206,6 +206,9 @@ Deno.serve(async (req) => {
                 required: ["titulo", "condicion"],
               },
             },
+            servicio_contratado: { type: "string", description: "Qué servicio/solución se contrata, en 1-2 frases (ej. 'Arrendamiento en la nube de SYSDE SAF+ para crédito y arrendamiento')." },
+            version_core: { type: "string", description: "Versión del core/solución si el contrato la menciona (ej. 'SAF+ v6.2'). Omitir si no aparece." },
+            modulos: { type: "array", description: "Módulos/sistemas contratados mencionados en el contrato (ej. Crédito, Arrendamiento, Contabilidad). Vacío si no se detallan.", items: { type: "string" } },
             confianza: { type: "number", description: "Confianza 0-100 según cuán explícito es el documento." },
           },
           required: ["resumen", "confianza"],
@@ -231,6 +234,35 @@ Deno.serve(async (req) => {
       full_analysis: extraction,
       model: MODEL,
     }).select("id").single();
+
+    // ── Actualizar el Stack Técnico del cliente (core + módulos) ──────────
+    // Se auto-completa desde el contrato; no pisa un core ya definido a mano si
+    // la IA no lo trae, y hace unión de módulos (sin duplicar).
+    const stackPatch: Record<string, unknown> = {};
+    if (typeof extraction.version_core === "string" && extraction.version_core.trim()) {
+      stackPatch.core_version = extraction.version_core.trim();
+    }
+    const modulos = Array.isArray(extraction.modulos) ? extraction.modulos.filter((m: any) => typeof m === "string" && m.trim()) : [];
+    if (modulos.length > 0) {
+      const { data: cli } = await db.from("clients").select("modules").eq("id", client_id).maybeSingle();
+      const existing: string[] = Array.isArray((cli as any)?.modules) ? (cli as any).modules : [];
+      const merged = Array.from(new Set([...existing, ...modulos.map((m: string) => m.trim())]));
+      stackPatch.modules = merged;
+    }
+    if (Object.keys(stackPatch).length > 0) {
+      await db.from("clients").update(stackPatch).eq("id", client_id);
+    }
+
+    // Guardar resumen + servicio en el contrato para mostrarlos sin recomputar.
+    if (contract_id) {
+      await db.from("client_contracts").update({
+        ai_analysis: {
+          resumen: extraction.resumen ?? null,
+          servicio_contratado: extraction.servicio_contratado ?? null,
+          generated_at: new Date().toISOString(),
+        },
+      }).eq("id", contract_id);
+    }
 
     // ── Hitos como 'propuesto' (source='rag'), idempotente ────────────────
     const hitos = Array.isArray(extraction.hitos_facturacion) ? extraction.hitos_facturacion : [];
