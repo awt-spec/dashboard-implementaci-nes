@@ -24,6 +24,9 @@ export interface ContractDocument {
 
 export interface ExtractedTerms {
   resumen: string;
+  servicio_contratado?: string;
+  version_core?: string;
+  modulos?: string[];
   slas?: { prioridad: string; tipo_caso?: string; tiempo_respuesta_horas?: number; tiempo_resolucion_horas?: number; horario_habil_solo?: boolean; penalidad_monto?: number; penalidad_descripcion?: string; clausula_referencia?: string }[];
   paquetes_horas?: { descripcion: string; horas_incluidas?: number; tarifa_hora?: number; acumulacion?: string; vencimiento?: string; clausula_referencia?: string }[];
   hitos_facturacion?: { numero?: number; descripcion: string; condicion: string; clausula_referencia?: string; porcentaje?: number; monto?: number; horas?: number }[];

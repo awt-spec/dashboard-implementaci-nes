@@ -204,8 +204,27 @@ export function ContractKbPanel({ clientId, contractId }: Props) {
             </div>
             <p className="text-sm">{terms.resumen}</p>
 
+            {terms.servicio_contratado && (
+              <div className="rounded-lg border border-border bg-muted/20 p-2.5">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Servicio contratado</p>
+                <p className="text-sm mt-0.5">{terms.servicio_contratado}</p>
+              </div>
+            )}
+
+            {(terms.version_core || (terms.modulos && terms.modulos.length > 0)) && (
+              <div className="rounded-lg border border-primary/30 bg-primary/5 p-2.5">
+                <p className="text-[11px] font-semibold text-primary flex items-center gap-1">✓ Stack técnico actualizado desde el contrato</p>
+                {terms.version_core && <p className="text-xs mt-1"><span className="text-muted-foreground">Core:</span> {terms.version_core}</p>}
+                {terms.modulos && terms.modulos.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {terms.modulos.map((m, i) => <Badge key={i} variant="outline" className="text-[10px]">{m}</Badge>)}
+                  </div>
+                )}
+              </div>
+            )}
+
             <p className="text-[11px] text-muted-foreground border-l-2 border-warning pl-2">
-              SLAs y paquetes de horas se muestran para revisión (no se aplican en vivo). Los hitos se proponen automáticamente.
+              SLAs y paquetes de horas se muestran para revisión (no se aplican en vivo). Los hitos se proponen automáticamente. El stack técnico (core + módulos) sí se actualiza en el cliente.
             </p>
 
             {!!terms.slas?.length && (
