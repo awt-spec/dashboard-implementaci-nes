@@ -119,6 +119,41 @@ export function useIngestContractDoc(clientId?: string) {
   });
 }
 
+export interface ContractChunk {
+  id: string;
+  chunk_index: number;
+  content: string;
+  token_count: number | null;
+}
+export function useContractChunks(documentId?: string) {
+  return useQuery({
+    queryKey: ["contract-chunks", documentId],
+    enabled: !!documentId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("contract_document_chunks" as any)
+        .select("id, chunk_index, content, token_count")
+        .eq("document_id", documentId!)
+        .order("chunk_index");
+      if (error) throw error;
+      return (data || []) as unknown as ContractChunk[];
+    },
+  });
+}
+
+export function useDeleteContractDoc(clientId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (documentId: string) => {
+      // Borra los fragmentos y luego el documento (por si no hay cascade).
+      await supabase.from("contract_document_chunks" as any).delete().eq("document_id", documentId);
+      const { error } = await supabase.from("contract_documents" as any).delete().eq("id", documentId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["contract-documents", clientId] }),
+  });
+}
+
 export function useExtractContractTerms(clientId?: string) {
   const qc = useQueryClient();
   return useMutation({
