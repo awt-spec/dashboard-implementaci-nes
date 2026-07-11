@@ -6,15 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
-  Upload, FileText, Loader2, Sparkles, Database, Clock, ShieldCheck,
-  Milestone, Bell, Lock, FileStack, ArrowRightLeft,
+  Upload, FileText, Loader2, Database, Lock, FileStack, ArrowRightLeft,
+  Layers, Trash2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { extractTextFromFile } from "@/lib/extractPdfText";
 import {
-  useContractDocuments, useIngestContractDoc, useExtractContractTerms,
+  useContractDocuments, useIngestContractDoc, useExtractContractTerms, useDeleteContractDoc,
   type ContractDocument, type ExtractedTerms,
 } from "@/hooks/useContractKb";
+import { ContractTermsEditor } from "./ContractTermsEditor";
+import { ContractKbDocViewer } from "./ContractKbDocViewer";
 
 const STATUS_TONE: Record<ContractDocument["status"], string> = {
   ingested: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
@@ -37,9 +39,11 @@ export function ContractKbPanel({ clientId, contractId }: Props) {
   const { data: docs = [], isLoading } = useContractDocuments(clientId);
   const ingest = useIngestContractDoc(clientId);
   const extract = useExtractContractTerms(clientId);
+  const del = useDeleteContractDoc(clientId);
   const [busyStage, setBusyStage] = useState<null | "leyendo" | "ingestando">(null);
   const [terms, setTerms] = useState<ExtractedTerms | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [viewer, setViewer] = useState<ContractDocument | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const qc = useQueryClient();
@@ -214,6 +218,16 @@ export function ContractKbPanel({ clientId, contractId }: Props) {
                   <Badge variant="outline" className={`text-[10px] shrink-0 ${STATUS_TONE[d.status]}`}>
                     {STATUS_LABEL[d.status]}
                   </Badge>
+                  {d.status === "ingested" && d.chunk_count > 0 && (
+                    <Button size="sm" variant="ghost" className="h-7 gap-1 text-[11px] shrink-0" onClick={() => setViewer(d)}>
+                      <Layers className="h-3.5 w-3.5" /> Fragmentos
+                    </Button>
+                  )}
+                  {canManage && (
+                    <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => { if (confirm(`¿Borrar "${d.filename}" y sus fragmentos de la base de conocimiento?`)) del.mutate(d.id, { onSuccess: () => toast.success("Documento eliminado"), onError: (e: any) => toast.error(e.message) }); }} disabled={del.isPending}>
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
@@ -221,129 +235,38 @@ export function ContractKbPanel({ clientId, contractId }: Props) {
         </CardContent>
       </Card>
 
-      {/* Resultado de la extracción RAG */}
+      {/* Resultado de la extracción RAG — editable */}
       {terms && (
         <Card>
           <CardContent className="p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-bold flex items-center gap-1.5"><Sparkles className="h-4 w-4 text-primary" /> Términos extraídos</h4>
-              <Badge variant="outline" className="text-[10px]">Confianza {terms.confianza}%</Badge>
-            </div>
-            <p className="text-sm">{terms.resumen}</p>
-
-            {terms.servicio_contratado && (
-              <div className="rounded-lg border border-border bg-muted/20 p-2.5">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Servicio contratado</p>
-                <p className="text-sm mt-0.5">{terms.servicio_contratado}</p>
-              </div>
-            )}
-
-            {(terms.version_core || (terms.modulos && terms.modulos.length > 0)) && (
-              <div className="rounded-lg border border-primary/30 bg-primary/5 p-2.5">
-                <p className="text-[11px] font-semibold text-primary flex items-center gap-1">✓ Stack técnico actualizado desde el contrato</p>
-                {terms.version_core && <p className="text-xs mt-1"><span className="text-muted-foreground">Core:</span> {terms.version_core}</p>}
-                {terms.modulos && terms.modulos.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1.5">
-                    {terms.modulos.map((m, i) => <Badge key={i} variant="outline" className="text-[10px]">{m}</Badge>)}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Estructura del contrato extraída */}
-            {terms.contrato && (Object.keys(terms.contrato).length > 0) && (
-              <div className="rounded-lg border border-border bg-muted/20 p-2.5">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">Estructura del contrato</p>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
-                  {terms.contrato.tipo && <span><span className="text-muted-foreground">Tipo:</span> {terms.contrato.tipo}</span>}
-                  {terms.contrato.moneda && <span><span className="text-muted-foreground">Moneda:</span> {terms.contrato.moneda}</span>}
-                  {terms.contrato.horas_incluidas != null && <span><span className="text-muted-foreground">Horas:</span> {terms.contrato.horas_incluidas}h</span>}
-                  {terms.contrato.fecha_inicio && <span><span className="text-muted-foreground">Inicio:</span> {terms.contrato.fecha_inicio}</span>}
-                  {terms.contrato.fecha_fin && <span><span className="text-muted-foreground">Fin:</span> {terms.contrato.fecha_fin}</span>}
-                  {terms.contrato.es_suscripcion && <span className="text-primary">Suscripción {terms.contrato.ciclo_facturacion || "mensual"}</span>}
+            {canManage ? (
+              <ContractTermsEditor terms={terms} onChange={setTerms} />
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-bold">Términos extraídos</h4>
+                  <Badge variant="outline" className="text-[10px]">Confianza {terms.confianza}%</Badge>
                 </div>
-              </div>
+                <p className="text-sm">{terms.resumen}</p>
+              </>
             )}
 
-            {/* Aplicar TODO al sistema */}
+            {/* Aplicar TODO al sistema (usa los términos editados) */}
             {canManage && (
-              <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 space-y-2">
+              <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 space-y-2 sticky bottom-0">
                 <p className="text-xs font-semibold text-primary flex items-center gap-1.5"><ArrowRightLeft className="h-4 w-4" /> Aplicar al sistema</p>
-                <p className="text-[11px] text-muted-foreground">Registra el contrato (valor, horas, tarifa, vigencia), los SLAs y —si es recurrente— la suscripción con su próxima fecha de pago. Los tabs Contratos / SLAs / Paquetes quedan sincronizados.</p>
+                <p className="text-[11px] text-muted-foreground">Registra el contrato (valor, horas, tarifa, vigencia), los SLAs y —si es recurrente— la suscripción con su próxima fecha de pago, con los valores editados arriba. Los tabs Contratos / SLAs / Paquetes quedan sincronizados.</p>
                 <Button size="sm" className="gap-1.5" onClick={applyAll} disabled={syncing}>
                   {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowRightLeft className="h-3.5 w-3.5" />}
                   Aplicar todo al sistema
                 </Button>
               </div>
             )}
-
-            {!!terms.slas?.length && (
-              <KbSection icon={<ShieldCheck className="h-3.5 w-3.5" />} title={`SLAs (${terms.slas.length})`}>
-                {terms.slas.map((s, i) => (
-                  <div key={i} className="rounded-lg border p-2.5 text-xs">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Badge className="text-[9px]">{s.prioridad}</Badge>
-                      {s.tipo_caso && <span className="text-muted-foreground">{s.tipo_caso}</span>}
-                      {s.tiempo_respuesta_horas != null && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{s.tiempo_respuesta_horas}h resp.</span>}
-                      {s.tiempo_resolucion_horas != null && <span>{s.tiempo_resolucion_horas}h resol.</span>}
-                    </div>
-                    {s.clausula_referencia && <p className="text-[10px] text-muted-foreground mt-1">Ref: {s.clausula_referencia}</p>}
-                  </div>
-                ))}
-              </KbSection>
-            )}
-
-            {!!terms.paquetes_horas?.length && (
-              <KbSection icon={<Clock className="h-3.5 w-3.5" />} title={`Paquetes de horas (${terms.paquetes_horas.length})`}>
-                {terms.paquetes_horas.map((p, i) => (
-                  <div key={i} className="rounded-lg border p-2.5 text-xs">
-                    <p className="font-medium">{p.descripcion}</p>
-                    <div className="flex gap-3 text-[11px] text-muted-foreground mt-1 flex-wrap">
-                      {p.horas_incluidas != null && <span>{p.horas_incluidas}h incluidas</span>}
-                      {p.acumulacion && <span>Acum.: {p.acumulacion}</span>}
-                      {p.vencimiento && <span>Venc.: {p.vencimiento}</span>}
-                    </div>
-                  </div>
-                ))}
-              </KbSection>
-            )}
-
-            {!!terms.hitos_facturacion?.length && (
-              <KbSection icon={<Milestone className="h-3.5 w-3.5" />} title={`Hitos de facturación (${terms.hitos_facturacion.length}) — propuestos`}>
-                {terms.hitos_facturacion.map((h, i) => (
-                  <div key={i} className="rounded-lg border p-2.5 text-xs">
-                    <p className="font-medium">{h.numero ? `${h.numero}. ` : ""}{h.descripcion}</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Condición: {h.condicion}</p>
-                    {h.clausula_referencia && <p className="text-[10px] text-muted-foreground">Ref: {h.clausula_referencia}</p>}
-                  </div>
-                ))}
-              </KbSection>
-            )}
-
-            {!!terms.disparadores_alerta?.length && (
-              <KbSection icon={<Bell className="h-3.5 w-3.5" />} title={`Disparadores de alerta (${terms.disparadores_alerta.length})`}>
-                {terms.disparadores_alerta.map((a, i) => (
-                  <div key={i} className="rounded-lg border p-2.5 text-xs">
-                    <p className="font-medium">{a.titulo}</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">{a.condicion}{a.umbral ? ` · ${a.umbral}` : ""}</p>
-                  </div>
-                ))}
-              </KbSection>
-            )}
           </CardContent>
         </Card>
       )}
-    </div>
-  );
-}
 
-function KbSection({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
-  return (
-    <section className="space-y-1.5">
-      <h5 className="text-xs font-bold uppercase tracking-wide text-foreground/80 flex items-center gap-1.5">
-        <span className="text-primary">{icon}</span>{title}
-      </h5>
-      <div className="space-y-1.5">{children}</div>
-    </section>
+      <ContractKbDocViewer doc={viewer} onOpenChange={(o) => !o && setViewer(null)} />
+    </div>
   );
 }
