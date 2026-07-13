@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileSignature, Shield, Plus, Trash2, Clock, Edit2, Lock, Package, Search, Sparkles, ShieldCheck, Database, Gauge } from "lucide-react";
+import { FileSignature, Shield, Plus, Trash2, Clock, Edit2, Lock, Package, Search, Sparkles, ShieldCheck, Database, Gauge, Wallet, CalendarClock, RefreshCw, Timer, TriangleAlert } from "lucide-react";
 import { ContractAnalysisDialog } from "./ContractAnalysisDialog";
 import { ContractKbPanel } from "./ContractKbPanel";
 import { ContractAuditPanel } from "./ContractAuditPanel";
@@ -37,6 +37,20 @@ const CONTRACT_TYPES = [
 ];
 const PRIORITY_LEVELS = ["Crítica", "Alta", "Media", "Baja"];
 const CASE_TYPES = ["all", "Incidente", "Requerimiento", "Mejora", "Consulta"];
+
+function daysUntil(dateStr?: string | null): number | null {
+  if (!dateStr) return null;
+  const d = new Date(dateStr).getTime();
+  if (isNaN(d)) return null;
+  return Math.ceil((d - Date.now()) / 86_400_000);
+}
+// Progreso 0-100 del período de vigencia transcurrido.
+function vigenciaPct(start?: string | null, end?: string | null): number | null {
+  if (!start || !end) return null;
+  const s = new Date(start).getTime(), e = new Date(end).getTime();
+  if (isNaN(s) || isNaN(e) || e <= s) return null;
+  return Math.min(100, Math.max(0, ((Date.now() - s) / (e - s)) * 100));
+}
 
 export function ContractsSLATab({ clientId }: { clientId: string }) {
   const { role } = useAuth();
@@ -93,20 +107,58 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
         </TabsList>
 
         <TabsContent value="contracts" className="space-y-4">
-          <div className="grid grid-cols-3 gap-3">
-            <Card><CardContent className="p-4">
-              <p className="text-[10px] uppercase text-muted-foreground">Valor mensual activo</p>
-              <p className="text-2xl font-bold mt-1"><Confidential show={canAmounts}>${totalMonthly.toLocaleString()} <span className="text-xs font-normal text-muted-foreground">{activeContract?.currency || "USD"}</span></Confidential></p>
-            </CardContent></Card>
-            <Card><CardContent className="p-4">
-              <p className="text-[10px] uppercase text-muted-foreground">Contratos activos</p>
-              <p className="text-2xl font-bold mt-1">{contracts.filter(c => c.is_active).length}</p>
-            </CardContent></Card>
-            <Card><CardContent className="p-4">
-              <p className="text-[10px] uppercase text-muted-foreground">Tarifa hora promedio</p>
-              <p className="text-2xl font-bold mt-1"><Confidential show={canAmounts}>${contracts.length ? Math.round(contracts.reduce((s, c) => s + Number(c.hourly_rate || 0), 0) / contracts.length) : 0}</Confidential></p>
-            </CardContent></Card>
-          </div>
+          {(() => {
+            const activeCount = contracts.filter(c => c.is_active).length;
+            const avgRate = contracts.length ? Math.round(contracts.reduce((s, c) => s + Number(c.hourly_rate || 0), 0) / contracts.length) : 0;
+            const cur = activeContract?.currency || "USD";
+            const dleft = daysUntil(activeContract?.end_date);
+            const vencTone = activeContract?.auto_renewal ? "success" : dleft == null ? "muted" : dleft < 0 ? "destructive" : dleft < 30 ? "destructive" : dleft < 90 ? "warning" : "success";
+            const barTone: Record<string, string> = { success: "bg-success", warning: "bg-warning", destructive: "bg-destructive", muted: "bg-muted-foreground/30", primary: "bg-primary" };
+            const textTone: Record<string, string> = { success: "text-success", warning: "text-warning", destructive: "text-destructive", muted: "text-muted-foreground" };
+            return (
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <Card className="overflow-hidden">
+                  <div className="h-1 w-full bg-primary" />
+                  <CardContent className="p-4">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1"><Wallet className="h-3 w-3 text-primary" /> Valor mensual activo</p>
+                    <p className="text-2xl font-black tabular-nums mt-1"><Confidential show={canAmounts}>${totalMonthly.toLocaleString()} <span className="text-xs font-normal text-muted-foreground">{cur}</span></Confidential></p>
+                    {totalMonthly > 0 && <p className="text-[10px] text-muted-foreground"><Confidential show={canAmounts}>${(totalMonthly * 12).toLocaleString()} / año</Confidential></p>}
+                  </CardContent>
+                </Card>
+                <Card className="overflow-hidden">
+                  <div className="h-1 w-full bg-info" />
+                  <CardContent className="p-4">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1"><FileSignature className="h-3 w-3 text-info" /> Contratos activos</p>
+                    <p className="text-2xl font-black tabular-nums mt-1">{activeCount}</p>
+                    <p className="text-[10px] text-muted-foreground">de {contracts.length} totales</p>
+                  </CardContent>
+                </Card>
+                <Card className="overflow-hidden">
+                  <div className="h-1 w-full bg-primary" />
+                  <CardContent className="p-4">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1"><Timer className="h-3 w-3 text-primary" /> Tarifa hora promedio</p>
+                    <p className="text-2xl font-black tabular-nums mt-1"><Confidential show={canAmounts}>${avgRate}<span className="text-xs font-normal text-muted-foreground">/h</span></Confidential></p>
+                  </CardContent>
+                </Card>
+                <Card className="overflow-hidden">
+                  <div className={`h-1 w-full ${barTone[vencTone]}`} />
+                  <CardContent className="p-4">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1"><CalendarClock className="h-3 w-3" /> Vencimiento</p>
+                    {activeContract?.auto_renewal ? (
+                      <p className="text-lg font-black mt-1 flex items-center gap-1.5 text-success"><RefreshCw className="h-4 w-4" /> Renovación auto</p>
+                    ) : dleft == null ? (
+                      <p className="text-lg font-black mt-1 text-muted-foreground">Indefinido</p>
+                    ) : dleft < 0 ? (
+                      <p className="text-lg font-black mt-1 text-destructive flex items-center gap-1.5"><TriangleAlert className="h-4 w-4" /> Vencido</p>
+                    ) : (
+                      <p className={`text-2xl font-black tabular-nums mt-1 ${textTone[vencTone]}`}>{dleft}<span className="text-xs font-normal text-muted-foreground"> días</span></p>
+                    )}
+                    {activeContract?.end_date && !activeContract?.auto_renewal && <p className="text-[10px] text-muted-foreground">hasta {activeContract.end_date}</p>}
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          })()}
 
           <div className="flex justify-between items-center">
             <h3 className="font-semibold flex items-center gap-2"><FileSignature className="h-4 w-4" /> Contratos</h3>
@@ -145,54 +197,81 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
             </Select>
           </div>
 
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Valor mensual</TableHead>
-                    <TableHead>Tarifa hora</TableHead>
-                    <TableHead>Horas incluidas</TableHead>
-                    <TableHead>Vigencia</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="w-[100px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredContracts.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} className="text-center py-6 text-muted-foreground text-sm">{contracts.length === 0 ? "Sin contratos registrados" : "Sin contratos que coincidan con la búsqueda"}</TableCell></TableRow>
-                  ) : filteredContracts.map(c => (
-                    <TableRow key={c.id}>
-                      <TableCell><Badge variant="outline">{CONTRACT_TYPES.find(t => t.value === c.contract_type)?.label || c.contract_type}</Badge></TableCell>
-                      <TableCell className="font-medium"><Confidential show={canAmounts}>${Number(c.monthly_value).toLocaleString()} {c.currency}</Confidential></TableCell>
-                      <TableCell><Confidential show={canAmounts}>${Number(c.hourly_rate)}/h</Confidential></TableCell>
-                      <TableCell>{c.included_hours}h</TableCell>
-                      <TableCell className="text-xs">{c.start_date || "—"} → {c.end_date || "indef."}</TableCell>
-                      <TableCell>
-                        {c.is_active ? <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-[10px]">Activo</Badge> : <Badge variant="secondary" className="text-[10px]">Inactivo</Badge>}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" title="Analizar con IA" onClick={() => setAnalysisContract(c)}>
-                            <Sparkles className="h-3.5 w-3.5 text-primary" />
-                          </Button>
-                          {isAdmin ? (
-                            <>
-                              <Button variant="ghost" size="icon" onClick={() => setContractDialog(c)}><Edit2 className="h-3.5 w-3.5" /></Button>
-                              <Button variant="ghost" size="icon" onClick={() => { if (confirm("¿Eliminar contrato?")) deleteContract.mutate(c.id, { onSuccess: () => toast.success("Eliminado") }); }}>
-                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                              </Button>
-                            </>
-                          ) : <Lock className="h-3.5 w-3.5 text-muted-foreground self-center" />}
+          {filteredContracts.length === 0 ? (
+            <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">
+              {contracts.length === 0 ? "Sin contratos registrados." : "Sin contratos que coincidan con la búsqueda."}
+            </CardContent></Card>
+          ) : (
+            <div className="space-y-2.5">
+              {filteredContracts.map(c => {
+                const typeLabel = CONTRACT_TYPES.find(t => t.value === c.contract_type)?.label || c.contract_type;
+                const pct = vigenciaPct(c.start_date, c.end_date);
+                const dleft = daysUntil(c.end_date);
+                const dtone = c.auto_renewal ? "text-success" : dleft == null ? "text-muted-foreground" : dleft < 0 ? "text-destructive" : dleft < 30 ? "text-destructive" : dleft < 90 ? "text-warning" : "text-muted-foreground";
+                const ptone = pct == null ? "bg-primary" : pct >= 90 ? "bg-destructive" : pct >= 75 ? "bg-warning" : "bg-primary";
+                return (
+                  <Card key={c.id} className={`overflow-hidden ${c.is_active ? "" : "opacity-70"}`}>
+                    <div className="flex items-stretch">
+                      <div className={`w-1 shrink-0 ${c.is_active ? "bg-success" : "bg-muted-foreground/30"}`} />
+                      <CardContent className="p-4 flex-1 min-w-0 space-y-3">
+                        {/* Encabezado */}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge variant="outline" className="gap-1"><FileSignature className="h-3 w-3" />{typeLabel}</Badge>
+                            {c.is_active
+                              ? <Badge className="bg-success/15 text-success border-success/30 text-[10px]">Activo</Badge>
+                              : <Badge variant="secondary" className="text-[10px]">Inactivo</Badge>}
+                            {c.auto_renewal && <Badge variant="outline" className="text-[10px] gap-1 text-success border-success/30"><RefreshCw className="h-2.5 w-2.5" /> Renovación auto</Badge>}
+                            {c.payment_terms && <Badge variant="outline" className="text-[10px]">{c.payment_terms}</Badge>}
+                          </div>
+                          <div className="flex gap-0.5 shrink-0">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Analizar con IA" onClick={() => setAnalysisContract(c)}><Sparkles className="h-3.5 w-3.5 text-primary" /></Button>
+                            {isAdmin ? (
+                              <>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setContractDialog(c)}><Edit2 className="h-3.5 w-3.5" /></Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { if (confirm("¿Eliminar contrato?")) deleteContract.mutate(c.id, { onSuccess: () => toast.success("Eliminado") }); }}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                              </>
+                            ) : <Lock className="h-3.5 w-3.5 text-muted-foreground self-center mx-1" />}
+                          </div>
                         </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+
+                        {/* Cifras */}
+                        <div className="grid grid-cols-3 gap-3">
+                          <div>
+                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Valor mensual</p>
+                            <p className="text-lg font-black tabular-nums"><Confidential show={canAmounts}>${Number(c.monthly_value).toLocaleString()} <span className="text-[11px] font-normal text-muted-foreground">{c.currency}</span></Confidential></p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Tarifa hora</p>
+                            <p className="text-lg font-black tabular-nums"><Confidential show={canAmounts}>${Number(c.hourly_rate)}<span className="text-[11px] font-normal text-muted-foreground">/h</span></Confidential></p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Horas incluidas</p>
+                            <p className="text-lg font-black tabular-nums">{c.included_hours}<span className="text-[11px] font-normal text-muted-foreground">h</span></p>
+                          </div>
+                        </div>
+
+                        {/* Vigencia */}
+                        <div>
+                          <div className="flex items-center justify-between text-[11px] mb-1">
+                            <span className="flex items-center gap-1 text-muted-foreground"><CalendarClock className="h-3 w-3" /> {c.start_date || "—"} → {c.end_date || "indefinido"}</span>
+                            <span className={`font-semibold ${dtone}`}>
+                              {c.auto_renewal ? "renueva solo" : dleft == null ? "sin vencimiento" : dleft < 0 ? `vencido hace ${Math.abs(dleft)}d` : `faltan ${dleft} días`}
+                            </span>
+                          </div>
+                          {pct != null && (
+                            <div className="h-1.5 bg-muted rounded-full overflow-hidden"><div className={`h-full rounded-full ${ptone}`} style={{ width: `${pct}%` }} /></div>
+                          )}
+                        </div>
+
+                        {c.notes && <p className="text-[11px] text-muted-foreground border-t border-border/60 pt-2">{c.notes}</p>}
+                      </CardContent>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="slas" className="space-y-4">
