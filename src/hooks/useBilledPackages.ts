@@ -29,7 +29,7 @@ export function useBilledPackages(clientId?: string) {
   return useQuery({
     queryKey: ["billed-packages", clientId],
     queryFn: async () => {
-      let q = (supabase.from("billed_packages" as any).select("*") as any);
+      let q = (supabase.from("billed_packages").select("*") as any);
       if (clientId) q = q.eq("client_id", clientId);
       const { data, error } = await q.order("created_at", { ascending: false });
       if (error) throw error;
@@ -79,12 +79,12 @@ export function useUpsertBilledPackage() {
       };
       if (input.id) {
         const { error } = await (
-          supabase.from("billed_packages" as any).update(payload).eq("id", input.id) as any
+          supabase.from("billed_packages").update(payload).eq("id", input.id) as any
         );
         if (error) throw error;
       } else {
         const { error } = await (
-          supabase.from("billed_packages" as any).insert([{ ...payload, created_by: userId }]) as any
+          supabase.from("billed_packages").insert([{ ...payload, created_by: userId }]) as any
         );
         if (error) throw error;
       }
@@ -97,7 +97,7 @@ export function useDeleteBilledPackage() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id }: { id: string; clientId: string }) => {
-      const { error } = await (supabase.from("billed_packages" as any).delete().eq("id", id) as any);
+      const { error } = await (supabase.from("billed_packages").delete().eq("id", id) as any);
       if (error) throw error;
     },
     onSuccess: (_d, vars) => qc.invalidateQueries({ queryKey: ["billed-packages", vars.clientId] }),

@@ -18,7 +18,7 @@ export function useRoles() {
   return useQuery({
     queryKey: ["roles-catalog"],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("roles" as any).select("*").order("is_system", { ascending: false }).order("label") as any);
+      const { data, error } = await (supabase.from("roles").select("*").order("is_system", { ascending: false }).order("label") as any);
       if (error) throw error;
       return (data || []) as Role[];
     },
@@ -40,7 +40,7 @@ export function useUpsertRole() {
   return useMutation({
     mutationFn: async (input: UpsertRoleInput) => {
       if (input.isEdit) {
-        const { error } = await (supabase.from("roles" as any).update({
+        const { error } = await (supabase.from("roles").update({
           label: input.label,
           description: input.description ?? null,
           scope: input.scope ?? "interno",
@@ -49,7 +49,7 @@ export function useUpsertRole() {
         if (error) throw error;
       } else {
         const { data: userData } = await supabase.auth.getUser();
-        const { error } = await (supabase.from("roles" as any).insert([{
+        const { error } = await (supabase.from("roles").insert([{
           key: input.key,
           label: input.label,
           description: input.description ?? null,
@@ -69,7 +69,7 @@ export function useDeleteRole() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (key: string) => {
-      const { error } = await (supabase.from("roles" as any).delete().eq("key", key) as any);
+      const { error } = await (supabase.from("roles").delete().eq("key", key) as any);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["roles-catalog"] }),

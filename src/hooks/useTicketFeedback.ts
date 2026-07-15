@@ -23,7 +23,7 @@ export function useTicketFeedback(ticketId?: string | null) {
     enabled: !!ticketId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("support_ticket_feedback" as any)
+        .from("support_ticket_feedback")
         .select("*")
         .eq("ticket_id", ticketId!)
         .order("created_at", { ascending: false });
@@ -39,7 +39,7 @@ export function useCaptureTicketFeedback(ticketId?: string | null) {
     mutationFn: async (args: { rating: number; sentiment: Sentiment; comment?: string; clientId?: string | null }) => {
       if (!ticketId) throw new Error("ticketId requerido");
       const { error } = await supabase
-        .from("support_ticket_feedback" as any)
+        .from("support_ticket_feedback")
         .insert({
           ticket_id: ticketId,
           client_id: args.clientId ?? null,

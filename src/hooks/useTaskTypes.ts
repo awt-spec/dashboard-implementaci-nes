@@ -21,7 +21,7 @@ export function useTaskTypes() {
     queryFn: async () => {
       const { data, error } = await (
         supabase
-          .from("task_types" as any)
+          .from("task_types")
           .select("*")
           .eq("is_active", true)
           .order("sort_order", { ascending: true }) as any
@@ -40,7 +40,7 @@ export function useTaskTypesAdmin() {
     queryFn: async () => {
       const { data, error } = await (
         supabase
-          .from("task_types" as any)
+          .from("task_types")
           .select("*")
           .order("sort_order", { ascending: true }) as any
       );
@@ -74,11 +74,11 @@ export function useUpsertTaskType() {
       };
       if (input.id) {
         const { error } = await (
-          supabase.from("task_types" as any).update(payload).eq("id", input.id) as any
+          supabase.from("task_types").update(payload).eq("id", input.id) as any
         );
         if (error) throw error;
       } else {
-        const { error } = await (supabase.from("task_types" as any).insert([payload]) as any);
+        const { error } = await (supabase.from("task_types").insert([payload]) as any);
         if (error) throw error;
       }
     },
@@ -91,7 +91,7 @@ export function useToggleTaskType() {
   return useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
       const { error } = await (
-        supabase.from("task_types" as any).update({ is_active }).eq("id", id) as any
+        supabase.from("task_types").update({ is_active }).eq("id", id) as any
       );
       if (error) throw error;
     },
@@ -103,7 +103,7 @@ export function useDeleteTaskType() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase.from("task_types" as any).delete().eq("id", id) as any);
+      const { error } = await (supabase.from("task_types").delete().eq("id", id) as any);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["task-types"] }),

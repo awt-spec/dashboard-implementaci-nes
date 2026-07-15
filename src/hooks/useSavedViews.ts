@@ -23,7 +23,7 @@ export function useSavedViews(scope: ViewScope) {
     queryFn: async () => {
       if (!user) return [] as SavedView[];
       const { data, error } = await supabase
-        .from("user_saved_views" as any)
+        .from("user_saved_views")
         .select("*")
         .eq("scope", scope)
         .order("is_pinned", { ascending: false })
@@ -48,7 +48,7 @@ export function useSaveView() {
     }) => {
       if (!user) throw new Error("Sin sesión");
       const { data, error } = await supabase
-        .from("user_saved_views" as any)
+        .from("user_saved_views")
         .upsert(
           {
             user_id: user.id,
@@ -74,7 +74,7 @@ export function useDeleteView() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("user_saved_views" as any).delete().eq("id", id);
+      const { error } = await supabase.from("user_saved_views").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -88,7 +88,7 @@ export function useTogglePinView() {
   return useMutation({
     mutationFn: async (args: { id: string; pinned: boolean }) => {
       const { error } = await supabase
-        .from("user_saved_views" as any)
+        .from("user_saved_views")
         .update({ is_pinned: args.pinned })
         .eq("id", args.id);
       if (error) throw error;

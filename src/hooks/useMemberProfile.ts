@@ -40,7 +40,7 @@ export function useMember(memberId?: string) {
     queryKey: ["member", memberId],
     enabled: !!memberId,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("sysde_team_members" as any).select("*").eq("id", memberId).maybeSingle() as any);
+      const { data, error } = await (supabase.from("sysde_team_members").select("*").eq("id", memberId).maybeSingle() as any);
       if (error) throw error;
       return data as any;
     },
@@ -52,7 +52,7 @@ export function useMemberCapacity(memberId?: string) {
     queryKey: ["member-capacity", memberId],
     enabled: !!memberId,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("team_member_capacity" as any).select("*").eq("member_id", memberId).maybeSingle() as any);
+      const { data, error } = await (supabase.from("team_member_capacity").select("*").eq("member_id", memberId).maybeSingle() as any);
       if (error) throw error;
       return data as CapacityRow | null;
     },
@@ -63,12 +63,12 @@ export function useUpsertCapacity() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (row: Partial<CapacityRow> & { member_id: string }) => {
-      const { data: existing } = await (supabase.from("team_member_capacity" as any).select("id").eq("member_id", row.member_id).maybeSingle() as any);
+      const { data: existing } = await (supabase.from("team_member_capacity").select("id").eq("member_id", row.member_id).maybeSingle() as any);
       if (existing) {
-        const { error } = await (supabase.from("team_member_capacity" as any).update(row).eq("id", existing.id) as any);
+        const { error } = await (supabase.from("team_member_capacity").update(row).eq("id", existing.id) as any);
         if (error) throw error;
       } else {
-        const { error } = await (supabase.from("team_member_capacity" as any).insert(row) as any);
+        const { error } = await (supabase.from("team_member_capacity").insert(row) as any);
         if (error) throw error;
       }
     },
@@ -81,7 +81,7 @@ export function useMemberCertifications(memberId?: string) {
     queryKey: ["member-certs", memberId],
     enabled: !!memberId,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("team_member_certifications" as any).select("*").eq("member_id", memberId).order("issued_date", { ascending: false }) as any);
+      const { data, error } = await (supabase.from("team_member_certifications").select("*").eq("member_id", memberId).order("issued_date", { ascending: false }) as any);
       if (error) throw error;
       return (data || []) as CertificationRow[];
     },
@@ -92,7 +92,7 @@ export function useAddCertification() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (cert: Partial<CertificationRow> & { member_id: string; name: string }) => {
-      const { error } = await (supabase.from("team_member_certifications" as any).insert(cert) as any);
+      const { error } = await (supabase.from("team_member_certifications").insert(cert) as any);
       if (error) throw error;
     },
     onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ["member-certs", vars.member_id] }),
@@ -103,7 +103,7 @@ export function useDeleteCertification() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id }: { id: string; member_id: string }) => {
-      const { error } = await (supabase.from("team_member_certifications" as any).delete().eq("id", id) as any);
+      const { error } = await (supabase.from("team_member_certifications").delete().eq("id", id) as any);
       if (error) throw error;
     },
     onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ["member-certs", vars.member_id] }),
@@ -115,7 +115,7 @@ export function useCareerPath(memberId?: string) {
     queryKey: ["member-career", memberId],
     enabled: !!memberId,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("team_career_paths" as any).select("*").eq("member_id", memberId).maybeSingle() as any);
+      const { data, error } = await (supabase.from("team_career_paths").select("*").eq("member_id", memberId).maybeSingle() as any);
       if (error) throw error;
       return data as CareerPathRow | null;
     },
@@ -142,10 +142,10 @@ export function useMemberPerformance(memberName?: string) {
     enabled: !!memberName,
     queryFn: async () => {
       const [tasksRes, ticketsRes, sessionsRes, timeRes] = await Promise.all([
-        (supabase.from("tasks" as any).select("id,status,priority,owner,created_at,updated_at,due_date").eq("owner", memberName) as any),
-        (supabase.from("support_tickets" as any).select("id,estado,prioridad,responsable,scrum_status,story_points,created_at,updated_at,fecha_entrega").eq("responsable", memberName) as any),
-        (supabase.from("user_sessions" as any).select("id,started_at,ended_at,last_heartbeat").order("started_at", { ascending: false }).limit(50) as any).catch(() => ({ data: [] })),
-        (supabase.from("work_time_entries" as any).select("id,duration_seconds,started_at,ended_at,task_id,ticket_id").order("started_at", { ascending: false }).limit(200) as any).catch(() => ({ data: [] })),
+        (supabase.from("tasks").select("id,status,priority,owner,created_at,updated_at,due_date").eq("owner", memberName) as any),
+        (supabase.from("support_tickets").select("id,estado,prioridad,responsable,scrum_status,story_points,created_at,updated_at,fecha_entrega").eq("responsable", memberName) as any),
+        (supabase.from("user_sessions").select("id,started_at,ended_at,last_heartbeat").order("started_at", { ascending: false }).limit(50) as any).catch(() => ({ data: [] })),
+        (supabase.from("work_time_entries").select("id,duration_seconds,started_at,ended_at,task_id,ticket_id").order("started_at", { ascending: false }).limit(200) as any).catch(() => ({ data: [] })),
       ]);
       return {
         tasks: (tasksRes?.data || []) as any[],

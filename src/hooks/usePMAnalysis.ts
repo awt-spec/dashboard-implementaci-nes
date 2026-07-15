@@ -24,7 +24,7 @@ export function useLatestPMAnalysis() {
       // Filtrar por analysis_type="global" porque la tabla ahora tiene
       // también case_strategy y client_strategy (scope-limitado).
       const { data, error } = await (supabase
-        .from("pm_ai_analysis" as any)
+        .from("pm_ai_analysis")
         .select("*")
         .eq("analysis_type", "global")
         .order("created_at", { ascending: false })

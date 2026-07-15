@@ -20,7 +20,7 @@ export function useClientCategories() {
     queryFn: async () => {
       const { data, error } = await (
         supabase
-          .from("client_categories" as any)
+          .from("client_categories")
           .select("*")
           .eq("is_active", true)
           .order("sort_order", { ascending: true }) as any
@@ -38,7 +38,7 @@ export function useClientCategoriesAdmin() {
     queryFn: async () => {
       const { data, error } = await (
         supabase
-          .from("client_categories" as any)
+          .from("client_categories")
           .select("*")
           .order("sort_order", { ascending: true }) as any
       );
@@ -72,11 +72,11 @@ export function useUpsertClientCategory() {
       };
       if (input.id) {
         const { error } = await (
-          supabase.from("client_categories" as any).update(payload).eq("id", input.id) as any
+          supabase.from("client_categories").update(payload).eq("id", input.id) as any
         );
         if (error) throw error;
       } else {
-        const { error } = await (supabase.from("client_categories" as any).insert([payload]) as any);
+        const { error } = await (supabase.from("client_categories").insert([payload]) as any);
         if (error) throw error;
       }
     },
@@ -89,7 +89,7 @@ export function useToggleClientCategory() {
   return useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
       const { error } = await (
-        supabase.from("client_categories" as any).update({ is_active }).eq("id", id) as any
+        supabase.from("client_categories").update({ is_active }).eq("id", id) as any
       );
       if (error) throw error;
     },
@@ -101,7 +101,7 @@ export function useDeleteClientCategory() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase.from("client_categories" as any).delete().eq("id", id) as any);
+      const { error } = await (supabase.from("client_categories").delete().eq("id", id) as any);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["client-categories"] }),

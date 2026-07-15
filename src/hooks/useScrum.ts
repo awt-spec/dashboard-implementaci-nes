@@ -28,7 +28,7 @@ export function useSprints(clientId?: string) {
     queryKey: ["support-sprints", clientId],
     queryFn: async () => {
       if (!clientId) return [] as SupportSprint[];
-      const { data, error } = await (supabase.from("support_sprints" as any).select("*") as any)
+      const { data, error } = await (supabase.from("support_sprints").select("*") as any)
         .eq("client_id", clientId)
         .order("start_date", { ascending: false, nullsFirst: false });
       if (error) throw error;
@@ -42,7 +42,7 @@ export function useCreateSprint() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: Partial<SupportSprint> & { client_id: string; name: string }) => {
-      const { error } = await (supabase.from("support_sprints" as any).insert([input] as any) as any);
+      const { error } = await (supabase.from("support_sprints").insert([input] as any) as any);
       if (error) throw error;
     },
     onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ["support-sprints", v.client_id] }),
@@ -53,7 +53,7 @@ export function useUpdateSprint() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<SupportSprint>; client_id: string }) => {
-      const { error } = await (supabase.from("support_sprints" as any).update(updates as any).eq("id", id) as any);
+      const { error } = await (supabase.from("support_sprints").update(updates as any).eq("id", id) as any);
       if (error) throw error;
     },
     onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ["support-sprints", v.client_id] }),
@@ -64,7 +64,7 @@ export function useDeleteSprint() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id }: { id: string; client_id: string }) => {
-      const { error } = await (supabase.from("support_sprints" as any).delete().eq("id", id) as any);
+      const { error } = await (supabase.from("support_sprints").delete().eq("id", id) as any);
       if (error) throw error;
     },
     onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ["support-sprints", v.client_id] }),

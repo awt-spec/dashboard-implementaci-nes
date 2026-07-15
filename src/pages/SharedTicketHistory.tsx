@@ -72,7 +72,7 @@ export default function SharedTicketHistory() {
     (async () => {
       setLoading(true);
       const { data: row, error: fetchErr } = await (supabase
-        .from("shared_ticket_history" as any)
+        .from("shared_ticket_history")
         .select("id, title, client_name, include_internal_notes, include_system_views, history_snapshot, ticket_snapshot, created_at, expires_at")
         .eq("token", token)
         .maybeSingle() as any);

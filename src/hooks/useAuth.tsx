@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Cuando es cliente, buscamos su asignación (empresa + nivel de permiso).
       if (bestRole === "cliente") {
         const { data: assignment } = await supabase
-          .from("cliente_company_assignments" as any)
+          .from("cliente_company_assignments")
           .select("client_id, permission_level")
           .eq("user_id", u.id)
           .order("created_at", { ascending: false })

@@ -86,7 +86,7 @@ export function useQuotes(filters?: { ticketId?: string; clientId?: string; stat
   return useQuery({
     queryKey: ["quotes", filters],
     queryFn: async () => {
-      let q = (supabase.from("quotes" as any).select("*") as any);
+      let q = (supabase.from("quotes").select("*") as any);
       if (filters?.ticketId) q = q.eq("ticket_id", filters.ticketId);
       if (filters?.clientId) q = q.eq("client_id", filters.clientId);
       if (filters?.status) q = q.eq("status", filters.status);
@@ -104,9 +104,9 @@ export function useQuote(quoteId: string | null) {
     queryFn: async () => {
       if (!quoteId) return null;
       const [quoteRes, itemsRes, attachmentsRes] = await Promise.all([
-        (supabase.from("quotes" as any).select("*").eq("id", quoteId).maybeSingle() as any),
-        (supabase.from("quote_items" as any).select("*").eq("quote_id", quoteId).order("position", { ascending: true }) as any),
-        (supabase.from("quote_attachments" as any).select("*").eq("quote_id", quoteId).order("created_at", { ascending: false }) as any),
+        (supabase.from("quotes").select("*").eq("id", quoteId).maybeSingle() as any),
+        (supabase.from("quote_items").select("*").eq("quote_id", quoteId).order("position", { ascending: true }) as any),
+        (supabase.from("quote_attachments").select("*").eq("quote_id", quoteId).order("created_at", { ascending: false }) as any),
       ]);
       if (quoteRes.error) throw quoteRes.error;
       if (itemsRes.error) throw itemsRes.error;
@@ -125,7 +125,7 @@ export function useQuotesPendingApproval(clientId?: string) {
   return useQuery({
     queryKey: ["quotes-pending-approval", clientId],
     queryFn: async () => {
-      let q = (supabase.from("quotes_pending_approval" as any).select("*") as any);
+      let q = (supabase.from("quotes_pending_approval").select("*") as any);
       if (clientId) q = q.eq("client_id", clientId);
       const { data, error } = await q.order("sent_at", { ascending: false });
       if (error) throw error;
@@ -167,7 +167,7 @@ export function useCreateQuote() {
       const { items, ...header } = input;
       const { data: quote, error } = await (
         supabase
-          .from("quotes" as any)
+          .from("quotes")
           .insert([{ ...header, created_by: userId }])
           .select()
           .single() as any
@@ -184,7 +184,7 @@ export function useCreateQuote() {
           position: it.position ?? i,
         }));
         const { error: itemsErr } = await (
-          supabase.from("quote_items" as any).insert(itemsToInsert) as any
+          supabase.from("quote_items").insert(itemsToInsert) as any
         );
         if (itemsErr) throw itemsErr;
       }
@@ -203,7 +203,7 @@ export function useUpdateQuote() {
     mutationFn: async (input: Partial<Quote> & { id: string }) => {
       const { id, ...patch } = input;
       const { error } = await (
-        supabase.from("quotes" as any).update(patch).eq("id", id) as any
+        supabase.from("quotes").update(patch).eq("id", id) as any
       );
       if (error) throw error;
     },
@@ -219,7 +219,7 @@ export function useDeleteQuote() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase.from("quotes" as any).delete().eq("id", id) as any);
+      const { error } = await (supabase.from("quotes").delete().eq("id", id) as any);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -239,7 +239,7 @@ export function useSendQuote() {
       if (!userId) throw new Error("No autenticado");
       const { error } = await (
         supabase
-          .from("quotes" as any)
+          .from("quotes")
           .update({ status: "sent", sent_at: new Date().toISOString(), sent_by: userId })
           .eq("id", id) as any
       );
@@ -263,7 +263,7 @@ export function useApproveQuote() {
       if (!userId) throw new Error("No autenticado");
       const { error } = await (
         supabase
-          .from("quotes" as any)
+          .from("quotes")
           .update({ status: "approved", approved_at: new Date().toISOString(), approved_by: userId })
           .eq("id", id) as any
       );
@@ -287,7 +287,7 @@ export function useRejectQuote() {
       if (!userId) throw new Error("No autenticado");
       const { error } = await (
         supabase
-          .from("quotes" as any)
+          .from("quotes")
           .update({
             status: "rejected",
             rejected_at: new Date().toISOString(),
@@ -313,7 +313,7 @@ export function useCancelQuote() {
     mutationFn: async ({ id, reason }: { id: string; reason?: string }) => {
       const { error } = await (
         supabase
-          .from("quotes" as any)
+          .from("quotes")
           .update({
             status: "cancelled",
             cancelled_at: new Date().toISOString(),
@@ -342,11 +342,11 @@ export function useUpsertQuoteItem() {
     ) => {
       if (item.id) {
         const { error } = await (
-          supabase.from("quote_items" as any).update(item).eq("id", item.id) as any
+          supabase.from("quote_items").update(item).eq("id", item.id) as any
         );
         if (error) throw error;
       } else {
-        const { error } = await (supabase.from("quote_items" as any).insert([item]) as any);
+        const { error } = await (supabase.from("quote_items").insert([item]) as any);
         if (error) throw error;
       }
     },
@@ -361,7 +361,7 @@ export function useDeleteQuoteItem() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id }: { id: string; quoteId: string }) => {
-      const { error } = await (supabase.from("quote_items" as any).delete().eq("id", id) as any);
+      const { error } = await (supabase.from("quote_items").delete().eq("id", id) as any);
       if (error) throw error;
     },
     onSuccess: (_d, vars) => {
@@ -393,7 +393,7 @@ export function useUploadQuoteAttachment() {
       if (uploadErr) throw uploadErr;
 
       const { error: insertErr } = await (
-        supabase.from("quote_attachments" as any).insert([{
+        supabase.from("quote_attachments").insert([{
           quote_id: quoteId,
           file_name: file.name,
           file_path: path,
@@ -418,7 +418,7 @@ export function useDeleteQuoteAttachment() {
         .from("support-ticket-attachments")
         .remove([filePath]);
       if (storageErr) console.warn("Could not delete from storage:", storageErr);
-      const { error } = await (supabase.from("quote_attachments" as any).delete().eq("id", id) as any);
+      const { error } = await (supabase.from("quote_attachments").delete().eq("id", id) as any);
       if (error) throw error;
     },
     onSuccess: (_d, vars) => {

@@ -62,7 +62,7 @@ export function useColaboradorLayout() {
     enabled: !!user?.id,
     queryFn: async (): Promise<ColaboradorLayoutPayload> => {
       const { data, error } = await (supabase
-        .from("colaborador_dashboard_layouts" as any)
+        .from("colaborador_dashboard_layouts")
         .select("layout, widgets")
         .eq("user_id", user!.id)
         .maybeSingle() as any);
@@ -80,7 +80,7 @@ export function useColaboradorLayout() {
     mutationFn: async (payload: ColaboradorLayoutPayload) => {
       if (!user?.id) throw new Error("No user");
       const { error } = await (supabase
-        .from("colaborador_dashboard_layouts" as any)
+        .from("colaborador_dashboard_layouts")
         .upsert({ user_id: user.id, layout: payload.layout, widgets: payload.widgets }, { onConflict: "user_id" }) as any);
       if (error) throw error;
     },
@@ -91,7 +91,7 @@ export function useColaboradorLayout() {
     mutationFn: async () => {
       if (!user?.id) throw new Error("No user");
       const { error } = await (supabase
-        .from("colaborador_dashboard_layouts" as any)
+        .from("colaborador_dashboard_layouts")
         .upsert({ user_id: user.id, ...DEFAULTS }, { onConflict: "user_id" }) as any);
       if (error) throw error;
     },

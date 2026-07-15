@@ -57,7 +57,7 @@ export function CVAnalysisDialog({ member, open, onOpenChange, onUpdated }: Prop
       const { data: signed } = await supabase.storage.from("team-cvs").createSignedUrl(path, 60 * 60 * 24 * 365);
 
       // Update member with file ref
-      await (supabase.from("sysde_team_members" as any).update({
+      await (supabase.from("sysde_team_members").update({
         cv_url: signed?.signedUrl || path,
         cv_filename: file.name,
         cv_uploaded_at: new Date().toISOString(),

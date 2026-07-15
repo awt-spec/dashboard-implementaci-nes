@@ -31,10 +31,10 @@ export function useAccountStatement360(clientId?: string) {
       const [ctRes, wtRes, bpRes, msRes, slaRes, scRes] = await Promise.all([
         supabase.from("client_contracts").select("*").eq("client_id", clientId!).eq("is_active", true).order("included_hours", { ascending: false }).limit(1).maybeSingle(),
         supabase.from("work_time_entries").select("duration_seconds, started_at").eq("client_id", clientId!).not("duration_seconds", "is", null).limit(5000),
-        supabase.from("billed_packages" as any).select("*").eq("client_id", clientId!).order("created_at", { ascending: false }),
-        supabase.from("contract_milestones" as any).select("descripcion, status, monto, moneda").eq("client_id", clientId!).order("numero"),
+        supabase.from("billed_packages").select("*").eq("client_id", clientId!).order("created_at", { ascending: false }),
+        supabase.from("contract_milestones").select("descripcion, status, monto, moneda").eq("client_id", clientId!).order("numero"),
         supabase.from("client_slas").select("priority_level, response_time_hours, resolution_time_hours, penalty_amount").eq("client_id", clientId!).eq("is_active", true),
-        supabase.from("pm_ai_analysis" as any).select("full_analysis, created_at, metrics").eq("analysis_type", "contract_scope_audit").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+        supabase.from("pm_ai_analysis").select("full_analysis, created_at, metrics").eq("analysis_type", "contract_scope_audit").order("created_at", { ascending: false }).limit(1).maybeSingle(),
       ]);
 
       const contract = (ctRes.data as any) ?? null;

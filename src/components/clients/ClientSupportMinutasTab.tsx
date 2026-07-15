@@ -60,7 +60,7 @@ export function ClientSupportMinutasTab({ clientId, clientName }: Props) {
     queryKey: ["client-support-minutas-feedback-counts", clientId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("support_minutes_feedback" as any)
+        .from("support_minutes_feedback")
         .select("shared_presentation_id")
         .eq("client_id", clientId);
       if (error) throw error;

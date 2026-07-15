@@ -98,7 +98,7 @@ export function CSRDashboard() {
     queryKey: ["csr-sessions"],
     queryFn: async () => {
       const { data } = await supabase
-        .from("support_minutes" as any)
+        .from("support_minutes")
         .select("id, client_id, title, date")
         .order("date", { ascending: false })
         .limit(6);
@@ -110,7 +110,7 @@ export function CSRDashboard() {
   const { data: csat } = useQuery({
     queryKey: ["csr-csat"],
     queryFn: async () => {
-      const { data } = await supabase.from("support_ticket_feedback" as any).select("rating").limit(1000);
+      const { data } = await supabase.from("support_ticket_feedback").select("rating").limit(1000);
       const arr = (data || []).map((r: any) => r.rating).filter((n: any) => typeof n === "number");
       const avg = arr.length ? arr.reduce((a: number, b: number) => a + b, 0) / arr.length : null;
       return { avg, n: arr.length };
@@ -179,7 +179,7 @@ export function CSRDashboard() {
     if (!escalate) return;
     try {
       await update.mutateAsync({ id: escalate.id, updates: { responsable: target } });
-      await supabase.from("support_ticket_notes" as any).insert({
+      await supabase.from("support_ticket_notes").insert({
         ticket_id: escalate.id,
         content: `[ESCALADO → ${target}] ${motivo.trim() || "Sin detalle"}`,
         author_name: agentName,

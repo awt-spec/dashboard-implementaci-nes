@@ -48,7 +48,7 @@ export function QuickTimer() {
     if (!user || !selected) return toast.error("Elige una tarea primero");
     const item = items.find(it => `${it.source}-${it.id}` === selected);
     if (!item) return;
-    const { data, error } = await (supabase.from("work_time_entries" as any).insert([{
+    const { data, error } = await (supabase.from("work_time_entries").insert([{
       user_id: user.id,
       source: item.source,
       item_id: item.id,
@@ -67,7 +67,7 @@ export function QuickTimer() {
     if (!active) return;
     const seconds = Math.floor((Date.now() - active.started_at) / 1000);
     const today = new Date().toISOString().slice(0, 10);
-    const { error } = await (supabase.from("work_time_entries" as any)
+    const { error } = await (supabase.from("work_time_entries")
       .update({
         ended_at: new Date().toISOString(),
         duration_seconds: seconds,

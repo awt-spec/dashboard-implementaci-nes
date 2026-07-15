@@ -11,7 +11,7 @@ export function MiActividadFeed({ limit = 8 }: MiActividadFeedProps) {
     queryKey: ["team-activity-feed", limit],
     queryFn: async () => {
       const { data: logs } = await (supabase
-        .from("user_activity_log" as any)
+        .from("user_activity_log")
         .select("id, action, metadata, created_at, user_id")
         .order("created_at", { ascending: false })
         .limit(limit) as any);

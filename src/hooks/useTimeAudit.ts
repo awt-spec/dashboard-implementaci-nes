@@ -29,7 +29,7 @@ export function useTimeAuditLog(rangeDays = 30) {
       const from = new Date();
       from.setDate(from.getDate() - rangeDays);
       const { data, error } = await (supabase
-        .from("time_entry_audit_log" as any)
+        .from("time_entry_audit_log")
         .select("*")
         .gte("created_at", from.toISOString())
         .order("created_at", { ascending: false })
@@ -45,7 +45,7 @@ export function useWeeklyLocks() {
     queryKey: ["weekly-locks"],
     queryFn: async () => {
       const { data, error } = await (supabase
-        .from("time_weekly_locks" as any)
+        .from("time_weekly_locks")
         .select("*")
         .order("week_start", { ascending: false }) as any);
       if (error) throw error;

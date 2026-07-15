@@ -147,14 +147,14 @@ export function TeamActivityPanel({ compact = false }: { compact?: boolean }) {
     const [profilesRes, rolesRes, sessionsRes, timeDayRes, timeWeekRes, activeItemsRes, actsRes, clientsRes] = await Promise.all([
       supabase.from("profiles").select("user_id, full_name, email"),
       supabase.from("user_roles").select("user_id, role"),
-      (supabase.from("user_sessions" as any).select("user_id, started_at, last_heartbeat, ended_at")
+      (supabase.from("user_sessions").select("user_id, started_at, last_heartbeat, ended_at")
         .order("last_heartbeat", { ascending: false }) as any),
-      (supabase.from("work_time_entries" as any).select("user_id, duration_seconds, started_at, ended_at")
+      (supabase.from("work_time_entries").select("user_id, duration_seconds, started_at, ended_at")
         .gte("started_at", sinceDay) as any),
-      (supabase.from("work_time_entries" as any).select("user_id, duration_seconds, started_at, ended_at")
+      (supabase.from("work_time_entries").select("user_id, duration_seconds, started_at, ended_at")
         .gte("started_at", sinceWeek) as any),
       supabase.from("tasks").select("assigned_user_id, status").not("assigned_user_id", "is", null).neq("status", "completed"),
-      (supabase.from("user_activity_log" as any).select("*").order("created_at", { ascending: false }).limit(500) as any),
+      (supabase.from("user_activity_log").select("*").order("created_at", { ascending: false }).limit(500) as any),
       supabase.from("clients").select("id, name"),
     ]);
 

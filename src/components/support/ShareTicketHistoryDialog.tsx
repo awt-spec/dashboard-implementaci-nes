@@ -78,7 +78,7 @@ export function ShareTicketHistoryDialog({ ticket, clientName, open, onClose }: 
         fecha_entrega: (ticket as any).fecha_entrega ?? null,
       };
 
-      const { data, error } = await (supabase.from("shared_ticket_history" as any).insert({
+      const { data, error } = await (supabase.from("shared_ticket_history").insert({
         ticket_id: ticket.id,
         title,
         client_name: clientName,

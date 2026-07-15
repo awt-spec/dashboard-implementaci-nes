@@ -51,7 +51,7 @@ function useMinuteFeedback(clientId: string | null | undefined) {
   return useQuery({
     queryKey: ["minute-feedback", clientId || "all"],
     queryFn: async () => {
-      let q = (supabase.from("support_minutes_feedback" as any)
+      let q = (supabase.from("support_minutes_feedback")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(100) as any);

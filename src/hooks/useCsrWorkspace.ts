@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 // Hooks del workspace del CSR: pendientes (to-do), obstáculos, hitos, comercial
-// y asistente IA. Tablas nuevas con cast `as any` (types.ts no regenerado).
+// y asistente IA.
 
 // ── Pendientes ────────────────────────────────────────────────────────────
 export interface CsrTask {
@@ -14,7 +14,7 @@ export function useCsrTasks() {
   return useQuery({
     queryKey: ["csr-tasks"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("csr_tasks" as any)
+      const { data, error } = await supabase.from("csr_tasks")
         .select("*").order("done").order("due_date", { nullsFirst: false }).order("created_at", { ascending: false });
       if (error) throw error;
       return (data || []) as unknown as CsrTask[];
@@ -26,7 +26,7 @@ export function useUpsertCsrTask() {
   return useMutation({
     mutationFn: async (t: Partial<CsrTask> & { title: string }) => {
       const row: any = { title: t.title, priority: t.priority ?? "media", due_date: t.due_date ?? null, notes: t.notes ?? null };
-      const q = t.id ? supabase.from("csr_tasks" as any).update(row).eq("id", t.id) : supabase.from("csr_tasks" as any).insert(row);
+      const q = t.id ? supabase.from("csr_tasks").update(row).eq("id", t.id) : supabase.from("csr_tasks").insert(row);
       const { error } = await q; if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["csr-tasks"] }),
@@ -36,7 +36,7 @@ export function useToggleCsrTask() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, done }: { id: string; done: boolean }) => {
-      const { error } = await supabase.from("csr_tasks" as any).update({ done, updated_at: new Date().toISOString() }).eq("id", id);
+      const { error } = await supabase.from("csr_tasks").update({ done, updated_at: new Date().toISOString() }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["csr-tasks"] }),
@@ -45,7 +45,7 @@ export function useToggleCsrTask() {
 export function useDeleteCsrTask() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => { const { error } = await supabase.from("csr_tasks" as any).delete().eq("id", id); if (error) throw error; },
+    mutationFn: async (id: string) => { const { error } = await supabase.from("csr_tasks").delete().eq("id", id); if (error) throw error; },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["csr-tasks"] }),
   });
 }
@@ -59,7 +59,7 @@ export function useCsrBlockers() {
   return useQuery({
     queryKey: ["csr-blockers"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("csr_blockers" as any).select("*").order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("csr_blockers").select("*").order("created_at", { ascending: false });
       if (error) throw error;
       return (data || []) as unknown as CsrBlocker[];
     },
@@ -70,7 +70,7 @@ export function useUpsertCsrBlocker() {
   return useMutation({
     mutationFn: async (b: Partial<CsrBlocker> & { title: string }) => {
       const row: any = { title: b.title, description: b.description ?? null, severity: b.severity ?? "media", client_id: b.client_id ?? null };
-      const q = b.id ? supabase.from("csr_blockers" as any).update(row).eq("id", b.id) : supabase.from("csr_blockers" as any).insert(row);
+      const q = b.id ? supabase.from("csr_blockers").update(row).eq("id", b.id) : supabase.from("csr_blockers").insert(row);
       const { error } = await q; if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["csr-blockers"] }),
@@ -80,7 +80,7 @@ export function useUpdateBlockerStatus() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: CsrBlocker["status"] }) => {
-      const { error } = await supabase.from("csr_blockers" as any).update({ status, updated_at: new Date().toISOString() }).eq("id", id);
+      const { error } = await supabase.from("csr_blockers").update({ status, updated_at: new Date().toISOString() }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["csr-blockers"] }),
@@ -92,7 +92,7 @@ export function useCsrMilestones() {
   return useQuery({
     queryKey: ["csr-milestones"],
     queryFn: async () => {
-      const { data } = await supabase.from("contract_milestones" as any)
+      const { data } = await supabase.from("contract_milestones")
         .select("id, client_id, descripcion, condicion, status, monto, porcentaje, moneda, numero")
         .order("status").limit(50);
       return (data || []) as any[];
@@ -105,7 +105,7 @@ export function useCsrQuotes() {
   return useQuery({
     queryKey: ["csr-quotes"],
     queryFn: async () => {
-      const { data } = await supabase.from("quotes" as any)
+      const { data } = await supabase.from("quotes")
         .select("id, quote_number, client_id, title, status, total_amount, currency, valid_until, created_at")
         .order("created_at", { ascending: false }).limit(40);
       return (data || []) as any[];

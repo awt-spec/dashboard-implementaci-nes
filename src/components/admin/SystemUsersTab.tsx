@@ -161,7 +161,7 @@ export function SystemUsersTab() {
     const [profilesRes, rolesRes, teamRes] = await Promise.all([
       supabase.from("profiles").select("user_id, full_name, email"),
       supabase.from("user_roles").select("user_id, role"),
-      (supabase.from("sysde_team_members" as any).select("id, name, email, role, department, is_active, user_id").order("name") as any),
+      (supabase.from("sysde_team_members").select("id, name, email, role, department, is_active, user_id").order("name") as any),
     ]);
     const profiles = profilesRes.data;
     const roles = rolesRes.data;

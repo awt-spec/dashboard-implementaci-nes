@@ -51,7 +51,7 @@ export function useTicketHistory(ticketId: string | null | undefined) {
 
       // Audit log (puede no existir si migración 20260422160000 no se aplicó)
       const auditPromise = (supabase
-        .from("ticket_access_log" as any)
+        .from("ticket_access_log")
         .select("*")
         .eq("ticket_id", ticketId)
         .order("created_at", { ascending: false })
@@ -59,7 +59,7 @@ export function useTicketHistory(ticketId: string | null | undefined) {
 
       // Notas del ticket
       const notesPromise = (supabase
-        .from("support_ticket_notes" as any)
+        .from("support_ticket_notes")
         .select("*")
         .eq("ticket_id", ticketId)
         .order("created_at", { ascending: false })

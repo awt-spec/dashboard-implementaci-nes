@@ -154,7 +154,7 @@ export function TimeAuditPanel() {
 
   const lockWeek = async (weekStartDate: string) => {
     if (!user) return;
-    const { error } = await (supabase.from("time_weekly_locks" as any).insert([{
+    const { error } = await (supabase.from("time_weekly_locks").insert([{
       week_start: weekStartDate,
       locked_by: user.id,
       notes: "Cierre semanal",
@@ -173,7 +173,7 @@ export function TimeAuditPanel() {
   };
 
   const unlockWeek = async (lockId: string, weekStartDate: string) => {
-    const { error } = await (supabase.from("time_weekly_locks" as any).delete().eq("id", lockId) as any);
+    const { error } = await (supabase.from("time_weekly_locks").delete().eq("id", lockId) as any);
     if (error) return toast.error(error.message);
     const ws = new Date(weekStartDate);
     const we = new Date(ws); we.setDate(we.getDate() + 7);
