@@ -91,6 +91,16 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Ownership: el ticket debe ser visible para ESTE usuario según RLS (IDOR).
+    const { data: visible } = await ctx.userClient
+      .from("support_tickets").select("id").eq("id", ticketId).maybeSingle();
+    if (!visible) {
+      return new Response(
+        JSON.stringify({ error: "No autorizado para este ticket" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     // 1. Cargar ticket + cliente + última reincidencia
     const { data: ticket, error: tErr } = await ctx.adminClient
       .from("support_tickets")
