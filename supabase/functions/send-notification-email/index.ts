@@ -1,4 +1,5 @@
 import { corsHeaders, corsPreflight } from "../_shared/cors.ts";
+import { AuthError, requireAuth, requireRole } from "../_shared/auth.ts";
 
 /**
  * send-notification-email
@@ -23,6 +24,19 @@ Deno.serve(async (req) => {
   const pre = corsPreflight(req);
   if (pre) return pre;
   const cors = corsHeaders(req);
+
+  // Autorización: JWT de admin/pm (verify_jwt=true a nivel plataforma + guard de
+  // rol). Antes era invocable por cualquiera → flush de correos, costo Resend y
+  // fuga de errores con IDs. Para un futuro cron, usar un bearer service-role.
+  try {
+    const ctx = await requireAuth(req);
+    await requireRole(ctx, ["admin", "pm"]);
+  } catch (e: any) {
+    const status = e instanceof AuthError ? e.status ?? 401 : 401;
+    return new Response(JSON.stringify({ error: e?.message ?? "No autorizado" }), {
+      status, headers: { ...cors, "Content-Type": "application/json" },
+    });
+  }
 
   const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
   const EMAIL_FROM = Deno.env.get("EMAIL_FROM") ?? "SYSDE Notificaciones <onboarding@resend.dev>";
