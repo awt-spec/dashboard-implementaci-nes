@@ -12,7 +12,6 @@ import { cn } from "@/lib/utils";
 type DemoAccount = {
   label: string;
   email: string;
-  pw: string;
   /** Si está presente, se renderiza con tratamiento destacado (botón hero) */
   featured?: boolean;
   /** Icono opcional para el avatar del botón */
@@ -24,77 +23,55 @@ type DemoAccount = {
 };
 
 const SYSDE_USERS: DemoAccount[] = [
-  {
-    label: "CEO",
-    email: "ceo@sysde.com",
-    pw: "CeoSysde2026!",
-    Icon: Crown,
-    tone: "amber",
-    hint: "Cockpit ejecutivo · read-only",
-  },
-  {
-    label: "Carlos Castante · Gerente de Soporte",
-    email: "carlos.castante@sysde.com",
-    pw: "CarlosCastante2026!",
-    Icon: Headset,
-    tone: "red",
-    hint: "Acceso a clientes y boletas de soporte",
-  },
-  {
-    label: "CSR · Agente de Soporte",
-    email: "csr@sysde.com",
-    pw: "Csr#Demo2026",
-    Icon: LifeBuoy,
-    tone: "info",
-    hint: "Atención de 1ª línea · atiende, responde y captura feedback",
-  },
-  { label: "Admin", email: "admin@sysde.com", pw: "AdminSysde2026!", Icon: ShieldAlert, tone: "primary" },
-  { label: "PM", email: "pm@sysde.com", pw: "PmFernando2026!", Icon: Briefcase, tone: "primary" },
-  { label: "Soporte (Hellen)", email: "hellen.calvo@sysde.com", pw: "HellenCalvo2026!", Icon: Headphones, tone: "info" },
-  { label: "Fauricio Navarro", email: "navarro.fuentes@sysde.com", pw: "Sysde2026!", Icon: UserIcon },
-  { label: "Olga Lucia Cuervo", email: "olga.lucia@sysde.com", pw: "Sysde2026!", Icon: UserIcon },
-  { label: "Orlando Castro", email: "orlando.castro@sysde.com", pw: "Sysde2026!", Icon: UserIcon },
-  { label: "Carlos Solis", email: "solis.sequeira@sysde.com", pw: "Sysde2026!", Icon: UserIcon },
-  // Colaboradores de implementación (creados desde los CSV de backlog).
-  // Cada uno ve sus tasks asignadas en ColaboradorDashboard via assigned_user_id.
-  // Password común: Sysde2026!
-  { label: "Luis Alfaro", email: "lalfaro-contratista@sysde.com", pw: "Sysde2026!", Icon: UserIcon, hint: "56 tasks · Dos Pinos" },
-  { label: "Carlos Quesada", email: "cquesada-contratista@sysde.com", pw: "Sysde2026!", Icon: UserIcon, hint: "48 tasks · CMI Arrendamiento" },
-  { label: "Maria Vargas", email: "mavargas-contratista@sysde.com", pw: "Sysde2026!", Icon: UserIcon, hint: "45 tasks · ARKFIN/CMI" },
-  { label: "Carlos Andrés Rico", email: "crico@sysde.com", pw: "Sysde2026!", Icon: UserIcon, hint: "34 tasks · Dos Pinos/CMI" },
-  { label: "Bryan Hernandez", email: "bhernandez-contratista@sysde.com", pw: "Sysde2026!", Icon: UserIcon, hint: "32 tasks · CMI/AMC" },
-  { label: "Walter Gómez", email: "wgomez-contratista@sysde.com", pw: "Sysde2026!", Icon: UserIcon, hint: "14 tasks · CMI" },
-  { label: "Andrés Julián Gómez", email: "ajgomez-contratista@sysde.com", pw: "Sysde2026!", Icon: UserIcon, hint: "7 tasks · Dos Pinos" },
-  { label: "Luis Mangel", email: "lmangel-contratista@sysde.com", pw: "Sysde2026!", Icon: UserIcon, hint: "6 tasks · CMI" },
-  { label: "Fernando Pinto", email: "fpinto-contratista@sysde.com", pw: "Sysde2026!", Icon: UserIcon, hint: "5 tasks · Aurum/Apex" },
-  { label: "Diego García", email: "dgarcia-contratista@sysde.com", pw: "Sysde2026!", Icon: UserIcon, hint: "5 tasks · CMI" },
-  { label: "Andrés Venegas", email: "avenegas-contratista@sysde.com", pw: "Sysde2026!", Icon: UserIcon, hint: "3 tasks · Dos Pinos" },
-  { label: "Marco Pisacreta", email: "mpisacreta-contratista@sysde.com", pw: "Sysde2026!", Icon: UserIcon, hint: "3 tasks · Dos Pinos" },
-  { label: "Sandra Guerra", email: "sguerra-contratista@sysde.com", pw: "Sysde2026!", Icon: UserIcon, hint: "Implementación" },
+  { label: "CEO", email: "ceo@sysde.com", Icon: Crown, tone: "amber", hint: "Cockpit ejecutivo · read-only" },
+  { label: "Carlos Castante · Gerente de Soporte", email: "carlos.castante@sysde.com", Icon: Headset, tone: "red", hint: "Acceso a clientes y boletas de soporte" },
+  { label: "CSR · Agente de Soporte", email: "csr@sysde.com", Icon: LifeBuoy, tone: "info", hint: "Atención de 1ª línea · atiende, responde y captura feedback" },
+  { label: "Admin", email: "admin@sysde.com", Icon: ShieldAlert, tone: "primary" },
+  { label: "PM", email: "pm@sysde.com", Icon: Briefcase, tone: "primary" },
+  { label: "Soporte (Hellen)", email: "hellen.calvo@sysde.com", Icon: Headphones, tone: "info" },
+  { label: "Fauricio Navarro", email: "navarro.fuentes@sysde.com", Icon: UserIcon },
+  { label: "Olga Lucia Cuervo", email: "olga.lucia@sysde.com", Icon: UserIcon },
+  { label: "Orlando Castro", email: "orlando.castro@sysde.com", Icon: UserIcon },
+  { label: "Carlos Solis", email: "solis.sequeira@sysde.com", Icon: UserIcon },
+  // Colaboradores de implementación. Cada uno ve sus tasks asignadas en
+  // ColaboradorDashboard via assigned_user_id.
+  { label: "Luis Alfaro", email: "lalfaro-contratista@sysde.com", Icon: UserIcon, hint: "56 tasks · Dos Pinos" },
+  { label: "Carlos Quesada", email: "cquesada-contratista@sysde.com", Icon: UserIcon, hint: "48 tasks · CMI Arrendamiento" },
+  { label: "Maria Vargas", email: "mavargas-contratista@sysde.com", Icon: UserIcon, hint: "45 tasks · ARKFIN/CMI" },
+  { label: "Carlos Andrés Rico", email: "crico@sysde.com", Icon: UserIcon, hint: "34 tasks · Dos Pinos/CMI" },
+  { label: "Bryan Hernandez", email: "bhernandez-contratista@sysde.com", Icon: UserIcon, hint: "32 tasks · CMI/AMC" },
+  { label: "Walter Gómez", email: "wgomez-contratista@sysde.com", Icon: UserIcon, hint: "14 tasks · CMI" },
+  { label: "Andrés Julián Gómez", email: "ajgomez-contratista@sysde.com", Icon: UserIcon, hint: "7 tasks · Dos Pinos" },
+  { label: "Luis Mangel", email: "lmangel-contratista@sysde.com", Icon: UserIcon, hint: "6 tasks · CMI" },
+  { label: "Fernando Pinto", email: "fpinto-contratista@sysde.com", Icon: UserIcon, hint: "5 tasks · Aurum/Apex" },
+  { label: "Diego García", email: "dgarcia-contratista@sysde.com", Icon: UserIcon, hint: "5 tasks · CMI" },
+  { label: "Andrés Venegas", email: "avenegas-contratista@sysde.com", Icon: UserIcon, hint: "3 tasks · Dos Pinos" },
+  { label: "Marco Pisacreta", email: "mpisacreta-contratista@sysde.com", Icon: UserIcon, hint: "3 tasks · Dos Pinos" },
+  { label: "Sandra Guerra", email: "sguerra-contratista@sysde.com", Icon: UserIcon, hint: "Implementación" },
 ];
 
 // Usuarios con rol "cliente" (Portal Cliente) — uno por cada empresa activa.
 // Generados por scripts/seed-cliente-users.mjs. Al loguearse van al
 // ClientPortalDashboard (panel horas + minutas + casos scopeados a su empresa).
 const IMPLEMENTATION_CLIENTS: DemoAccount[] = [
-  { label: "Apex",      email: "cliente.apex@sysde.com",      pw: "ClienteApex2026!"      },
-  { label: "Arkfin",    email: "cliente.arkfin@sysde.com",    pw: "ClienteArkfin2026!"    },
-  { label: "Aurum",     email: "cliente.aurum@sysde.com",     pw: "ClienteAurum2026!"     },
-  { label: "Dos Pinos", email: "cliente.dospinos@sysde.com",  pw: "ClienteDospinos2026!"  },
-  { label: "AMC",       email: "cliente.amc@sysde.com",       pw: "ClienteAmc2026!"       },
+  { label: "Apex",      email: "cliente.apex@sysde.com"      },
+  { label: "Arkfin",    email: "cliente.arkfin@sysde.com"    },
+  { label: "Aurum",     email: "cliente.aurum@sysde.com"     },
+  { label: "Dos Pinos", email: "cliente.dospinos@sysde.com"  },
+  { label: "AMC",       email: "cliente.amc@sysde.com"       },
   // CMI tiene producto dual: Factoraje (soporte) + Arrendamiento (implementación).
   // Su acceso cliente está en SUPPORT_CLIENTS abajo y ve ambos productos.
 ];
 
 const SUPPORT_CLIENTS: DemoAccount[] = [
-  { label: "CFE Panamá", email: "cliente.cfe@sysde.com", pw: "ClienteCfePanam2026!" },
-  { label: "CMI", email: "cliente.cmi@sysde.com", pw: "ClienteCmi2026!" },
-  { label: "Coopecar", email: "cliente.coopecar@sysde.com", pw: "ClienteCoopecar2026!" },
-  { label: "Credicefi", email: "cliente.credicefi@sysde.com", pw: "ClienteCredicefi2026!" },
-  { label: "FIACG", email: "cliente.fiacg@sysde.com", pw: "ClienteFiacg2026!" },
-  { label: "Fundap", email: "cliente.fundap@sysde.com", pw: "ClienteFundap2026!" },
-  { label: "Quiero Confianza (ION)", email: "cliente.ion@sysde.com", pw: "ClienteQuieroConfianzaIon2026!" },
-  { label: "SAF UPV", email: "cliente.safupv@sysde.com", pw: "ClienteSafUpv2026!" },
+  { label: "CFE Panamá", email: "cliente.cfe@sysde.com" },
+  { label: "CMI", email: "cliente.cmi@sysde.com" },
+  { label: "Coopecar", email: "cliente.coopecar@sysde.com" },
+  { label: "Credicefi", email: "cliente.credicefi@sysde.com" },
+  { label: "FIACG", email: "cliente.fiacg@sysde.com" },
+  { label: "Fundap", email: "cliente.fundap@sysde.com" },
+  { label: "Quiero Confianza (ION)", email: "cliente.ion@sysde.com" },
+  { label: "SAF UPV", email: "cliente.safupv@sysde.com" },
 ];
 
 export default function Login() {
@@ -114,9 +91,11 @@ export default function Login() {
     setLoading(false);
   };
 
+  // Prellena solo el email; la contraseña la escribe el usuario. (Antes se
+  // hardcodeaban las contraseñas de cuentas productivas en el bundle público.)
   const fillCredentials = (acc: DemoAccount) => {
     setEmail(acc.email);
-    setPassword(acc.pw);
+    setPassword("");
   };
 
   const TONE_STYLES: Record<NonNullable<DemoAccount["tone"]>, { avatar: string; ring: string; gradient: string }> = {
