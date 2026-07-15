@@ -28,8 +28,8 @@ export function useUpsertServicePackage(clientId?: string) {
         end_date: pkg.end_date,
       };
       const q = pkg.id
-        ? (supabase.from("service_packages" as any).update(row).eq("id", pkg.id) as any)
-        : (supabase.from("service_packages" as any).insert(row) as any);
+        ? (supabase.from("service_packages").update(row).eq("id", pkg.id) as any)
+        : (supabase.from("service_packages").insert(row) as any);
       const { error } = await q;
       if (error) throw error;
     },
@@ -41,7 +41,7 @@ export function useDeleteServicePackage(clientId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase.from("service_packages" as any).delete().eq("id", id) as any);
+      const { error } = await (supabase.from("service_packages").delete().eq("id", id) as any);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["service-packages", clientId] }),
@@ -54,7 +54,7 @@ export function useServicePackages(clientId?: string) {
     enabled: !!clientId,
     queryFn: async () => {
       const { data, error } = await (supabase
-        .from("service_packages" as any)
+        .from("service_packages")
         .select("*")
         .eq("client_id", clientId)
         .order("start_date") as any);

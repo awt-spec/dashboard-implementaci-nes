@@ -32,7 +32,7 @@ export function useMyNotifications(limit = 20) {
     enabled: !!user?.id,
     queryFn: async () => {
       const { data, error } = await (supabase
-        .from("user_notifications" as any)
+        .from("user_notifications")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(limit) as any);
@@ -50,7 +50,7 @@ export function useUnreadNotificationCount() {
     enabled: !!user?.id,
     queryFn: async () => {
       const { count, error } = await (supabase
-        .from("user_notifications" as any)
+        .from("user_notifications")
         .select("id", { count: "exact", head: true })
         .eq("is_read", false) as any);
       if (error) throw error;
@@ -65,7 +65,7 @@ export function useMarkNotificationRead() {
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await (supabase
-        .from("user_notifications" as any)
+        .from("user_notifications")
         .update({ is_read: true })
         .eq("id", id) as any);
       if (error) throw error;
@@ -84,7 +84,7 @@ export function useMarkAllRead() {
     mutationFn: async () => {
       if (!user?.id) return;
       const { error } = await (supabase
-        .from("user_notifications" as any)
+        .from("user_notifications")
         .update({ is_read: true })
         .eq("is_read", false)
         .eq("user_id", user.id) as any);

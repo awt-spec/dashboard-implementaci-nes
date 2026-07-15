@@ -68,7 +68,7 @@ export function useWorkTimeEntries(daysBack = 14) {
     queryKey: ["work-time-entries", daysBack],
     queryFn: async () => {
       const since = new Date(Date.now() - daysBack * 86400000).toISOString();
-      const { data, error } = await (supabase.from("work_time_entries" as any)
+      const { data, error } = await (supabase.from("work_time_entries")
         .select("*")
         .gte("started_at", since)
         .order("started_at", { ascending: false }) as any);
@@ -101,7 +101,7 @@ export function useRecentActivity(hoursBack = 48) {
     queryKey: ["user-activity-log", hoursBack],
     queryFn: async () => {
       const since = new Date(Date.now() - hoursBack * 3600000).toISOString();
-      const { data, error } = await (supabase.from("user_activity_log" as any)
+      const { data, error } = await (supabase.from("user_activity_log")
         .select("user_id, action, entity_type, created_at")
         .gte("created_at", since) as any);
       if (error) return [];

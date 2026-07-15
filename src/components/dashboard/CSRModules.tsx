@@ -345,7 +345,7 @@ export function AgendaModule({
   const { data: sessions = [] } = useQuery({
     queryKey: ["csr-agenda-sessions"],
     queryFn: async () => {
-      const { data } = await supabase.from("support_minutes" as any)
+      const { data } = await supabase.from("support_minutes")
         .select("id, client_id, title, date, summary, cases_referenced, action_items, agreements, attendees")
         .order("date", { ascending: false }).limit(200);
       return (data || []) as unknown as AgendaSession[];

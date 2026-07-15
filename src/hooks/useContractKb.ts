@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 //   • useContractDocuments  — lista los PDFs ingestados de un cliente.
 //   • useIngestContractDoc  — sube el PDF al bucket + invoca ingest-contract-doc.
 //   • useExtractContractTerms — invoca el agente extractor RAG.
-// Las tablas nuevas usan cast `as any` (types.ts no regenerado).
+// Tablas tipadas desde types.ts (regenerado).
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface ContractDocument {
@@ -55,7 +55,7 @@ export function useContractDocuments(clientId?: string) {
     enabled: !!clientId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("contract_documents" as any)
+        .from("contract_documents")
         .select("id, client_id, contract_id, storage_path, filename, status, error, chunk_count, page_count, created_at")
         .eq("client_id", clientId!)
         .order("created_at", { ascending: false });
@@ -131,7 +131,7 @@ export function useContractChunks(documentId?: string) {
     enabled: !!documentId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("contract_document_chunks" as any)
+        .from("contract_document_chunks")
         .select("id, chunk_index, content, token_count")
         .eq("document_id", documentId!)
         .order("chunk_index");
@@ -146,8 +146,8 @@ export function useDeleteContractDoc(clientId?: string) {
   return useMutation({
     mutationFn: async (documentId: string) => {
       // Borra los fragmentos y luego el documento (por si no hay cascade).
-      await supabase.from("contract_document_chunks" as any).delete().eq("document_id", documentId);
-      const { error } = await supabase.from("contract_documents" as any).delete().eq("id", documentId);
+      await supabase.from("contract_document_chunks").delete().eq("document_id", documentId);
+      const { error } = await supabase.from("contract_documents").delete().eq("id", documentId);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["contract-documents", clientId] }),

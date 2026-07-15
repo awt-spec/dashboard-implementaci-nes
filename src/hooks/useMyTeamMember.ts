@@ -21,7 +21,7 @@ export function useMyTeamMember() {
     enabled: !!email,
     queryFn: async () => {
       const { data, error } = await (supabase
-        .from("sysde_team_members" as any)
+        .from("sysde_team_members")
         .select("id, name, email, role, department, employment_type, hourly_rate, rate_currency")
         .ilike("email", email!)
         .maybeSingle() as any);

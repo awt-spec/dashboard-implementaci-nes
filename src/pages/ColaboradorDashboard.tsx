@@ -84,10 +84,10 @@ export default function ColaboradorDashboard() {
     (async () => {
       const [clientsRes, todayTime, sessionsRes, minutesRes] = await Promise.all([
         supabase.from("clients").select("id, name"),
-        (supabase.from("work_time_entries" as any).select("duration_seconds")
+        (supabase.from("work_time_entries").select("duration_seconds")
           .eq("user_id", user.id)
           .gte("started_at", new Date(new Date().setHours(0, 0, 0, 0)).toISOString()) as any),
-        (supabase.from("user_sessions" as any).select("started_at")
+        (supabase.from("user_sessions").select("started_at")
           .eq("user_id", user.id)
           .gte("started_at", new Date(Date.now() - 30 * 86400000).toISOString())
           .order("started_at", { ascending: false }) as any),

@@ -33,7 +33,7 @@ export function TeamLevelAIPanel() {
   const load = async () => {
     setLoading(true);
     const { data, error } = await (supabase
-      .from("pm_ai_analysis" as any)
+      .from("pm_ai_analysis")
       .select("*")
       .eq("analysis_type", "team_level")
       .order("created_at", { ascending: false })

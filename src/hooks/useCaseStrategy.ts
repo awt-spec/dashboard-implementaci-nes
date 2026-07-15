@@ -62,7 +62,7 @@ export function useLatestCaseStrategy(ticketId: string | null | undefined) {
     queryFn: async () => {
       if (!ticketId) return null;
       const { data, error } = await (supabase
-        .from("pm_ai_analysis" as any)
+        .from("pm_ai_analysis")
         .select("*")
         .eq("analysis_type", "case_strategy")
         .eq("scope", ticketId)

@@ -26,7 +26,7 @@ export function useSvaTeams(includeInactive = false) {
   return useQuery({
     queryKey: ["sva-teams", includeInactive],
     queryFn: async () => {
-      let q = (supabase.from("sva_teams" as any).select("*") as any);
+      let q = (supabase.from("sva_teams").select("*") as any);
       if (!includeInactive) q = q.eq("is_active", true);
       const { data, error } = await q.order("name", { ascending: true });
       if (error) throw error;
@@ -57,10 +57,10 @@ export function useUpsertSvaTeam() {
         is_active: input.is_active ?? true,
       };
       if (input.id) {
-        const { error } = await (supabase.from("sva_teams" as any).update(payload).eq("id", input.id) as any);
+        const { error } = await (supabase.from("sva_teams").update(payload).eq("id", input.id) as any);
         if (error) throw error;
       } else {
-        const { error } = await (supabase.from("sva_teams" as any).insert([{ ...payload, created_by: userData?.user?.id }]) as any);
+        const { error } = await (supabase.from("sva_teams").insert([{ ...payload, created_by: userData?.user?.id }]) as any);
         if (error) throw error;
       }
     },
@@ -72,7 +72,7 @@ export function useDeleteSvaTeam() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase.from("sva_teams" as any).delete().eq("id", id) as any);
+      const { error } = await (supabase.from("sva_teams").delete().eq("id", id) as any);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["sva-teams"] }),
@@ -87,7 +87,7 @@ export function useSvaTeamHolidays(teamId: string | undefined) {
     queryFn: async () => {
       if (!teamId) return [];
       const { data, error } = await (
-        supabase.from("sva_team_holidays" as any).select("*").eq("sva_team_id", teamId).order("holiday_date", { ascending: true }) as any
+        supabase.from("sva_team_holidays").select("*").eq("sva_team_id", teamId).order("holiday_date", { ascending: true }) as any
       );
       if (error) throw error;
       return (data || []) as SvaTeamHoliday[];
@@ -100,7 +100,7 @@ export function useAddSvaTeamHoliday() {
   return useMutation({
     mutationFn: async ({ teamId, date, description }: { teamId: string; date: string; description?: string }) => {
       const { error } = await (
-        supabase.from("sva_team_holidays" as any).insert([{ sva_team_id: teamId, holiday_date: date, description: description ?? null }]) as any
+        supabase.from("sva_team_holidays").insert([{ sva_team_id: teamId, holiday_date: date, description: description ?? null }]) as any
       );
       if (error) throw error;
     },
@@ -112,7 +112,7 @@ export function useDeleteSvaTeamHoliday() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id }: { id: string; teamId: string }) => {
-      const { error } = await (supabase.from("sva_team_holidays" as any).delete().eq("id", id) as any);
+      const { error } = await (supabase.from("sva_team_holidays").delete().eq("id", id) as any);
       if (error) throw error;
     },
     onSuccess: (_d, vars) => qc.invalidateQueries({ queryKey: ["sva-team-holidays", vars.teamId] }),

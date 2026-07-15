@@ -376,7 +376,7 @@ export function usePendingComments(clientId?: string) {
     queryKey: ["pending-comments", clientId ?? "all"],
     queryFn: async (): Promise<PendingComment[]> => {
       // 1. Nombres del staff SYSDE (para distinguir cliente vs interno).
-      const { data: staff } = await (supabase.from("sysde_team_members" as any).select("name") as any);
+      const { data: staff } = await (supabase.from("sysde_team_members").select("name") as any);
       const staffNames = new Set(
         (staff || []).map((m: any) => (m.name || "").trim().toLowerCase()).filter(Boolean),
       );

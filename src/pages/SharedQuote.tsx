@@ -44,7 +44,7 @@ export default function SharedQuote() {
     (async () => {
       setLoading(true);
       const { data, error } = await (supabase
-        .from("shared_quotes" as any)
+        .from("shared_quotes")
         .select("quote_snapshot, expires_at")
         .eq("token", token)
         .maybeSingle() as any);

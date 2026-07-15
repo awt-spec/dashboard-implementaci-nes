@@ -295,7 +295,7 @@ export function MinuteFeedbackRecorder({
       };
 
       const { error } = await (supabase
-        .from("support_minutes_feedback" as any)
+        .from("support_minutes_feedback")
         .insert(payload) as any);
       if (error) throw error;
 

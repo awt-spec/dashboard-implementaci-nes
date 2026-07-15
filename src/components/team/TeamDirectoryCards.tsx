@@ -29,7 +29,7 @@ function useAllCapacity() {
   return useQuery({
     queryKey: ["all-capacity"],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("team_member_capacity" as any).select("*") as any);
+      const { data, error } = await (supabase.from("team_member_capacity").select("*") as any);
       if (error) throw error;
       return (data || []) as any[];
     },

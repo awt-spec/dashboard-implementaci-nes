@@ -31,8 +31,8 @@ export function useUpsertBacklogItem(clientId?: string) {
         effort: item.effort ?? null,
       };
       const q = item.id
-        ? (supabase.from("backlog_items" as any).update(row).eq("id", item.id) as any)
-        : (supabase.from("backlog_items" as any).insert(row) as any);
+        ? (supabase.from("backlog_items").update(row).eq("id", item.id) as any)
+        : (supabase.from("backlog_items").insert(row) as any);
       const { error } = await q;
       if (error) throw error;
     },
@@ -44,7 +44,7 @@ export function useDeleteBacklogItem(clientId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase.from("backlog_items" as any).delete().eq("id", id) as any);
+      const { error } = await (supabase.from("backlog_items").delete().eq("id", id) as any);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["backlog-items", clientId] }),
@@ -116,7 +116,7 @@ export function useBacklogTree(clientId?: string) {
     enabled: !!clientId,
     queryFn: async () => {
       const { data, error } = await (supabase
-        .from("backlog_items" as any)
+        .from("backlog_items")
         .select("*")
         .eq("client_id", clientId) as any);
       if (error) throw error;

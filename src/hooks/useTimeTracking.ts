@@ -40,7 +40,7 @@ export function useMyTimeEntries(rangeDays = 30) {
       const from = new Date();
       from.setDate(from.getDate() - rangeDays);
       const { data, error } = await (supabase
-        .from("work_time_entries" as any)
+        .from("work_time_entries")
         .select("*")
         .eq("user_id", user!.id)
         .gte("started_at", from.toISOString())
@@ -58,7 +58,7 @@ export function useAllTimeEntries(rangeDays = 30) {
       const from = new Date();
       from.setDate(from.getDate() - rangeDays);
       const { data, error } = await (supabase
-        .from("work_time_entries" as any)
+        .from("work_time_entries")
         .select("*")
         .gte("started_at", from.toISOString())
         .order("started_at", { ascending: false }) as any);
@@ -75,7 +75,7 @@ export function useMyTimeGoal() {
     enabled: !!user?.id,
     queryFn: async () => {
       const { data, error } = await (supabase
-        .from("time_tracking_goals" as any)
+        .from("time_tracking_goals")
         .select("*")
         .eq("user_id", user!.id)
         .maybeSingle() as any);
@@ -91,7 +91,7 @@ export function useUpsertTimeGoal() {
   return useMutation({
     mutationFn: async (goal: { weekly_target_hours: number; billable_target_pct: number }) => {
       const { error } = await (supabase
-        .from("time_tracking_goals" as any)
+        .from("time_tracking_goals")
         .upsert([{ user_id: user!.id, ...goal }] as any, { onConflict: "user_id" }) as any);
       if (error) throw error;
     },
@@ -116,7 +116,7 @@ export function useCreateManualEntry() {
       const seconds = Math.round(entry.hours * 3600);
       const startedAt = new Date(`${entry.work_date}T09:00:00`);
       const endedAt = new Date(startedAt.getTime() + seconds * 1000);
-      const { error } = await (supabase.from("work_time_entries" as any).insert([{
+      const { error } = await (supabase.from("work_time_entries").insert([{
         user_id: user!.id,
         source: entry.source,
         item_id: entry.item_id,
@@ -144,7 +144,7 @@ export function useUpdateTimeEntry() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<TimeEntry> }) => {
-      const { error } = await (supabase.from("work_time_entries" as any).update(updates as any).eq("id", id) as any);
+      const { error } = await (supabase.from("work_time_entries").update(updates as any).eq("id", id) as any);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -158,7 +158,7 @@ export function useDeleteTimeEntry() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase.from("work_time_entries" as any).delete().eq("id", id) as any);
+      const { error } = await (supabase.from("work_time_entries").delete().eq("id", id) as any);
       if (error) throw error;
     },
     onSuccess: () => {

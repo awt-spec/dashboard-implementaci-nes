@@ -36,7 +36,7 @@ export function useClientContracts(clientId?: string) {
   return useQuery({
     queryKey: ["client-contracts", clientId],
     queryFn: async () => {
-      let q = (supabase.from("client_contracts" as any).select("*") as any);
+      let q = (supabase.from("client_contracts").select("*") as any);
       if (clientId) q = q.eq("client_id", clientId);
       const { data, error } = await q.order("created_at", { ascending: false });
       if (error) throw error;
@@ -49,7 +49,7 @@ export function useClientSLAs(clientId?: string) {
   return useQuery({
     queryKey: ["client-slas", clientId],
     queryFn: async () => {
-      let q = (supabase.from("client_slas" as any).select("*") as any);
+      let q = (supabase.from("client_slas").select("*") as any);
       if (clientId) q = q.eq("client_id", clientId);
       const { data, error } = await q.order("priority_level");
       if (error) throw error;
@@ -63,10 +63,10 @@ export function useUpsertContract() {
   return useMutation({
     mutationFn: async (c: Partial<ClientContract> & { client_id: string }) => {
       if (c.id) {
-        const { error } = await (supabase.from("client_contracts" as any).update(c).eq("id", c.id) as any);
+        const { error } = await (supabase.from("client_contracts").update(c).eq("id", c.id) as any);
         if (error) throw error;
       } else {
-        const { error } = await (supabase.from("client_contracts" as any).insert([c]) as any);
+        const { error } = await (supabase.from("client_contracts").insert([c]) as any);
         if (error) throw error;
       }
     },
@@ -78,7 +78,7 @@ export function useDeleteContract() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase.from("client_contracts" as any).delete().eq("id", id) as any);
+      const { error } = await (supabase.from("client_contracts").delete().eq("id", id) as any);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["client-contracts"] }),
@@ -90,10 +90,10 @@ export function useUpsertSLA() {
   return useMutation({
     mutationFn: async (s: Partial<ClientSLA> & { client_id: string }) => {
       if (s.id) {
-        const { error } = await (supabase.from("client_slas" as any).update(s).eq("id", s.id) as any);
+        const { error } = await (supabase.from("client_slas").update(s).eq("id", s.id) as any);
         if (error) throw error;
       } else {
-        const { error } = await (supabase.from("client_slas" as any).insert([s]) as any);
+        const { error } = await (supabase.from("client_slas").insert([s]) as any);
         if (error) throw error;
       }
     },
@@ -105,7 +105,7 @@ export function useDeleteSLA() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase.from("client_slas" as any).delete().eq("id", id) as any);
+      const { error } = await (supabase.from("client_slas").delete().eq("id", id) as any);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["client-slas"] }),

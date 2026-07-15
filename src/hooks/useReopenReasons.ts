@@ -26,7 +26,7 @@ export function useReopenReasons() {
     queryFn: async () => {
       const { data, error } = await (
         supabase
-          .from("reopen_reasons" as any)
+          .from("reopen_reasons")
           .select("*")
           .eq("is_active", true)
           .order("sort_order", { ascending: true }) as any
@@ -47,7 +47,7 @@ export function useReopenReasonsAdmin() {
     queryFn: async () => {
       const { data, error } = await (
         supabase
-          .from("reopen_reasons" as any)
+          .from("reopen_reasons")
           .select("*")
           .order("sort_order", { ascending: true }) as any
       );
@@ -81,12 +81,12 @@ export function useUpsertReopenReason() {
       };
       if (input.id) {
         const { error } = await (
-          supabase.from("reopen_reasons" as any).update(payload).eq("id", input.id) as any
+          supabase.from("reopen_reasons").update(payload).eq("id", input.id) as any
         );
         if (error) throw error;
       } else {
         const { error } = await (
-          supabase.from("reopen_reasons" as any).insert([payload]) as any
+          supabase.from("reopen_reasons").insert([payload]) as any
         );
         if (error) throw error;
       }
@@ -102,7 +102,7 @@ export function useToggleReopenReason() {
   return useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
       const { error } = await (
-        supabase.from("reopen_reasons" as any).update({ is_active }).eq("id", id) as any
+        supabase.from("reopen_reasons").update({ is_active }).eq("id", id) as any
       );
       if (error) throw error;
     },
@@ -117,7 +117,7 @@ export function useDeleteReopenReason() {
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await (
-        supabase.from("reopen_reasons" as any).delete().eq("id", id) as any
+        supabase.from("reopen_reasons").delete().eq("id", id) as any
       );
       if (error) {
         // El trigger SQL bloquea borrar motivos del sistema con mensaje claro
@@ -137,7 +137,7 @@ export function useReorderReopenReasons() {
       // Update individual — sequential. PostgREST no soporta bulk update by id list trivialmente.
       for (const u of updates) {
         const { error } = await (
-          supabase.from("reopen_reasons" as any).update({ sort_order: u.sort_order }).eq("id", u.id) as any
+          supabase.from("reopen_reasons").update({ sort_order: u.sort_order }).eq("id", u.id) as any
         );
         if (error) throw error;
       }

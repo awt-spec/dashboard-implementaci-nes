@@ -46,7 +46,7 @@ export function useUserSupervisions(filters?: { supervisorId?: string; supervise
   return useQuery({
     queryKey: ["user-supervisions", filters],
     queryFn: async () => {
-      let q = (supabase.from("user_supervisions" as any).select("*") as any);
+      let q = (supabase.from("user_supervisions").select("*") as any);
       if (filters?.supervisorId) q = q.eq("supervisor_id", filters.supervisorId);
       if (filters?.supervisedUserId) q = q.eq("supervised_user_id", filters.supervisedUserId);
       if (filters?.onlyActive) q = q.eq("is_active", true);
@@ -61,7 +61,7 @@ export function useTeamSupervisions(filters?: { supervisorId?: string; teamDepar
   return useQuery({
     queryKey: ["team-supervisions", filters],
     queryFn: async () => {
-      let q = (supabase.from("team_supervisions" as any).select("*") as any);
+      let q = (supabase.from("team_supervisions").select("*") as any);
       if (filters?.supervisorId) q = q.eq("supervisor_id", filters.supervisorId);
       if (filters?.teamDepartment) q = q.eq("team_department", filters.teamDepartment);
       if (filters?.onlyActive) q = q.eq("is_active", true);
@@ -122,11 +122,11 @@ export function useUpsertUserSupervision() {
       };
       if (input.id) {
         const { error } = await (
-          supabase.from("user_supervisions" as any).update(payload).eq("id", input.id) as any
+          supabase.from("user_supervisions").update(payload).eq("id", input.id) as any
         );
         if (error) throw error;
       } else {
-        const { error } = await (supabase.from("user_supervisions" as any).insert([payload]) as any);
+        const { error } = await (supabase.from("user_supervisions").insert([payload]) as any);
         if (error) throw error;
       }
     },
@@ -143,7 +143,7 @@ export function useEndUserSupervision() {
     mutationFn: async (id: string) => {
       const { error } = await (
         supabase
-          .from("user_supervisions" as any)
+          .from("user_supervisions")
           .update({ is_active: false, ended_at: new Date().toISOString().slice(0, 10) })
           .eq("id", id) as any
       );
@@ -161,7 +161,7 @@ export function useDeleteUserSupervision() {
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await (
-        supabase.from("user_supervisions" as any).delete().eq("id", id) as any
+        supabase.from("user_supervisions").delete().eq("id", id) as any
       );
       if (error) throw error;
     },
@@ -205,11 +205,11 @@ export function useUpsertTeamSupervision() {
       };
       if (input.id) {
         const { error } = await (
-          supabase.from("team_supervisions" as any).update(payload).eq("id", input.id) as any
+          supabase.from("team_supervisions").update(payload).eq("id", input.id) as any
         );
         if (error) throw error;
       } else {
-        const { error } = await (supabase.from("team_supervisions" as any).insert([payload]) as any);
+        const { error } = await (supabase.from("team_supervisions").insert([payload]) as any);
         if (error) throw error;
       }
     },
@@ -225,7 +225,7 @@ export function useEndTeamSupervision() {
     mutationFn: async (id: string) => {
       const { error } = await (
         supabase
-          .from("team_supervisions" as any)
+          .from("team_supervisions")
           .update({ is_active: false, ended_at: new Date().toISOString().slice(0, 10) })
           .eq("id", id) as any
       );
@@ -242,7 +242,7 @@ export function useDeleteTeamSupervision() {
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await (
-        supabase.from("team_supervisions" as any).delete().eq("id", id) as any
+        supabase.from("team_supervisions").delete().eq("id", id) as any
       );
       if (error) throw error;
     },

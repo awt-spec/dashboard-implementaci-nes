@@ -29,7 +29,7 @@ export function usePolicyTemplates(includeInactive = false) {
   return useQuery({
     queryKey: ["policy-templates", includeInactive],
     queryFn: async () => {
-      let q = (supabase.from("policy_templates" as any).select("*") as any);
+      let q = (supabase.from("policy_templates").select("*") as any);
       if (!includeInactive) q = q.eq("is_active", true);
       const { data, error } = await q.order("name", { ascending: true });
       if (error) throw error;
@@ -58,10 +58,10 @@ export function useUpsertPolicyTemplate() {
         is_active: input.is_active ?? true,
       };
       if (input.id) {
-        const { error } = await (supabase.from("policy_templates" as any).update(payload).eq("id", input.id) as any);
+        const { error } = await (supabase.from("policy_templates").update(payload).eq("id", input.id) as any);
         if (error) throw error;
       } else {
-        const { error } = await (supabase.from("policy_templates" as any).insert([{ ...payload, created_by: userData?.user?.id }]) as any);
+        const { error } = await (supabase.from("policy_templates").insert([{ ...payload, created_by: userData?.user?.id }]) as any);
         if (error) throw error;
       }
     },
@@ -73,7 +73,7 @@ export function useDeletePolicyTemplate() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase.from("policy_templates" as any).delete().eq("id", id) as any);
+      const { error } = await (supabase.from("policy_templates").delete().eq("id", id) as any);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["policy-templates"] }),
@@ -88,7 +88,7 @@ export function usePolicyTemplatePackages(templateId: string | undefined) {
     queryFn: async () => {
       if (!templateId) return [];
       const { data, error } = await (
-        supabase.from("policy_template_packages" as any).select("*").eq("policy_template_id", templateId).order("sort_order", { ascending: true }) as any
+        supabase.from("policy_template_packages").select("*").eq("policy_template_id", templateId).order("sort_order", { ascending: true }) as any
       );
       if (error) throw error;
       return (data || []) as PolicyTemplatePackage[];
@@ -123,10 +123,10 @@ export function useUpsertTemplatePackage() {
         sort_order: input.sort_order ?? 0,
       };
       if (input.id) {
-        const { error } = await (supabase.from("policy_template_packages" as any).update(payload).eq("id", input.id) as any);
+        const { error } = await (supabase.from("policy_template_packages").update(payload).eq("id", input.id) as any);
         if (error) throw error;
       } else {
-        const { error } = await (supabase.from("policy_template_packages" as any).insert([payload]) as any);
+        const { error } = await (supabase.from("policy_template_packages").insert([payload]) as any);
         if (error) throw error;
       }
     },
@@ -138,7 +138,7 @@ export function useDeleteTemplatePackage() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id }: { id: string; templateId: string }) => {
-      const { error } = await (supabase.from("policy_template_packages" as any).delete().eq("id", id) as any);
+      const { error } = await (supabase.from("policy_template_packages").delete().eq("id", id) as any);
       if (error) throw error;
     },
     onSuccess: (_d, vars) => qc.invalidateQueries({ queryKey: ["policy-template-packages", vars.templateId] }),

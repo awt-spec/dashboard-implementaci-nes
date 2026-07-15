@@ -20,7 +20,7 @@ export function useActivityTracker() {
     opts: { entity_type?: string; entity_id?: string; client_id?: string; metadata?: Record<string, unknown> } = {}
   ) => {
     if (!user) return;
-    await (supabase.from("user_activity_log" as any).insert([{
+    await (supabase.from("user_activity_log").insert([{
       user_id: user.id,
       action,
       entity_type: opts.entity_type ?? null,
@@ -35,7 +35,7 @@ export function useActivityTracker() {
 
     let cancelled = false;
     (async () => {
-      const { data, error } = await (supabase.from("user_sessions" as any).insert([{
+      const { data, error } = await (supabase.from("user_sessions").insert([{
         user_id: user.id,
         user_agent: navigator.userAgent.slice(0, 200),
       }] as any).select("id").single() as any);
@@ -47,7 +47,7 @@ export function useActivityTracker() {
 
       heartbeatRef.current = window.setInterval(async () => {
         if (!sessionIdRef.current) return;
-        await (supabase.from("user_sessions" as any)
+        await (supabase.from("user_sessions")
           .update({ last_heartbeat: new Date().toISOString() } as any)
           .eq("id", sessionIdRef.current) as any);
       }, HEARTBEAT_MS);
@@ -57,7 +57,7 @@ export function useActivityTracker() {
       const sid = sessionIdRef.current;
       if (!sid) return;
       // Use sendBeacon-style fire-and-forget update
-      (supabase.from("user_sessions" as any)
+      (supabase.from("user_sessions")
         .update({ ended_at: new Date().toISOString(), last_heartbeat: new Date().toISOString() } as any)
         .eq("id", sid) as any).then(() => {});
       sessionStorage.removeItem(SESSION_KEY);
@@ -86,7 +86,7 @@ export function useWorkTimer() {
     if (!user) return null;
     // Auto-stop previous if any
     if (activeRef.current) await stop();
-    const { data, error } = await (supabase.from("work_time_entries" as any).insert([{
+    const { data, error } = await (supabase.from("work_time_entries").insert([{
       user_id: user.id,
       source: item.source,
       item_id: item.id,
@@ -103,7 +103,7 @@ export function useWorkTimer() {
     const active = activeRef.current;
     if (!active) return;
     const seconds = Math.round((Date.now() - active.startedAt) / 1000);
-    await (supabase.from("work_time_entries" as any)
+    await (supabase.from("work_time_entries")
       .update({ ended_at: new Date().toISOString(), duration_seconds: seconds } as any)
       .eq("id", active.id) as any);
     activeRef.current = null;

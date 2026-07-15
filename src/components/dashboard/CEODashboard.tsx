@@ -95,7 +95,7 @@ export function CEODashboard() {
 
   const [financials, setFinancials] = useState<any[]>([]);
   useEffect(() => {
-    supabase.from("client_financials" as any).select("*").then(({ data }) => setFinancials(data || []));
+    supabase.from("client_financials").select("*").then(({ data }) => setFinancials(data || []));
   }, []);
 
   const now = new Date();

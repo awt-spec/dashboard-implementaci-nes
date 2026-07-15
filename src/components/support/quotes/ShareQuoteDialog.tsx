@@ -22,9 +22,9 @@ export function ShareQuoteDialog({ quote, trigger }: { quote: Quote; trigger?: R
     setLoading(true);
     try {
       const { data: items } = await (supabase
-        .from("quote_items" as any).select("*").eq("quote_id", quote.id).order("position") as any);
+        .from("quote_items").select("*").eq("quote_id", quote.id).order("position") as any);
       const { data: client } = await (supabase
-        .from("clients" as any).select("name").eq("id", quote.client_id).maybeSingle() as any);
+        .from("clients").select("name").eq("id", quote.client_id).maybeSingle() as any);
       const snapshot = {
         quote_number: quote.quote_number,
         title: quote.title,
@@ -48,7 +48,7 @@ export function ShareQuoteDialog({ quote, trigger }: { quote: Quote; trigger?: R
       };
       const { data: userData } = await supabase.auth.getUser();
       const { data, error } = await (supabase
-        .from("shared_quotes" as any)
+        .from("shared_quotes")
         .insert({
           quote_id: quote.id,
           client_id: quote.client_id,

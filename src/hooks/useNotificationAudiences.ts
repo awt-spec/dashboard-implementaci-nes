@@ -45,7 +45,7 @@ export function useClientAudiences(clientId: string | undefined) {
       if (!clientId) return [];
       const { data, error } = await (
         supabase
-          .from("notification_audiences" as any)
+          .from("notification_audiences")
           .select("*")
           .eq("client_id", clientId)
           .order("created_at", { ascending: false }) as any
@@ -64,7 +64,7 @@ export function useAudienceMembers(audienceId: string | undefined) {
       if (!audienceId) return [];
       const { data, error } = await (
         supabase
-          .from("notification_audience_members" as any)
+          .from("notification_audience_members")
           .select("*")
           .eq("audience_id", audienceId) as any
       );
@@ -122,13 +122,13 @@ export function useUpsertAudience() {
       };
       if (input.id) {
         const { error } = await (
-          supabase.from("notification_audiences" as any).update(payload).eq("id", input.id) as any
+          supabase.from("notification_audiences").update(payload).eq("id", input.id) as any
         );
         if (error) throw error;
         return input.id;
       } else {
         const { data, error } = await (
-          supabase.from("notification_audiences" as any).insert([payload]).select("id").single() as any
+          supabase.from("notification_audiences").insert([payload]).select("id").single() as any
         );
         if (error) throw error;
         return (data as any).id as string;
@@ -145,7 +145,7 @@ export function useDeleteAudience() {
   return useMutation({
     mutationFn: async ({ id }: { id: string; clientId: string }) => {
       const { error } = await (
-        supabase.from("notification_audiences" as any).delete().eq("id", id) as any
+        supabase.from("notification_audiences").delete().eq("id", id) as any
       );
       if (error) throw error;
     },
@@ -175,7 +175,7 @@ export function useClientUsersForAudience(clientId: string | undefined) {
       if (!clientId) return [];
       const { data, error } = await (
         supabase
-          .from("cliente_company_assignments" as any)
+          .from("cliente_company_assignments")
           .select("user_id, permission_level, profiles:user_id(full_name,email)")
           .eq("client_id", clientId) as any
       );
@@ -183,7 +183,7 @@ export function useClientUsersForAudience(clientId: string | undefined) {
         // Fallback: el join puede fallar por RLS; intentar lookup separado
         const { data: assigns, error: e2 } = await (
           supabase
-            .from("cliente_company_assignments" as any)
+            .from("cliente_company_assignments")
             .select("user_id, permission_level")
             .eq("client_id", clientId) as any
         );
@@ -224,7 +224,7 @@ export function useSetAudienceMembers() {
 
       // Diff con miembros actuales
       const { data: current, error: readErr } = await (
-        supabase.from("notification_audience_members" as any).select("user_id").eq("audience_id", audienceId) as any
+        supabase.from("notification_audience_members").select("user_id").eq("audience_id", audienceId) as any
       );
       if (readErr) throw readErr;
       const currentIds = new Set(((current ?? []) as Array<{ user_id: string }>).map(r => r.user_id));
@@ -236,7 +236,7 @@ export function useSetAudienceMembers() {
       if (toRemove.length > 0) {
         const { error } = await (
           supabase
-            .from("notification_audience_members" as any)
+            .from("notification_audience_members")
             .delete()
             .eq("audience_id", audienceId)
             .in("user_id", toRemove) as any
@@ -246,7 +246,7 @@ export function useSetAudienceMembers() {
       if (toAdd.length > 0) {
         const rows = toAdd.map(uid => ({ audience_id: audienceId, user_id: uid, added_by: addedBy }));
         const { error } = await (
-          supabase.from("notification_audience_members" as any).insert(rows) as any
+          supabase.from("notification_audience_members").insert(rows) as any
         );
         if (error) throw error;
       }

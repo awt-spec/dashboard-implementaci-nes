@@ -71,7 +71,7 @@ export function useLatestClientStrategy(clientId: string | null | undefined) {
     queryFn: async () => {
       if (!clientId) return null;
       const { data, error } = await (supabase
-        .from("pm_ai_analysis" as any)
+        .from("pm_ai_analysis")
         .select("*")
         .eq("analysis_type", "client_strategy")
         .eq("scope", clientId)

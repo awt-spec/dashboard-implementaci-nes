@@ -42,7 +42,7 @@ export function useSprintDailies(sprintId?: string) {
     enabled: !!sprintId,
     queryFn: async () => {
       const { data, error } = await (supabase
-        .from("sprint_dailies" as any)
+        .from("sprint_dailies")
         .select("*")
         .eq("sprint_id", sprintId)
         .order("date", { ascending: false }) as any);
@@ -57,7 +57,7 @@ export function useUpsertDaily() {
   return useMutation({
     mutationFn: async (input: Partial<SprintDaily> & { sprint_id: string; member_name: string; date: string }) => {
       const { error } = await (supabase
-        .from("sprint_dailies" as any)
+        .from("sprint_dailies")
         .upsert([input], { onConflict: "sprint_id,member_name,date" }) as any);
       if (error) throw error;
     },
@@ -72,7 +72,7 @@ export function useSprintRetro(sprintId?: string) {
     enabled: !!sprintId,
     queryFn: async () => {
       const { data, error } = await (supabase
-        .from("sprint_retrospectives" as any)
+        .from("sprint_retrospectives")
         .select("*")
         .eq("sprint_id", sprintId)
         .maybeSingle() as any);
@@ -87,7 +87,7 @@ export function useUpsertRetro() {
   return useMutation({
     mutationFn: async (input: Partial<SprintRetro> & { sprint_id: string }) => {
       const { error } = await (supabase
-        .from("sprint_retrospectives" as any)
+        .from("sprint_retrospectives")
         .upsert([input], { onConflict: "sprint_id" }) as any);
       if (error) throw error;
     },
@@ -102,7 +102,7 @@ export function useSprintReview(sprintId?: string) {
     enabled: !!sprintId,
     queryFn: async () => {
       const { data, error } = await (supabase
-        .from("sprint_reviews" as any)
+        .from("sprint_reviews")
         .select("*")
         .eq("sprint_id", sprintId)
         .maybeSingle() as any);
@@ -117,7 +117,7 @@ export function useUpsertReview() {
   return useMutation({
     mutationFn: async (input: Partial<SprintReview> & { sprint_id: string }) => {
       const { error } = await (supabase
-        .from("sprint_reviews" as any)
+        .from("sprint_reviews")
         .upsert([input], { onConflict: "sprint_id" }) as any);
       if (error) throw error;
     },
