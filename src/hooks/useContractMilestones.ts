@@ -60,7 +60,7 @@ export function useUpdateMilestone(contractId?: string) {
       if (status === "confirmado" || status === "cumplido") {
         patch.confirmed_at = new Date().toISOString();
       }
-      const { error } = await (supabase.from("contract_milestones").update(patch).eq("id", id) as any);
+      const { error } = await (supabase.from("contract_milestones").update(patch as any).eq("id", id) as any);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["contract-milestones", contractId] }),

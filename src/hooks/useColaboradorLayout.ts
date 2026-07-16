@@ -81,7 +81,7 @@ export function useColaboradorLayout() {
       if (!user?.id) throw new Error("No user");
       const { error } = await (supabase
         .from("colaborador_dashboard_layouts")
-        .upsert({ user_id: user.id, layout: payload.layout, widgets: payload.widgets }, { onConflict: "user_id" }) as any);
+        .upsert({ user_id: user.id, layout: payload.layout, widgets: payload.widgets } as any, { onConflict: "user_id" }) as any);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["colab-layout", user?.id] }),
@@ -92,7 +92,7 @@ export function useColaboradorLayout() {
       if (!user?.id) throw new Error("No user");
       const { error } = await (supabase
         .from("colaborador_dashboard_layouts")
-        .upsert({ user_id: user.id, ...DEFAULTS }, { onConflict: "user_id" }) as any);
+        .upsert({ user_id: user.id, ...DEFAULTS } as any, { onConflict: "user_id" }) as any);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["colab-layout", user?.id] }),

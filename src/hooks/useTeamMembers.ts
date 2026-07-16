@@ -50,7 +50,7 @@ export function useCreateSysdeTeamMember() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (member: Partial<SysdeTeamMember>) => {
-      const { error } = await (supabase.from("sysde_team_members").insert([member]) as any);
+      const { error } = await (supabase.from("sysde_team_members").insert([member] as any) as any);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["sysde-team-members"] }),
@@ -83,7 +83,7 @@ export function useCreateClientTeamMember() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (member: Partial<ClientTeamMember> & { client_id: string }) => {
-      const { error } = await (supabase.from("client_team_members").insert([member]) as any);
+      const { error } = await (supabase.from("client_team_members").insert([member] as any) as any);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["client-team-members"] }),

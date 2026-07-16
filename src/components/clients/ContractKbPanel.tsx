@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   Upload, FileText, Loader2, Database, Lock, FileStack, ArrowRightLeft,
-  Layers, Trash2,
+  Layers, Trash2, Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { extractTextFromFile } from "@/lib/extractPdfText";
