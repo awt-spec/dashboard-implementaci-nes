@@ -90,10 +90,10 @@ export function useUpsertSLA() {
   return useMutation({
     mutationFn: async (s: Partial<ClientSLA> & { client_id: string }) => {
       if (s.id) {
-        const { error } = await (supabase.from("client_slas").update(s).eq("id", s.id) as any);
+        const { error } = await (supabase.from("client_slas").update(s as any).eq("id", s.id) as any);
         if (error) throw error;
       } else {
-        const { error } = await (supabase.from("client_slas").insert([s]) as any);
+        const { error } = await (supabase.from("client_slas").insert([s] as any) as any);
         if (error) throw error;
       }
     },

@@ -3,10 +3,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Confidential } from "@/components/common/Confidential";
 import { useFinanceAccess } from "@/hooks/useFinanceAccess";
-import { useAccountStatement360, type Stmt360 } from "@/hooks/useAccountStatement360";
+import { useAccountStatement360 } from "@/hooks/useAccountStatement360";
 import {
-  Loader2, ChevronRight, Wallet, Clock, RefreshCw, ShieldCheck, Milestone,
-  ScanSearch, TriangleAlert, Gem, Building2,
+  Loader2, ChevronRight, TriangleAlert, Gem, Building2,
 } from "lucide-react";
 
 const money = (n: number, c: string) => `${Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 })} ${c}`;

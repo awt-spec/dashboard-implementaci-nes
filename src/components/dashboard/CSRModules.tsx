@@ -20,7 +20,7 @@ import type { SupportTicket } from "@/hooks/useSupportTickets";
 import {
   Plus, Trash2, Loader2, CalendarClock, Building2, Sparkles, ListChecks,
   Briefcase, ArrowRight, Flag, Target, Flame, AlertOctagon, Milestone, CalendarX,
-  List, CalendarDays, FileText, ChevronLeft, ChevronRight, CheckSquare, Users,
+  List, CalendarDays, FileText, ChevronLeft, ChevronRight, CheckSquare,
   ExternalLink, Handshake, Search,
 } from "lucide-react";
 import { Confidential } from "@/components/common/Confidential";
