@@ -31,6 +31,7 @@ export interface SysdeExportData {
     consumed: number;
     balance: number;
     saldoActivas: number;
+    expiradas?: number;
     invertido: number;
   };
 }
@@ -287,7 +288,25 @@ export async function exportAccountStatementPdf(stmt: AccountStatement, data: Sy
   doc.rect(margin + contentW - 34, y, 34, bandH);
   doc.setTextColor(0);
   doc.text(n2(data.totals.saldoActivas), margin + contentW - 2, y + 4.7, { align: "right" });
-  y += bandH + 6;
+  y += bandH + 4;
+
+  /* ── Horas vencidas sin utilizar (explica el saldo total vs. activo) ── */
+  const expiradas = Number(data.totals.expiradas || 0);
+  if (expiradas > 0.001) {
+    ensure(7);
+    doc.setDrawColor(180);
+    doc.setLineWidth(0.2);
+    doc.rect(margin, y, contentW - 34, 6);
+    doc.setTextColor(120);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.text("Horas vencidas sin utilizar (no aplicables):", margin + 2, y + 4);
+    doc.rect(margin + contentW - 34, y, 34, 6);
+    doc.text(n2(expiradas), margin + contentW - 2, y + 4, { align: "right" });
+    y += 6 + 4;
+  } else {
+    y += 2;
+  }
 
   /* ── Exceso de horas (facturable) — captura de ingreso ── */
   const excess = data.packages.reduce((s, p) => s + Math.max(0, -Number(p.balance || 0)), 0);
@@ -327,10 +346,10 @@ export async function exportAccountStatementPdf(stmt: AccountStatement, data: Sy
     doc.setTextColor(70);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6.8);
-    doc.text(
-      `Su póliza vigente vence el ${fmtDate(nextExpiry)} con un saldo activo de ${n2(rem)} h. Le recomendamos renovar antes del vencimiento para asegurar la continuidad del servicio.`,
-      margin + 3, y + 9.5, { maxWidth: contentW - 6 },
-    );
+    const renewMsg = rem <= 0.001
+      ? `Su póliza vigente (vence el ${fmtDate(nextExpiry)}) ya no tiene horas disponibles. Le recomendamos renovar o ampliar su bolsa de horas para asegurar la continuidad del servicio.`
+      : `Su póliza vigente vence el ${fmtDate(nextExpiry)} con un saldo activo de ${n2(rem)} h. Le recomendamos renovar antes del vencimiento para asegurar la continuidad del servicio.`;
+    doc.text(renewMsg, margin + 3, y + 9.5, { maxWidth: contentW - 6 });
     y += 13 + 6;
   }
 

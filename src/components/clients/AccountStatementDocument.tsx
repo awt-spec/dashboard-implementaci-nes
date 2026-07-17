@@ -19,7 +19,7 @@ const RED = "#8B1E1E";
  */
 export function AccountStatementDocument({ stmt, clientId }: { stmt: AccountStatement; clientId: string }) {
   const { loadingPkgs, pkgRows, rows, totals } = useSysdeStatementData(stmt, clientId);
-  const { contracted: totContract, consumed: totConsumed, balance: totBalance, saldoActivas, invertido: totalInvertido } = totals;
+  const { contracted: totContract, consumed: totConsumed, balance: totBalance, saldoActivas, expiradas, invertido: totalInvertido } = totals;
 
   // Captura de ingreso: horas consumidas por encima de lo contratado (facturable)
   // y próxima póliza a vencer (renovación).
@@ -90,6 +90,12 @@ export function AccountStatementDocument({ stmt, clientId }: { stmt: AccountStat
           <div className="flex-1 px-2 py-2 font-bold text-white" style={{ background: RED }}>TOTAL SALDO HORAS ACTIVAS:</div>
           <div className="w-40 px-4 py-2 font-bold text-right">{n2(saldoActivas)}</div>
         </div>
+        {expiradas > 0.001 && (
+          <div className="flex border-t" style={{ borderColor: RED }}>
+            <div className="flex-1 px-2 py-1.5 text-xs font-semibold text-neutral-500">Horas vencidas sin utilizar (no aplicables):</div>
+            <div className="w-40 px-4 py-1.5 text-xs font-semibold text-right text-neutral-500">{n2(expiradas)}</div>
+          </div>
+        )}
       </div>
 
       {/* ── Exceso de horas facturable (captura de ingreso) ── */}
@@ -104,7 +110,11 @@ export function AccountStatementDocument({ stmt, clientId }: { stmt: AccountStat
       {nextExpiry && (
         <div className="border p-3" style={{ borderColor: RED }}>
           <p className="font-bold" style={{ color: RED }}>Renovación de póliza</p>
-          <p className="text-xs text-neutral-700 mt-0.5">Su póliza vigente vence el <b>{fmtDate(nextExpiry)}</b> con un saldo activo de <b>{n2(Math.max(0, saldoActivas))} h</b>. Le recomendamos renovar antes del vencimiento para asegurar la continuidad del servicio.</p>
+          {saldoActivas <= 0.001 ? (
+            <p className="text-xs text-neutral-700 mt-0.5">Su póliza vigente (vence el <b>{fmtDate(nextExpiry)}</b>) ya no tiene horas disponibles. Le recomendamos renovar o ampliar su bolsa de horas para asegurar la continuidad del servicio.</p>
+          ) : (
+            <p className="text-xs text-neutral-700 mt-0.5">Su póliza vigente vence el <b>{fmtDate(nextExpiry)}</b> con un saldo activo de <b>{n2(saldoActivas)} h</b>. Le recomendamos renovar antes del vencimiento para asegurar la continuidad del servicio.</p>
+          )}
         </div>
       )}
 
