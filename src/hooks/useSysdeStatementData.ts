@@ -75,12 +75,18 @@ export function useSysdeStatementData(stmt: AccountStatement | undefined, client
   const saldoActivas = pkgRows
     .filter((p) => p.estado === "Activo")
     .reduce((s, p) => s + p.balance, 0);
+  // Horas contratadas que vencieron sin usarse (pólizas Vencidas con saldo > 0).
+  // No son usables; se muestran aparte para que el "saldo total" no engañe.
+  const expiradas = pkgRows
+    .filter((p) => p.estado === "Vencido")
+    .reduce((s, p) => s + Math.max(0, p.balance), 0);
 
   const totals = {
     contracted: totContract,
     consumed: totConsumed,
     balance: totBalance,
     saldoActivas,
+    expiradas,
     invertido: totalInvertido,
   };
 
