@@ -208,6 +208,11 @@ export function AccountStatementPanel({ clientId, enforceFinanceGate = true, hou
 
       {stmt && !isLoading && view === "analisis" && !hoursOnly && (
         <>
+          {/* Vista interna — no compartir con el cliente. */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-warning/40 bg-warning/10 text-[11px] font-semibold text-warning">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+            USO INTERNO SYSDE — análisis financiero. No compartir con el cliente. Para enviarle, usá "Documento" (estado de cuenta de horas) y exportá el PDF.
+          </div>
           {/* Resumen — 3 KPIs */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <Card>

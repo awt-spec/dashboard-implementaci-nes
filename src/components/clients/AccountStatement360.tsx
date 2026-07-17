@@ -48,6 +48,13 @@ export function AccountStatement360({ clientId }: { clientId: string }) {
 
   return (
     <div className="space-y-4">
+      {/* Banda de uso interno — este panel expone inteligencia comercial
+          (alcance facturable, upsell, riesgos) que NO debe ir al cliente. */}
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-warning/40 bg-warning/10 text-[11px] font-semibold text-warning">
+        <TriangleAlert className="h-3.5 w-3.5 shrink-0" />
+        USO INTERNO SYSDE — análisis comercial. No compartir ni enviar al cliente. Para el cliente, usá el "Estado de cuenta" (documento de horas).
+      </div>
+
       {/* Encabezado de salud */}
       <Card>
         <CardContent className="p-4 flex flex-wrap items-center gap-x-6 gap-y-2">

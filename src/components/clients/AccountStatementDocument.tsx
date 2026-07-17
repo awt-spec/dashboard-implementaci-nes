@@ -21,6 +21,12 @@ export function AccountStatementDocument({ stmt, clientId }: { stmt: AccountStat
   const { loadingPkgs, pkgRows, rows, totals } = useSysdeStatementData(stmt, clientId);
   const { contracted: totContract, consumed: totConsumed, balance: totBalance, saldoActivas, invertido: totalInvertido } = totals;
 
+  // Captura de ingreso: horas consumidas por encima de lo contratado (facturable)
+  // y próxima póliza a vencer (renovación).
+  const excess = pkgRows.reduce((s, p) => s + Math.max(0, -Number(p.balance || 0)), 0);
+  const activos = pkgRows.filter((p) => p.estado === "Activo" && p.end_date);
+  const nextExpiry = activos.length ? activos.map((p) => p.end_date).sort()[0] : null;
+
   return (
     <div className="p-6 sm:p-8 space-y-6 bg-white text-black">
       {/* ── Encabezado ── */}
@@ -85,6 +91,22 @@ export function AccountStatementDocument({ stmt, clientId }: { stmt: AccountStat
           <div className="w-40 px-4 py-2 font-bold text-right">{n2(saldoActivas)}</div>
         </div>
       </div>
+
+      {/* ── Exceso de horas facturable (captura de ingreso) ── */}
+      {excess > 0.001 && (
+        <div className="border-2 p-3" style={{ borderColor: RED, background: "#fff3f3" }}>
+          <p className="font-bold" style={{ color: RED }}>Horas consumidas por encima de lo contratado: {n2(excess)} h</p>
+          <p className="text-xs text-neutral-700 mt-0.5">Este excedente está sujeto a facturación adicional o a la ampliación de su bolsa de horas. Le invitamos a regularizarlo con su ejecutivo SYSDE.</p>
+        </div>
+      )}
+
+      {/* ── Renovación de póliza (continuidad del servicio) ── */}
+      {nextExpiry && (
+        <div className="border p-3" style={{ borderColor: RED }}>
+          <p className="font-bold" style={{ color: RED }}>Renovación de póliza</p>
+          <p className="text-xs text-neutral-700 mt-0.5">Su póliza vigente vence el <b>{fmtDate(nextExpiry)}</b> con un saldo activo de <b>{n2(Math.max(0, saldoActivas))} h</b>. Le recomendamos renovar antes del vencimiento para asegurar la continuidad del servicio.</p>
+        </div>
+      )}
 
       {/* ── Tabla: Solicitudes de servicio ── */}
       <div className="space-y-2">
