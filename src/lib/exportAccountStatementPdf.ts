@@ -287,7 +287,52 @@ export async function exportAccountStatementPdf(stmt: AccountStatement, data: Sy
   doc.rect(margin + contentW - 34, y, 34, bandH);
   doc.setTextColor(0);
   doc.text(n2(data.totals.saldoActivas), margin + contentW - 2, y + 4.7, { align: "right" });
-  y += bandH + 8;
+  y += bandH + 6;
+
+  /* ── Exceso de horas (facturable) — captura de ingreso ── */
+  const excess = data.packages.reduce((s, p) => s + Math.max(0, -Number(p.balance || 0)), 0);
+  if (excess > 0.001) {
+    ensure(16);
+    doc.setFillColor(255, 243, 243);
+    doc.setDrawColor(...RED);
+    doc.setLineWidth(0.5);
+    doc.rect(margin, y, contentW, 13, "FD");
+    doc.setTextColor(...RED);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.5);
+    doc.text(`Horas consumidas por encima de lo contratado: ${n2(excess)} h`, margin + 3, y + 5);
+    doc.setTextColor(70);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.8);
+    doc.text(
+      "Este excedente está sujeto a facturación adicional o a la ampliación de su bolsa de horas. Le invitamos a regularizarlo con su ejecutivo SYSDE.",
+      margin + 3, y + 9.5, { maxWidth: contentW - 6 },
+    );
+    y += 13 + 5;
+  }
+
+  /* ── Renovación de póliza — call to action de continuidad ── */
+  const activos = data.packages.filter((p) => p.estado === "Activo" && p.end_date);
+  const nextExpiry = activos.length ? activos.map((p) => p.end_date).sort()[0] : null;
+  if (nextExpiry) {
+    const rem = Math.max(0, Number(data.totals.saldoActivas || 0));
+    ensure(16);
+    doc.setDrawColor(...RED);
+    doc.setLineWidth(0.3);
+    doc.rect(margin, y, contentW, 13);
+    doc.setTextColor(...RED);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.5);
+    doc.text("Renovación de póliza", margin + 3, y + 5);
+    doc.setTextColor(70);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.8);
+    doc.text(
+      `Su póliza vigente vence el ${fmtDate(nextExpiry)} con un saldo activo de ${n2(rem)} h. Le recomendamos renovar antes del vencimiento para asegurar la continuidad del servicio.`,
+      margin + 3, y + 9.5, { maxWidth: contentW - 6 },
+    );
+    y += 13 + 6;
+  }
 
   /* ── Tabla: Solicitudes de servicio ── */
   doc.setFont("helvetica", "normal");
