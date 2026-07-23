@@ -18,7 +18,7 @@ const RED = "#8B1E1E";
  * de detalle y como vista principal del estado de cuenta.
  */
 export function AccountStatementDocument({ stmt, clientId }: { stmt: AccountStatement; clientId: string }) {
-  const { loadingPkgs, pkgRows, rows, totals } = useSysdeStatementData(stmt, clientId);
+  const { loadingPkgs, pkgRows, rows, totals, analytics } = useSysdeStatementData(stmt, clientId);
   const { contracted: totContract, consumed: totConsumed, balance: totBalance, saldoActivas, expiradas, invertido: totalInvertido } = totals;
 
   // Captura de ingreso: horas consumidas por encima de lo contratado (facturable)
@@ -46,6 +46,26 @@ export function AccountStatementDocument({ stmt, clientId }: { stmt: AccountStat
           <span className="font-bold">{fmtDate(stmt.period.start)}</span>
           <span className="font-bold">{fmtDate(stmt.period.end)}</span>
         </div>
+      </div>
+
+      {/* ── Resumen ejecutivo del período (KPIs en horas) ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 border" style={{ borderColor: RED }}>
+        {[
+          { label: "Horas contratadas", value: n2(totContract) },
+          { label: "Horas consumidas", value: n2(totConsumed), sub: `${analytics.utilizacionPct.toFixed(0)}% de utilización` },
+          { label: "Saldo horas activas", value: n2(saldoActivas) },
+          {
+            label: "Ritmo de consumo",
+            value: analytics.runRate > 0.001 ? `${n2(analytics.runRate)} h/mes` : "—",
+            sub: analytics.agotamientoLabel ? `cubre hasta ~${analytics.agotamientoLabel} (estimado)` : undefined,
+          },
+        ].map((k, i) => (
+          <div key={k.label} className={`p-3 ${i > 0 ? "border-l" : ""}`} style={{ borderColor: RED }}>
+            <p className="text-[10px] uppercase tracking-wider font-bold text-neutral-500">{k.label}</p>
+            <p className="text-xl font-black tabular-nums mt-0.5">{k.value}</p>
+            {k.sub && <p className="text-[10px] text-neutral-500">{k.sub}</p>}
+          </div>
+        ))}
       </div>
 
       {/* ── Tabla: Paquetes de servicio ── */}
@@ -157,6 +177,52 @@ export function AccountStatementDocument({ stmt, clientId }: { stmt: AccountStat
           </table>
         </div>
       </div>
+
+      {/* ── Análisis de consumo del período (por mes y por tipo) ── */}
+      {totalInvertido > 0.001 && (analytics.byMonth.length > 0 || analytics.byTipo.length > 0) && (
+        <div className="grid sm:grid-cols-2 gap-4">
+          {analytics.byMonth.length > 0 && (
+            <div className="border" style={{ borderColor: RED }}>
+              <div className="text-center font-bold py-1.5 border-b text-sm" style={{ borderColor: RED }}>Consumo por mes</div>
+              <div className="p-3 space-y-1.5">
+                {analytics.byMonth.map((m) => {
+                  const pct = (m.hours / totalInvertido) * 100;
+                  return (
+                    <div key={m.ym} className="flex items-center gap-2 text-xs">
+                      <span className="w-16 shrink-0">{m.label}</span>
+                      <div className="flex-1 h-2.5 bg-neutral-100 rounded-sm overflow-hidden">
+                        <div className="h-full" style={{ width: `${pct}%`, background: RED }} />
+                      </div>
+                      <span className="w-20 text-right tabular-nums">{n2(m.hours)} h</span>
+                      <span className="w-12 text-right tabular-nums text-neutral-500">{pct.toFixed(1)}%</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {analytics.byTipo.length > 0 && (
+            <div className="border" style={{ borderColor: RED }}>
+              <div className="text-center font-bold py-1.5 border-b text-sm" style={{ borderColor: RED }}>Distribución por tipo de solicitud</div>
+              <div className="p-3 space-y-1.5">
+                {analytics.byTipo.map((t) => {
+                  const pct = (t.hours / totalInvertido) * 100;
+                  return (
+                    <div key={t.tipo} className="flex items-center gap-2 text-xs">
+                      <span className="w-28 shrink-0 truncate" title={t.tipo}>{t.tipo}</span>
+                      <div className="flex-1 h-2.5 bg-neutral-100 rounded-sm overflow-hidden">
+                        <div className="h-full" style={{ width: `${pct}%`, background: RED }} />
+                      </div>
+                      <span className="w-20 text-right tabular-nums">{n2(t.hours)} h</span>
+                      <span className="w-12 text-right tabular-nums text-neutral-500">{pct.toFixed(1)}%</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Pie ── */}
       <div className="flex items-end justify-between pt-6 text-[11px] text-neutral-600">

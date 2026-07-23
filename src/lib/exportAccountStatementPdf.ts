@@ -23,6 +23,15 @@ export interface SysdeSolicitudRow {
   tipo: string;
   hours: number;
 }
+/** Analítica del período (solo horas): la calcula useSysdeStatementData. */
+export interface SysdeAnalytics {
+  byMonth: { ym: string; label: string; hours: number }[];
+  byTipo: { tipo: string; hours: number }[];
+  utilizacionPct: number;
+  runRate: number;
+  mesesCobertura: number | null;
+  agotamientoLabel: string | null;
+}
 export interface SysdeExportData {
   packages: SysdePackageRow[];
   solicitudes: SysdeSolicitudRow[];
@@ -34,6 +43,7 @@ export interface SysdeExportData {
     expiradas?: number;
     invertido: number;
   };
+  analytics?: SysdeAnalytics;
 }
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
@@ -234,6 +244,49 @@ export async function exportAccountStatementPdf(stmt: AccountStatement, data: Sy
   doc.text(`${fmtDate(stmt.period.start)}   ${fmtDate(stmt.period.end)}`, pageW - margin, y, { align: "right" });
   y += 8;
 
+  /* ── Resumen ejecutivo del período (KPIs en horas) ── */
+  const an = data.analytics;
+  {
+    const kpis: { label: string; value: string; sub?: string }[] = [
+      { label: "Horas contratadas", value: n2(data.totals.contracted) },
+      {
+        label: "Horas consumidas",
+        value: n2(data.totals.consumed),
+        sub: an ? `${an.utilizacionPct.toFixed(0)}% de utilización` : undefined,
+      },
+      { label: "Saldo horas activas", value: n2(data.totals.saldoActivas) },
+      {
+        label: "Ritmo de consumo",
+        value: an && an.runRate > 0.001 ? `${n2(an.runRate)} h/mes` : "—",
+        sub: an?.agotamientoLabel ? `cubre hasta ~${an.agotamientoLabel} (estimado)` : undefined,
+      },
+    ];
+    ensure(20);
+    const boxH = 15;
+    const boxW = contentW / kpis.length;
+    doc.setDrawColor(...RED);
+    doc.setLineWidth(0.3);
+    kpis.forEach((k, i) => {
+      const bx = margin + i * boxW;
+      doc.rect(bx, y, boxW, boxH);
+      doc.setTextColor(120);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(5.8);
+      doc.text(k.label.toUpperCase(), bx + 2, y + 4);
+      doc.setTextColor(0);
+      doc.setFontSize(11);
+      doc.text(k.value, bx + 2, y + 9.5);
+      if (k.sub) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(5.8);
+        doc.setTextColor(100);
+        doc.text(k.sub, bx + 2, y + 13);
+      }
+    });
+    doc.setTextColor(0);
+    y += boxH + 5;
+  }
+
   /* ── Tabla: Paquetes de servicio ── */
   const pkgCols: Col[] = [
     { header: "Póliza", width: 14, align: "center" },
@@ -393,6 +446,37 @@ export async function exportAccountStatementPdf(stmt: AccountStatement, data: Sy
       boldRows: new Set([totalIdx]),
       redText: new Set([totalIdx]),
     });
+  }
+
+  /* ── Análisis de consumo del período (por mes y por tipo) ── */
+  if (an && data.totals.invertido > 0.001 && (an.byMonth.length > 0 || an.byTipo.length > 0)) {
+    y += 4;
+    const pct = (h: number) => `${((h / data.totals.invertido) * 100).toFixed(1)}%`;
+    if (an.byMonth.length > 0) {
+      const mesCols: Col[] = [
+        { header: "Mes", width: 40, align: "left" },
+        { header: "Horas consumidas", width: 30, align: "right" },
+        { header: "% del período", width: 30, align: "right" },
+      ];
+      drawTable(
+        "Consumo por mes",
+        mesCols,
+        an.byMonth.map((m) => [m.label, n2(m.hours), pct(m.hours)]),
+      );
+      y += 3;
+    }
+    if (an.byTipo.length > 0) {
+      const tipoCols: Col[] = [
+        { header: "Tipo de solicitud", width: 40, align: "left" },
+        { header: "Horas consumidas", width: 30, align: "right" },
+        { header: "% del período", width: 30, align: "right" },
+      ];
+      drawTable(
+        "Distribución por tipo de solicitud",
+        tipoCols,
+        an.byTipo.map((t) => [t.tipo, n2(t.hours), pct(t.hours)]),
+      );
+    }
   }
 
   /* ── Pie SYSDE en todas las páginas ── */
