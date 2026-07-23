@@ -1,7 +1,10 @@
 import { useMemo } from "react";
 import { type AccountStatement } from "@/hooks/useAccountStatement";
 import { useServicePackages, useTicketsByIds } from "@/hooks/useServicePackages";
-import { type SysdeExportData } from "@/lib/exportAccountStatementPdf";
+import { type SysdeExportData, type SysdeAnalytics } from "@/lib/exportAccountStatementPdf";
+
+const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const mesLabel = (ym: string) => `${MESES[Number(ym.slice(5, 7)) - 1] ?? "?"} ${ym.slice(0, 4)}`;
 
 /**
  * Calcula los datos del estado de cuenta con el formato SYSDE (paquetes de
@@ -90,7 +93,40 @@ export function useSysdeStatementData(stmt: AccountStatement | undefined, client
     invertido: totalInvertido,
   };
 
-  return { loadingPkgs, pkgRows, rows, totals };
+  // ── Analítica del período (solo horas): consumo por mes/tipo, utilización
+  //    y proyección de cobertura del saldo activo al ritmo actual (run-rate).
+  const analytics: SysdeAnalytics = useMemo(() => {
+    const porMes: Record<string, number> = {};
+    const porTipo: Record<string, number> = {};
+    rows.forEach((r) => {
+      if (r.fecha_registro) {
+        const ym = r.fecha_registro.slice(0, 7);
+        porMes[ym] = (porMes[ym] ?? 0) + r.hours;
+      }
+      const t = r.tipo && r.tipo !== "—" ? r.tipo : "Sin tipo";
+      porTipo[t] = (porTipo[t] ?? 0) + r.hours;
+    });
+    const byMonth = Object.entries(porMes)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([ym, hours]) => ({ ym, label: mesLabel(ym), hours }));
+    const byTipo = Object.entries(porTipo)
+      .sort(([, a], [, b]) => b - a)
+      .map(([tipo, hours]) => ({ tipo, hours }));
+    const utilizacionPct = totContract > 0 ? (totConsumed / totContract) * 100 : 0;
+    const runRate = byMonth.length ? totalInvertido / byMonth.length : 0;
+    // Proyección solo con ≥2 meses de datos y saldo activo real; es un estimado.
+    let mesesCobertura: number | null = null;
+    let agotamientoLabel: string | null = null;
+    if (saldoActivas > 0.001 && runRate > 0.001 && byMonth.length >= 2) {
+      mesesCobertura = saldoActivas / runRate;
+      const d = new Date();
+      d.setMonth(d.getMonth() + Math.max(0, Math.round(mesesCobertura)));
+      agotamientoLabel = `${MESES[d.getMonth()]} ${d.getFullYear()}`;
+    }
+    return { byMonth, byTipo, utilizacionPct, runRate, mesesCobertura, agotamientoLabel };
+  }, [rows, totContract, totConsumed, totalInvertido, saldoActivas]);
+
+  return { loadingPkgs, pkgRows, rows, totals, analytics };
 }
 
 export type SysdeStatementData = ReturnType<typeof useSysdeStatementData>;
@@ -100,6 +136,7 @@ export function toSysdeExportData(d: {
   pkgRows: SysdeStatementData["pkgRows"];
   rows: SysdeStatementData["rows"];
   totals: SysdeStatementData["totals"];
+  analytics?: SysdeStatementData["analytics"];
 }): SysdeExportData {
   return {
     packages: d.pkgRows.map((p) => ({
@@ -123,5 +160,6 @@ export function toSysdeExportData(d: {
       hours: r.hours,
     })),
     totals: d.totals,
+    analytics: d.analytics,
   };
 }

@@ -58,14 +58,14 @@ export function AccountStatementPanel({ clientId, enforceFinanceGate = true, hou
     ? new Date(dataUpdatedAt).toLocaleTimeString("es-CR", { hour: "2-digit", minute: "2-digit" })
     : "—";
 
-  const { loadingPkgs, pkgRows, rows, totals } = useSysdeStatementData(stmt, clientId);
+  const { loadingPkgs, pkgRows, rows, totals, analytics } = useSysdeStatementData(stmt, clientId);
   const { canAmounts: permAmounts } = useFinanceAccess();
   const canAmounts = !enforceFinanceGate || permAmounts;
 
   const handleExport = async () => {
     if (!stmt) return;
     try {
-      await exportAccountStatementPdf(stmt, toSysdeExportData({ pkgRows, rows, totals }));
+      await exportAccountStatementPdf(stmt, toSysdeExportData({ pkgRows, rows, totals, analytics }));
       toast.success("PDF descargado");
     } catch (e: any) {
       toast.error(e?.message || "Error al generar PDF");

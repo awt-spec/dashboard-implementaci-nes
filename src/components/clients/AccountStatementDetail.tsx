@@ -18,11 +18,11 @@ interface Props {
  * Modal con el estado de cuenta en formato SYSDE (documento) + acciones.
  */
 export function AccountStatementDetail({ open, onOpenChange, stmt, clientId }: Props) {
-  const { pkgRows, rows, totals } = useSysdeStatementData(stmt, clientId);
+  const { pkgRows, rows, totals, analytics } = useSysdeStatementData(stmt, clientId);
 
   const handleExport = async () => {
     try {
-      await exportAccountStatementPdf(stmt, toSysdeExportData({ pkgRows, rows, totals }));
+      await exportAccountStatementPdf(stmt, toSysdeExportData({ pkgRows, rows, totals, analytics }));
       toast.success("PDF descargado");
     } catch (e: any) { toast.error(e?.message || "Error al generar PDF"); }
   };
