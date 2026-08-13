@@ -25,11 +25,10 @@ export interface SysdeSolicitudRow {
 }
 /** Analítica del período (solo horas): la calcula useSysdeStatementData. */
 export interface SysdeAnalytics {
-  byMonth: { ym: string; label: string; hours: number }[];
-  byTipo: { tipo: string; hours: number }[];
+  byMonth: { ym: string; label: string; hours: number; pct: number }[];
+  byTipo: { tipo: string; hours: number; pct: number }[];
   utilizacionPct: number;
   runRate: number;
-  mesesCobertura: number | null;
   agotamientoLabel: string | null;
 }
 export interface SysdeExportData {
@@ -43,7 +42,7 @@ export interface SysdeExportData {
     expiradas?: number;
     invertido: number;
   };
-  analytics?: SysdeAnalytics;
+  analytics: SysdeAnalytics;
 }
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
@@ -55,6 +54,35 @@ const fmtDate = (d?: string | null) => {
   const [y, m, day] = d.slice(0, 10).split("-");
   return `${day}/${m}/${y}`;
 };
+
+/**
+ * KPIs del resumen ejecutivo. Único lugar donde se definen etiquetas, umbrales
+ * y textos: los renderizan igual la vista en pantalla y el PDF.
+ */
+export interface StatementKpi {
+  label: string;
+  value: string;
+  sub?: string;
+}
+export function buildStatementKpis(totals: SysdeExportData["totals"], an: SysdeAnalytics): StatementKpi[] {
+  // Sin pólizas en el período, "consumidas" cae al total invertido para no
+  // contradecir el detalle de solicitudes que se imprime más abajo.
+  const consumed = totals.consumed > 0.001 ? totals.consumed : totals.invertido;
+  return [
+    { label: "Horas contratadas", value: n2(totals.contracted) },
+    {
+      label: "Horas consumidas",
+      value: n2(consumed),
+      sub: totals.contracted > 0 ? `${an.utilizacionPct.toFixed(0)}% de utilización` : undefined,
+    },
+    { label: "Saldo horas activas", value: n2(totals.saldoActivas) },
+    {
+      label: "Ritmo de consumo",
+      value: an.runRate > 0.001 ? `${n2(an.runRate)} h/mes` : "—",
+      sub: an.agotamientoLabel ? `cubre hasta ~${an.agotamientoLabel} (estimado)` : undefined,
+    },
+  ];
+}
 
 /** Carga el logo (asset de Vite) como dataURL para incrustarlo en el PDF. */
 async function loadLogo(): Promise<{ data: string; w: number; h: number } | null> {
@@ -247,20 +275,7 @@ export async function exportAccountStatementPdf(stmt: AccountStatement, data: Sy
   /* ── Resumen ejecutivo del período (KPIs en horas) ── */
   const an = data.analytics;
   {
-    const kpis: { label: string; value: string; sub?: string }[] = [
-      { label: "Horas contratadas", value: n2(data.totals.contracted) },
-      {
-        label: "Horas consumidas",
-        value: n2(data.totals.consumed),
-        sub: an ? `${an.utilizacionPct.toFixed(0)}% de utilización` : undefined,
-      },
-      { label: "Saldo horas activas", value: n2(data.totals.saldoActivas) },
-      {
-        label: "Ritmo de consumo",
-        value: an && an.runRate > 0.001 ? `${n2(an.runRate)} h/mes` : "—",
-        sub: an?.agotamientoLabel ? `cubre hasta ~${an.agotamientoLabel} (estimado)` : undefined,
-      },
-    ];
+    const kpis = buildStatementKpis(data.totals, an);
     ensure(20);
     const boxH = 15;
     const boxW = contentW / kpis.length;
@@ -449,9 +464,8 @@ export async function exportAccountStatementPdf(stmt: AccountStatement, data: Sy
   }
 
   /* ── Análisis de consumo del período (por mes y por tipo) ── */
-  if (an && data.totals.invertido > 0.001 && (an.byMonth.length > 0 || an.byTipo.length > 0)) {
+  if (an.byMonth.length > 0 || an.byTipo.length > 0) {
     y += 4;
-    const pct = (h: number) => `${((h / data.totals.invertido) * 100).toFixed(1)}%`;
     if (an.byMonth.length > 0) {
       const mesCols: Col[] = [
         { header: "Mes", width: 40, align: "left" },
@@ -461,20 +475,20 @@ export async function exportAccountStatementPdf(stmt: AccountStatement, data: Sy
       drawTable(
         "Consumo por mes",
         mesCols,
-        an.byMonth.map((m) => [m.label, n2(m.hours), pct(m.hours)]),
+        an.byMonth.map((m) => [m.label, n2(m.hours), `${m.pct.toFixed(1)}%`]),
       );
       y += 3;
     }
     if (an.byTipo.length > 0) {
       const tipoCols: Col[] = [
-        { header: "Tipo de solicitud", width: 40, align: "left" },
+        { header: "Tipo de solicitud", width: 40, align: "left", wrap: true },
         { header: "Horas consumidas", width: 30, align: "right" },
         { header: "% del período", width: 30, align: "right" },
       ];
       drawTable(
         "Distribución por tipo de solicitud",
         tipoCols,
-        an.byTipo.map((t) => [t.tipo, n2(t.hours), pct(t.hours)]),
+        an.byTipo.map((t) => [t.tipo, n2(t.hours), `${t.pct.toFixed(1)}%`]),
       );
     }
   }
