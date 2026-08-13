@@ -17,6 +17,8 @@ import { ExecutiveComposer, type WidgetDef } from "./ExecutiveComposer";
 import { ExecutiveAIChat } from "./ExecutiveAIChat";
 import { ActionQueue } from "./ActionQueue";
 import { ActivePolicyBar } from "@/components/policy/ActivePolicyBar";
+import { HeroBanner, greeting } from "@/components/common/HeroBanner";
+import { KpiTile, SectionLabel, StatusChip, type Tone } from "@/components/common/StatCard";
 
 interface ExecutiveOverviewProps {
   /** Callback opcional para navegar desde la ActionQueue */
@@ -157,21 +159,21 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
   //  - admin → 4 esenciales (clientes, riesgos, tareas, entregables)
   //    foco en negocio, sin datos operativos del día a día
   //  - resto → 8 KPIs detallados (vista de operación PM)
-  const kpisAll = [
-    { title: "Clientes Activos", value: activeClients, icon: Users, color: "text-success" },
-    { title: "Progreso Promedio", value: `${avgProgress}%`, icon: TrendingUp, color: "text-info" },
-    { title: "Total Tareas", value: allTasks.length, icon: Layers, color: "text-primary" },
-    { title: "Completadas", value: tasksByStatus.completada, icon: CheckCircle, color: "text-success" },
-    { title: "Progreso", value: tasksByStatus["en-progreso"], icon: Clock, color: "text-warning" },
-    { title: "Riesgos Abiertos", value: totalRisks, icon: AlertTriangle, color: "text-destructive" },
-    { title: "Entregables", value: allDeliverables.length, icon: FileCheck, color: "text-info" },
-    { title: "Equipo Total", value: [...new Set(clients.flatMap(c => c.teamAssigned))].length, icon: Target, color: "text-success" },
+  const kpisAll: { title: string; value: string | number; icon: typeof Users; tone: Tone }[] = [
+    { title: "Clientes Activos", value: activeClients, icon: Users, tone: "success" },
+    { title: "Progreso Promedio", value: `${avgProgress}%`, icon: TrendingUp, tone: "info" },
+    { title: "Total Tareas", value: allTasks.length, icon: Layers, tone: "primary" },
+    { title: "Completadas", value: tasksByStatus.completada, icon: CheckCircle, tone: "success" },
+    { title: "Progreso", value: tasksByStatus["en-progreso"], icon: Clock, tone: "warning" },
+    { title: "Riesgos Abiertos", value: totalRisks, icon: AlertTriangle, tone: "destructive" },
+    { title: "Entregables", value: allDeliverables.length, icon: FileCheck, tone: "info" },
+    { title: "Equipo Total", value: [...new Set(clients.flatMap(c => c.teamAssigned))].length, icon: Target, tone: "success" },
   ];
-  const kpisAdmin = [
-    { title: "Clientes Activos", value: activeClients, icon: Users, color: "text-success" },
-    { title: "En Riesgo", value: atRisk, icon: AlertTriangle, color: "text-destructive" },
-    { title: "Progreso", value: `${avgProgress}%`, icon: TrendingUp, color: "text-info" },
-    { title: "Equipo", value: [...new Set(clients.flatMap(c => c.teamAssigned))].length, icon: Target, color: "text-primary" },
+  const kpisAdmin: typeof kpisAll = [
+    { title: "Clientes Activos", value: activeClients, icon: Users, tone: "success" },
+    { title: "En Riesgo", value: atRisk, icon: AlertTriangle, tone: "destructive" },
+    { title: "Progreso", value: `${avgProgress}%`, icon: TrendingUp, tone: "info" },
+    { title: "Equipo", value: [...new Set(clients.flatMap(c => c.teamAssigned))].length, icon: Target, tone: "primary" },
   ];
   const kpis = isAdminView ? kpisAdmin : kpisAll;
 
@@ -190,7 +192,6 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
 
   // ─── Pulso del día — insights accionables ───
   const now = new Date();
-  const greeting = now.getHours() < 12 ? "Buenos días" : now.getHours() < 19 ? "Buenas tardes" : "Buenas noches";
   const criticalSupportOpen = supportTickets.filter(t =>
     /critica/i.test(t.prioridad || "") && !["CERRADA", "ANULADA"].includes(t.estado)
   ).length;
@@ -210,130 +211,112 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
     return new Date(d.dueDate).getTime() < now.getTime();
   }).length;
 
+  // Línea de contexto del hero: sólo se arman fragmentos cuyo conteo real es > 0,
+  // así nunca se muestra una métrica inventada ni un "0" sin sentido.
+  const contextParts: string[] = [];
+  if (atRisk > 0) contextParts.push(`${atRisk} cliente${atRisk === 1 ? "" : "s"} en riesgo`);
+  if (criticalSupportOpen > 0) contextParts.push(`${criticalSupportOpen} caso${criticalSupportOpen === 1 ? "" : "s"} crítico${criticalSupportOpen === 1 ? "" : "s"} abierto${criticalSupportOpen === 1 ? "" : "s"}`);
+  if (overdueDeliverables > 0) contextParts.push(`${overdueDeliverables} entregable${overdueDeliverables === 1 ? "" : "s"} vencido${overdueDeliverables === 1 ? "" : "s"}`);
+  if (unattendedSupport > 0) contextParts.push(`${unattendedSupport} caso${unattendedSupport === 1 ? "" : "s"} sin atender`);
+  const contextList =
+    contextParts.length <= 1
+      ? contextParts.join("")
+      : `${contextParts.slice(0, -1).join(", ")} y ${contextParts[contextParts.length - 1]}`;
+  // Concordancia del verbo: singular sólo si hay un único fragmento y vale 1.
+  const contextSingular = contextParts.length === 1 && contextParts[0].startsWith("1 ");
+  const heroSubtitle =
+    contextParts.length === 0
+      ? "Sin alertas abiertas — el portafolio está bajo control."
+      : `Hay ${contextList} que ${contextSingular ? "necesita" : "necesitan"} decisión hoy.`;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fadein">
       {/* Botón flotante de chat IA — abre Sheet con asistente conversacional */}
       <ExecutiveAIChat />
 
       {/* ════ HERO: Pulso del día ════
-          Admin = versión limpia: sin orb blur, padding menor, SOLO los chips
-          que tienen valor > 0 (sin redundancia con ActionQueue arriba).
-          Resto = versión completa (rounded-3xl + blur + todos los chips). */}
+          Admin = variante compacta (rounded-2xl, título 22px) y SOLO los chips
+          más críticos, para no duplicar lo que ya muestra ActionQueue arriba.
+          Resto = hero completo con todos los chips. */}
       {show("pulso") && (
-      <div className={
-        isAdminView
-          ? "rounded-2xl border border-border/60 bg-card p-5"
-          : "relative overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/5 via-card to-card p-6"
-      }>
-        {!isAdminView && (
-          <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
-        )}
-        <div className="relative flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex-1 min-w-[280px]">
-            <p className={
-              isAdminView
-                ? "text-[10px] uppercase tracking-[0.18em] font-bold text-muted-foreground mb-1"
-                : "text-[10px] uppercase tracking-[0.18em] font-bold text-primary mb-1"
-            }>
-              Resumen ejecutivo · {now.toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" })}
-            </p>
-            <h1 className={isAdminView ? "text-xl md:text-2xl font-black leading-tight" : "text-2xl md:text-3xl font-black leading-tight"}>
-              {greeting}.
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              {atRisk > 0 ? `Hay ${atRisk} cliente${atRisk === 1 ? "" : "s"} en riesgo` :
-               criticalSupportOpen > 0 ? `${criticalSupportOpen} caso${criticalSupportOpen === 1 ? "" : "s"} crítico${criticalSupportOpen === 1 ? "" : "s"} sin cerrar` :
-               unattendedSupport > 0 ? `${unattendedSupport} caso${unattendedSupport === 1 ? "" : "s"} sin atender — esperan asignación` :
-               overdueDeliverables > 0 ? `${overdueDeliverables} entregable${overdueDeliverables === 1 ? "" : "s"} vencido${overdueDeliverables === 1 ? "" : "s"}` :
-               <span className="inline-flex items-center gap-1">Todo bajo control <Rocket className="h-3 w-3" /></span>}
-            </p>
-
-            {/* Insights inline accionables — admin solo ve los más críticos
-                (atRisk + crítico abierto). El resto está en ActionQueue arriba. */}
-            <div className="flex items-center gap-2 mt-4 flex-wrap">
+        <HeroBanner
+          compact={isAdminView}
+          eyebrow={<>Resumen ejecutivo · {now.toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" })}</>}
+          title={`${greeting(now)}.`}
+          subtitle={
+            contextParts.length === 0 ? (
+              <span className="inline-flex items-center gap-1.5">
+                {heroSubtitle} <Rocket className="h-3.5 w-3.5" />
+              </span>
+            ) : (
+              heroSubtitle
+            )
+          }
+          action={
+            <Button
+              onClick={() => setShowPresentation(true)}
+              variant={isAdminView ? "outline" : "default"}
+              size={isAdminView ? "sm" : "default"}
+              className="gap-2"
+            >
+              <Presentation className="h-4 w-4" /> Presentación
+            </Button>
+          }
+          chips={
+            <>
               {atRisk > 0 && (
-                <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-destructive/10 text-destructive border border-destructive/30 text-xs font-semibold">
-                  <AlertOctagon className="h-3 w-3" /> {atRisk} en riesgo
-                </span>
+                <StatusChip tone="destructive" icon={AlertOctagon}>{atRisk} en riesgo</StatusChip>
               )}
               {criticalSupportOpen > 0 && (
-                <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-destructive/10 text-destructive border border-destructive/30 text-xs font-semibold">
-                  <ShieldAlert className="h-3 w-3" /> {criticalSupportOpen} críticos abiertos
-                </span>
+                <StatusChip tone="destructive" icon={ShieldAlert}>{criticalSupportOpen} críticos abiertos</StatusChip>
               )}
               {/* Resto de chips: solo en vista NO-admin (ya están en ActionQueue) */}
               {!isAdminView && unattendedSupport > 0 && (
-                <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/30 text-xs font-semibold">
-                  <UserX className="h-3 w-3" />
+                <StatusChip tone="warning" icon={UserX}>
                   {unattendedSupport} sin atender
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse ml-0.5" />
-                </span>
+                  {/* El punto que late marca que la cola sigue creciendo sin dueño */}
+                  <span className="relative ml-0.5 flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-warning opacity-75" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-warning" />
+                  </span>
+                </StatusChip>
               )}
               {!isAdminView && overdueDeliverables > 0 && (
-                <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-warning/10 text-warning border border-warning/30 text-xs font-semibold">
-                  <AlertTriangle className="h-3 w-3" /> {overdueDeliverables} entregables vencidos
-                </span>
+                <StatusChip tone="warning" icon={AlertTriangle}>{overdueDeliverables} entregables vencidos</StatusChip>
               )}
               {!isAdminView && dueSoonDeliverables > 0 && (
-                <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-info/10 text-info border border-info/30 text-xs font-semibold">
-                  <Clock className="h-3 w-3" /> {dueSoonDeliverables} vencen en 7 días
-                </span>
+                <StatusChip tone="info" icon={Clock}>{dueSoonDeliverables} vencen en 7 días</StatusChip>
               )}
               {!isAdminView && totalRisks > 0 && (
-                <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-muted text-muted-foreground border border-border text-xs font-semibold">
-                  <FileCheck className="h-3 w-3" /> {totalRisks} alertas activas
-                </span>
+                <StatusChip tone="muted" icon={FileCheck}>{totalRisks} alertas activas</StatusChip>
               )}
               {atRisk === 0 && criticalSupportOpen === 0 && unattendedSupport === 0 && overdueDeliverables === 0 && totalRisks === 0 && (
-                <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-success/10 text-success border border-success/30 text-xs font-semibold">
-                  <CheckCircle className="h-3 w-3" /> Sin alertas
-                </span>
+                <StatusChip tone="success" icon={CheckCircle}>Sin alertas</StatusChip>
               )}
-            </div>
-          </div>
-          <Button
-            onClick={() => setShowPresentation(true)}
-            variant={isAdminView ? "outline" : "default"}
-            size={isAdminView ? "sm" : "default"}
-            className="gap-2 shrink-0"
-          >
-            <Presentation className="h-4 w-4" /> Presentación
-          </Button>
-        </div>
-      </div>
+            </>
+          }
+        />
       )}
       <ExecutivePresentation clients={clients} supportTickets={supportTickets} supportClients={supportClients} open={showPresentation} onClose={() => setShowPresentation(false)} />
 
-      {/* KPIs — grid responsive: 4-col cuando admin, 8-col cuando PM */}
+      {/* Tira de KPIs — hasta 8 columnas en xl, 4 en md, 2x2 en móvil.
+          Admin ve 4 KPIs con el valor grande; PM ve 8 en modo compacto. */}
       {show("kpis") && (
       <div className={
         isAdminView
-          ? "grid grid-cols-2 lg:grid-cols-4 gap-3"
-          : "grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3"
+          ? "grid grid-cols-2 md:grid-cols-4 gap-3"
+          : "grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3"
       }>
         {kpis.map((kpi, i) => (
           <motion.div key={kpi.title} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-            <Card className={isAdminView ? "border-border/60 hover:border-border transition-colors" : "hover:shadow-md transition-shadow"}>
-              <CardContent className={isAdminView ? "p-4 flex items-center gap-3" : "p-3 text-center"}>
-                {isAdminView ? (
-                  <>
-                    <div className="h-10 w-10 rounded-xl bg-muted/50 flex items-center justify-center shrink-0">
-                      <kpi.icon className={`h-5 w-5 ${kpi.color}`} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-2xl font-black tabular-nums leading-none">{kpi.value}</p>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1.5">{kpi.title}</p>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <kpi.icon className={`h-4 w-4 mx-auto mb-1.5 ${kpi.color}`} />
-                    <p className="text-lg font-bold text-foreground leading-tight">{kpi.value}</p>
-                    <p className="text-[9px] text-muted-foreground uppercase tracking-wider mt-1">{kpi.title}</p>
-                  </>
-                )}
-              </CardContent>
-            </Card>
+            <KpiTile
+              icon={kpi.icon}
+              value={kpi.value}
+              label={kpi.title}
+              tone={kpi.tone}
+              compact={!isAdminView}
+              className="h-full transition-colors hover:border-primary/30"
+            />
           </motion.div>
         ))}
       </div>
@@ -363,9 +346,9 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
       {/* Row 1: Status Pie + Progress by Client */}
       {(show("status_pie") || show("progress")) && (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card>
+        <Card className="rounded-xl border-border">
           <CardContent className="p-5">
-            <h3 className="text-sm font-semibold text-foreground mb-3">Estado de Clientes</h3>
+            <SectionLabel className="mb-3">Estado de Clientes</SectionLabel>
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -387,9 +370,9 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 rounded-xl border-border">
           <CardContent className="p-5">
-            <h3 className="text-sm font-semibold text-foreground mb-3">Progreso por Cliente</h3>
+            <SectionLabel className="mb-3">Progreso por Cliente</SectionLabel>
             {(() => {
               const CLOSED = new Set(["CERRADA", "ANULADA"]);
               const impl = clients.filter((c: any) => c.client_type === "implementacion");
@@ -448,8 +431,8 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
                 items.length === 0 ? null : (
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 pb-1 border-b border-border/50">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{title}</span>
-                      <span className="text-[10px] font-mono text-muted-foreground/70">({count})</span>
+                      <SectionLabel>{title}</SectionLabel>
+                      <span className="text-[10px] font-mono tabular-nums text-muted-foreground/70">({count})</span>
                       {subtitle && <span className="text-[10px] text-muted-foreground/60 ml-auto italic">{subtitle}</span>}
                     </div>
                     <div className="space-y-2.5">
@@ -476,12 +459,12 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
       {(show("tasks") || show("deliverables")) && (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-          <Card>
+          <Card className="rounded-xl border-border">
             <CardContent className="p-5">
               <div className="flex items-center gap-2 mb-3">
                 <Layers className="h-4 w-4 text-info" />
-                <h3 className="text-sm font-semibold text-foreground">Tareas por Estado</h3>
-                <Badge variant="outline" className="ml-auto text-xs">{allTasks.length} total</Badge>
+                <SectionLabel>Tareas por Estado</SectionLabel>
+                <Badge variant="outline" className="ml-auto text-[11.5px] tabular-nums">{allTasks.length} total</Badge>
               </div>
               <div className="h-44">
                 <ResponsiveContainer width="100%" height="100%">
@@ -498,7 +481,7 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
                   <div key={d.name} className="flex items-center gap-1.5 text-xs">
                     <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
                     <span className="text-muted-foreground">{d.name}</span>
-                    <span className="font-bold text-foreground ml-auto">{d.value}</span>
+                    <span className="font-bold text-foreground tabular-nums ml-auto">{d.value}</span>
                   </div>
                 ))}
               </div>
@@ -507,12 +490,12 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
-          <Card>
+          <Card className="rounded-xl border-border">
             <CardContent className="p-5">
               <div className="flex items-center gap-2 mb-3">
                 <FileCheck className="h-4 w-4 text-success" />
-                <h3 className="text-sm font-semibold text-foreground">Entregables</h3>
-                <Badge variant="outline" className="ml-auto text-xs">{allDeliverables.length} total</Badge>
+                <SectionLabel>Entregables</SectionLabel>
+                <Badge variant="outline" className="ml-auto text-[11.5px] tabular-nums">{allDeliverables.length} total</Badge>
               </div>
               <div className="h-44">
                 <ResponsiveContainer width="100%" height="100%">
@@ -529,7 +512,7 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
                   <div key={d.name} className="flex items-center gap-1.5 text-xs">
                     <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
                     <span className="text-muted-foreground">{d.name}</span>
-                    <span className="font-bold text-foreground ml-auto">{d.value}</span>
+                    <span className="font-bold text-foreground tabular-nums ml-auto">{d.value}</span>
                   </div>
                 ))}
               </div>
@@ -538,9 +521,9 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-          <Card>
+          <Card className="rounded-xl border-border">
             <CardContent className="p-5">
-              <h3 className="text-sm font-semibold text-foreground mb-3">Prioridad de Tareas</h3>
+              <SectionLabel className="mb-3">Prioridad de Tareas</SectionLabel>
               <div className="space-y-4 mt-4">
                 {[
                   { label: "Alta", count: tasksByPriority.alta, pct: allTasks.length > 0 ? Math.round((tasksByPriority.alta / allTasks.length) * 100) : 0, color: "bg-destructive" },
@@ -550,7 +533,7 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
                   <div key={p.label}>
                     <div className="flex justify-between text-xs mb-1.5">
                       <span className="font-medium text-foreground">{p.label}</span>
-                      <span className="text-muted-foreground">{p.count} ({p.pct}%)</span>
+                      <span className="text-muted-foreground tabular-nums">{p.count} ({p.pct}%)</span>
                     </div>
                     <div className="h-3 bg-muted rounded-full overflow-hidden">
                       <div className={`h-full rounded-full transition-all ${p.color}`} style={{ width: `${p.pct}%` }} />
@@ -560,13 +543,13 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
               </div>
 
               <div className="mt-6">
-                <h4 className="text-xs font-semibold text-foreground mb-2">Por País</h4>
+                <SectionLabel className="mb-2">Por País</SectionLabel>
                 <div className="space-y-2">
                   {countryData.map((c, i) => (
                     <div key={c.name} className="flex items-center gap-2 text-xs">
                       <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: countryColors[i % countryColors.length] }} />
                       <span className="text-muted-foreground flex-1">{c.name}</span>
-                      <span className="font-bold text-foreground">{c.value}</span>
+                      <span className="font-bold text-foreground tabular-nums">{c.value}</span>
                     </div>
                   ))}
                 </div>
@@ -581,11 +564,11 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
       {show("team") && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-          <Card>
+          <Card className="rounded-xl border-border">
             <CardContent className="p-5">
               <div className="flex items-center gap-2 mb-3">
                 <Users className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground">Equipo Asignado por Cliente</h3>
+                <SectionLabel>Equipo Asignado por Cliente</SectionLabel>
               </div>
               <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
@@ -603,9 +586,9 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
-          <Card>
+          <Card className="rounded-xl border-border">
             <CardContent className="p-5">
-              <h3 className="text-sm font-semibold text-foreground mb-4">Resumen de Implementaciones</h3>
+              <SectionLabel className="mb-4">Resumen de Implementaciones</SectionLabel>
               <div className="grid grid-cols-2 gap-4">
                 {[
                   { label: "Proyectos Activos", value: activeClients.toString(), sub: `${clients.length} total` },
@@ -613,10 +596,10 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
                   { label: "Entregables Aprobados", value: deliverablesByStatus.aprobado.toString(), sub: `${deliverablesByStatus.pendiente} pendientes` },
                   { label: "Riesgos Abiertos", value: totalRisks.toString(), sub: totalRisks > 3 ? "Atención requerida" : "Normal" },
                 ].map(item => (
-                  <div key={item.label} className="p-3 rounded-lg bg-muted/50 border border-border">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{item.label}</p>
-                    <p className="text-lg font-bold text-foreground mt-1">{item.value}</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">{item.sub}</p>
+                  <div key={item.label} className="p-3 rounded-xl bg-muted/50 border border-border">
+                    <SectionLabel>{item.label}</SectionLabel>
+                    <p className="text-[18px] font-bold text-foreground tabular-nums mt-1">{item.value}</p>
+                    <p className="text-[11.5px] text-muted-foreground mt-0.5">{item.sub}</p>
                   </div>
                 ))}
               </div>
@@ -637,15 +620,15 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
       {/* Critical Alerts with Filters */}
       {show("alerts") && allAlerts.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-          <Card className="border-destructive/30 bg-destructive/5">
+          <Card className="rounded-xl border-destructive/30 bg-destructive/5">
             <CardContent className="p-5">
               <div className="flex items-center gap-2 mb-4">
                 <ShieldAlert className="h-5 w-5 text-destructive" />
-                <h3 className="text-sm font-bold text-foreground">Alertas Críticas</h3>
-                <Badge variant="destructive" className="ml-auto">{filteredAlerts.length} / {allAlerts.length}</Badge>
+                <SectionLabel className="text-destructive">Alertas Críticas</SectionLabel>
+                <Badge variant="destructive" className="ml-auto tabular-nums">{filteredAlerts.length} / {allAlerts.length}</Badge>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 mb-4 p-3 rounded-lg bg-card border border-border">
+              <div className="flex flex-wrap items-center gap-2 mb-4 p-3 rounded-xl bg-card border border-border">
                 <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                 <Select value={filterClient} onValueChange={setFilterClient}>
                   <SelectTrigger className="h-8 w-[160px] text-xs"><SelectValue placeholder="Cliente" /></SelectTrigger>
@@ -682,7 +665,7 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
                   <p className="text-xs text-muted-foreground text-center py-4">No hay alertas con los filtros seleccionados.</p>
                 ) : (
                   filteredAlerts.map((alert, i) => (
-                    <div key={i} className="flex gap-3 p-3 rounded-lg bg-card border border-border">
+                    <div key={i} className="flex gap-3 p-3 rounded-xl bg-card border border-border">
                       <div className={`mt-0.5 shrink-0 w-2 h-2 rounded-full ${impactColor[alert.impact] || "bg-muted-foreground"}`} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -704,7 +687,7 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
 
       {/* Client progress cards */}
       <div>
-        <h3 className="text-sm font-semibold text-foreground mb-3">Detalle por Cliente</h3>
+        <SectionLabel className="mb-3">Detalle por Cliente</SectionLabel>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {clients.map((client) => {
             const statusColors: Record<string, string> = {
@@ -714,19 +697,19 @@ export function ExecutiveOverview({ onNavigate }: ExecutiveOverviewProps = {}) {
               pausado: "bg-muted-foreground",
             };
             return (
-              <Card key={client.id} className="hover:shadow-md transition-shadow">
+              <Card key={client.id} className="rounded-xl border-border hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-2">
                     <div>
-                      <h4 className="text-sm font-bold text-foreground">{client.name}</h4>
-                      <p className="text-xs text-muted-foreground">{client.country} · {client.industry}</p>
+                      <h4 className="text-[13.5px] font-bold text-foreground">{client.name}</h4>
+                      <p className="text-[11.5px] text-muted-foreground">{client.country} · {client.industry}</p>
                     </div>
                     <div className={`w-2.5 h-2.5 rounded-full mt-1 ${statusColors[client.status]}`} />
                   </div>
                   <div className="mt-3">
                     <div className="flex justify-between text-xs mb-1">
                       <span className="text-muted-foreground">Progreso</span>
-                      <span className="font-bold text-foreground">{client.progress}%</span>
+                      <span className="font-bold text-foreground tabular-nums">{client.progress}%</span>
                     </div>
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
                       <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${client.progress}%` }} />

@@ -151,7 +151,9 @@ export function ExecutiveAIChat() {
         transition={{ delay: 0.5, type: "spring", stiffness: 200 }}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-gradient-to-br from-violet-500 to-primary text-white shadow-2xl shadow-primary/30 flex items-center justify-center group"
+        // bottom-24 en móvil: despeja la MobileTabBar fija (~56px + safe-area);
+        // en md+ la tab bar no existe, así que vuelve a su bottom-6 original.
+        className="fixed bottom-24 md:bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-gradient-to-br from-violet-500 to-primary text-white shadow-2xl shadow-primary/30 flex items-center justify-center group"
         title="Preguntale a la IA"
       >
         <Sparkles className="h-6 w-6 group-hover:rotate-12 transition-transform" />

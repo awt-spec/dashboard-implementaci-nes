@@ -1,6 +1,7 @@
 import {
-  LayoutDashboard, Building2, LogOut, Headset, Trophy, ChevronDown, Settings
+  Building2, LogOut, Headset, ChevronDown
 } from "lucide-react";
+import { visibleNav } from "@/lib/navigation";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, SidebarGroupLabel,
@@ -85,20 +86,10 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
   const implGroups = useMemo(() => groupByStatus(implClients), [implClients, search]);
   const supportGroups = useMemo(() => groupByStatus(supportClients), [supportClients, search]);
 
-  // Build nav items based on role + permisos (roles personalizados con permisos
-  // de configuración también ven "Configuración").
-  const CONFIG_PERMS = ["config.catalogos", "config.catalogos_admin", "equipo.supervisiones"];
-  const hasAnyConfigPerm = CONFIG_PERMS.some((p) => myPerms?.has(p));
-  const mainNav = [
-    { id: "overview", title: "Resumen Ejecutivo", icon: LayoutDashboard, roles: ["admin", "pm", "gerente", "gerente_soporte"], anyPermission: [] as string[] },
-    { id: "clients", title: "Implementación", icon: Building2, roles: ["admin", "pm"], anyPermission: [] as string[] },
-    { id: "soporte", title: "Soporte", icon: Headset, roles: ["admin", "pm", "gerente_soporte", "csr"], anyPermission: [] as string[] },
-    { id: "team-scrum", title: "Equipo Scrum", icon: Trophy, roles: ["admin", "pm"], anyPermission: [] as string[] },
-    { id: "config", title: "Configuración", icon: Settings, roles: ["admin", "pm", "gerente_soporte"], anyPermission: CONFIG_PERMS },
-  ].filter(item =>
-    (role && item.roles.includes(role)) ||
-    (item.anyPermission.length > 0 && hasAnyConfigPerm),
-  );
+  // Nav por rol + permisos (roles personalizados con permisos de configuración
+  // también ven "Configuración"). La lista vive en src/lib/navigation.ts para que
+  // sidebar, tab bar móvil, drawer y command palette no diverjan.
+  const mainNav = visibleNav(role, myPerms);
 
   const renderClientGroup = (
     type: "impl" | "support",
@@ -113,7 +104,7 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
       return (
         <Collapsible key={key} open={isOpen} onOpenChange={() => toggleStatusGroup(key)}>
           <CollapsibleTrigger className="w-full group-data-[collapsible=icon]:hidden">
-            <div className="flex items-center justify-between px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50 hover:text-sidebar-foreground/80 transition-colors">
+            <div className="flex items-center justify-between px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-sidebar-foreground/50 hover:text-sidebar-foreground/80 transition-colors">
               <span className="flex items-center gap-1.5">
                 <span className={`w-1.5 h-1.5 rounded-full ${
                   status === "activo" ? "bg-success" :
@@ -137,6 +128,7 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
                       isActive={activeSection === sectionId}
                       tooltip={client.name}
                       size="sm"
+                      className="rounded-lg"
                     >
                       <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                         client.status === "activo" ? "bg-success" :
@@ -171,7 +163,7 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-sidebar-foreground/50">Navegación</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[10px] font-bold uppercase tracking-[0.08em] text-sidebar-foreground/50">Navegación</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {mainNav.map(item => {
@@ -183,7 +175,12 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
                   : item.title;
                 return (
                   <SidebarMenuItem key={item.id}>
-                    <SidebarMenuButton onClick={() => onSectionChange(item.id)} isActive={activeSection === item.id} tooltip={tooltipText}>
+                    <SidebarMenuButton
+                      onClick={() => onSectionChange(item.id)}
+                      isActive={activeSection === item.id}
+                      tooltip={tooltipText}
+                      className="rounded-lg text-[13px]"
+                    >
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
                       {overdueCount > 0 && (
@@ -224,7 +221,7 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
               <Collapsible open={implOpen} onOpenChange={setImplOpen}>
                 <SidebarGroup className="group-data-[collapsible=icon]:hidden">
                   <CollapsibleTrigger className="w-full group-data-[collapsible=icon]:hidden">
-                    <SidebarGroupLabel className="text-sidebar-foreground/70 hover:text-sidebar-foreground cursor-pointer flex items-center justify-between w-full">
+                    <SidebarGroupLabel className="text-[10px] font-bold uppercase tracking-[0.08em] text-sidebar-foreground/70 hover:text-sidebar-foreground cursor-pointer flex items-center justify-between w-full">
                       <span className="flex items-center gap-2">
                         <Building2 className="h-3.5 w-3.5" />
                         Implementación
@@ -252,7 +249,7 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
               <Collapsible open={supportOpen} onOpenChange={setSupportOpen}>
                 <SidebarGroup className="group-data-[collapsible=icon]:hidden">
                   <CollapsibleTrigger className="w-full group-data-[collapsible=icon]:hidden">
-                    <SidebarGroupLabel className="text-sidebar-foreground/70 hover:text-sidebar-foreground cursor-pointer flex items-center justify-between w-full">
+                    <SidebarGroupLabel className="text-[10px] font-bold uppercase tracking-[0.08em] text-sidebar-foreground/70 hover:text-sidebar-foreground cursor-pointer flex items-center justify-between w-full">
                       <span className="flex items-center gap-2">
                         <Headset className="h-3.5 w-3.5" />
                         Soporte
