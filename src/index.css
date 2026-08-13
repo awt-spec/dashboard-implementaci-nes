@@ -117,4 +117,28 @@
   .glass-card {
     @apply bg-card/80 backdrop-blur-sm border border-border/50 shadow-sm;
   }
+
+  /* Entrada de secciones del sistema visual SVA ERP. Nombre 'fadein' (sin guion)
+     para no colisionar con la animación 'fade-in' ya definida en tailwind.config.ts. */
+  .animate-fadein {
+    animation: fadein 0.25s ease-out both;
+  }
+}
+
+@keyframes fadein {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Respeta la preferencia de reducir movimiento del sistema operativo. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fadein {
+    animation: none;
+  }
 }

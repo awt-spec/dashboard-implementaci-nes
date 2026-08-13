@@ -30,11 +30,17 @@ const ClientDetail            = lazy(() => import("@/components/clients/ClientDe
 import { OverdueTicketsSheet } from "@/components/support/OverdueTicketsSheet";
 import { useClients } from "@/hooks/useClients";
 import { useAuth } from "@/hooks/useAuth";
+import { useMyPermissions } from "@/hooks/usePermissions";
 import { projectInfo } from "@/data/projectData";
-import { Moon, Sun, Loader2, AlertTriangle } from "lucide-react";
+import { Moon, Sun, Loader2, AlertTriangle, Menu, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ShareReportDialog } from "@/components/dashboard/ShareReportDialog";
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
+import { CommandPalette, CommandTrigger, useCommandPalette } from "@/components/common/CommandPalette";
+import { MobileNavDrawer } from "@/components/common/MobileNavDrawer";
+import { MobileOverdueStrip } from "@/components/common/MobileOverdueStrip";
+import { MobileTabBar, type MobileTabItem } from "@/components/common/MobileTabBar";
+import { visibleNav } from "@/lib/navigation";
 import { supabase } from "@/integrations/supabase/client";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { useSLASummary } from "@/hooks/useSLASummary";
@@ -57,6 +63,10 @@ const Index = () => {
   const { role, user } = useAuth();
   useActivityTracker();
   const { data: slaSummary } = useSLASummary();
+  const { data: myPerms } = useMyPermissions();
+  // ⌘K global (el hook registra el listener); el trigger del header sólo abre.
+  const { open: paletteOpen, setOpen: setPaletteOpen } = useCommandPalette();
+  const [navDrawerOpen, setNavDrawerOpen] = useState(false);
   const [activeSection, setActiveSectionState] = useState<string>(readPersistedSection);
   const [didLandRedirect, setDidLandRedirect] = useState(false);
 
@@ -155,6 +165,26 @@ const Index = () => {
     ? activeSection.replace("support-client-", "")
     : null;
 
+  const overdueCount = slaSummary?.overdue ?? 0;
+  // El gerente no gestiona boletas globales: mismo gating que el pill del header.
+  const showOverdueEntry = overdueCount > 0 && role !== "gerente";
+
+  // Abre la sheet global de vencidos. Si el usuario está parado en un cliente,
+  // pasa su id para que la sheet arranque filtrada a ese cliente.
+  const openOverdue = () => {
+    const cid = selectedSupportClientId || selectedClient?.id;
+    window.dispatchEvent(new CustomEvent("overdue:open", cid ? { detail: { clientId: cid } } : undefined));
+  };
+
+  // Misma nav que sidebar/drawer/palette (src/lib/navigation.ts); la tab bar usa
+  // el rótulo corto porque el completo no entra en 5 columnas de 390px.
+  const tabItems: MobileTabItem[] = visibleNav(role, myPerms).map(item => ({
+    key: item.id,
+    label: item.shortTitle,
+    icon: item.icon,
+    badge: item.id === "soporte" ? overdueCount : undefined,
+  }));
+
   // For gerente: find their currently-selected assigned client
   const gerenteClient = role === "gerente" && selectedGerenteClientId
     ? clientData.find(c => c.id === selectedGerenteClientId)
@@ -191,34 +221,52 @@ const Index = () => {
 
         <div className="flex-1 flex flex-col min-w-0">
           <header className="h-14 flex items-center justify-between border-b border-border bg-card px-4 shrink-0">
-            <div className="flex items-center gap-3">
-              <SidebarTrigger />
-              <div>
-                <h1 className="text-sm font-bold text-foreground">{getTitle()}</h1>
-                <p className="text-xs text-muted-foreground">{projectInfo.name} — {projectInfo.company}</p>
+            <div className="flex items-center gap-2 md:gap-3 min-w-0">
+              {/* Escritorio: colapsa/expande el sidebar. En móvil el sidebar no
+                  se usa — su lugar lo toma MobileNavDrawer. */}
+              <SidebarTrigger className="hidden md:flex" />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="md:hidden h-8 w-8 shrink-0"
+                onClick={() => setNavDrawerOpen(true)}
+                aria-label="Abrir navegación"
+              >
+                <Menu className="h-4 w-4" />
+              </Button>
+              <div className="min-w-0">
+                <h1 className="text-[13.5px] font-bold leading-tight text-foreground truncate">{getTitle()}</h1>
+                <p className="text-[11.5px] text-muted-foreground truncate">{projectInfo.name} — {projectInfo.company}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
+              <CommandTrigger onClick={() => setPaletteOpen(true)} className="hidden md:flex w-[190px] lg:w-[230px]" />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="md:hidden h-8 w-8"
+                onClick={() => setPaletteOpen(true)}
+                aria-label="Buscar"
+              >
+                <Search className="h-4 w-4" />
+              </Button>
               {/* Pill global de "casos vencidos" — abre OverdueTicketsSheet
                   con la lista COMPLETA (no solo bandeja).
                   Si el user está en una vista de cliente específica, pasa el
                   clientId al evento → la sheet se scope automáticamente. */}
-              {(slaSummary?.overdue ?? 0) > 0 && role !== "gerente" && (
+              {showOverdueEntry && (
                 <button
-                  onClick={() => {
-                    const cid = selectedSupportClientId || (selectedClient?.id);
-                    window.dispatchEvent(new CustomEvent("overdue:open", cid ? { detail: { clientId: cid } } : undefined));
-                  }}
+                  onClick={openOverdue}
                   className="hidden md:inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full border border-destructive/40 bg-destructive/[0.06] hover:bg-destructive/[0.12] text-destructive text-xs font-bold transition-colors group"
-                  title={`${slaSummary!.overdue} casos vencidos · click para gestionar${selectedSupportClientId ? " (filtrado a este cliente)" : ""}`}
+                  title={`${overdueCount} casos vencidos · click para gestionar${selectedSupportClientId ? " (filtrado a este cliente)" : ""}`}
                 >
                   <span className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-60" />
                     <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive" />
                   </span>
                   <AlertTriangle className="h-3.5 w-3.5" />
-                  <span className="tabular-nums">{slaSummary!.overdue}</span>
-                  <span>vencido{slaSummary!.overdue === 1 ? "" : "s"}</span>
+                  <span className="tabular-nums">{overdueCount}</span>
+                  <span>vencido{overdueCount === 1 ? "" : "s"}</span>
                   <span className="text-[10px] uppercase tracking-wider opacity-60 group-hover:opacity-100 transition-opacity hidden lg:inline">→ ver</span>
                 </button>
               )}
@@ -230,7 +278,11 @@ const Index = () => {
             </div>
           </header>
 
-          <main className="flex-1 overflow-auto p-4 md:p-6">
+          {/* Franja móvil de vencidos: mismo evento que el pill del header. */}
+          {showOverdueEntry && <MobileOverdueStrip count={overdueCount} onClick={openOverdue} />}
+
+          {/* pb-20 en móvil deja libre la altura de la MobileTabBar fija. */}
+          <main className="flex-1 overflow-auto p-4 md:p-6 pb-20 md:pb-6">
             {/* Suspense envuelve TODO el contenido lazy del main: cualquier sección
                 que el user abra (scrum/soporte/config/clientes/detalle) se carga
                 on-demand. El fallback es el spinner inline (no fullscreen) para
@@ -240,7 +292,10 @@ const Index = () => {
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             }>
-              <div className="w-full">
+              {/* key=activeSection: todo el contenido de este div ya está
+                  condicionado por activeSection, así que remontarlo no cambia
+                  el comportamiento y permite el fade-in por sección. */}
+              <div key={activeSection} className="w-full animate-fadein">
                 {activeSection === "overview" && role === "gerente" && (
                   loadingAssignment ? (
                     <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
@@ -294,6 +349,25 @@ const Index = () => {
           </main>
         </div>
       </div>
+
+      {/* Navegación móvil: drawer (reemplaza al sidebar) + tab bar fija.
+          La tab bar sólo aparece si hay al menos 2 destinos (el gerente
+          únicamente puede ver "overview", ahí no aporta nada). */}
+      <MobileNavDrawer
+        open={navDrawerOpen}
+        onOpenChange={setNavDrawerOpen}
+        activeSection={activeSection}
+        onSectionChange={handleSectionChange}
+      />
+      {tabItems.length > 1 && (
+        <MobileTabBar
+          activeSection={activeSection}
+          onSectionChange={handleSectionChange}
+          items={tabItems}
+        />
+      )}
+
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} onNavigate={handleSectionChange} />
 
       {/* Sheet global de boletas vencidas — disparable desde cualquier sección
           via window.dispatchEvent(new CustomEvent("overdue:open")) */}
