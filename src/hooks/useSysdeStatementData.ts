@@ -24,7 +24,8 @@ export function useSysdeStatementData(stmt: AccountStatement | undefined, client
 
   const pStart = stmt?.period.start ?? "9999-12-31";
   const pEnd = stmt?.period.end ?? "0000-01-01";
-  const today = new Date().toISOString().slice(0, 10);
+  // Fecha local (no UTC): en UTC-6 una póliza vencía horas antes de tiempo.
+  const today = new Date().toLocaleDateString("en-CA");
 
   const shownPkgs = useMemo(
     () =>
@@ -98,32 +99,44 @@ export function useSysdeStatementData(stmt: AccountStatement | undefined, client
   const analytics: SysdeAnalytics = useMemo(() => {
     const porMes: Record<string, number> = {};
     const porTipo: Record<string, number> = {};
+    let sinFecha = 0;
     rows.forEach((r) => {
       if (r.fecha_registro) {
         const ym = r.fecha_registro.slice(0, 7);
         porMes[ym] = (porMes[ym] ?? 0) + r.hours;
+      } else {
+        sinFecha += r.hours;
       }
       const t = r.tipo && r.tipo !== "—" ? r.tipo : "Sin tipo";
       porTipo[t] = (porTipo[t] ?? 0) + r.hours;
     });
-    const byMonth = Object.entries(porMes)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([ym, hours]) => ({ ym, label: mesLabel(ym), hours }));
+    const pctOf = (h: number) => (totalInvertido > 0 ? (h / totalInvertido) * 100 : 0);
+    const meses = Object.keys(porMes).sort();
+    const byMonth = meses.map((ym) => ({ ym, label: mesLabel(ym), hours: porMes[ym], pct: pctOf(porMes[ym]) }));
+    // Las horas sin fecha entran como fila propia para que el desglose sume 100%.
+    if (sinFecha > 0.001) byMonth.push({ ym: "", label: "Sin fecha", hours: sinFecha, pct: pctOf(sinFecha) });
     const byTipo = Object.entries(porTipo)
       .sort(([, a], [, b]) => b - a)
-      .map(([tipo, hours]) => ({ tipo, hours }));
+      .map(([tipo, hours]) => ({ tipo, hours, pct: pctOf(hours) }));
     const utilizacionPct = totContract > 0 ? (totConsumed / totContract) * 100 : 0;
-    const runRate = byMonth.length ? totalInvertido / byMonth.length : 0;
-    // Proyección solo con ≥2 meses de datos y saldo activo real; es un estimado.
-    let mesesCobertura: number | null = null;
+
+    // Ritmo mensual sobre meses calendario entre el primer y el último mes con
+    // consumo fechado — cuenta los meses intermedios sin actividad y excluye
+    // las horas sin fecha, para que numerador y denominador midan lo mismo.
+    const idx = (ym: string) => Number(ym.slice(0, 4)) * 12 + (Number(ym.slice(5, 7)) - 1);
+    const datedHours = meses.reduce((s, ym) => s + porMes[ym], 0);
+    const spanMeses = meses.length ? idx(meses[meses.length - 1]) - idx(meses[0]) + 1 : 0;
+    const runRate = spanMeses > 0 ? datedHours / spanMeses : 0;
+
+    // Proyección determinista: anclada al último mes con consumo (no a "hoy"),
+    // con aritmética de meses sobre enteros (sin desborde de fin de mes).
+    // Solo con ≥2 meses de datos y saldo activo real; es un estimado.
     let agotamientoLabel: string | null = null;
-    if (saldoActivas > 0.001 && runRate > 0.001 && byMonth.length >= 2) {
-      mesesCobertura = saldoActivas / runRate;
-      const d = new Date();
-      d.setMonth(d.getMonth() + Math.max(0, Math.round(mesesCobertura)));
-      agotamientoLabel = `${MESES[d.getMonth()]} ${d.getFullYear()}`;
+    if (saldoActivas > 0.001 && runRate > 0.001 && meses.length >= 2) {
+      const target = idx(meses[meses.length - 1]) + Math.max(1, Math.round(saldoActivas / runRate));
+      agotamientoLabel = `${MESES[target % 12]} ${Math.floor(target / 12)}`;
     }
-    return { byMonth, byTipo, utilizacionPct, runRate, mesesCobertura, agotamientoLabel };
+    return { byMonth, byTipo, utilizacionPct, runRate, agotamientoLabel };
   }, [rows, totContract, totConsumed, totalInvertido, saldoActivas]);
 
   return { loadingPkgs, pkgRows, rows, totals, analytics };
@@ -136,7 +149,7 @@ export function toSysdeExportData(d: {
   pkgRows: SysdeStatementData["pkgRows"];
   rows: SysdeStatementData["rows"];
   totals: SysdeStatementData["totals"];
-  analytics?: SysdeStatementData["analytics"];
+  analytics: SysdeStatementData["analytics"];
 }): SysdeExportData {
   return {
     packages: d.pkgRows.map((p) => ({
