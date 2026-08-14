@@ -31,8 +31,6 @@ import {
   useCsrMilestones, useCsrQuotes, useCsrCommercialSignals, useCsrAssistant, type CsrPlan,
 } from "@/hooks/useCsrWorkspace";
 
-// Tipografía de marca SYSDE (display).
-const MONT = { fontFamily: "'Montserrat', system-ui, sans-serif" } as const;
 
 const PRIO_TONE: Record<string, string> = {
   alta: "bg-destructive/15 text-destructive border-destructive/30",
@@ -258,7 +256,7 @@ export function ComercialModule({ clientName }: { clientName: (id?: string | nul
   return (
     <div className="space-y-4">
       <section className="space-y-2">
-        <h3 className="text-sm font-bold flex items-center gap-2" style={MONT}><Briefcase className="h-4 w-4 text-primary" /> Cotizaciones</h3>
+        <h3 className="text-sm font-bold flex items-center gap-2"><Briefcase className="h-4 w-4 text-primary" /> Cotizaciones</h3>
         {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mx-auto my-4" /> : quotes.length === 0 ? (
           <EmptyState icon={<Briefcase className="h-5 w-5" />} title="Sin cotizaciones" hint="Cuando se generen cotizaciones para tus clientes, las verás acá." />
         ) : (
@@ -280,7 +278,7 @@ export function ComercialModule({ clientName }: { clientName: (id?: string | nul
       </section>
       <section className="space-y-2">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold flex items-center gap-2" style={MONT}><Target className="h-4 w-4 text-primary" /> Mapeo de prospectos</h3>
+          <h3 className="text-sm font-bold flex items-center gap-2"><Target className="h-4 w-4 text-primary" /> Mapeo de prospectos</h3>
           {oportunidades > 0 && <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/30">{oportunidades} oportunidad{oportunidades === 1 ? "" : "es"}</Badge>}
         </div>
         <p className="text-[11px] text-muted-foreground">Señales reales por cliente: consumo de la bolsa, hitos por facturar, suscripción vencida, falta de contrato y cotizaciones sin cierre.</p>
@@ -433,13 +431,13 @@ function AgendaLista({ events, clientName, onOpen }: { events: AgendaEvent[]; cl
     <div className="space-y-4">
       {proximas.length > 0 && (
         <section className="space-y-1.5">
-          <h4 className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground" style={MONT}>Próximas ({proximas.length})</h4>
+          <h4 className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Próximas ({proximas.length})</h4>
           {proximas.map(Row)}
         </section>
       )}
       {pasadas.length > 0 && (
         <section className="space-y-1.5">
-          <h4 className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground" style={MONT}>Pasadas ({pasadas.length})</h4>
+          <h4 className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Pasadas ({pasadas.length})</h4>
           {pasadas.slice(0, 40).map(Row)}
         </section>
       )}
@@ -471,7 +469,7 @@ function AgendaCalendario({ events, cursor, setCursor, clientName, onOpen }: {
       {/* Navegación de mes */}
       <div className="flex items-center justify-between mb-3">
         <button onClick={() => setCursor(addMonths(cursor, -1))} className="h-7 w-7 rounded-md hover:bg-accent flex items-center justify-center"><ChevronLeft className="h-4 w-4" /></button>
-        <p className="text-sm font-bold capitalize" style={MONT}>{format(cursor, "MMMM yyyy", { locale: es })}</p>
+        <p className="text-sm font-bold capitalize">{format(cursor, "MMMM yyyy", { locale: es })}</p>
         <button onClick={() => setCursor(addMonths(cursor, 1))} className="h-7 w-7 rounded-md hover:bg-accent flex items-center justify-center"><ChevronRight className="h-4 w-4" /></button>
       </div>
       {/* Encabezado de días */}
@@ -562,7 +560,7 @@ function MinutasView({ sessions, clientName, clients = [], allTickets = [], onDe
     <div className="space-y-3">
       {/* Encabezado + crear */}
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-bold flex items-center gap-2" style={MONT}>
+        <h3 className="text-sm font-bold flex items-center gap-2">
           <FileText className="h-4 w-4 text-primary" /> Minutas
           <span className="text-[11px] font-normal text-muted-foreground tabular-nums">{filtered.length}/{sessions.length}</span>
         </h3>
@@ -642,7 +640,7 @@ function MinutasView({ sessions, clientName, clients = [], allTickets = [], onDe
       {/* Creación / gestión completa (reutiliza el gestor existente) */}
       <Dialog open={createOpen} onOpenChange={closeCreate}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle style={MONT} className="flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Gestión de minutas</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Gestión de minutas</DialogTitle></DialogHeader>
           <SupportMinutas
             tickets={allTickets as any}
             allTickets={allTickets as any}
@@ -682,7 +680,7 @@ function MinutaDetailDialog({ minuta, onOpenChange, clientName, allTickets = [],
                   <FileText className="h-5 w-5" />
                 </div>
                 <div className="min-w-0">
-                  <DialogTitle className="text-base leading-tight" style={MONT}>{minuta.title}</DialogTitle>
+                  <DialogTitle className="text-base leading-tight">{minuta.title}</DialogTitle>
                   <div className="flex items-center gap-3 text-[11px] text-muted-foreground flex-wrap mt-1">
                     <span className="flex items-center gap-1"><Building2 className="h-3 w-3" />{clientName(minuta.client_id)}</span>
                     {d && <span className="flex items-center gap-1"><CalendarClock className="h-3 w-3" />{format(d, "EEEE d 'de' MMMM, yyyy", { locale: es })}</span>}
@@ -710,14 +708,14 @@ function MinutaDetailDialog({ minuta, onOpenChange, clientName, allTickets = [],
             <div className="p-5 space-y-3.5">
               {minuta.summary && (
                 <section className="rounded-lg border border-border/70 bg-muted/30 p-3">
-                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1.5" style={MONT}><FileText className="h-3.5 w-3.5" /> Qué se hizo</h4>
+                  <h4 className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground mb-1.5 flex items-center gap-1.5"><FileText className="h-3.5 w-3.5" /> Qué se hizo</h4>
                   <p className="text-[13px] text-foreground/90 whitespace-pre-wrap leading-relaxed">{minuta.summary}</p>
                 </section>
               )}
 
               {nAcuerdos > 0 && (
                 <section className="rounded-lg border border-success/25 bg-success/[0.05] p-3">
-                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-success mb-1.5 flex items-center gap-1.5" style={MONT}><Handshake className="h-3.5 w-3.5" /> Acuerdos</h4>
+                  <h4 className="text-[10px] font-bold uppercase tracking-[0.08em] text-success mb-1.5 flex items-center gap-1.5"><Handshake className="h-3.5 w-3.5" /> Acuerdos</h4>
                   <ul className="space-y-1.5">{minuta.agreements.map((a, i) => (
                     <li key={i} className="text-[12.5px] flex items-start gap-2"><span className="h-1.5 w-1.5 rounded-full bg-success mt-1.5 shrink-0" />{a}</li>
                   ))}</ul>
@@ -726,7 +724,7 @@ function MinutaDetailDialog({ minuta, onOpenChange, clientName, allTickets = [],
 
               {nPend > 0 && (
                 <section className="rounded-lg border border-warning/25 bg-warning/[0.05] p-3">
-                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-warning mb-1.5 flex items-center gap-1.5" style={MONT}><CheckSquare className="h-3.5 w-3.5" /> Pendientes</h4>
+                  <h4 className="text-[10px] font-bold uppercase tracking-[0.08em] text-warning mb-1.5 flex items-center gap-1.5"><CheckSquare className="h-3.5 w-3.5" /> Pendientes</h4>
                   <ul className="space-y-1.5">{minuta.action_items.map((a, i) => (
                     <li key={i} className="text-[12.5px] flex items-start gap-2"><CheckSquare className="h-3.5 w-3.5 text-warning/70 mt-0.5 shrink-0" />{a}</li>
                   ))}</ul>
@@ -735,7 +733,7 @@ function MinutaDetailDialog({ minuta, onOpenChange, clientName, allTickets = [],
 
               {nCasos > 0 && (
                 <section>
-                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5" style={MONT}>Casos tratados</h4>
+                  <h4 className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground mb-1.5">Casos tratados</h4>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {minuta.cases_referenced.map((c) => {
                       const tk = findCase(c);
