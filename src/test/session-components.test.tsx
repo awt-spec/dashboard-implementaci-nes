@@ -34,6 +34,8 @@ import { ContractTermsEditor } from "@/components/clients/ContractTermsEditor";
 import { SlaCompliancePanel } from "@/components/clients/SlaCompliancePanel";
 import { SlaHistoryPanel } from "@/components/clients/SlaHistoryPanel";
 import { AccountStatement360 } from "@/components/clients/AccountStatement360";
+import { ContractDetailSheet } from "@/components/clients/ContractDetailSheet";
+import type { ClientContract } from "@/hooks/useClientContracts";
 import type { ExtractedTerms } from "@/hooks/useContractKb";
 
 function wrap(node: React.ReactNode) {
@@ -52,6 +54,13 @@ const TERMS: ExtractedTerms = {
   hitos_facturacion: [{ numero: 1, descripcion: "Kickoff", condicion: "firma" }],
   disparadores_alerta: [{ titulo: "Horas", condicion: "80%" }],
   confianza: 90,
+};
+
+const CONTRATO: ClientContract = {
+  id: "c1", client_id: "aurum", contract_type: "fee_mensual",
+  monthly_value: 749, hourly_rate: 65, included_hours: 40, currency: "USD",
+  start_date: "2026-01-01", end_date: "2026-12-31", auto_renewal: false,
+  penalty_clause: null, payment_terms: "30 días", notes: null, is_active: true,
 };
 
 describe("componentes de la sesión — render sin crash", () => {
@@ -74,5 +83,22 @@ describe("componentes de la sesión — render sin crash", () => {
   it("AccountStatement360 renderiza", () => {
     const { container } = wrap(<AccountStatement360 clientId="aurum" />);
     expect(container).toBeTruthy();
+  });
+
+  it("ContractDetailSheet (expediente 360) renderiza con un contrato", () => {
+    const { baseElement } = wrap(
+      <ContractDetailSheet contract={CONTRATO} clientId="aurum" open onOpenChange={() => {}} />,
+    );
+    // El contenido del Sheet se porta fuera del container, por eso baseElement.
+    expect(baseElement.textContent).toContain("Fee mensual fijo");
+    expect(baseElement.textContent).toContain("Vigencia");
+    expect(baseElement.textContent).toContain("Pólizas vinculadas");
+  });
+
+  it("ContractDetailSheet sin contrato no renderiza nada", () => {
+    const { baseElement } = wrap(
+      <ContractDetailSheet contract={null} clientId="aurum" open onOpenChange={() => {}} />,
+    );
+    expect(baseElement.textContent).not.toContain("Vigencia");
   });
 });
