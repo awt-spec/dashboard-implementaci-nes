@@ -22,16 +22,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { SharedMinutasPanel } from "./SharedMinutasPanel";
+import { SectionLabel } from "@/components/common/StatCard";
 
 interface Props {
   client: Client;
 }
 
 const HEALTH_CONFIG = {
-  excellent: { label: "Excelente", color: "from-[hsl(0_72%_45%)] via-[hsl(0_72%_51%)] to-[hsl(0_85%_60%)]", textColor: "text-primary", Icon: Sparkles },
-  good: { label: "Bien", color: "from-[hsl(0_72%_42%)] via-[hsl(0_72%_51%)] to-[hsl(15_85%_55%)]", textColor: "text-primary", Icon: CheckCircle2 },
-  warning: { label: "Atención", color: "from-[hsl(20_85%_45%)] via-[hsl(25_92%_50%)] to-[hsl(38_92%_55%)]", textColor: "text-amber-600", Icon: AlertTriangle },
-  critical: { label: "Crítico", color: "from-[hsl(0_75%_35%)] via-[hsl(0_72%_45%)] to-[hsl(0_85%_55%)]", textColor: "text-destructive", Icon: AlertCircle },
+  excellent: { label: "Excelente", color: "from-primary via-primary to-primary/75", textColor: "text-primary", Icon: Sparkles },
+  good: { label: "Bien", color: "from-primary via-primary to-primary/70", textColor: "text-primary", Icon: CheckCircle2 },
+  warning: { label: "Atención", color: "from-warning via-warning to-warning/70", textColor: "text-warning", Icon: AlertTriangle },
+  critical: { label: "Crítico", color: "from-destructive via-destructive to-destructive/70", textColor: "text-destructive", Icon: AlertCircle },
 };
 
 function getHealth(client: Client): keyof typeof HEALTH_CONFIG {
@@ -157,7 +158,7 @@ export function GerenteMobileDashboard({ client }: Props) {
   };
 
   return (
-    <div className="max-w-2xl lg:max-w-7xl mx-auto pb-24 md:pb-6">
+    <div className="max-w-2xl lg:max-w-7xl mx-auto pb-24 md:pb-6 animate-fadein">
       <div className="lg:grid lg:grid-cols-[380px_1fr] lg:gap-6 lg:items-start">
       <div className="lg:sticky lg:top-4 space-y-4">
       {/* ─── HEADER HERO ──────────────────────────── */}
@@ -165,7 +166,7 @@ export function GerenteMobileDashboard({ client }: Props) {
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         className={cn(
-          "relative overflow-hidden rounded-2xl p-5 lg:p-6 mb-4 lg:mb-0 text-white",
+          "relative overflow-hidden rounded-3xl p-5 lg:p-6 mb-4 lg:mb-0 text-white",
           `bg-gradient-to-br ${healthConfig.color}`
         )}
       >
@@ -173,10 +174,10 @@ export function GerenteMobileDashboard({ client }: Props) {
         <div className="relative">
           <div className="flex items-start justify-between mb-3">
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-white/70 mb-0.5">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/70 mb-0.5">
                 Mi Proyecto
               </p>
-              <h1 className="text-xl md:text-2xl font-black leading-tight truncate">{client.name}</h1>
+              <h1 className="text-xl md:text-2xl font-black tracking-[-0.02em] leading-tight truncate">{client.name}</h1>
             </div>
             <Badge className="bg-white/20 backdrop-blur-sm text-white border-white/30 text-[10px] shrink-0 gap-1">
               <healthConfig.Icon className="h-3 w-3" /> {healthConfig.label}
@@ -310,7 +311,7 @@ export function GerenteMobileDashboard({ client }: Props) {
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <CircleDot className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-bold">Fases del Proyecto</h3>
+                <SectionLabel>Fases del Proyecto</SectionLabel>
               </div>
               <div className="space-y-3">
                 {client.phases.map((phase, idx) => {
@@ -355,7 +356,7 @@ export function GerenteMobileDashboard({ client }: Props) {
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <Users className="h-4 w-4 text-info" />
-                  <h3 className="text-sm font-bold">Equipo asignado</h3>
+                  <SectionLabel>Equipo asignado</SectionLabel>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {client.teamAssigned.map(member => (
@@ -483,7 +484,7 @@ export function GerenteMobileDashboard({ client }: Props) {
           <div>
             <div className="flex items-center gap-2 mb-2 px-1">
               <FileText className="h-3.5 w-3.5 text-primary" />
-              <h3 className="text-xs font-bold uppercase tracking-wider">Presentaciones de Sysde</h3>
+              <SectionLabel>Presentaciones de Sysde</SectionLabel>
             </div>
             <SharedMinutasPanel clientId={client.id} compact />
           </div>
@@ -493,7 +494,7 @@ export function GerenteMobileDashboard({ client }: Props) {
             <div>
               <div className="flex items-center gap-2 mb-2 px-1">
                 <Calendar className="h-3.5 w-3.5 text-info" />
-                <h3 className="text-xs font-bold uppercase tracking-wider">Minutas del proyecto</h3>
+                <SectionLabel>Minutas del proyecto</SectionLabel>
               </div>
               <div className="space-y-2">
                 {recentMinutes.map((m, idx) => (
@@ -515,7 +516,7 @@ export function GerenteMobileDashboard({ client }: Props) {
                         <p className="text-xs text-muted-foreground line-clamp-3 mb-3">{m.summary}</p>
                         {m.agreements && m.agreements.length > 0 && (
                           <div className="space-y-1">
-                            <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Acuerdos</p>
+                            <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-[0.08em]">Acuerdos</p>
                             {m.agreements.slice(0, 3).map((a, i) => (
                               <div key={i} className="flex items-start gap-1.5 text-[11px]">
                                 <CheckCircle2 className="h-3 w-3 text-success mt-0.5 shrink-0" />
@@ -615,7 +616,7 @@ function StatCard({ icon: Icon, label, value, progress, color }: { icon: any; la
           <Icon className={cn("h-4 w-4", color)} />
           <span className="text-[10px] font-bold tabular-nums text-muted-foreground">{progress}%</span>
         </div>
-        <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-0.5">{label}</p>
+        <p className="text-[10px] uppercase text-muted-foreground tracking-[0.08em] mb-0.5">{label}</p>
         <p className="text-lg font-black tabular-nums leading-tight">{value}</p>
         <Progress value={progress} className="h-1 mt-2" />
       </CardContent>

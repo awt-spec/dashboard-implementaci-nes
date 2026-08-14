@@ -23,6 +23,7 @@ import { SlaBreachAlert } from "@/components/support/SlaBreachAlert";
 import { isTicketClosed } from "@/lib/ticketStatus";
 import { toast } from "sonner";
 import { PackageCheck, RotateCcw } from "lucide-react";
+import { KpiTile, SectionLabel } from "@/components/common/StatCard";
 
 interface Props {
   client: Client;
@@ -55,10 +56,10 @@ const STATE_STYLES: Record<string, string> = {
 };
 
 function getHealth(openCount: number, criticalCount: number) {
-  if (criticalCount > 0) return { label: "Crítico", Icon: AlertCircle, color: "from-[hsl(0_75%_35%)] via-[hsl(0_72%_45%)] to-[hsl(0_85%_55%)]" };
-  if (openCount > 15) return { label: "Atención", Icon: AlertTriangle, color: "from-[hsl(20_85%_45%)] via-[hsl(25_92%_50%)] to-[hsl(38_92%_55%)]" };
-  if (openCount > 5) return { label: "Estable", Icon: CheckCircle2, color: "from-[hsl(0_72%_42%)] via-[hsl(0_72%_51%)] to-[hsl(15_85%_55%)]" };
-  return { label: "Excelente", Icon: Sparkles, color: "from-[hsl(0_72%_45%)] via-[hsl(0_72%_51%)] to-[hsl(0_85%_60%)]" };
+  if (criticalCount > 0) return { label: "Crítico", Icon: AlertCircle, color: "from-destructive via-destructive to-destructive/70" };
+  if (openCount > 15) return { label: "Atención", Icon: AlertTriangle, color: "from-warning via-warning to-warning/70" };
+  if (openCount > 5) return { label: "Estable", Icon: CheckCircle2, color: "from-primary via-primary to-primary/70" };
+  return { label: "Excelente", Icon: Sparkles, color: "from-primary via-primary to-primary/75" };
 }
 
 export function GerenteSupportDashboard({ client, canCreateTickets = true, sidebarExtras }: Props) {
@@ -174,7 +175,7 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
   }
 
   return (
-    <div className="max-w-2xl lg:max-w-7xl mx-auto pb-24 md:pb-6">
+    <div className="max-w-2xl lg:max-w-7xl mx-auto pb-24 md:pb-6 animate-fadein">
       <div className="flex flex-col lg:grid lg:grid-cols-[380px_1fr] lg:gap-6 lg:items-start">
 
         {/* ─── LEFT / TOP COLUMN ─── (en móvil va DEBAJO de las pestañas) */}
@@ -183,16 +184,16 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            className={cn("relative overflow-hidden rounded-2xl p-5 lg:p-6 text-white", `bg-gradient-to-br ${health.color}`)}
+            className={cn("relative overflow-hidden rounded-3xl p-5 lg:p-6 text-white", `bg-gradient-to-br ${health.color}`)}
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -mr-10 -mt-10" />
             <div className="relative">
               <div className="flex items-start justify-between mb-3">
                 <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-white/70 mb-0.5 flex items-center gap-1.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/70 mb-0.5 flex items-center gap-1.5">
                     <Headset className="h-3 w-3" /> Soporte Sysde
                   </p>
-                  <h1 className="text-xl md:text-2xl font-black leading-tight truncate">{client.name}</h1>
+                  <h1 className="text-xl md:text-2xl font-black tracking-[-0.02em] leading-tight truncate">{client.name}</h1>
                 </div>
                 <Badge className="bg-white/20 backdrop-blur-sm text-white border-white/30 text-[10px] shrink-0 gap-1">
                   <health.Icon className="h-3 w-3" /> {health.label}
@@ -243,8 +244,8 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
 
           {/* Mini stats */}
           <div className="grid grid-cols-2 gap-3">
-            <MiniStat icon={Flame} label="Alta prioridad" value={highPriorityOpen.length} tone="warning" />
-            <MiniStat icon={Clock} label=">30 días" value={oldTickets.length} tone="destructive" />
+            <KpiTile icon={Flame} label="Alta prioridad" value={highPriorityOpen.length} tone="warning" compact />
+            <KpiTile icon={Clock} label=">30 días" value={oldTickets.length} tone="destructive" compact />
           </div>
 
           {/* En desktop los extras (cotizaciones / estado de cuenta / horas) van en
@@ -294,7 +295,7 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
                   <CardContent className="p-4">
                     <div className="flex items-center gap-2 mb-3">
                       <AlertTriangle className="h-4 w-4 text-destructive" />
-                      <h3 className="text-sm font-bold text-destructive">Casos Críticos</h3>
+                      <SectionLabel className="text-destructive">Casos Críticos</SectionLabel>
                     </div>
                     <div className="space-y-2">
                       {criticalTickets.slice(0, 3).map(t => (
@@ -320,7 +321,7 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <TrendingUp className="h-4 w-4 text-primary" />
-                    <h3 className="text-sm font-bold">Casos por producto</h3>
+                    <SectionLabel>Casos por producto</SectionLabel>
                   </div>
                   {productCounts.length === 0 ? (
                     <p className="text-xs text-muted-foreground text-center py-4">Sin casos abiertos</p>
@@ -355,7 +356,7 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <Sparkles className="h-4 w-4 text-info" />
-                    <h3 className="text-sm font-bold">Actividad reciente</h3>
+                    <SectionLabel>Actividad reciente</SectionLabel>
                   </div>
                   <div className="space-y-2">
                     {tickets.slice(0, 5).map(t => (
@@ -381,7 +382,7 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <FileText className="h-4 w-4 text-primary" />
-                    <h3 className="text-sm font-bold">Minutas compartidas</h3>
+                    <SectionLabel>Minutas compartidas</SectionLabel>
                   </div>
                   <SharedMinutasPanel clientId={client.id} compact />
                 </CardContent>
@@ -670,20 +671,6 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
   );
 }
 
-function MiniStat({ icon: Icon, label, value, tone }: { icon: any; label: string; value: number; tone: "warning" | "destructive" | "info" }) {
-  const colorClass = tone === "warning" ? "text-warning" : tone === "destructive" ? "text-destructive" : "text-info";
-  return (
-    <Card>
-      <CardContent className="p-3">
-        <div className="flex items-center gap-1.5 mb-1">
-          <Icon className={cn("h-3.5 w-3.5", colorClass)} />
-          <p className="text-[10px] font-medium text-muted-foreground">{label}</p>
-        </div>
-        <p className="text-xl font-black tabular-nums">{value}</p>
-      </CardContent>
-    </Card>
-  );
-}
 
 function EmptyState({ message }: { message: string }) {
   return (
