@@ -193,7 +193,7 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
                         </Button>
                         <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
                           <DialogTrigger asChild>
-                            <Button variant="outline" size="sm" className="gap-1.5 border-amber-500/30 text-amber-500 hover:bg-amber-500/10">
+                            <Button variant="outline" size="sm" className="gap-1.5 border-warning/30 text-warning hover:bg-warning/10">
                               <ArrowRightLeft className="h-3.5 w-3.5" /> A Soporte
                             </Button>
                           </DialogTrigger>

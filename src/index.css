@@ -37,6 +37,10 @@
     --info: 217 91% 60%;
     --info-foreground: 0 0% 100%;
 
+    /* Acento de funciones de IA (asistente, análisis, base de conocimiento). */
+    --ai: 258 90% 66%;
+    --ai-foreground: 0 0% 100%;
+
     --border: 220 13% 90%;
     --input: 220 13% 90%;
     --ring: 0 72% 51%;
@@ -86,6 +90,9 @@
 
     --info: 217 91% 50%;
     --info-foreground: 0 0% 100%;
+
+    --ai: 258 90% 74%;
+    --ai-foreground: 0 0% 100%;
 
     --border: 220 20% 20%;
     --input: 220 20% 20%;

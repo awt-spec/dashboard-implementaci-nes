@@ -71,8 +71,34 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
   const [contractType, setContractType] = useState("all");
   const [contractStatus, setContractStatus] = useState("all");
 
-  const totalMonthly = contracts.filter(c => c.is_active).reduce((s, c) => s + Number(c.monthly_value || 0), 0);
-  const activeContract = contracts.find(c => c.is_active);
+  const activeContracts = contracts.filter(c => c.is_active);
+
+  // Totales POR MONEDA. Antes se sumaba monthly_value de todos los contratos
+  // activos sin convertir y el resultado se etiquetaba con la moneda del primer
+  // contrato: un cliente con contratos en USD y CRC veía un número sin
+  // significado rotulado "USD".
+  const byCurrency = activeContracts.reduce<Record<string, { monthly: number; rateSum: number; n: number }>>((acc, c) => {
+    const cur = c.currency || "USD";
+    const e = (acc[cur] ??= { monthly: 0, rateSum: 0, n: 0 });
+    e.monthly += Number(c.monthly_value || 0);
+    e.rateSum += Number(c.hourly_rate || 0);
+    e.n += 1;
+    return acc;
+  }, {});
+  const currencies = Object.keys(byCurrency).sort((a, b) => byCurrency[b].monthly - byCurrency[a].monthly);
+  const mainCur = currencies[0] ?? "USD";
+
+  // Contrato de referencia para Vencimiento, Auditoría y Base de conocimiento.
+  // Antes era contracts.find(c => c.is_active) — el primero que apareciera — así
+  // que con varios contratos activos esas tres vistas apuntaban a uno al azar.
+  // Por defecto se toma el que vence primero (el accionable) y el usuario puede
+  // cambiarlo cuando hay más de uno.
+  const [primaryId, setPrimaryId] = useState<string | null>(null);
+  const defaultPrimary =
+    [...activeContracts].filter(c => c.end_date).sort((a, b) => (a.end_date || "").localeCompare(b.end_date || ""))[0]
+    ?? activeContracts[0];
+  const activeContract = activeContracts.find(c => c.id === primaryId) ?? defaultPrimary;
+
   const { canAmounts } = useFinanceAccess();
 
   const term = contractSearch.trim().toLowerCase();
@@ -108,9 +134,10 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
 
         <TabsContent value="contracts" className="space-y-4">
           {(() => {
-            const activeCount = contracts.filter(c => c.is_active).length;
-            const avgRate = contracts.length ? Math.round(contracts.reduce((s, c) => s + Number(c.hourly_rate || 0), 0) / contracts.length) : 0;
-            const cur = activeContract?.currency || "USD";
+            const activeCount = activeContracts.length;
+            const main = byCurrency[mainCur];
+            const avgRate = main && main.n ? Math.round(main.rateSum / main.n) : 0;
+            const cur = mainCur;
             const dleft = daysUntil(activeContract?.end_date);
             const vencTone = activeContract?.auto_renewal ? "success" : dleft == null ? "muted" : dleft < 0 ? "destructive" : dleft < 30 ? "destructive" : dleft < 90 ? "warning" : "success";
             const barTone: Record<string, string> = { success: "bg-success", warning: "bg-warning", destructive: "bg-destructive", muted: "bg-muted-foreground/30", primary: "bg-primary" };
@@ -121,8 +148,14 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
                   <div className="h-1 w-full bg-primary" />
                   <CardContent className="p-4">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1"><Wallet className="h-3 w-3 text-primary" /> Valor mensual activo</p>
-                    <p className="text-2xl font-black tabular-nums mt-1"><Confidential show={canAmounts}>${totalMonthly.toLocaleString()} <span className="text-xs font-normal text-muted-foreground">{cur}</span></Confidential></p>
-                    {totalMonthly > 0 && <p className="text-[10px] text-muted-foreground"><Confidential show={canAmounts}>${(totalMonthly * 12).toLocaleString()} / año</Confidential></p>}
+                    <p className="text-2xl font-black tabular-nums mt-1"><Confidential show={canAmounts}>{(main?.monthly ?? 0).toLocaleString()} <span className="text-xs font-normal text-muted-foreground">{cur}</span></Confidential></p>
+                    {(main?.monthly ?? 0) > 0 && <p className="text-[10px] text-muted-foreground"><Confidential show={canAmounts}>{((main?.monthly ?? 0) * 12).toLocaleString()} {cur} / año</Confidential></p>}
+                    {/* Monedas adicionales aparte: no son sumables entre sí. */}
+                    {currencies.slice(1).map(c2 => (
+                      <p key={c2} className="text-[10px] text-muted-foreground tabular-nums">
+                        <Confidential show={canAmounts}>+ {byCurrency[c2].monthly.toLocaleString()} {c2} / mes</Confidential>
+                      </p>
+                    ))}
                   </CardContent>
                 </Card>
                 <Card className="overflow-hidden">
@@ -159,6 +192,33 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
               </div>
             );
           })()}
+
+          {/* Con varios contratos activos, Vencimiento / Auditoría / Base de
+              conocimiento se refieren a UNO. Antes se elegía solo (el primero de
+              la lista); ahora se ve cuál es y se puede cambiar. */}
+          {activeContracts.length > 1 && activeContract && (
+            <div className="flex items-center gap-2 flex-wrap rounded-lg border border-border bg-muted/30 px-3 py-2">
+              <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+                Contrato de referencia
+              </span>
+              {activeContracts.map(c => {
+                const label = CONTRACT_TYPES.find(t => t.value === c.contract_type)?.label || c.contract_type;
+                const sel = c.id === activeContract.id;
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => setPrimaryId(c.id)}
+                    className={`h-7 px-2.5 rounded-full border text-[11px] font-semibold transition-colors ${
+                      sel ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-accent/50"
+                    }`}
+                    title={c.end_date ? `Vence ${c.end_date}` : "Sin vencimiento"}
+                  >
+                    {label}{c.end_date ? ` · ${c.end_date}` : ""}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           <div className="flex justify-between items-center">
             <h3 className="font-semibold flex items-center gap-2"><FileSignature className="h-4 w-4" /> Contratos</h3>
