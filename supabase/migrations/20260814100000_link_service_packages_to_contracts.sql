@@ -24,8 +24,11 @@ comment on column public.service_packages.contract_id is
 -- Con dos o más contratos no hay forma de saber cuál originó cada póliza sin
 -- criterio humano, y adivinar dejaría datos incorrectos en el estado de cuenta.
 -- Esas quedan en NULL para que alguien las asigne desde la UI.
+-- array_agg y no min(id): min()/max() sobre uuid sólo existen desde PostgreSQL
+-- 16, y esta migración debe correr también en proyectos con PG 15. Como el
+-- HAVING garantiza exactamente una fila, [1] es el único contrato del cliente.
 with unico as (
-  select client_id, min(id) as contract_id
+  select client_id, (array_agg(id))[1] as contract_id
   from public.client_contracts
   group by client_id
   having count(*) = 1
