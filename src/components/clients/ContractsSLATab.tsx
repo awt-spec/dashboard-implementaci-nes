@@ -10,11 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileSignature, Shield, Plus, Trash2, Clock, Edit2, Lock, Package, Search, Sparkles, ShieldCheck, Database, Gauge, Wallet, CalendarClock, RefreshCw, Timer, TriangleAlert, Milestone } from "lucide-react";
+import { FileSignature, Shield, Plus, Trash2, Clock, Edit2, Lock, Package, Search, Sparkles, ShieldCheck, Database, Gauge, Wallet, CalendarClock, RefreshCw, Timer, TriangleAlert, Milestone, ScanSearch } from "lucide-react";
 import { ContractAnalysisDialog } from "./ContractAnalysisDialog";
 import { ContractKbPanel } from "./ContractKbPanel";
 import { ContractAuditPanel } from "./ContractAuditPanel";
 import { ContractMilestonesPanel } from "./ContractMilestonesPanel";
+import { ContractDetailSheet } from "./ContractDetailSheet";
 import { useServicePackages } from "@/hooks/useServicePackages";
 import { SlaCompliancePanel } from "./SlaCompliancePanel";
 import { SlaHistoryPanel } from "./SlaHistoryPanel";
@@ -73,6 +74,7 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
   const [contractDialog, setContractDialog] = useState<Partial<ClientContract> | null>(null);
   const [slaDialog, setSlaDialog] = useState<Partial<ClientSLA> | null>(null);
   const [analysisContract, setAnalysisContract] = useState<any | null>(null);
+  const [detailContract, setDetailContract] = useState<ClientContract | null>(null);
 
   // Búsqueda/filtros de contratos (ERP-063)
   const [contractSearch, setContractSearch] = useState("");
@@ -299,6 +301,7 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
                             )}
                           </div>
                           <div className="flex gap-0.5 shrink-0">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Ver expediente completo" onClick={() => setDetailContract(c)}><ScanSearch className="h-3.5 w-3.5" /></Button>
                             <Button variant="ghost" size="icon" className="h-7 w-7" title="Analizar con IA" onClick={() => setAnalysisContract(c)}><Sparkles className="h-3.5 w-3.5 text-primary" /></Button>
                             {isAdmin ? (
                               <>
@@ -591,6 +594,14 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Expediente 360 del contrato */}
+      <ContractDetailSheet
+        contract={detailContract}
+        clientId={clientId}
+        open={!!detailContract}
+        onOpenChange={(o) => !o && setDetailContract(null)}
+      />
 
       {/* Análisis IA del contrato */}
       {analysisContract && (
