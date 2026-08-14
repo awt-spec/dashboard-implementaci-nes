@@ -28,13 +28,10 @@ export function useUpsertServicePackage(clientId?: string) {
         hours_contracted: pkg.hours_contracted,
         start_date: pkg.start_date,
         end_date: pkg.end_date,
-        // contract_id sólo se envía cuando hay uno elegido. El repo no aplica
-        // migraciones automáticamente (Vercel sólo compila el front), así que
-        // este campo puede llegar a una base donde la columna todavía no existe:
-        // omitirlo deja intacto el alta/edición de pólizas de siempre, y el
-        // vínculo con el contrato empieza a funcionar en cuanto se aplique
-        // supabase/migrations/20260814100000_link_service_packages_to_contracts.sql
-        ...(pkg.contract_id ? { contract_id: pkg.contract_id } : {}),
+        // Se envía siempre, incluido null: si se omitiera cuando es null, elegir
+        // "Sin contrato" al editar no borraría el vínculo anterior — la póliza
+        // quedaría atada al contrato viejo sin que nada lo indique.
+        contract_id: pkg.contract_id ?? null,
       };
       const q = pkg.id
         ? (supabase.from("service_packages").update(row).eq("id", pkg.id) as any)
