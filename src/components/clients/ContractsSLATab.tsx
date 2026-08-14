@@ -10,10 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileSignature, Shield, Plus, Trash2, Clock, Edit2, Lock, Package, Search, Sparkles, ShieldCheck, Database, Gauge, Wallet, CalendarClock, RefreshCw, Timer, TriangleAlert } from "lucide-react";
+import { FileSignature, Shield, Plus, Trash2, Clock, Edit2, Lock, Package, Search, Sparkles, ShieldCheck, Database, Gauge, Wallet, CalendarClock, RefreshCw, Timer, TriangleAlert, Milestone } from "lucide-react";
 import { ContractAnalysisDialog } from "./ContractAnalysisDialog";
 import { ContractKbPanel } from "./ContractKbPanel";
 import { ContractAuditPanel } from "./ContractAuditPanel";
+import { ContractMilestonesPanel } from "./ContractMilestonesPanel";
+import { useServicePackages } from "@/hooks/useServicePackages";
 import { SlaCompliancePanel } from "./SlaCompliancePanel";
 import { SlaHistoryPanel } from "./SlaHistoryPanel";
 import { BilledPackagesTab } from "./BilledPackagesTab";
@@ -57,6 +59,12 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
   const isAdmin = role === "admin";
   const { data: contracts = [] } = useClientContracts(clientId);
   const { data: slas = [] } = useClientSLAs(clientId);
+  // Pólizas por contrato: hace visible el vínculo nuevo (service_packages.contract_id).
+  const { data: servicePkgs = [] } = useServicePackages(clientId);
+  const pkgsByContract = servicePkgs.reduce<Record<string, number>>((acc, p) => {
+    if (p.contract_id) acc[p.contract_id] = (acc[p.contract_id] ?? 0) + 1;
+    return acc;
+  }, {});
   const upsertContract = useUpsertContract();
   const deleteContract = useDeleteContract();
   const upsertSLA = useUpsertSLA();
@@ -283,6 +291,12 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
                               : <Badge variant="secondary" className="text-[10px]">Inactivo</Badge>}
                             {c.auto_renewal && <Badge variant="outline" className="text-[10px] gap-1 text-success border-success/30"><RefreshCw className="h-2.5 w-2.5" /> Renovación auto</Badge>}
                             {c.payment_terms && <Badge variant="outline" className="text-[10px]">{c.payment_terms}</Badge>}
+                            {(pkgsByContract[c.id] ?? 0) > 0 && (
+                              <Badge variant="outline" className="text-[10px] gap-1">
+                                <ShieldCheck className="h-2.5 w-2.5" />
+                                {pkgsByContract[c.id]} póliza{pkgsByContract[c.id] === 1 ? "" : "s"}
+                              </Badge>
+                            )}
                           </div>
                           <div className="flex gap-0.5 shrink-0">
                             <Button variant="ghost" size="icon" className="h-7 w-7" title="Analizar con IA" onClick={() => setAnalysisContract(c)}><Sparkles className="h-3.5 w-3.5 text-primary" /></Button>
@@ -331,6 +345,26 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
                 );
               })}
             </div>
+          )}
+
+          {/* Hitos de facturación del contrato de referencia. Antes sólo se veían
+              dentro del diálogo de análisis IA, así que en la práctica nadie los
+              encontraba (la tabla está vacía en producción). */}
+          {activeContract && (
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Milestone className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-sm">Hitos de facturación</h3>
+                  {activeContracts.length > 1 && (
+                    <span className="text-[11px] text-muted-foreground">
+                      del contrato de referencia
+                    </span>
+                  )}
+                </div>
+                <ContractMilestonesPanel contractId={activeContract.id} />
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
 
