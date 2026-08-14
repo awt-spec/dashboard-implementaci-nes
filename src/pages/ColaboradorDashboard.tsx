@@ -4,10 +4,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
-  Search, LogOut, Moon, Sun, Loader2, Factory,
+  LogOut, Moon, Sun, Loader2, Factory,
   Sunrise, Target, Zap, Bot, LayoutGrid, CalendarDays, AlertTriangle, Building2, BarChart3,
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAllScrumWorkItems, useAllSprints, useUpdateWorkItemScrum, type ScrumWorkItem } from "@/hooks/useTeamScrum";
 import { useWorkTimer, useActivityTracker } from "@/hooks/useActivityTracker";
@@ -26,6 +25,14 @@ import { MondayGridDashboard } from "@/components/colaborador/MondayGridDashboar
 import { OverdueTasksWidget, TopClientsWidget, PersonalKpiWidget } from "@/components/colaborador/widgets/ExtraWidgets";
 import { FordLineView } from "@/components/scrum/FordLineView";
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
+import { CommandPalette, CommandTrigger, useCommandPalette } from "@/components/common/CommandPalette";
+import type { NavItem } from "@/lib/navigation";
+
+// Vistas del colaborador para ⌘K (el rol no pasa por la nav del sidebar).
+const COLAB_VIEWS: NavItem[] = [
+  { id: "mi-trabajo", title: "Mi trabajo", shortTitle: "Trabajo", icon: LayoutGrid, roles: ["colaborador"], anyPermission: [], keywords: ["tablero", "tareas", "widgets", "hoy"] },
+  { id: "linea-ford", title: "Línea de trabajo", shortTitle: "Línea", icon: Factory, roles: ["colaborador"], anyPermission: [], keywords: ["flujo", "kanban", "ford", "proceso"] },
+];
 
 export default function ColaboradorDashboard() {
   const { user, profile, signOut } = useAuth();
@@ -49,6 +56,8 @@ export default function ColaboradorDashboard() {
     typeof window !== "undefined" && document.documentElement.classList.contains("dark")
   );
   const [view, setView] = useState<"mi-trabajo" | "linea-ford">("mi-trabajo");
+  // ⌘K sobre las vistas del colaborador (shell propio, sin el sidebar global).
+  const { open: paletteOpen, setOpen: setPaletteOpen } = useCommandPalette();
 
   const fullName = profile?.full_name || "";
   const initials = fullName.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase();
@@ -270,14 +279,12 @@ export default function ColaboradorDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background animate-fadein">
       <header className="sticky top-0 z-20 bg-background/95 backdrop-blur border-b border-border">
         <div className="px-6 h-14 flex items-center gap-4">
           <h1 className="text-base font-bold tracking-tight">Mi trabajo</h1>
-          <div className="flex-1 max-w-md mx-auto relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input placeholder="Buscar o ir a…" className="h-9 pl-9 pr-12 text-sm bg-muted/30 border-border/60" />
-            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono text-muted-foreground bg-background px-1.5 py-0.5 rounded border border-border">⌘K</kbd>
+          <div className="flex-1 max-w-md mx-auto">
+            <CommandTrigger onClick={() => setPaletteOpen(true)} className="w-full h-9" />
           </div>
           <div className="flex items-center gap-1">
             <NotificationBell />
@@ -314,6 +321,15 @@ export default function ColaboradorDashboard() {
           <Button variant="outline" size="sm" onClick={() => setLogHoursOpen(true)}>Registrar horas</Button>
         </div>
       </main>
+
+      <CommandPalette
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+        onNavigate={(v) => setView(v as "mi-trabajo" | "linea-ford")}
+        items={COLAB_VIEWS}
+        actions={[]}
+        navHeading="Vistas"
+      />
 
       <ManualTimeEntryDialog open={logHoursOpen} onOpenChange={setLogHoursOpen} />
 

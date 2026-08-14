@@ -25,9 +25,9 @@ const ICONS = {
 };
 
 const COLORS: Record<string, string> = {
-  warning: "text-amber-500",
-  trend: "text-emerald-500",
-  meeting: "text-blue-500",
+  warning: "text-warning",
+  trend: "text-success",
+  meeting: "text-info",
   info: "text-primary",
 };
 

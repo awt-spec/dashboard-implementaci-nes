@@ -4,6 +4,7 @@ import { GitBranch, Plus, Building2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import type { ScrumWorkItem } from "@/hooks/useTeamScrum";
+import { priorityTone } from "@/lib/priority";
 
 const COLUMNS = [
   { key: "ready", label: "POR HACER", borderColor: "border-t-slate-400" },
@@ -12,12 +13,6 @@ const COLUMNS = [
   { key: "done", label: "TERMINADAS", borderColor: "border-t-emerald-500" },
 ];
 
-const PRIORITY_BADGE: Record<string, string> = {
-  alta: "bg-red-500/10 text-red-600 border-red-500/30",
-  critica: "bg-red-600/15 text-red-700 border-red-600/30",
-  media: "bg-amber-500/10 text-amber-700 border-amber-500/30",
-  baja: "bg-slate-400/10 text-slate-600 border-slate-400/30",
-};
 
 interface MiTableroProps {
   items: ScrumWorkItem[];
@@ -72,7 +67,7 @@ export function MiTablero({ items, clientNames, sprintName, daysLeft, onSelect, 
               >
                 <div className="px-3 py-2.5 flex items-center justify-between border-b border-border/40">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold tracking-wider text-muted-foreground">{col.label}</span>
+                    <span className="text-[10px] font-bold tracking-[0.08em] text-muted-foreground">{col.label}</span>
                     <Badge variant="secondary" className="h-4 px-1.5 text-[10px] font-bold">{colItems.length}</Badge>
                   </div>
                   <button
@@ -110,7 +105,7 @@ export function MiTablero({ items, clientNames, sprintName, daysLeft, onSelect, 
                               variant="outline"
                               className={cn(
                                 "h-4 text-[9px] px-1.5 capitalize",
-                                PRIORITY_BADGE[item.priority?.toLowerCase()] || PRIORITY_BADGE.media
+                                priorityTone(item.priority)
                               )}
                             >
                               {item.priority}

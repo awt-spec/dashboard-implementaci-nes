@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Play, Square, Building2, Target, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ScrumWorkItem } from "@/hooks/useTeamScrum";
+import { priorityTone } from "@/lib/priority";
 
 interface FocusCardProps {
   items: ScrumWorkItem[];
@@ -77,9 +78,7 @@ export function FocusCard({ items, clientNames, activeTimer, onTimer, onSelect, 
                         variant="outline"
                         className={cn(
                           "h-4 text-[9px] px-1.5",
-                          item.priority?.toLowerCase() === "alta" && "text-red-500 border-red-500/30 bg-red-500/5",
-                          item.priority?.toLowerCase() === "media" && "text-amber-600 border-amber-500/30 bg-amber-500/5",
-                          item.priority?.toLowerCase() === "baja" && "text-slate-500 border-slate-500/30 bg-slate-500/5",
+                          priorityTone(item.priority),
                         )}
                       >
                         {item.priority}

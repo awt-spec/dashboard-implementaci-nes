@@ -15,6 +15,12 @@ interface EstaSemanaCalendarProps {
   items: ScrumWorkItem[];
 }
 
+/**
+ * Paleta CATEGÓRICA del calendario: cada matiz distingue un tipo de evento, no
+ * comunica estado. Por eso no usa los tokens semánticos del sistema (que sólo
+ * dan primary/success/warning/info/destructive y volverían indistinguibles a
+ * varios tipos). Son fondos saturados con texto claro, legibles en ambos temas.
+ */
 const COLOR_CLASS: Record<CalEvent["color"], string> = {
   rose: "bg-rose-400/85 text-rose-50",
   emerald: "bg-emerald-500/80 text-emerald-50",
@@ -73,7 +79,7 @@ export function EstaSemanaCalendar({ items }: EstaSemanaCalendarProps) {
           <div />
           {days.map(d => (
             <div key={d.label} className="text-center pb-2">
-              <p className="text-[10px] font-bold tracking-wider text-muted-foreground">{d.label}</p>
+              <p className="text-[10px] font-bold tracking-[0.08em] text-muted-foreground">{d.label}</p>
               <p className={cn(
                 "text-base font-bold mt-0.5",
                 d.isToday && "text-primary"

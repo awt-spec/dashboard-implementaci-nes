@@ -130,13 +130,13 @@ export function ClientPortalDashboard() {
             <div className="mt-2 space-y-4">
               <QuotesPendingApprovalPanel />
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-2 px-1">
                   Estado de cuenta
                 </p>
                 <AccountStatementPanel clientId={client.id} hoursOnly />
               </div>
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-2 px-1">
                   Horas trabajadas
                 </p>
                 <ClientHoursPanel clientId={client.id} />
