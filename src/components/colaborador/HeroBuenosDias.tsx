@@ -55,13 +55,14 @@ export function HeroBuenosDias({
   void tick; // re-render trigger
 
   return (
-    <Card className="relative overflow-hidden border-l-4 border-l-primary bg-gradient-to-br from-primary/5 via-background to-background">
-      <CardContent className="p-6">
+    <Card className="relative overflow-hidden rounded-3xl border-primary/20 bg-gradient-to-br from-primary/[0.06] via-card to-card">
+      <div className="pointer-events-none absolute -top-16 -right-16 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
+      <CardContent className="relative p-6">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
           {/* Left: greeting + summary */}
           <div>
             <p className="text-[10px] font-bold tracking-[0.18em] text-primary mb-1">{todayLabel()}</p>
-            <h1 className="text-3xl font-bold tracking-tight mb-2">{greeting()}, {firstName}</h1>
+            <h1 className="text-3xl font-black tracking-[-0.03em] mb-2">{greeting()}, {firstName}</h1>
             <p className="text-sm text-muted-foreground mb-5">
               Tenés <strong className="text-foreground">{todayTasksCount} tareas hoy</strong>
               {todayMeetingsCount > 0 && <> y <strong className="text-foreground">{todayMeetingsCount} reunión</strong></>}.
@@ -69,9 +70,9 @@ export function HeroBuenosDias({
             </p>
 
             <div className="flex items-center gap-6 flex-wrap">
-              <Stat icon={Flame} iconClass="text-orange-500" value={`${streakDays} días`} label="racha" />
-              <Stat icon={Zap} iconClass="text-amber-500" value={`${sprintPoints} pts`} label="completados sprint" />
-              <Stat icon={Clock} iconClass="text-emerald-500" value={`${Math.floor(todayMinutes / 60)}h ${todayMinutes % 60}m`} label="hoy" />
+              <Stat icon={Flame} iconClass="text-warning" value={`${streakDays} días`} label="racha" />
+              <Stat icon={Zap} iconClass="text-warning" value={`${sprintPoints} pts`} label="completados sprint" />
+              <Stat icon={Clock} iconClass="text-success" value={`${Math.floor(todayMinutes / 60)}h ${todayMinutes % 60}m`} label="hoy" />
             </div>
           </div>
 
@@ -113,7 +114,7 @@ function Stat({ icon: Icon, iconClass, value, label }: any) {
       </div>
       <div>
         <p className="text-base font-bold leading-none">{value}</p>
-        <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">{label}</p>
+        <p className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground mt-0.5">{label}</p>
       </div>
     </div>
   );

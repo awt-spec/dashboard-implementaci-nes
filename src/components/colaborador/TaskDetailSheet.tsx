@@ -13,6 +13,7 @@ import { useUpdateWorkItemScrum } from "@/hooks/useTeamScrum";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
+import { priorityTone } from "@/lib/priority";
 
 interface TaskDetailSheetProps {
   item: ScrumWorkItem | null;
@@ -118,21 +119,16 @@ export function TaskDetailSheet({ item, clientName, sprintName, daysLeft, onClos
   };
 
   const initials = (n: string) => n.split(" ").map(s => s[0]).slice(0, 2).join("").toUpperCase();
-  const priorityClass: Record<string, string> = {
-    alta: "bg-red-50 text-red-600 border-red-200",
-    critica: "bg-red-100 text-red-700 border-red-300",
-    media: "bg-amber-50 text-amber-700 border-amber-200",
-    baja: "bg-slate-50 text-slate-600 border-slate-200",
-  };
+
 
   return (
     <Sheet open={!!item} onOpenChange={(o) => !o && onClose()}>
       <SheetContent className="w-full sm:max-w-xl overflow-y-auto p-0">
         {/* Header bar */}
         <div className="sticky top-0 z-10 bg-background border-b border-border px-5 py-3 flex items-center gap-3">
-          <Badge variant="outline" className="font-mono text-[10px] tracking-wider">{itemCode}</Badge>
+          <Badge variant="outline" className="font-mono text-[10px] tracking-[0.08em]">{itemCode}</Badge>
           {item.priority && (
-            <Badge variant="outline" className={`text-[10px] capitalize ${priorityClass[item.priority?.toLowerCase()] || priorityClass.media}`}>
+            <Badge variant="outline" className={`text-[10px] capitalize ${priorityTone(item.priority)}`}>
               {item.priority}
             </Badge>
           )}
@@ -159,7 +155,7 @@ export function TaskDetailSheet({ item, clientName, sprintName, daysLeft, onClos
               <select
                 value={item.scrum_status || "ready"}
                 onChange={(e) => handleStatusChange(e.target.value)}
-                className="text-xs bg-sky-50 text-sky-700 border border-sky-200 rounded-full px-3 py-1 font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="text-xs bg-info/10 text-info border border-info/30 rounded-full px-3 py-1 font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 {statusOptions.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
               </select>
@@ -258,7 +254,7 @@ export function TaskDetailSheet({ item, clientName, sprintName, daysLeft, onClos
               {activity.map(a => (
                 <div key={a.id} className="flex items-start gap-2.5">
                   <Avatar className="h-7 w-7">
-                    <AvatarFallback className="text-[10px] bg-amber-100 text-amber-700 font-bold">{initials(a.user)}</AvatarFallback>
+                    <AvatarFallback className="text-[10px] bg-warning/15 text-warning font-bold">{initials(a.user)}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs">

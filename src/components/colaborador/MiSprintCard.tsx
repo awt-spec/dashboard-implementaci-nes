@@ -19,7 +19,7 @@ export function MiSprintCard({ pointsDone, pointsTotal, daysLeft, daysTotal, vel
     <Card className="h-full">
       <CardContent className="p-5 flex flex-col h-full">
         <div className="flex items-center gap-2 mb-3">
-          <Trophy className="h-4 w-4 text-amber-500" />
+          <Trophy className="h-4 w-4 text-warning" />
           <h3 className="text-sm font-bold">Mi sprint</h3>
         </div>
 
@@ -36,7 +36,7 @@ export function MiSprintCard({ pointsDone, pointsTotal, daysLeft, daysTotal, vel
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <p className="text-3xl font-bold leading-none">{pct}%</p>
-              <p className="text-[9px] uppercase tracking-wider text-muted-foreground mt-1.5 font-bold">Completado</p>
+              <p className="text-[9px] uppercase tracking-[0.08em] text-muted-foreground mt-1.5 font-bold">Completado</p>
             </div>
           </div>
         </div>
@@ -49,7 +49,7 @@ export function MiSprintCard({ pointsDone, pointsTotal, daysLeft, daysTotal, vel
           <Row
             label="Mi velocidad"
             value={
-              <span className={velocityChange >= 0 ? "text-emerald-600 font-bold flex items-center gap-1" : "text-red-500 font-bold flex items-center gap-1"}>
+              <span className={velocityChange >= 0 ? "text-success font-bold flex items-center gap-1" : "text-destructive font-bold flex items-center gap-1"}>
                 <TrendingUp className="h-3 w-3" />
                 {velocityChange >= 0 ? "+" : ""}{velocityChange}%
               </span>
