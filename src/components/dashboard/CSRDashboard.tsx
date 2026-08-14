@@ -27,12 +27,28 @@ import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import {
   PendientesModule, ObstaculosModule, HitosModule, ComercialModule, AgendaModule, IAAssistantModule,
 } from "./CSRModules";
+import { HeroBanner, greeting } from "@/components/common/HeroBanner";
+import type { NavItem } from "@/lib/navigation";
+import { KpiTile, StatusChip, type Tone } from "@/components/common/StatCard";
+import { CommandPalette, CommandTrigger, useCommandPalette } from "@/components/common/CommandPalette";
+import { MobileTabBar, type MobileTabItem } from "@/components/common/MobileTabBar";
 
 const ESCALATION_TARGETS = [
   { key: "María Fernanda", label: "María Fernanda", sub: "Apoyo / negocio" },
   { key: "EW", label: "EW", sub: "Escalamiento técnico" },
 ];
 const TARGET_KEYS = ESCALATION_TARGETS.map((t) => t.key);
+// Sinónimos de búsqueda de cada módulo para ⌘K.
+const WORKSPACE_KEYWORDS: Record<string, string[]> = {
+  bandeja: ["cola", "casos", "tickets", "boletas", "inbox"],
+  agenda: ["calendario", "sesiones", "reuniones", "citas"],
+  pendientes: ["tareas", "todo", "seguimiento"],
+  obstaculos: ["bloqueos", "blockers", "trabas"],
+  hitos: ["milestones", "entregables"],
+  comercial: ["ventas", "upsell", "prospectos", "oportunidades"],
+  ia: ["asistente", "sugerencias", "copiloto"],
+};
+
 const CLOSED = new Set(["CERRADA", "ANULADA", "ENTREGADA", "APROBADA"]);
 
 type Tab = "atender" | "mios" | "escalados" | "todos";
@@ -67,14 +83,6 @@ function severity(t: SupportTicket, slaMap?: SlaMap): Severity {
   return { urgent: false, tone: "none", label: null, score: base + Math.min(age, 30) * 3 };
 }
 const TONE_BAR: Record<Severity["tone"], string> = { destructive: "bg-destructive", warning: "bg-warning", none: "bg-transparent" };
-function greeting() {
-  const h = new Date().getHours();
-  if (h < 12) return "Buenos días";
-  if (h < 19) return "Buenas tardes";
-  return "Buenas noches";
-}
-// Tipografía de marca SYSDE (display).
-const MONT = { fontFamily: "'Montserrat', system-ui, sans-serif" } as const;
 
 export function CSRDashboard() {
   const { profile, signOut } = useAuth();
@@ -146,6 +154,8 @@ export function CSRDashboard() {
   ];
 
   const [view, setView] = useState<WorkView>("bandeja");
+  // ⌘K sobre los módulos del workspace (el CSR tiene shell propio, no el sidebar).
+  const { open: paletteOpen, setOpen: setPaletteOpen } = useCommandPalette();
   const [tab, setTab] = useState<Tab>("atender");
   const [search, setSearch] = useState("");
   const [prio, setPrio] = useState("all");
@@ -198,11 +208,12 @@ export function CSRDashboard() {
   };
 
   // KPIs accionables: al hacer clic filtran la cola.
-  const KPIS: { key: Tab; label: string; value: number; Icon: any; tone: string; ring: string; bar: string }[] = [
-    { key: "atender", label: "Por atender", value: porAtender.length, Icon: Inbox, tone: "text-warning", ring: "hover:border-warning/40", bar: "bg-warning" },
-    { key: "todos", label: "Urgentes", value: urgentes.length, Icon: Flame, tone: "text-destructive", ring: "hover:border-destructive/40", bar: "bg-destructive" },
-    { key: "mios", label: "Mis casos", value: mios.length, Icon: CheckCircle2, tone: "text-success", ring: "hover:border-success/40", bar: "bg-success" },
-    { key: "escalados", label: "Escalados", value: escalados.length, Icon: ArrowUpRight, tone: "text-info", ring: "hover:border-info/40", bar: "bg-info" },
+  // tone es el token del sistema (no una clase suelta): lo resuelve KpiTile.
+  const KPIS: { key: Tab; label: string; value: number; Icon: any; tone: Tone }[] = [
+    { key: "atender", label: "Por atender", value: porAtender.length, Icon: Inbox, tone: "warning" },
+    { key: "todos", label: "Urgentes", value: urgentes.length, Icon: Flame, tone: "destructive" },
+    { key: "mios", label: "Mis casos", value: mios.length, Icon: CheckCircle2, tone: "success" },
+    { key: "escalados", label: "Escalados", value: escalados.length, Icon: ArrowUpRight, tone: "info" },
   ];
   const TABS: { key: Tab; label: string; count: number }[] = [
     { key: "atender", label: "Por atender", count: porAtender.length },
@@ -212,6 +223,25 @@ export function CSRDashboard() {
   ];
 
   const goToTab = (t: Tab) => { setView("bandeja"); setTab(t); };
+
+  // Los módulos del workspace alimentan ⌘K y la tab bar móvil desde la misma
+  // lista que la barra de escritorio: una sola definición, tres superficies.
+  const paletteItems: NavItem[] = WORKSPACE.map((w) => ({
+    id: w.key, title: w.label, shortTitle: w.label, icon: w.Icon,
+    roles: ["csr"], anyPermission: [], keywords: WORKSPACE_KEYWORDS[w.key] ?? [],
+  }));
+  const tabItems: MobileTabItem[] = WORKSPACE.slice(0, 5).map((w) => ({
+    key: w.key, label: w.label, icon: w.Icon, badge: w.count,
+  }));
+
+  // Línea de contexto del hero: sólo conteos reales, sin inventar métricas.
+  const heroParts: string[] = [];
+  if (porAtender.length) heroParts.push(`${porAtender.length} caso${porAtender.length === 1 ? "" : "s"} por atender`);
+  if (urgentes.length) heroParts.push(`${urgentes.length} urgente${urgentes.length === 1 ? "" : "s"}`);
+  if (escalados.length) heroParts.push(`${escalados.length} escalado${escalados.length === 1 ? "" : "s"}`);
+  const heroLine = heroParts.length
+    ? `Tenés ${heroParts.join(", ").replace(/, ([^,]*)$/, " y $1")}.`
+    : "Todo tranquilo — no hay casos abiertos en tu cola.";
 
   return (
     <div className="min-h-screen bg-background">
@@ -223,13 +253,17 @@ export function CSRDashboard() {
               <LifeBuoy className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <div className="text-[9px] font-extrabold tracking-[0.22em] text-primary uppercase leading-none" style={MONT}>
+              <div className="text-[9px] font-extrabold tracking-[0.22em] text-primary uppercase leading-none">
                 SYSDE · CSR
               </div>
-              <h1 className="text-[15px] font-bold leading-tight truncate mt-0.5" style={MONT}>{greeting()}, {firstName} 👋</h1>
+              <h1 className="text-[13.5px] font-bold leading-tight truncate mt-0.5">Centro de atención</h1>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <CommandTrigger onClick={() => setPaletteOpen(true)} className="hidden md:flex w-[190px]" />
+            <Button variant="ghost" size="icon" className="h-8 w-8 md:hidden" onClick={() => setPaletteOpen(true)} title="Buscar">
+              <Search className="h-4 w-4" />
+            </Button>
             {csat?.avg != null && (
               <Badge variant="outline" className="text-[10px] gap-1 bg-warning/10 text-warning border-warning/30 hidden sm:inline-flex" title={`${csat.n} respuestas de clientes`}>
                 <Star className="h-3 w-3 fill-warning" /> CSAT {csat.avg.toFixed(1)}
@@ -246,10 +280,12 @@ export function CSRDashboard() {
         </div>
       </header>
 
-      {/* ── Franja de estado en vivo ── */}
+      {/* ── Franja de estado en vivo · sólo fuera de bandeja: en bandeja los
+             mismos conteos viven en los chips del hero, y duplicarlos confunde ── */}
+      {view !== "bandeja" && (
       <div className="border-b border-border bg-muted/30">
         <div className="max-w-6xl mx-auto px-4 md:px-6 h-9 flex items-center gap-3 overflow-x-auto">
-          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-primary shrink-0" style={MONT}>
+          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-primary shrink-0">
             <span className="relative flex h-1.5 w-1.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
@@ -269,16 +305,17 @@ export function CSRDashboard() {
           )}
         </div>
       </div>
+      )}
 
-      {/* ── Barra de módulos del workspace ── */}
-      <div className="border-b border-border bg-card/40 sticky top-16 z-20 backdrop-blur">
+      {/* ── Barra de módulos del workspace (escritorio; en móvil navega la tab bar) ── */}
+      <div className="hidden md:block border-b border-border bg-card/40 sticky top-16 z-20 backdrop-blur">
         <div className="max-w-6xl mx-auto px-4 md:px-6 flex items-center gap-1 overflow-x-auto">
           {WORKSPACE.map((w) => (
             <button
               key={w.key}
               onClick={() => setView(w.key)}
               className={`h-11 px-3 inline-flex items-center gap-1.5 text-xs font-semibold border-b-2 whitespace-nowrap transition-colors ${view === w.key ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-              style={MONT}
+             
             >
               <w.Icon className="h-3.5 w-3.5" /> {w.label}
               {!!w.count && w.count > 0 && (
@@ -289,7 +326,7 @@ export function CSRDashboard() {
         </div>
       </div>
 
-      <main className="max-w-6xl mx-auto px-4 md:px-6 py-5 space-y-5">
+      <main className="max-w-6xl mx-auto px-4 md:px-6 py-5 pb-24 md:pb-6 space-y-5 animate-fadein">
         {view === "agenda" && <AgendaModule tickets={open} allTickets={tickets} clients={clients} clientName={clientName} onOpenCase={setDetail} />}
         {view === "pendientes" && <PendientesModule />}
         {view === "obstaculos" && <ObstaculosModule />}
@@ -298,21 +335,38 @@ export function CSRDashboard() {
         {view === "ia" && <IAAssistantModule tickets={open} />}
 
         {view === "bandeja" && <>
-        {/* KPIs accionables */}
+        {/* Hero · saludo, contexto real de la cola y alertas accionables */}
+        <HeroBanner
+          eyebrow={`Centro de atención · ${format(new Date(), "EEEE d 'de' MMMM", { locale: es })}`}
+          title={`${greeting()}, ${firstName}.`}
+          subtitle={heroLine}
+          action={
+            <Button size="sm" className="h-9 gap-1.5 text-xs font-bold" onClick={() => setNewOpen(true)}>
+              <Plus className="h-3.5 w-3.5" /> Nuevo caso
+            </Button>
+          }
+          chips={
+            <>
+              {urgentes.length > 0 && <StatusChip icon={Flame} tone="destructive">{urgentes.length} urgente{urgentes.length === 1 ? "" : "s"}</StatusChip>}
+              {porAtender.length > 0 && <StatusChip icon={Inbox} tone="warning">{porAtender.length} sin atender</StatusChip>}
+              {escalados.length > 0 && <StatusChip icon={ArrowUpRight} tone="info">{escalados.length} escalado{escalados.length === 1 ? "" : "s"}</StatusChip>}
+              {mios.length > 0 && <StatusChip icon={CheckCircle2} tone="success">{mios.length} míos</StatusChip>}
+              {csat?.avg != null && <StatusChip icon={Star} tone="warning">CSAT {csat.avg.toFixed(1)}</StatusChip>}
+            </>
+          }
+        />
+
+        {/* KPIs accionables — cada tile filtra la cola */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {KPIS.map((k) => (
-            <button key={k.label} onClick={() => goToTab(k.key)} className="text-left">
-              <Card className={`overflow-hidden transition-colors border ${k.ring} ${k.key === "todos" && k.value > 0 ? "border-destructive/30" : ""}`}>
-                <div className={`h-1 w-full ${k.value > 0 ? k.bar : "bg-transparent"}`} />
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <k.Icon className={`h-3.5 w-3.5 ${k.tone}`} />
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold" style={MONT}>{k.label}</p>
-                  </div>
-                  <p className={`text-3xl font-black tabular-nums leading-none ${k.key === "todos" && k.value > 0 ? "text-destructive" : ""}`} style={MONT}>{k.value}</p>
-                </CardContent>
-              </Card>
-            </button>
+            <KpiTile
+              key={k.label}
+              icon={k.Icon}
+              value={k.value}
+              label={k.label}
+              tone={k.tone}
+              onClick={() => goToTab(k.key)}
+            />
           ))}
         </div>
 
@@ -322,7 +376,7 @@ export function CSRDashboard() {
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2.5">
                 <Zap className="h-4 w-4 text-primary" />
-                <h2 className="text-sm font-bold" style={MONT}>Foco de hoy</h2>
+                <h2 className="text-sm font-bold">Foco de hoy</h2>
                 <span className="text-[11px] text-muted-foreground">lo más urgente que necesita tu atención</span>
               </div>
               <div className="grid sm:grid-cols-2 gap-2">
@@ -459,7 +513,7 @@ export function CSRDashboard() {
 
           <aside className="space-y-5">
             <section className="space-y-2">
-              <h2 className="text-sm font-bold flex items-center gap-2" style={MONT}><CalendarClock className="h-4 w-4 text-primary" /> Sesiones periódicas</h2>
+              <h2 className="text-sm font-bold flex items-center gap-2"><CalendarClock className="h-4 w-4 text-primary" /> Sesiones periódicas</h2>
               {sessions.length === 0 ? (
                 <Card><CardContent className="py-6 flex flex-col items-center text-center gap-1.5 text-muted-foreground">
                   <CalendarClock className="h-5 w-5 opacity-40" />
@@ -483,7 +537,7 @@ export function CSRDashboard() {
             </section>
 
             <section className="space-y-2">
-              <h2 className="text-sm font-bold flex items-center gap-2" style={MONT}><Users className="h-4 w-4 text-primary" /> Escalación</h2>
+              <h2 className="text-sm font-bold flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> Escalación</h2>
               <Card><CardContent className="p-3 space-y-2.5">
                 {ESCALATION_TARGETS.map((tg) => (
                   <div key={tg.key} className="flex items-center justify-between">
@@ -541,6 +595,24 @@ export function CSRDashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ⌘K sobre los módulos del workspace. Sin acciones extra: "nuevo caso"
+          abre un diálogo, no navega, y el palette sólo navega. */}
+      <CommandPalette
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+        onNavigate={(k) => setView(k as WorkView)}
+        items={paletteItems}
+        actions={[]}
+        navHeading="Módulos"
+      />
+
+      {/* Navegación móvil: reemplaza la barra de módulos, oculta bajo md. */}
+      <MobileTabBar
+        activeSection={view}
+        onSectionChange={(k) => setView(k as WorkView)}
+        items={tabItems}
+      />
     </div>
   );
 }

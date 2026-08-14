@@ -12,9 +12,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMyPermissions } from "@/hooks/usePermissions";
 import { useSLASummary } from "@/hooks/useSLASummary";
 import { cn } from "@/lib/utils";
-import { visibleNav } from "@/lib/navigation";
+import { visibleNav, type NavItem } from "@/lib/navigation";
 
-interface ActionEntry {
+export interface ActionEntry {
   id: string;
   title: string;
   hint: string;
@@ -41,18 +41,31 @@ export interface CommandPaletteProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onNavigate: (section: string) => void;
+  /**
+   * Destinos a listar. Por defecto la nav principal filtrada por rol; los shells
+   * propios (CSR, colaborador) pasan sus propios módulos, que no son secciones
+   * del sidebar.
+   */
+  items?: NavItem[];
+  /** Acciones rápidas. Por defecto las globales (registrar horas, ver vencidos). */
+  actions?: ActionEntry[];
+  /** Rótulo del grupo de destinos. */
+  navHeading?: string;
 }
 
-export function CommandPalette({ open, onOpenChange, onNavigate }: CommandPaletteProps) {
+export function CommandPalette({
+  open, onOpenChange, onNavigate,
+  items, actions: actionsProp, navHeading = "Ir a",
+}: CommandPaletteProps) {
   const { role } = useAuth();
   const { data: myPerms } = useMyPermissions();
   const { data: slaSummary } = useSLASummary();
 
-  const nav = visibleNav(role, myPerms);
+  const nav = items ?? visibleNav(role, myPerms);
 
-  // Sólo ofrecemos acciones cuya sección destino es visible para el rol actual.
+  // Sólo ofrecemos acciones cuyo destino está en la lista visible.
   const visibleSections = new Set(nav.map((n) => n.id));
-  const actions = ACTIONS.filter((a) => visibleSections.has(a.section));
+  const actions = (actionsProp ?? ACTIONS).filter((a) => visibleSections.has(a.section));
 
   const overdue = slaSummary?.overdue ?? 0;
 
@@ -77,7 +90,7 @@ export function CommandPalette({ open, onOpenChange, onNavigate }: CommandPalett
 
         {nav.length > 0 && (
           <CommandGroup
-            heading="Ir a"
+            heading={navHeading}
             className="[&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:font-bold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.08em] [&_[cmdk-group-heading]]:text-muted-foreground"
           >
             {nav.map((item) => (
