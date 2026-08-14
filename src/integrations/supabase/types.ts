@@ -3302,6 +3302,7 @@ export type Database = {
       service_packages: {
         Row: {
           client_id: string
+          contract_id: string | null
           created_at: string
           end_date: string
           hours_contracted: number
@@ -3313,6 +3314,7 @@ export type Database = {
         }
         Insert: {
           client_id: string
+          contract_id?: string | null
           created_at?: string
           end_date: string
           hours_contracted?: number
@@ -3324,6 +3326,7 @@ export type Database = {
         }
         Update: {
           client_id?: string
+          contract_id?: string | null
           created_at?: string
           end_date?: string
           hours_contracted?: number
@@ -3334,6 +3337,13 @@ export type Database = {
           start_date?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "service_packages_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "client_contracts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "service_packages_client_id_fkey"
             columns: ["client_id"]

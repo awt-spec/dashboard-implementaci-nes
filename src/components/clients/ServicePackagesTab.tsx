@@ -6,19 +6,32 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Plus, Pencil, Trash2, Lock, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import {
   useServicePackages, useUpsertServicePackage, useDeleteServicePackage,
   type ServicePackage, type ServicePackageInput,
 } from "@/hooks/useServicePackages";
+import { useClientContracts } from "@/hooks/useClientContracts";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, Plus, Pencil, Trash2, Lock, ShieldCheck, FileSignature } from "lucide-react";
+
+const CONTRACT_TYPE_LABEL: Record<string, string> = {
+  bolsa_horas: "Bolsa de horas",
+  fee_mensual: "Fee mensual fijo",
+  proyecto_cerrado: "Proyecto cerrado",
+  tiempo_materiales: "Tiempo y materiales",
+};
+/** Etiqueta corta del contrato para el selector y la tabla. */
+const contractLabel = (c?: { contract_type: string; start_date: string | null }) =>
+  c ? `${CONTRACT_TYPE_LABEL[c.contract_type] || c.contract_type}${c.start_date ? ` · ${c.start_date}` : ""}` : "—";
 
 const fmtDate = (d?: string | null) => (d ? d.slice(0, 10).split("-").reverse().join("/") : "—");
 const n2 = (v: number) => Number(v || 0).toLocaleString("es-CR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const emptyPkg = (clientId: string): ServicePackageInput => ({
   client_id: clientId,
+  contract_id: null,
   policy_number: 0,
   package_number: 0,
   product: "SYSDE SAF",
@@ -31,6 +44,8 @@ export function ServicePackagesTab({ clientId }: { clientId: string }) {
   const { role } = useAuth();
   const canManage = role === "admin" || role === "pm";
   const { data: packages = [], isLoading } = useServicePackages(clientId);
+  const { data: contracts = [] } = useClientContracts(clientId);
+  const contractById = new Map(contracts.map(c => [c.id, c]));
   const upsert = useUpsertServicePackage(clientId);
   const del = useDeleteServicePackage(clientId);
 
@@ -84,6 +99,7 @@ export function ServicePackagesTab({ clientId }: { clientId: string }) {
                   <TableHead>Póliza</TableHead>
                   <TableHead>Paquete</TableHead>
                   <TableHead>Producto</TableHead>
+                  <TableHead>Contrato</TableHead>
                   <TableHead className="text-right">Horas</TableHead>
                   <TableHead>Vigencia</TableHead>
                   <TableHead>Estado</TableHead>
@@ -92,7 +108,7 @@ export function ServicePackagesTab({ clientId }: { clientId: string }) {
               </TableHeader>
               <TableBody>
                 {packages.length === 0 ? (
-                  <TableRow><TableCell colSpan={canManage ? 7 : 6} className="text-center py-6 text-muted-foreground text-sm">Sin pólizas registradas</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={canManage ? 8 : 7} className="text-center py-6 text-muted-foreground text-sm">Sin pólizas registradas</TableCell></TableRow>
                 ) : packages.map(p => {
                   const activo = p.end_date >= today;
                   return (
@@ -100,6 +116,13 @@ export function ServicePackagesTab({ clientId }: { clientId: string }) {
                       <TableCell className="font-medium tabular-nums">{p.policy_number}</TableCell>
                       <TableCell className="tabular-nums">{p.package_number}</TableCell>
                       <TableCell className="text-xs">{p.product || "—"}</TableCell>
+                      <TableCell className="text-xs">
+                        {p.contract_id ? (
+                          <span className="inline-flex items-center gap-1"><FileSignature className="h-3 w-3 text-muted-foreground" />{contractLabel(contractById.get(p.contract_id))}</span>
+                        ) : (
+                          <span className="text-muted-foreground">Sin contrato</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right tabular-nums">{n2(p.hours_contracted)}</TableCell>
                       <TableCell className="text-xs">{fmtDate(p.start_date)} → {fmtDate(p.end_date)}</TableCell>
                       <TableCell>
@@ -127,6 +150,25 @@ export function ServicePackagesTab({ clientId }: { clientId: string }) {
           <DialogHeader><DialogTitle>{dialog?.id ? "Editar póliza" : "Nueva póliza"}</DialogTitle></DialogHeader>
           {dialog && (
             <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <Label className="text-xs">Contrato que la originó</Label>
+                {/* Opcional: hay pólizas históricas anteriores a la gestión de
+                    contratos, y el backfill sólo enlazó las inequívocas. */}
+                <Select
+                  value={dialog.contract_id ?? "none"}
+                  onValueChange={v => setDialog({ ...dialog, contract_id: v === "none" ? null : v })}
+                >
+                  <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Sin contrato" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin contrato</SelectItem>
+                    {contracts.map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {contractLabel(c)}{c.is_active ? "" : " (inactivo)"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div>
                 <Label className="text-xs">Póliza *</Label>
                 <Input type="number" value={dialog.policy_number || ""} onChange={e => setDialog({ ...dialog, policy_number: parseInt(e.target.value, 10) || 0 })} className="h-9" />
