@@ -219,7 +219,7 @@ export default function TeamScrumDashboard() {
             DevOps "Task" → interna (sub-pasos de implementación)
             DevOps "Product Backlog Item" / "Bug" → externa (cliente las ve) */}
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Visibilidad:</span>
+        <span className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground font-semibold">Visibilidad:</span>
         {([
           { v: "all" as const,     label: "Todas",    count: items.length },
           { v: "interna" as const, label: "Internas", count: items.filter(i => i.visibility === "interna").length },
@@ -231,9 +231,9 @@ export default function TeamScrumDashboard() {
             className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border text-xs font-medium transition-colors ${
               filterVisibility === opt.v
                 ? opt.v === "interna"
-                  ? "bg-violet-500/10 text-violet-500 border-violet-500/40"
+                  ? "bg-info/10 text-info border-info/40"
                   : opt.v === "externa"
-                  ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/40"
+                  ? "bg-success/10 text-success border-success/40"
                   : "bg-primary text-primary-foreground border-primary"
                 : "bg-card hover:bg-muted/50 text-muted-foreground border-border"
             }`}

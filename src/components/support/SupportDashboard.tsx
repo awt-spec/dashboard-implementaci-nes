@@ -202,7 +202,7 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
                   {!readOnly && canTransferClient && (
                   <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
                     <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="gap-1.5 text-xs border-amber-500/30 text-amber-500 hover:bg-amber-500/10">
+                      <Button variant="outline" size="sm" className="gap-1.5 text-xs border-warning/30 text-warning hover:bg-warning/10">
                         <ArrowRightLeft className="h-3.5 w-3.5" /> A Implementación
                       </Button>
                     </DialogTrigger>
@@ -239,22 +239,22 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
       <>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
         {[
-          { label: "Casos Activos", value: totalActive, icon: Ticket, color: "text-blue-400", iconBg: "bg-primary/10" },
+          { label: "Casos Activos", value: totalActive, icon: Ticket, color: "text-info", iconBg: "bg-primary/10" },
           {
             label: "Sin Atención", value: sinAtencion, icon: UserX,
-            color: "text-amber-500",
-            iconBg: "bg-amber-500/15",
+            color: "text-warning",
+            iconBg: "bg-warning/15",
             highlight: sinAtencion > 0,
             hint: "PENDIENTE sin responsable asignado · click para ir a la Bandeja",
             onClick: () => setActiveTab("inbox"),
           },
-          { label: "Entregada S/Cierre", value: entregadaSinCierre, icon: Clock, color: "text-amber-400", iconBg: "bg-primary/10" },
-          { label: ">365 Días", value: mayores365, icon: AlertTriangle, color: "text-red-400", iconBg: "bg-primary/10" },
-          { label: "Críticos Negocio", value: criticos, icon: Flame, color: "text-rose-500", iconBg: "bg-primary/10" },
-          { label: "Cerradas Total", value: cerradas, icon: CheckCircle2, color: "text-emerald-400", iconBg: "bg-primary/10" },
+          { label: "Entregada S/Cierre", value: entregadaSinCierre, icon: Clock, color: "text-warning", iconBg: "bg-primary/10" },
+          { label: ">365 Días", value: mayores365, icon: AlertTriangle, color: "text-destructive", iconBg: "bg-primary/10" },
+          { label: "Críticos Negocio", value: criticos, icon: Flame, color: "text-destructive", iconBg: "bg-primary/10" },
+          { label: "Cerradas Total", value: cerradas, icon: CheckCircle2, color: "text-success", iconBg: "bg-primary/10" },
           {
             label: "Con Causa Raíz", value: classifiedCount, icon: Brain,
-            color: "text-violet-400", iconBg: "bg-violet-500/10",
+            color: "text-ai", iconBg: "bg-ai/10",
             hint: sinCausaRaiz > 0 ? `${classifiedCount} con análisis · ${sinCausaRaiz} sin clasificar` : "Tickets clasificados por IA",
           },
         ].map((kpi, i) => {
@@ -267,18 +267,18 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
                 title={(kpi as any).hint}
               >
                 <Card className={`border-border/50 transition-all h-full ${
-                  (kpi as any).highlight ? "border-amber-500/40 bg-amber-500/[0.04] hover:border-amber-500/60 hover:shadow-md" :
+                  (kpi as any).highlight ? "border-warning/40 bg-warning/[0.04] hover:border-warning/60 hover:shadow-md" :
                   (kpi as any).onClick ? "hover:border-primary/40 hover:shadow-sm" : ""
                 }`}>
                   <CardContent className="p-3 flex items-center gap-2.5 min-w-0">
                     <div className={`h-9 w-9 rounded-lg ${kpi.iconBg} flex items-center justify-center shrink-0 relative`}>
                       <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
                       {(kpi as any).highlight && (
-                        <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                        <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-warning animate-pulse" />
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className={`text-xl font-black tabular-nums truncate ${(kpi as any).highlight ? "text-amber-500" : "text-foreground"}`}>{kpi.value}</p>
+                      <p className={`text-xl font-black tabular-nums truncate ${(kpi as any).highlight ? "text-warning" : "text-foreground"}`}>{kpi.value}</p>
                       <p className="text-[9px] text-muted-foreground uppercase tracking-wide leading-tight truncate">{kpi.label}</p>
                     </div>
                   </CardContent>
@@ -292,15 +292,15 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
       {/* ════ Mini-banda de TOP CAUSAS RAÍZ — sólo si hay clasificaciones IA ════ */}
       {topCausasRaiz.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-          <Card className="border-violet-500/20 bg-gradient-to-br from-violet-500/[0.04] via-card to-card">
+          <Card className="border-ai/20 bg-gradient-to-br from-ai/[0.04] via-card to-card">
             <CardContent className="p-3">
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <Brain className="h-3.5 w-3.5 text-violet-400" />
-                  <span className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">
+                  <Brain className="h-3.5 w-3.5 text-ai" />
+                  <span className="text-[10px] uppercase tracking-[0.08em] font-bold text-muted-foreground">
                     Top causas raíz
                   </span>
-                  <Badge variant="outline" className="text-[9px] h-4 px-1 tabular-nums border-violet-500/30 text-violet-400 bg-violet-500/10">
+                  <Badge variant="outline" className="text-[9px] h-4 px-1 tabular-nums border-ai/30 text-ai bg-ai/10">
                     IA
                   </Badge>
                 </div>
@@ -310,11 +310,11 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
                     return (
                       <div
                         key={c.name}
-                        className="inline-flex items-center gap-1.5 h-7 px-2 rounded-md border border-violet-500/20 bg-violet-500/[0.06] text-xs"
+                        className="inline-flex items-center gap-1.5 h-7 px-2 rounded-md border border-ai/20 bg-ai/[0.06] text-xs"
                         title={`${c.count} de ${classifiedCount} con causa raíz · ${pct}%`}
                       >
                         <span className="font-semibold text-foreground truncate max-w-[120px]">{c.name}</span>
-                        <span className="text-violet-400 font-black tabular-nums">{c.count}</span>
+                        <span className="text-ai font-black tabular-nums">{c.count}</span>
                         <span className="text-muted-foreground tabular-nums text-[10px]">· {pct}%</span>
                       </div>
                     );
@@ -323,7 +323,7 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
                 {sinCausaRaiz > 0 && (
                   <Badge
                     variant="outline"
-                    className="text-[10px] gap-1 border-amber-500/30 text-amber-500 bg-amber-500/[0.06] shrink-0 tabular-nums"
+                    className="text-[10px] gap-1 border-warning/30 text-warning bg-warning/[0.06] shrink-0 tabular-nums"
                     title="Tickets sin clasificación IA — corre 'Clasificar pendientes' para asignarles una causa raíz"
                   >
                     <AlertTriangle className="h-2.5 w-2.5" />
@@ -368,7 +368,7 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
           <Button
             size="sm"
             variant="outline"
-            className="h-8 gap-1.5 text-xs border-violet-500/50 text-violet-400 hover:bg-violet-500/10"
+            className="h-8 gap-1.5 text-xs border-ai/50 text-ai hover:bg-ai/10"
             onClick={handleClassify}
             disabled={classifying}
           >
