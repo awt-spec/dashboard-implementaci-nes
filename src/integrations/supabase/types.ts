@@ -613,6 +613,8 @@ export type Database = {
       }
       client_contracts: {
         Row: {
+          status: string
+          deleted_at: string | null
           ai_analysis: Json | null
           auto_renewal: boolean
           clauses: string | null
@@ -633,6 +635,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          status?: string
+          deleted_at?: string | null
           ai_analysis?: Json | null
           auto_renewal?: boolean
           clauses?: string | null
@@ -653,6 +657,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          status?: string
+          deleted_at?: string | null
           ai_analysis?: Json | null
           auto_renewal?: boolean
           clauses?: string | null
