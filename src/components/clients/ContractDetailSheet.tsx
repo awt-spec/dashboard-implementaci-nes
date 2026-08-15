@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   FileSignature, ShieldCheck, Wallet, CalendarClock, RefreshCw, Milestone,
-  FileText, Shield, TriangleAlert, Clock,
+  FileText, Shield, TriangleAlert, Clock, History,
 } from "lucide-react";
 import { SectionLabel } from "@/components/common/StatCard";
 import { Confidential } from "@/components/common/Confidential";
@@ -12,7 +12,8 @@ import { ContractMilestonesPanel } from "./ContractMilestonesPanel";
 import { useServicePackages } from "@/hooks/useServicePackages";
 import { useBilledPackages } from "@/hooks/useBilledPackages";
 import { useContractDocuments } from "@/hooks/useContractKb";
-import { useClientSLAs, type ClientContract } from "@/hooks/useClientContracts";
+import { useClientSLAs, type ClientContract, CONTRACT_STATUS_META, type ContractStatus } from "@/hooks/useClientContracts";
+import { useContractHistory, useContractAmendments } from "@/hooks/useContractLifecycle";
 
 const CONTRACT_TYPES: Record<string, string> = {
   bolsa_horas: "Bolsa de horas",
@@ -42,6 +43,18 @@ function vigenciaPct(start?: string | null, end?: string | null): number | null 
   return Math.min(100, Math.max(0, ((Date.now() - s) / (e - s)) * 100));
 }
 
+
+const FIELD_LABEL: Record<string, string> = {
+  contract_type: "Tipo", monthly_value: "Valor mensual", hourly_rate: "Tarifa hora",
+  included_hours: "Horas incluidas", currency: "Moneda", start_date: "Inicio",
+  end_date: "Fin", auto_renewal: "Renovación automática", payment_terms: "Términos de pago",
+  penalty_clause: "Cláusula de penalidad", notes: "Notas", status: "Estado",
+};
+const ACTION_LABEL: Record<string, string> = {
+  created: "Creado", updated: "Modificado", deleted: "Archivado", restored: "Restaurado",
+};
+const val = (v: unknown) => (v === null || v === undefined || v === "" ? "—" : String(v));
+
 interface Props {
   contract: ClientContract | null;
   clientId: string;
@@ -62,6 +75,8 @@ export function ContractDetailSheet({ contract, clientId, open, onOpenChange }: 
   const { data: allBilled = [] } = useBilledPackages(clientId);
   const { data: allDocs = [] } = useContractDocuments(clientId);
   const { data: slas = [] } = useClientSLAs(clientId);
+  const { data: history = [] } = useContractHistory(contract?.id);
+  const { data: amendments = [] } = useContractAmendments(contract?.id);
 
   if (!contract) return null;
 
@@ -103,9 +118,9 @@ export function ContractDetailSheet({ contract, clientId, open, onOpenChange }: 
             <FileSignature className="h-4 w-4 text-primary" /> {tipo}
           </SheetTitle>
           <div className="flex items-center gap-1.5 flex-wrap">
-            {contract.is_active
-              ? <Badge className="bg-success/15 text-success border-success/30 text-[10px]">Activo</Badge>
-              : <Badge variant="secondary" className="text-[10px]">Inactivo</Badge>}
+            <Badge variant="outline" className={`text-[10px] ${CONTRACT_STATUS_META[(contract.status || "vigente") as ContractStatus]?.tone ?? ""}`}>
+              {CONTRACT_STATUS_META[(contract.status || "vigente") as ContractStatus]?.label ?? contract.status}
+            </Badge>
             {contract.auto_renewal && (
               <Badge variant="outline" className="text-[10px] gap-1 text-success border-success/30">
                 <RefreshCw className="h-2.5 w-2.5" /> Renovación auto
@@ -278,6 +293,68 @@ export function ContractDetailSheet({ contract, clientId, open, onOpenChange }: 
                     <Clock className="h-2.5 w-2.5" />
                     {s.priority_level}: {s.response_time_hours}h / {s.resolution_time_hours}h
                   </Badge>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ── Adendas ── */}
+          <div>
+            <SectionLabel className="mb-2">Adendas ({amendments.length})</SectionLabel>
+            {amendments.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Sin adendas. Son las modificaciones formales acordadas sobre el contrato original.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {amendments.map(a => (
+                  <Card key={a.id}><CardContent className="p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-xs font-bold">
+                        {a.numero != null ? `#${a.numero} · ` : ""}{a.titulo}
+                      </p>
+                      {a.effective_date && (
+                        <span className="text-[10px] text-muted-foreground shrink-0">{fmtDate(a.effective_date)}</span>
+                      )}
+                    </div>
+                    {a.descripcion && <p className="text-[11px] text-muted-foreground mt-1">{a.descripcion}</p>}
+                    <div className="flex gap-3 mt-1.5 text-[11px]">
+                      {a.nuevo_valor_mensual != null && (
+                        <span className="tabular-nums">
+                          <Confidential show={canAmounts}>Nuevo valor: {n0(a.nuevo_valor_mensual)} {a.moneda || cur}</Confidential>
+                        </span>
+                      )}
+                      {a.nueva_fecha_fin && <span>Nueva fecha fin: {fmtDate(a.nueva_fecha_fin)}</span>}
+                    </div>
+                  </CardContent></Card>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ── Historial ── */}
+          <div>
+            <SectionLabel className="mb-2 flex items-center gap-1.5"><History className="h-3 w-3" /> Historial</SectionLabel>
+            {history.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Sin cambios registrados. La bitácora empieza a llenarse con las modificaciones posteriores a su activación.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {history.map(h => (
+                  <div key={h.id} className="text-xs border-l-2 border-border pl-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">{ACTION_LABEL[h.action] ?? h.action}</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {new Date(h.changed_at).toLocaleString("es-CR", { dateStyle: "short", timeStyle: "short" })}
+                      </span>
+                    </div>
+                    {Object.entries(h.changes || {}).map(([f, c]) => (
+                      <p key={f} className="text-[11px] text-muted-foreground">
+                        {FIELD_LABEL[f] ?? f}: <span className="line-through">{val(c.old)}</span> → <b className="text-foreground">{val(c.new)}</b>
+                      </p>
+                    ))}
+                  </div>
                 ))}
               </div>
             )}

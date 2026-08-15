@@ -61,6 +61,7 @@ const CONTRATO: ClientContract = {
   monthly_value: 749, hourly_rate: 65, included_hours: 40, currency: "USD",
   start_date: "2026-01-01", end_date: "2026-12-31", auto_renewal: false,
   penalty_clause: null, payment_terms: "30 días", notes: null, is_active: true,
+  status: "vigente", deleted_at: null,
 };
 
 describe("componentes de la sesión — render sin crash", () => {

@@ -30,6 +30,7 @@ import {
   useUpsertContract, useDeleteContract,
   useUpsertSLA, useDeleteSLA,
   type ClientContract, type ClientSLA,
+  CONTRACT_STATUS_META, type ContractStatus,
 } from "@/hooks/useClientContracts";
 
 const CONTRACT_TYPES = [
@@ -114,8 +115,7 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
   const term = contractSearch.trim().toLowerCase();
   const filteredContracts = contracts.filter(c => {
     if (contractType !== "all" && c.contract_type !== contractType) return false;
-    if (contractStatus === "active" && !c.is_active) return false;
-    if (contractStatus === "inactive" && c.is_active) return false;
+    if (contractStatus !== "all" && (c.status || "vigente") !== contractStatus) return false;
     if (term) {
       const typeLabel = CONTRACT_TYPES.find(t => t.value === c.contract_type)?.label || c.contract_type;
       const hay = [typeLabel, c.notes, c.currency].some(f => (f || "").toLowerCase().includes(term));
@@ -261,8 +261,9 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
               <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue placeholder="Estado" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="active">Activos</SelectItem>
-                <SelectItem value="inactive">Inactivos</SelectItem>
+                {(Object.keys(CONTRACT_STATUS_META) as ContractStatus[]).map(k => (
+                  <SelectItem key={k} value={k}>{CONTRACT_STATUS_META[k].label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -288,9 +289,9 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-center gap-2 flex-wrap">
                             <Badge variant="outline" className="gap-1"><FileSignature className="h-3 w-3" />{typeLabel}</Badge>
-                            {c.is_active
-                              ? <Badge className="bg-success/15 text-success border-success/30 text-[10px]">Activo</Badge>
-                              : <Badge variant="secondary" className="text-[10px]">Inactivo</Badge>}
+                            <Badge variant="outline" className={`text-[10px] ${CONTRACT_STATUS_META[(c.status || "vigente") as ContractStatus]?.tone ?? ""}`}>
+                              {CONTRACT_STATUS_META[(c.status || "vigente") as ContractStatus]?.label ?? c.status}
+                            </Badge>
                             {c.auto_renewal && <Badge variant="outline" className="text-[10px] gap-1 text-success border-success/30"><RefreshCw className="h-2.5 w-2.5" /> Renovación auto</Badge>}
                             {c.payment_terms && <Badge variant="outline" className="text-[10px]">{c.payment_terms}</Badge>}
                             {(pkgsByContract[c.id] ?? 0) > 0 && (
@@ -306,7 +307,7 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
                             {isAdmin ? (
                               <>
                                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setContractDialog(c)}><Edit2 className="h-3.5 w-3.5" /></Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { if (confirm("¿Eliminar contrato?")) deleteContract.mutate(c.id, { onSuccess: () => toast.success("Eliminado") }); }}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { if (confirm("¿Eliminar contrato? Se archiva (borrado suave): deja de aparecer pero conserva pólizas, hitos e historial.")) deleteContract.mutate(c.id, { onSuccess: () => toast.success("Eliminado") }); }}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
                               </>
                             ) : <Lock className="h-3.5 w-3.5 text-muted-foreground self-center mx-1" />}
                           </div>
@@ -521,8 +522,20 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
               </div>
               <div className="col-span-2 flex items-center justify-between pt-2">
                 <div className="flex items-center gap-2">
-                  <Switch checked={!!contractDialog.is_active} onCheckedChange={(v) => setContractDialog({ ...contractDialog, is_active: v })} />
-                  <Label>Activo</Label>
+                  {/* Reemplaza el switch Activo/Inactivo: is_active se deriva de
+                      status por trigger, así que sigue coherente. */}
+                  <Label className="text-xs">Estado</Label>
+                  <Select
+                    value={(contractDialog.status as string) || "vigente"}
+                    onValueChange={(v) => setContractDialog({ ...contractDialog, status: v as ContractStatus })}
+                  >
+                    <SelectTrigger className="h-8 w-[150px] text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(CONTRACT_STATUS_META) as ContractStatus[]).map(k => (
+                        <SelectItem key={k} value={k}>{CONTRACT_STATUS_META[k].label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => setContractDialog(null)}>Cancelar</Button>

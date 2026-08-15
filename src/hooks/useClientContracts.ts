@@ -15,8 +15,21 @@ export interface ClientContract {
   penalty_clause: string | null;
   payment_terms: string | null;
   notes: string | null;
+  /** Derivado de status por trigger; se conserva por el código que aún lo lee. */
   is_active: boolean;
+  status: ContractStatus;
+  deleted_at: string | null;
 }
+
+export type ContractStatus = "borrador" | "vigente" | "vencido" | "renovado" | "cancelado";
+
+export const CONTRACT_STATUS_META: Record<ContractStatus, { label: string; tone: string }> = {
+  borrador:  { label: "Borrador",  tone: "bg-muted text-muted-foreground border-border" },
+  vigente:   { label: "Vigente",   tone: "bg-success/15 text-success border-success/30" },
+  vencido:   { label: "Vencido",   tone: "bg-warning/15 text-warning border-warning/30" },
+  renovado:  { label: "Renovado",  tone: "bg-info/15 text-info border-info/30" },
+  cancelado: { label: "Cancelado", tone: "bg-destructive/15 text-destructive border-destructive/30" },
+};
 
 export interface ClientSLA {
   id: string;
@@ -36,7 +49,7 @@ export function useClientContracts(clientId?: string) {
   return useQuery({
     queryKey: ["client-contracts", clientId],
     queryFn: async () => {
-      let q = (supabase.from("client_contracts").select("*") as any);
+      let q = (supabase.from("client_contracts").select("*").is("deleted_at", null) as any);
       if (clientId) q = q.eq("client_id", clientId);
       const { data, error } = await q.order("created_at", { ascending: false });
       if (error) throw error;
@@ -74,11 +87,19 @@ export function useUpsertContract() {
   });
 }
 
+/**
+ * Borrado SUAVE. Un contrato respalda pólizas, hitos, paquetes facturados y el
+ * estado de cuenta que se le envía al cliente: borrarlo de verdad destruiría
+ * evidencia. Marca deleted_at y las lecturas lo filtran.
+ */
 export function useDeleteContract() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase.from("client_contracts").delete().eq("id", id) as any);
+      const { error } = await (supabase
+        .from("client_contracts")
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", id) as any);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["client-contracts"] }),
