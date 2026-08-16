@@ -1212,6 +1212,126 @@ export type Database = {
           },
         ]
       }
+      contract_amendments: {
+        Row: {
+          contract_id: string
+          created_at: string
+          created_by: string | null
+          descripcion: string | null
+          effective_date: string | null
+          id: string
+          moneda: string | null
+          nueva_fecha_fin: string | null
+          nuevo_valor_mensual: number | null
+          numero: number | null
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          contract_id: string
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          effective_date?: string | null
+          id?: string
+          moneda?: string | null
+          nueva_fecha_fin?: string | null
+          nuevo_valor_mensual?: number | null
+          numero?: number | null
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          contract_id?: string
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          effective_date?: string | null
+          id?: string
+          moneda?: string | null
+          nueva_fecha_fin?: string | null
+          nuevo_valor_mensual?: number | null
+          numero?: number | null
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_amendments_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "client_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contract_history: {
+        Row: {
+          action: string
+          changed_at: string
+          changed_by: string | null
+          changes: Json
+          contract_id: string
+          id: string
+        }
+        Insert: {
+          action: string
+          changed_at?: string
+          changed_by?: string | null
+          changes?: Json
+          contract_id: string
+          id?: string
+        }
+        Update: {
+          action?: string
+          changed_at?: string
+          changed_by?: string | null
+          changes?: Json
+          contract_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_history_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "client_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contract_renewal_alerts: {
+        Row: {
+          contract_id: string
+          created_at: string
+          end_date: string
+          id: string
+          threshold_days: number
+        }
+        Insert: {
+          contract_id: string
+          created_at?: string
+          end_date: string
+          id?: string
+          threshold_days: number
+        }
+        Update: {
+          contract_id?: string
+          created_at?: string
+          end_date?: string
+          id?: string
+          threshold_days?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_renewal_alerts_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "client_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contract_document_chunks: {
         Row: {
           chunk_index: number
