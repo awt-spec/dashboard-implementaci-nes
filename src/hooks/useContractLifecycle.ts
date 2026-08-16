@@ -31,11 +31,11 @@ export function useContractHistory(contractId?: string) {
     enabled: !!contractId,
     queryFn: async () => {
       const { data, error } = await (supabase
-        .from("contract_history" as any)
+        .from("contract_history")
         .select("*")
         .eq("contract_id", contractId!)
         .order("changed_at", { ascending: false })
-        .limit(50) as any);
+        .limit(50));
       if (error) throw error;
       return (data || []) as ContractHistoryEntry[];
     },
@@ -48,10 +48,10 @@ export function useContractAmendments(contractId?: string) {
     enabled: !!contractId,
     queryFn: async () => {
       const { data, error } = await (supabase
-        .from("contract_amendments" as any)
+        .from("contract_amendments")
         .select("*")
         .eq("contract_id", contractId!)
-        .order("effective_date", { ascending: false, nullsFirst: false }) as any);
+        .order("effective_date", { ascending: false, nullsFirst: false }));
       if (error) throw error;
       return (data || []) as ContractAmendment[];
     },
@@ -62,10 +62,9 @@ export function useUpsertAmendment(contractId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (a: Partial<ContractAmendment> & { contract_id: string; titulo: string }) => {
-      const q = a.id
-        ? (supabase.from("contract_amendments" as any).update(a as any).eq("id", a.id) as any)
-        : (supabase.from("contract_amendments" as any).insert([a] as any) as any);
-      const { error } = await q;
+      const { error } = a.id
+        ? await supabase.from("contract_amendments").update(a).eq("id", a.id)
+        : await supabase.from("contract_amendments").insert([a]);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["contract-amendments", contractId] }),
@@ -76,7 +75,7 @@ export function useDeleteAmendment(contractId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase.from("contract_amendments" as any).delete().eq("id", id) as any);
+      const { error } = await supabase.from("contract_amendments").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["contract-amendments", contractId] }),
