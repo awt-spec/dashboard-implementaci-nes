@@ -51,11 +51,44 @@ left join lateral (
 ) s on true
 order by sugerencia, x.cliente;
 
--- ── Corrección, DESPUÉS de revisar la salida de arriba ──────────────────────
--- Reemplazar los ids por los que realmente correspondan. El trigger
--- sync_contract_status_active mantiene is_active coherente solo, y
--- log_contract_change deja el cambio asentado en contract_history.
+-- ── Corrección automática ───────────────────────────────────────────────────
+-- Aplica SOLO el caso inequívoco ("RENOVADO probable"): el cliente tiene otro
+-- contrato que arranca en la ventana del vencimiento. Los "REVISAR" y los
+-- "CANCELADO (sin contrato posterior)" NO se tocan: esos necesitan criterio.
 --
--- update public.client_contracts
+-- No hay que copiar ids: el WHERE reproduce exactamente la misma condición que
+-- la columna "sugerencia" de la consulta de arriba.
+--
+-- PASO 1 — cuántas filas cambiaría (no modifica nada):
+--
+-- select count(*)
+--   from public.client_contracts c
+--  where c.status = 'cancelado'
+--    and c.deleted_at is null
+--    and c.end_date is not null
+--    and exists (
+--      select 1 from public.client_contracts c2
+--       where c2.client_id = c.client_id
+--         and c2.id <> c.id
+--         and c2.deleted_at is null
+--         and c2.start_date is not null
+--         and c2.start_date between c.end_date - 31 and c.end_date + 92
+--    );
+--
+-- PASO 2 — aplicar. Los triggers hacen el resto: sync_contract_status_active
+-- ajusta is_active y log_contract_change asienta el cambio en contract_history,
+-- así que queda auditado y visible en el expediente 360.
+--
+-- update public.client_contracts c
 --    set status = 'renovado'
---  where id in ('<uuid-1>', '<uuid-2>');
+--  where c.status = 'cancelado'
+--    and c.deleted_at is null
+--    and c.end_date is not null
+--    and exists (
+--      select 1 from public.client_contracts c2
+--       where c2.client_id = c.client_id
+--         and c2.id <> c.id
+--         and c2.deleted_at is null
+--         and c2.start_date is not null
+--         and c2.start_date between c.end_date - 31 and c.end_date + 92
+--    );
