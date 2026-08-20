@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, lazy, Suspense, type CSSProperties } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/dashboard/AppSidebar";
 import { ExecutiveOverview } from "@/components/dashboard/ExecutiveOverview";
@@ -257,7 +257,11 @@ const Index = () => {
   };
 
   return (
-    <SidebarProvider>
+    // Anchos del handoff (§8): 216px expandido / 60px colapsado. shadcn trae
+    // 16rem/3rem por defecto; se sobreescriben por variable CSS en el provider.
+    <SidebarProvider
+      style={{ "--sidebar-width": "216px", "--sidebar-width-icon": "60px" } as CSSProperties}
+    >
       <div className="min-h-screen flex w-full">
         <AppSidebar activeSection={activeSection} onSectionChange={handleSectionChange} />
 
