@@ -47,21 +47,21 @@ export function MobileTabBar({ activeSection, onSectionChange, items, className 
               onClick={() => onSectionChange(item.key)}
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                "flex flex-1 flex-col items-center justify-start gap-1 px-1 pb-1.5 pt-2 transition-colors",
+                "flex flex-1 flex-col items-center justify-start gap-1 px-0.5 pb-2 pt-[9px] transition-colors",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                 isActive ? "text-primary" : "text-muted-foreground",
               )}
             >
               <span
                 className={cn(
-                  "relative inline-flex items-center justify-center rounded-full px-3 py-1 transition-colors",
+                  "relative inline-flex items-center justify-center rounded-full px-3 py-[3px] transition-colors",
                   isActive && "bg-primary/10",
                 )}
               >
-                <Icon className="h-5 w-5 shrink-0" strokeWidth={isActive ? 2.4 : 2} />
+                <Icon className="h-4 w-4 shrink-0" strokeWidth={isActive ? 2.4 : 2} />
                 {badge > 0 && (
                   <span
-                    className="absolute -right-1 -top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold tabular-nums text-destructive-foreground shadow-sm"
+                    className="absolute -right-1 -top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[8.5px] font-bold tabular-nums text-destructive-foreground shadow-sm"
                     title={`${badge} pendiente${badge === 1 ? "" : "s"}`}
                   >
                     <span className="absolute inline-flex h-full w-full rounded-full bg-destructive opacity-30 animate-ping" />
@@ -69,7 +69,7 @@ export function MobileTabBar({ activeSection, onSectionChange, items, className 
                   </span>
                 )}
               </span>
-              <span className="max-w-full truncate text-[9.5px] font-bold uppercase leading-none tracking-[0.06em]">
+              <span className="max-w-full truncate text-[9.5px] font-extrabold uppercase leading-none tracking-[0.06em]">
                 {item.label}
               </span>
             </button>

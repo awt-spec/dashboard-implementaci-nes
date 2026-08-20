@@ -219,7 +219,7 @@ const Index = () => {
       <div className="min-h-screen flex w-full">
         <AppSidebar activeSection={activeSection} onSectionChange={handleSectionChange} />
 
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 min-h-0">
           <header className="h-14 flex items-center justify-between border-b border-border bg-card px-4 shrink-0">
             <div className="flex items-center gap-2 md:gap-3 min-w-0">
               {/* Escritorio: colapsa/expande el sidebar. En móvil el sidebar no
@@ -281,8 +281,10 @@ const Index = () => {
           {/* Franja móvil de vencidos: mismo evento que el pill del header. */}
           {showOverdueEntry && <MobileOverdueStrip count={overdueCount} onClick={openOverdue} />}
 
-          {/* pb-20 en móvil deja libre la altura de la MobileTabBar fija. */}
-          <main className="flex-1 overflow-auto p-4 md:p-6 pb-20 md:pb-6">
+          {/* min-h-0: sin esto el main no puede encogerse por debajo de su
+              contenido y el scroll se desborda fuera del área visible.
+              pb-24 (96px) libera la tab bar fija (~62px + safe-area). */}
+          <main className="flex-1 min-h-0 overflow-auto p-4 md:p-6 pb-24 md:pb-6">
             {/* Suspense envuelve TODO el contenido lazy del main: cualquier sección
                 que el user abra (scrum/soporte/config/clientes/detalle) se carga
                 on-demand. El fallback es el spinner inline (no fullscreen) para
