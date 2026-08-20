@@ -25,6 +25,17 @@ const ConfigurationHub        = lazy(() => import("@/components/settings/Configu
 const ClientList              = lazy(() => import("@/components/clients/ClientList").then(m => ({ default: m.ClientList })));
 const ClientDetail            = lazy(() => import("@/components/clients/ClientDetail").then(m => ({ default: m.ClientDetail })));
 
+// Variantes MÓVILES (nuevas, viven en src/components/mobile/). Se renderizan
+// como hermanas del componente de escritorio: el móvil va en un contenedor
+// md:hidden y el de escritorio en hidden md:block, así el escritorio queda
+// exactamente igual que antes. También lazy: aunque React sí las monta en
+// escritorio (CSS oculta, no desmonta), el chunk se baja con la sección y no
+// engorda el bundle inicial.
+const MobileResumen           = lazy(() => import("@/components/mobile/MobileResumen").then(m => ({ default: m.MobileResumen })));
+const MobileClientes          = lazy(() => import("@/components/mobile/MobileClientes").then(m => ({ default: m.MobileClientes })));
+const MobileScrum             = lazy(() => import("@/components/mobile/MobileScrum").then(m => ({ default: m.MobileScrum })));
+const MobileConfig            = lazy(() => import("@/components/mobile/MobileConfig").then(m => ({ default: m.MobileConfig })));
+
 // OverdueTicketsSheet se importa eager — está en el header global como pill
 // y es la primera interacción común. Si fuera lazy, el primer click sería lento.
 import { OverdueTicketsSheet } from "@/components/support/OverdueTicketsSheet";
@@ -196,6 +207,37 @@ const Index = () => {
         .filter((c): c is NonNullable<typeof c> => Boolean(c))
     : [];
 
+  // ¿Esta sección tiene variante móvil de pantalla completa?
+  // "soporte" y los detalles (client-*/support-client-*) quedan como estaban.
+  // El gerente no entra: su "overview" sigue siendo GerenteMobileDashboard.
+  const showsMobileScreen =
+    role !== "gerente" &&
+    (activeSection === "overview" ||
+      activeSection === "clients" ||
+      activeSection === "team-scrum" ||
+      activeSection === "config");
+
+  // DOBLE SCROLL: las pantallas móviles ya traen su propio área scrolleable
+  // (flex-1 min-h-0 overflow-y-auto). Si el <main> también scrollea, el móvil
+  // crece a su altura natural, el scroll interno nunca se activa y termina
+  // scrolleando el contenedor de afuera (header de la pantalla incluido).
+  // Solución: cuando hay pantalla móvil, en <md el <main> deja de scrollear
+  // (overflow-hidden) y pasa a ser columna flex de altura fija, para que el
+  // hijo pueda reclamar el alto disponible con flex-1 + min-h-0. Se conserva
+  // pb-24 (reserva de la tab bar fija) y se quita el padding lateral/superior
+  // para que la pantalla vaya de borde a borde. Todas las variantes md:*
+  // restauran los valores actuales, así que el escritorio no cambia.
+  const mainClass = showsMobileScreen
+    ? "flex-1 min-h-0 flex flex-col overflow-hidden px-0 pt-0 pb-24 md:block md:overflow-auto md:p-6 md:pb-6"
+    : "flex-1 min-h-0 overflow-auto p-4 md:p-6 pb-24 md:pb-6";
+  const sectionWrapClass = showsMobileScreen
+    ? "w-full animate-fadein flex flex-col flex-1 min-h-0 md:block"
+    : "w-full animate-fadein";
+  // Contenedor de cada pantalla móvil: cadena flex-1/min-h-0 sin cortes hasta
+  // el overflow-y-auto interno de MobileScreen.
+  const mobileWrap = "flex flex-col flex-1 min-h-0 md:hidden";
+  const onMobileMenu = () => setNavDrawerOpen(true);
+
   const getTitle = () => {
     if (role === "gerente" && gerenteClient) {
       const isSupport = (gerenteClient as any).client_type === "soporte";
@@ -284,7 +326,7 @@ const Index = () => {
           {/* min-h-0: sin esto el main no puede encogerse por debajo de su
               contenido y el scroll se desborda fuera del área visible.
               pb-24 (96px) libera la tab bar fija (~62px + safe-area). */}
-          <main className="flex-1 min-h-0 overflow-auto p-4 md:p-6 pb-24 md:pb-6">
+          <main className={mainClass}>
             {/* Suspense envuelve TODO el contenido lazy del main: cualquier sección
                 que el user abra (scrum/soporte/config/clientes/detalle) se carga
                 on-demand. El fallback es el spinner inline (no fullscreen) para
@@ -297,7 +339,7 @@ const Index = () => {
               {/* key=activeSection: todo el contenido de este div ya está
                   condicionado por activeSection, así que remontarlo no cambia
                   el comportamiento y permite el fade-in por sección. */}
-              <div key={activeSection} className="w-full animate-fadein">
+              <div key={activeSection} className={sectionWrapClass}>
                 {activeSection === "overview" && role === "gerente" && (
                   loadingAssignment ? (
                     <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
@@ -329,16 +371,50 @@ const Index = () => {
                     <p className="text-sm text-muted-foreground text-center py-12">No tiene un proyecto asignado. Contacte al administrador.</p>
                   )
                 )}
-                {activeSection === "overview" && role !== "gerente" && <ExecutiveOverview onNavigate={setActiveSection} />}
-                {activeSection === "team-scrum" && <TeamScrumDashboard />}
+                {activeSection === "overview" && role !== "gerente" && (
+                  <>
+                    <div className={mobileWrap}>
+                      <MobileResumen onMenu={onMobileMenu} onNavigate={handleSectionChange} />
+                    </div>
+                    <div className="hidden md:block">
+                      <ExecutiveOverview onNavigate={setActiveSection} />
+                    </div>
+                  </>
+                )}
+                {activeSection === "team-scrum" && (
+                  <>
+                    <div className={mobileWrap}>
+                      <MobileScrum onMenu={onMobileMenu} />
+                    </div>
+                    <div className="hidden md:block">
+                      <TeamScrumDashboard />
+                    </div>
+                  </>
+                )}
                 {activeSection === "soporte" && <SupportDashboard />}
                 {selectedSupportClientId && <SupportDashboard initialClientId={selectedSupportClientId} onBack={() => setActiveSection("soporte")} />}
-                {activeSection === "config" && <ConfigurationHub />}
+                {activeSection === "config" && (
+                  <>
+                    <div className={mobileWrap}>
+                      <MobileConfig onMenu={onMobileMenu} />
+                    </div>
+                    <div className="hidden md:block">
+                      <ConfigurationHub />
+                    </div>
+                  </>
+                )}
                 {activeSection === "clients" && (
-                  <ClientList
-                    onSelectClient={(id) => setActiveSection(`client-${id}`)}
-                    selectedClientId={undefined}
-                  />
+                  <>
+                    <div className={mobileWrap}>
+                      <MobileClientes onMenu={onMobileMenu} />
+                    </div>
+                    <div className="hidden md:block">
+                      <ClientList
+                        onSelectClient={(id) => setActiveSection(`client-${id}`)}
+                        selectedClientId={undefined}
+                      />
+                    </div>
+                  </>
                 )}
                 {selectedClient && (
                   <ClientDetail
