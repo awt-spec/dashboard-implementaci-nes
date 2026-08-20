@@ -5934,6 +5934,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_preferences: {
+        Row: {
+          ai_case_summary: boolean
+          daily_summary: boolean
+          offline_mode: boolean
+          reassigned_cases: boolean
+          sla_alerts: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_case_summary?: boolean
+          daily_summary?: boolean
+          offline_mode?: boolean
+          reassigned_cases?: boolean
+          sla_alerts?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_case_summary?: boolean
+          daily_summary?: boolean
+          offline_mode?: boolean
+          reassigned_cases?: boolean
+          sla_alerts?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
