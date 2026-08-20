@@ -126,9 +126,18 @@
   }
 
   /* Entrada de secciones del sistema visual SVA ERP. Nombre 'fadein' (sin guion)
-     para no colisionar con la animación 'fade-in' ya definida en tailwind.config.ts. */
+     para no colisionar con la animación 'fade-in' ya definida en tailwind.config.ts.
+
+     fill-mode es 'backwards', NO 'both', y el motivo importa: con 'both' el
+     fotograma final queda aplicado para siempre, y un `transform: none` escrito
+     DENTRO de un keyframe computa a matrix(1,0,0,1,0,0), no a none. Esa matriz
+     identidad crea un bloque contenedor, así que cualquier overlay position:fixed
+     dentro de la sección (presentaciones, diálogos) quedaba encerrado en la caja
+     de la sección en vez de cubrir la ventana. Con 'backwards' no se retiene
+     nada al terminar: el transform vuelve a none y el fixed ancla al viewport.
+     La animación se ve idéntica — al final opacity ya es 1 por valor natural. */
   .animate-fadein {
-    animation: fadein 0.25s ease-out both;
+    animation: fadein 0.25s ease-out backwards;
   }
 }
 
