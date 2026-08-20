@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertOctagon, Clock, ShieldCheck } from "lucide-react";
 import { useSlaAlerts, type SlaTicketStatus } from "@/hooks/useSlaAlerts";
+import { DEFAULT_PREFERENCES, useUserPreferences } from "@/hooks/useUserPreferences";
 
 const fmtH = (h: number) => (h >= 24 ? `${(h / 24).toFixed(1)}d` : `${Math.round(h)}h`);
 
@@ -14,7 +15,15 @@ interface Props {
 
 /** Alerta activa de incumplimiento de SLA: el SLA "juega en la cancha". */
 export function SlaBreachAlert({ clientId, onSelectTicket, showOk = false }: Props) {
-  const { breached, atRisk } = useSlaAlerts(clientId);
+  const { breached, atRisk: atRiskAll } = useSlaAlerts(clientId);
+  const { data: prefs } = useUserPreferences();
+
+  // La preferencia se llama "Alertas de SLA por vencer" y eso es exactamente lo
+  // que apaga: los casos EN RIESGO. Los incumplidos se muestran siempre — son un
+  // incumplimiento consumado, no un aviso, y ocultarlos por una preferencia
+  // dejaría a un responsable sin enterarse de que ya rompió el SLA.
+  const showAtRisk = (prefs ?? DEFAULT_PREFERENCES).sla_alerts;
+  const atRisk = showAtRisk ? atRiskAll : [];
 
   if (breached.length === 0 && atRisk.length === 0) {
     if (!showOk) return null;

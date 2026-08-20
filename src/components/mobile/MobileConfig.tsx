@@ -1,10 +1,16 @@
-import { useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { ChevronRight, User } from "lucide-react";
 import { SectionLabel } from "@/components/common/StatCard";
 import { ChangePasswordDialog } from "@/components/auth/ChangePasswordDialog";
 import { MobileHeader, MobileScreen } from "@/components/mobile/MobileScreen";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  DEFAULT_PREFERENCES,
+  useUpdateUserPreference,
+  useUserPreferences,
+  type UserPreferences,
+} from "@/hooks/useUserPreferences";
 import { cn } from "@/lib/utils";
 
 export interface MobileConfigProps {
@@ -54,10 +60,12 @@ interface ToggleRowProps {
   hint: string;
   checked: boolean;
   onCheckedChange: (value: boolean) => void;
+  /** Mientras las preferencias cargan el switch no se puede tocar. */
+  disabled?: boolean;
   last?: boolean;
 }
 
-function ToggleRow({ label, hint, checked, onCheckedChange, last }: ToggleRowProps) {
+function ToggleRow({ label, hint, checked, onCheckedChange, disabled, last }: ToggleRowProps) {
   return (
     <RowShell last={last}>
       <div className="min-w-0 flex-1">
@@ -69,6 +77,7 @@ function ToggleRow({ label, hint, checked, onCheckedChange, last }: ToggleRowPro
       <Switch
         checked={checked}
         onCheckedChange={onCheckedChange}
+        disabled={disabled}
         aria-label={label}
         className={cn("shrink-0", SWITCH_CLASS)}
       />
@@ -100,16 +109,16 @@ function getInitials(name?: string | null): string {
 export function MobileConfig({ onMenu, onEditProfile }: MobileConfigProps) {
   const { profile, user, signOut } = useAuth();
 
-  // Preferencias LOCALES a propósito: no existe tabla de preferencias de
-  // notificación, así que esta tanda no persiste nada. Cuando exista, este
-  // useState se reemplaza por el hook correspondiente. Por lo mismo los hints
-  // describen la preferencia y NO prometen un horario concreto ("60 min antes",
-  // "07:30"): esos números venían del prototipo y no los respalda nada.
-  const [slaAlerts, setSlaAlerts] = useState(true);
-  const [reassigned, setReassigned] = useState(true);
-  const [dailyDigest, setDailyDigest] = useState(false);
-  const [aiSummary, setAiSummary] = useState(true);
-  const [offlineMode, setOfflineMode] = useState(false);
+  // Las preferencias viven en public.user_preferences (una fila por usuario, se
+  // crea al primer guardado). Los hints NO prometen horarios concretos ("60 min
+  // antes", "07:30"): esos números venían del prototipo y no los respalda nada.
+  // Y cada hint dice si la preferencia ya se respeta o si de momento sólo queda
+  // guardada, porque hoy ninguna notificación por correo la lee.
+  const { data: prefs, isLoading } = useUserPreferences();
+  const updatePreference = useUpdateUserPreference();
+  const values = prefs ?? DEFAULT_PREFERENCES;
+  const setPreference = (key: keyof UserPreferences) => (value: boolean) =>
+    updatePreference.mutate({ [key]: value });
 
   const displayName = profile?.full_name?.trim() || user?.email || "Sin datos";
   const initials = getInitials(profile?.full_name);
@@ -159,21 +168,24 @@ export function MobileConfig({ onMenu, onEditProfile }: MobileConfigProps) {
       <SettingsGroup title="Notificaciones">
         <ToggleRow
           label="Alertas de SLA por vencer"
-          hint="aviso antes del vencimiento"
-          checked={slaAlerts}
-          onCheckedChange={setSlaAlerts}
+          hint="muestra los casos en riesgo en el panel de SLA"
+          checked={values.sla_alerts}
+          onCheckedChange={setPreference("sla_alerts")}
+          disabled={isLoading}
         />
         <ToggleRow
           label="Casos reasignados a mí"
-          hint="aviso al reasignar un caso"
-          checked={reassigned}
-          onCheckedChange={setReassigned}
+          hint="preferencia guardada; el aviso todavía no está conectado"
+          checked={values.reassigned_cases}
+          onCheckedChange={setPreference("reassigned_cases")}
+          disabled={isLoading}
         />
         <ToggleRow
           label="Resumen diario del turno"
-          hint="resumen al inicio del turno"
-          checked={dailyDigest}
-          onCheckedChange={setDailyDigest}
+          hint="preferencia guardada; el envío todavía no está conectado"
+          checked={values.daily_summary}
+          onCheckedChange={setPreference("daily_summary")}
+          disabled={isLoading}
           last
         />
       </SettingsGroup>
@@ -181,15 +193,17 @@ export function MobileConfig({ onMenu, onEditProfile }: MobileConfigProps) {
       <SettingsGroup title="Trabajo">
         <ToggleRow
           label="Resumen IA del caso"
-          hint="genera el resumen al abrir el caso"
-          checked={aiSummary}
-          onCheckedChange={setAiSummary}
+          hint="preferencia guardada; el resumen se pide a mano por ahora"
+          checked={values.ai_case_summary}
+          onCheckedChange={setPreference("ai_case_summary")}
+          disabled={isLoading}
         />
         <ToggleRow
           label="Modo sin conexión"
-          hint="guarda los casos del turno en el teléfono"
-          checked={offlineMode}
-          onCheckedChange={setOfflineMode}
+          hint="preferencia guardada; la app todavía requiere conexión"
+          checked={values.offline_mode}
+          onCheckedChange={setPreference("offline_mode")}
+          disabled={isLoading}
           last
         />
       </SettingsGroup>

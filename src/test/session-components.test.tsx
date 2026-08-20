@@ -35,6 +35,8 @@ import { SlaCompliancePanel } from "@/components/clients/SlaCompliancePanel";
 import { SlaHistoryPanel } from "@/components/clients/SlaHistoryPanel";
 import { AccountStatement360 } from "@/components/clients/AccountStatement360";
 import { ContractDetailSheet } from "@/components/clients/ContractDetailSheet";
+import { MobileConfig } from "@/components/mobile/MobileConfig";
+import { DEFAULT_PREFERENCES } from "@/hooks/useUserPreferences";
 import type { ClientContract } from "@/hooks/useClientContracts";
 import type { ExtractedTerms } from "@/hooks/useContractKb";
 
@@ -101,5 +103,19 @@ describe("componentes de la sesión — render sin crash", () => {
       <ContractDetailSheet contract={null} clientId="aurum" open onOpenChange={() => {}} />,
     );
     expect(baseElement.textContent).not.toContain("Vigencia");
+  });
+
+  it("MobileConfig cae en los valores por defecto cuando el usuario no tiene fila", async () => {
+    const { findAllByRole } = wrap(<MobileConfig />);
+    const switches = await findAllByRole("switch");
+    // Los cinco toggles de preferencias, en el orden de la pantalla.
+    expect(switches).toHaveLength(5);
+    expect(switches.map((s) => s.getAttribute("data-state") === "checked")).toEqual([
+      DEFAULT_PREFERENCES.sla_alerts,
+      DEFAULT_PREFERENCES.reassigned_cases,
+      DEFAULT_PREFERENCES.daily_summary,
+      DEFAULT_PREFERENCES.ai_case_summary,
+      DEFAULT_PREFERENCES.offline_mode,
+    ]);
   });
 });
