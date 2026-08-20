@@ -12,6 +12,8 @@ import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { CreateClientDialog } from "./CreateClientDialog";
+import { ClientPreviewPanel } from "./ClientPreviewPanel";
+import { useIsXlUp } from "@/hooks/use-mobile";
 
 const statusConfig: Record<Client["status"], { label: string; className: string }> = {
   activo: { label: "Activo", className: "bg-success text-success-foreground" },
@@ -31,6 +33,11 @@ export function ClientList({ onSelectClient, selectedClientId }: ClientListProps
   const { role } = useAuth();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("todos");
+  // Panel lateral de vista rápida (§11 del handoff). Sólo hay lugar desde xl;
+  // por debajo el clic sigue navegando directo a la ficha, como siempre.
+  const hasPreview = useIsXlUp();
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const openOrPreview = (id: string) => (hasPreview ? setPreviewId(id) : onSelectClient(id));
 
   // Tickets abiertos por cliente, para la vista de estado general (ERP-072).
   const openTicketsByClient = useMemo(() => {
@@ -109,15 +116,16 @@ export function ClientList({ onSelectClient, selectedClientId }: ClientListProps
           </div>
         </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="flex gap-4 items-start">
+      <div className="min-w-0 flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {filtered.map((client, i) => {
           const config = statusConfig[client.status];
-          const isSelected = selectedClientId === client.id;
+          const isSelected = hasPreview ? previewId === client.id : selectedClientId === client.id;
           return (
             <motion.div key={client.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
               <Card
-                className={`cursor-pointer hover:shadow-md transition-all ${isSelected ? "ring-2 ring-primary" : ""}`}
-                onClick={() => onSelectClient(client.id)}
+                className={`cursor-pointer hover:shadow-md transition-all ${isSelected ? "border-primary ring-1 ring-primary/10" : ""}`}
+                onClick={() => openOrPreview(client.id)}
               >
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-3">
@@ -153,6 +161,12 @@ export function ClientList({ onSelectClient, selectedClientId }: ClientListProps
             </motion.div>
           );
         })}
+      </div>
+
+      <ClientPreviewPanel
+        client={filtered.find(c => c.id === previewId) ?? null}
+        onOpenFull={onSelectClient}
+      />
       </div>
 
         {filtered.length === 0 && (
