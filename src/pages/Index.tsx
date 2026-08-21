@@ -2,6 +2,7 @@ import { useState, useEffect, lazy, Suspense, type CSSProperties } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/dashboard/AppSidebar";
 import { AppHeader } from "@/components/dashboard/AppHeader";
+import { HeaderActionsProvider } from "@/components/dashboard/HeaderActions";
 import { useIsDeskWide } from "@/hooks/use-mobile";
 import { applyTheme, readStoredTheme, storeTheme } from "@/lib/theme";
 import { ExecutiveOverview } from "@/components/dashboard/ExecutiveOverview";
@@ -291,6 +292,7 @@ const Index = () => {
       onOpenChange={setSidebarOpen}
       style={{ "--sidebar-width": "216px", "--sidebar-width-icon": "60px" } as CSSProperties}
     >
+      <HeaderActionsProvider>
       <div className="min-h-screen flex w-full">
         <AppSidebar activeSection={activeSection} onSectionChange={handleSectionChange} />
 
@@ -436,6 +438,7 @@ const Index = () => {
       {/* Sheet global de boletas vencidas — disparable desde cualquier sección
           via window.dispatchEvent(new CustomEvent("overdue:open")) */}
       <OverdueTicketsSheet />
+      </HeaderActionsProvider>
     </SidebarProvider>
   );
 };

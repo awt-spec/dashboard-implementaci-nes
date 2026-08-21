@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { CommandTrigger } from "@/components/common/CommandPalette";
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
+import { useHeaderActions } from "@/hooks/useHeaderActions";
 
 export interface AppHeaderProps {
   /** Título de la vista actual (depende de sección + rol). */
@@ -44,6 +45,8 @@ export function AppHeader({
   actions,
   trailing,
 }: AppHeaderProps) {
+  // La vista activa puede publicar sus controles sin que Index los conozca.
+  const viewActions = useHeaderActions();
   return (
     <header className="h-14 flex items-center justify-between border-b border-border bg-card px-4 shrink-0">
       <div className="flex items-center gap-2 md:gap-3 min-w-0">
@@ -67,6 +70,7 @@ export function AppHeader({
 
       <div className="flex items-center gap-2 shrink-0">
         {actions}
+        {viewActions}
 
         <CommandTrigger onClick={onOpenPalette} className="hidden md:flex w-[190px] lg:w-[230px]" />
         <Button
