@@ -1,9 +1,10 @@
+import { toCsv, downloadCsv } from "@/lib/exportCsv";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useClients } from "@/hooks/useClients";
 import { useSupportTickets } from "@/hooks/useSupportTickets";
 import { type Client } from "@/data/projectData";
-import { Building2, MapPin, Search, Loader2, Database, Upload, Download, FileSpreadsheet, GitMerge, ClipboardList } from "lucide-react";
+import { Building2, MapPin, Search, Loader2, Database, Upload, Download, FileSpreadsheet, GitMerge } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,6 +14,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { CreateClientDialog } from "./CreateClientDialog";
 import { ClientPreviewPanel } from "./ClientPreviewPanel";
+import { useSetHeaderActions } from "@/hooks/useHeaderActions";
 import { useIsXlUp } from "@/hooks/use-mobile";
 
 const statusConfig: Record<Client["status"], { label: string; className: string }> = {
@@ -72,8 +74,34 @@ export function ClientList({ onSelectClient, selectedClientId }: ClientListProps
     return matchSearch && matchStatus;
   });
 
-  const statuses = ["todos", "activo", "en-riesgo", "completado", "pausado"];
 
+  const statuses = ["todos", "activo", "en-riesgo", "completado", "pausado"];
+  const canManage = role === "admin" || role === "pm";
+
+  // Los chips de estado y el alta viven en la barra de título, no en el
+  // cuerpo: el diseño tiene una sola barra, no dos apiladas.
+  useSetHeaderActions(
+    <div className="hidden md:flex items-center gap-1.5">
+      {statuses.map(st => (
+        <button
+          key={st}
+          onClick={() => setStatusFilter(st)}
+          className={`h-[30px] px-3 rounded-lg text-xs font-semibold transition-colors ${
+            statusFilter === st
+              ? "bg-primary text-primary-foreground"
+              : "bg-secondary text-secondary-foreground hover:bg-accent"
+          }`}
+        >
+          {st === "todos" ? "Todos" : statusConfig[st as Client["status"]]?.label}
+        </button>
+      ))}
+      {canManage && <CreateClientDialog />}
+    </div>,
+    [statusFilter, canManage],
+  );
+
+  // El return temprano de carga va DESPUÉS de todos los hooks: al terminar de
+  // cargar cambiaría el orden de hooks y React reventaría.
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -82,42 +110,32 @@ export function ClientList({ onSelectClient, selectedClientId }: ClientListProps
     );
   }
 
-  const canManage = role === "admin" || role === "pm";
-
   return (
     <Tabs defaultValue="clientes" className="space-y-4">
-      <TabsList className="h-9">
-        <TabsTrigger value="clientes" className="gap-1.5"><Building2 className="h-3.5 w-3.5" /> Clientes</TabsTrigger>
-        <TabsTrigger value="estado" className="gap-1.5"><ClipboardList className="h-3.5 w-3.5" /> Estado general</TabsTrigger>
-        {canManage && (
+      {/* "Estado general" dejó de ser una pestaña aparte: en el diseño la
+          tabla va debajo de las tarjetas, en la misma columna. Separarlas
+          obligaba a cambiar de pestaña para comparar la tarjeta con su fila —
+          y hacía que el clic en una fila no pudiera alimentar el panel
+          lateral, porque el panel vivía en la otra pestaña. */}
+      {canManage && (
+        <TabsList className="h-9">
+          <TabsTrigger value="clientes" className="gap-1.5"><Building2 className="h-3.5 w-3.5" /> Clientes</TabsTrigger>
           <TabsTrigger value="datos" className="gap-1.5"><Database className="h-3.5 w-3.5" /> Datos & Sync</TabsTrigger>
-        )}
-      </TabsList>
+        </TabsList>
+      )}
 
       <TabsContent value="clientes" className="space-y-4">
-        <div className="flex flex-col sm:flex-row gap-3">
-          {canManage && <CreateClientDialog />}
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Buscar cliente..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
-          </div>
-          <div className="flex gap-1.5 flex-wrap">
-            {statuses.map(s => (
-              <button
-                key={s}
-                onClick={() => setStatusFilter(s)}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  statusFilter === s ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-accent"
-                }`}
-              >
-                {s === "todos" ? "Todos" : statusConfig[s as Client["status"]]?.label}
-              </button>
-            ))}
-          </div>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Buscar cliente..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
         </div>
 
       <div className="flex gap-4 items-start">
-      <div className="min-w-0 flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      {/* Columna izquierda: tarjetas, totales de cartera y tabla, en ese
+          orden de lectura. Sólo ella scrollea; el panel de la derecha se
+          queda fijo (sticky) para no perder de vista el cliente elegido. */}
+      <div className="min-w-0 flex-1 space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {filtered.map((client, i) => {
           const config = statusConfig[client.status];
           const isSelected = hasPreview ? previewId === client.id : selectedClientId === client.id;
@@ -163,78 +181,119 @@ export function ClientList({ onSelectClient, selectedClientId }: ClientListProps
         })}
       </div>
 
+      {filtered.length === 0 && (
+        <p className="text-sm text-muted-foreground text-center py-8">No se encontraron clientes</p>
+      )}
+
+          {(() => {
+            const order: Record<string, number> = { "en-riesgo": 0, activo: 1, pausado: 2, completado: 3 };
+            const all = [...(clients || [])].sort(
+              (a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9) || a.name.localeCompare(b.name),
+            );
+            const totals = {
+              total: all.length,
+              riesgo: all.filter(c => c.status === "en-riesgo").length,
+              tickets: all.reduce((s, c) => s + (openTicketsByClient[c.id] || 0), 0),
+              riesgos: all.reduce((s, c) => s + c.risks.filter(r => r.status === "abierto").length, 0),
+            };
+            // Las MISMAS columnas que la tabla de arriba. El CSV de "Datos &
+            // Sync" exporta otra cosa (id, industria, nivel de servicio) y no
+            // sirve para llevarse lo que se está viendo.
+            const exportVisible = () => downloadCsv(
+              `estado-general-${new Date().toLocaleDateString("en-CA")}.csv`,
+              toCsv(all, [
+                { key: "name",     header: "Cliente",  get: c => c.name },
+                { key: "country",  header: "País",     get: c => c.country },
+                { key: "status",   header: "Estado",   get: c => statusConfig[c.status]?.label ?? c.status },
+                { key: "progress", header: "Prog.",    get: c => c.progress },
+                { key: "tasks",    header: "Tareas",   get: c => c.tasks.length },
+                { key: "tickets",  header: "Tickets",  get: c => openTicketsByClient[c.id] || 0 },
+                { key: "risks",    header: "Riesgos",  get: c => c.risks.filter(r => r.status === "abierto").length },
+              ]),
+            );
+            return (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <Card><CardContent className="p-3"><p className="text-[10px] uppercase text-muted-foreground">Clientes</p><p className="text-2xl font-bold">{totals.total}</p></CardContent></Card>
+                  <Card><CardContent className="p-3"><p className="text-[10px] uppercase text-muted-foreground">En riesgo</p><p className="text-2xl font-bold text-destructive">{totals.riesgo}</p></CardContent></Card>
+                  <Card><CardContent className="p-3"><p className="text-[10px] uppercase text-muted-foreground">Tickets abiertos</p><p className="text-2xl font-bold">{totals.tickets}</p></CardContent></Card>
+                  <Card><CardContent className="p-3"><p className="text-[10px] uppercase text-muted-foreground">Riesgos abiertos</p><p className="text-2xl font-bold text-warning">{totals.riesgos}</p></CardContent></Card>
+                </div>
+                <Card>
+                  <CardHeader className="flex-row items-center justify-between gap-2 space-y-0 py-3">
+                    <CardTitle className="text-sm">Estado general — todos los clientes</CardTitle>
+                    <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs shrink-0" onClick={exportVisible}>
+                      <Download className="h-3.5 w-3.5" /> Exportar CSV
+                    </Button>
+                  </CardHeader>
+                  {/* El cuerpo scrollea, la cabecera queda pegada: con 29 clientes
+                      la fila de títulos se iba de pantalla y las columnas de la
+                      derecha quedaban sin nombre. */}
+                  <CardContent className="p-0 max-h-[58vh] overflow-y-auto">
+                    <Table className="table-fixed">
+                      {/* Anchos del handoff §11 (1.6 1 .9 .7 .7 .8 .7 sobre 6.4),
+                          normalizados a porcentaje: TIENEN que sumar 100 o el
+                          navegador reparte el sobrante y las proporciones se
+                          pierden. table-fixed los respeta; el layout automático
+                          los ignora y le da casi todo al nombre. */}
+                      <colgroup>
+                        <col style={{ width: "25%" }} />
+                        <col style={{ width: "15.625%" }} />
+                        <col style={{ width: "14.0625%" }} />
+                        <col style={{ width: "10.9375%" }} />
+                        <col style={{ width: "10.9375%" }} />
+                        <col style={{ width: "12.5%" }} />
+                        <col style={{ width: "10.9375%" }} />
+                      </colgroup>
+                      <TableHeader className="sticky top-0 z-10 bg-muted/60 backdrop-blur-sm">
+                        <TableRow>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead>País</TableHead>
+                          <TableHead>Estado</TableHead>
+                          <TableHead className="text-right">Prog.</TableHead>
+                          <TableHead className="text-right">Tareas</TableHead>
+                          <TableHead className="text-right">Tickets</TableHead>
+                          <TableHead className="text-right">Riesgos</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {all.length === 0 ? (
+                          <TableRow><TableCell colSpan={7} className="text-center py-6 text-muted-foreground text-sm">Sin clientes</TableCell></TableRow>
+                        ) : all.map(c => {
+                          const cfg = statusConfig[c.status];
+                          const openRisks = c.risks.filter(r => r.status === "abierto").length;
+                          return (
+                            <TableRow
+                              key={c.id}
+                              className={`cursor-pointer ${previewId === c.id ? "bg-primary/[0.06]" : ""}`}
+                              onClick={() => openOrPreview(c.id)}
+                            >
+                              <TableCell className="font-medium truncate" title={c.name}>{c.name}</TableCell>
+                              <TableCell className="text-muted-foreground text-xs truncate">{c.country}</TableCell>
+                              <TableCell><Badge className={`${cfg.className} text-[10px]`}>{cfg.label}</Badge></TableCell>
+                              <TableCell className="text-right tabular-nums">{c.progress}%</TableCell>
+                              <TableCell className="text-right tabular-nums">{c.tasks.length}</TableCell>
+                              <TableCell className="text-right tabular-nums">{openTicketsByClient[c.id] || 0}</TableCell>
+                              <TableCell className={`text-right tabular-nums ${openRisks > 0 ? "text-warning font-semibold" : ""}`}>{openRisks}</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </>
+            );
+          })()}
+      </div>
+
       <ClientPreviewPanel
-        client={filtered.find(c => c.id === previewId) ?? null}
+        client={(clients || []).find(c => c.id === previewId) ?? null}
         onOpenFull={onSelectClient}
       />
       </div>
-
-        {filtered.length === 0 && (
-          <p className="text-sm text-muted-foreground text-center py-8">No se encontraron clientes</p>
-        )}
       </TabsContent>
 
-      {/* Estado general consolidado de todos los clientes (ERP-072) */}
-      <TabsContent value="estado" className="space-y-4">
-        {(() => {
-          const order: Record<string, number> = { "en-riesgo": 0, activo: 1, pausado: 2, completado: 3 };
-          const all = [...(clients || [])].sort(
-            (a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9) || a.name.localeCompare(b.name),
-          );
-          const totals = {
-            total: all.length,
-            riesgo: all.filter(c => c.status === "en-riesgo").length,
-            tickets: all.reduce((s, c) => s + (openTicketsByClient[c.id] || 0), 0),
-            riesgos: all.reduce((s, c) => s + c.risks.filter(r => r.status === "abierto").length, 0),
-          };
-          return (
-            <>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <Card><CardContent className="p-3"><p className="text-[10px] uppercase text-muted-foreground">Clientes</p><p className="text-2xl font-bold">{totals.total}</p></CardContent></Card>
-                <Card><CardContent className="p-3"><p className="text-[10px] uppercase text-muted-foreground">En riesgo</p><p className="text-2xl font-bold text-destructive">{totals.riesgo}</p></CardContent></Card>
-                <Card><CardContent className="p-3"><p className="text-[10px] uppercase text-muted-foreground">Tickets abiertos</p><p className="text-2xl font-bold">{totals.tickets}</p></CardContent></Card>
-                <Card><CardContent className="p-3"><p className="text-[10px] uppercase text-muted-foreground">Riesgos abiertos</p><p className="text-2xl font-bold text-warning">{totals.riesgos}</p></CardContent></Card>
-              </div>
-              <Card>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Cliente</TableHead>
-                        <TableHead>País</TableHead>
-                        <TableHead>Estado</TableHead>
-                        <TableHead className="text-right">Progreso</TableHead>
-                        <TableHead className="text-right">Tareas</TableHead>
-                        <TableHead className="text-right">Tickets abiertos</TableHead>
-                        <TableHead className="text-right">Riesgos</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {all.length === 0 ? (
-                        <TableRow><TableCell colSpan={7} className="text-center py-6 text-muted-foreground text-sm">Sin clientes</TableCell></TableRow>
-                      ) : all.map(c => {
-                        const cfg = statusConfig[c.status];
-                        const openRisks = c.risks.filter(r => r.status === "abierto").length;
-                        return (
-                          <TableRow key={c.id} className="cursor-pointer" onClick={() => onSelectClient(c.id)}>
-                            <TableCell className="font-medium">{c.name}</TableCell>
-                            <TableCell className="text-muted-foreground text-xs">{c.country}</TableCell>
-                            <TableCell><Badge className={`${cfg.className} text-[10px]`}>{cfg.label}</Badge></TableCell>
-                            <TableCell className="text-right tabular-nums">{c.progress}%</TableCell>
-                            <TableCell className="text-right tabular-nums">{c.tasks.length}</TableCell>
-                            <TableCell className="text-right tabular-nums">{openTicketsByClient[c.id] || 0}</TableCell>
-                            <TableCell className={`text-right tabular-nums ${openRisks > 0 ? "text-warning font-semibold" : ""}`}>{openRisks}</TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </>
-          );
-        })()}
-      </TabsContent>
 
       {canManage && (
         <TabsContent value="datos" className="space-y-4">

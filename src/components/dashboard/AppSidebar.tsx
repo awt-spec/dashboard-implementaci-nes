@@ -126,6 +126,7 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
                     <SidebarMenuButton
                       onClick={() => onSectionChange(sectionId)}
                       isActive={activeSection === sectionId}
+                      aria-current={activeSection === sectionId ? "page" : undefined}
                       tooltip={client.name}
                       size="sm"
                       className="rounded-lg"
@@ -178,6 +179,7 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
                     <SidebarMenuButton
                       onClick={() => onSectionChange(item.id)}
                       isActive={activeSection === item.id}
+                      aria-current={activeSection === item.id ? "page" : undefined}
                       tooltip={tooltipText}
                       className="rounded-lg text-[13px]"
                     >

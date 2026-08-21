@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 // minutos, descripcion_cifrada, assigned_user_id, campos scrum, etc.) que hoy
 // viajaban al navegador del cliente por el select("*").
 const CLIENT_SAFE_COLUMNS =
-  "id, client_id, ticket_id, consecutivo_cliente, producto, asunto, descripcion, tipo, prioridad, estado, fecha_registro, fecha_entrega, dias_antiguedad, responsable, ai_summary, notas, case_agreements, case_actions, created_at, updated_at";
+  "id, client_id, ticket_id, consecutivo_cliente, producto, asunto, descripcion, tipo, prioridad, estado, fecha_registro, fecha_entrega, dias_antiguedad, responsable, ai_summary, notas, case_agreements, case_actions, tiempo_cobrado_minutos, tiempo_consumido_minutos, created_at, updated_at";
 
 export interface CaseAgreementItem {
   text: string;
