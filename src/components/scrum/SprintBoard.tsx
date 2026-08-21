@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import {
   PackageOpen, CheckCircle2, PlayCircle, Flame, Flag, Target,
-  AlertTriangle, Building2, Calendar, X, type LucideIcon,
+  Building2, Calendar, X, type LucideIcon,
 } from "lucide-react";
 import { normalizePrioridad } from "@/lib/ticketStatus";
 import type { ScrumWorkItem, UnifiedSprint } from "@/hooks/useTeamScrum";
@@ -16,12 +16,16 @@ import { toast } from "sonner";
 
 // ─── Columnas del tablero ────────────────────────────────────────────────
 
-const COLUMNS: Array<{ key: string; label: string; Icon: LucideIcon; accent: string; bg: string }> = [
-  { key: "backlog",     label: "Backlog",     Icon: PackageOpen,  accent: "text-muted-foreground", bg: "bg-muted/30" },
-  { key: "ready",       label: "Listo",       Icon: CheckCircle2, accent: "text-info",             bg: "bg-info/5" },
-  { key: "in_progress", label: "En Progreso", Icon: PlayCircle,   accent: "text-warning",          bg: "bg-warning/5" },
-  { key: "in_sprint",   label: "En Sprint",   Icon: Flame,        accent: "text-primary",          bg: "bg-primary/5" },
-  { key: "done",        label: "Hecho",       Icon: Flag,         accent: "text-success",          bg: "bg-success/5" },
+// `wip` es el límite de trabajo en curso; null = sin límite. Backlog y Hecho
+// no lo llevan: uno es la reserva y el otro el resultado, limitarlos no dice
+// nada. El tablero no tiene columna "QA" — el equivalente en este modelo de
+// datos es "En Sprint", y ahí va el límite de 4 del handoff.
+const COLUMNS: Array<{ key: string; label: string; Icon: LucideIcon; accent: string; bg: string; dot: string; wip: number | null }> = [
+  { key: "backlog",     label: "Backlog",     Icon: PackageOpen,  accent: "text-muted-foreground", bg: "bg-muted/30",    dot: "bg-muted-foreground/40", wip: null },
+  { key: "ready",       label: "Listo",       Icon: CheckCircle2, accent: "text-info",             bg: "bg-info/5",      dot: "bg-info",                wip: 6 },
+  { key: "in_progress", label: "En Progreso", Icon: PlayCircle,   accent: "text-warning",          bg: "bg-warning/5",   dot: "bg-warning",             wip: 3 },
+  { key: "in_sprint",   label: "En Sprint",   Icon: Flame,        accent: "text-primary",          bg: "bg-primary/5",   dot: "bg-primary",             wip: 4 },
+  { key: "done",        label: "Hecho",       Icon: Flag,         accent: "text-success",          bg: "bg-success/5",   dot: "bg-success",             wip: null },
 ];
 
 // ─── Estilos por prioridad ───────────────────────────────────────────────
@@ -29,11 +33,11 @@ const COLUMNS: Array<{ key: string; label: string; Icon: LucideIcon; accent: str
 function priorityStyles(p: string | null | undefined) {
   const n = normalizePrioridad(p);
   switch (n) {
-    case "critica": return { border: "border-l-destructive", dot: "bg-destructive ring-2 ring-destructive/30", label: "Crítica" };
-    case "alta":    return { border: "border-l-destructive/70", dot: "bg-destructive/70", label: "Alta" };
-    case "media":   return { border: "border-l-warning", dot: "bg-warning", label: "Media" };
-    case "baja":    return { border: "border-l-muted-foreground/40", dot: "bg-muted-foreground/50", label: "Baja" };
-    default:        return { border: "border-l-border", dot: "bg-muted-foreground/30", label: "—" };
+    case "critica": return { border: "border-l-destructive", dot: "bg-destructive ring-2 ring-destructive/30", text: "text-destructive", label: "Crítica" };
+    case "alta":    return { border: "border-l-destructive/70", dot: "bg-destructive/70", text: "text-destructive/80", label: "Alta" };
+    case "media":   return { border: "border-l-warning", dot: "bg-warning", text: "text-warning", label: "Media" };
+    case "baja":    return { border: "border-l-muted-foreground/40", dot: "bg-muted-foreground/50", text: "text-muted-foreground", label: "Baja" };
+    default:        return { border: "border-l-border", dot: "bg-muted-foreground/30", text: "text-muted-foreground", label: "—" };
   }
 }
 
@@ -42,6 +46,13 @@ function priorityStyles(p: string | null | undefined) {
 function initials(name?: string | null) {
   if (!name || name === "—") return "?";
   return name.split(/\s+/).map(s => s[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
+}
+
+/** "14 mar" — cabe en el ancho de columna del tablero, "14/03/2026" no. */
+function fmtShortDate(dueDate: string) {
+  const d = new Date(`${dueDate.slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("es", { day: "numeric", month: "short" });
 }
 
 function isOverdue(dueDate: string | null | undefined) {
@@ -73,43 +84,52 @@ function ItemCard({ item, onMove, onRemoveFromSprint }: { item: ScrumWorkItem; o
         </button>
       )}
 
-      <div className="flex items-start gap-2">
-        <div className="flex flex-col gap-1 items-start shrink-0">
-          <Badge variant="outline" className="text-[10px] h-5 font-semibold">
-            {item.source === "task" ? "T" : "C"}
-          </Badge>
-        </div>
-        <p className="flex-1 text-sm font-medium leading-snug line-clamp-2 min-h-[2.5rem] pr-5">{item.title}</p>
+      {/* Fila 1: origen · prioridad en texto · fecha (roja si vencida) */}
+      <div className="flex items-center gap-1.5 min-w-0 pr-5">
+        <Badge variant="outline" className="text-[10px] h-5 font-semibold shrink-0">
+          {item.source === "task" ? "T" : "C"}
+        </Badge>
+        <span className={`text-[10px] font-semibold truncate ${p.text}`}>{p.label}</span>
+        {item.due_date && (
+          <span className={`ml-auto shrink-0 text-[10px] font-semibold tabular-nums ${overdue ? "text-destructive" : "text-muted-foreground"}`}>
+            {fmtShortDate(item.due_date)}
+          </span>
+        )}
       </div>
 
+      <p className="text-[11.5px] font-medium leading-snug line-clamp-2 min-h-[2.2rem]">{item.title}</p>
+
+      {/* El handoff dibuja aquí un chip "BLOQUEO", pero el modelo no tiene
+          estado de bloqueo: scrum_status sólo va de backlog a done. Se omite
+          en vez de derivarlo de algo que no significa lo mismo. */}
       {item.client_name && (
         <p className="text-[11px] text-muted-foreground truncate">{item.client_name}</p>
       )}
 
-      <div className="flex items-center justify-between gap-2">
-        {/* Avatar owner */}
-        <div className="flex items-center gap-1.5 min-w-0">
-          <div
-            className="h-6 w-6 rounded-full bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center shrink-0"
-            title={item.owner || "sin responsable"}
-          >
-            {initials(item.owner)}
-          </div>
-          <span className="text-[11px] text-muted-foreground truncate">
-            {item.owner && item.owner !== "—" ? item.owner.split(" ")[0] : "—"}
+      {/* Pie: a ~140px de ancho de columna todo esto compite por el espacio,
+          así que cada hijo va con shrink-0 y el contenedor recorta. El WSJF va
+          sólo numérico: con el prefijo "WSJF" el pie desbordaba. */}
+      <div className="flex items-center gap-1.5 overflow-hidden border-t border-border pt-1.5">
+        <div
+          className="h-5 w-5 shrink-0 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center"
+          title={item.owner || "sin responsable"}
+        >
+          {initials(item.owner)}
+        </div>
+        <span
+          className={`h-1.5 w-1.5 shrink-0 rounded-full ${item.visibility === "externa" ? "bg-success" : "bg-info"}`}
+          title={item.visibility === "externa" ? "Externa — el cliente la ve" : "Interna — sólo SVA"}
+        />
+        {item.story_points != null && (
+          <span className="shrink-0 text-[10px] font-semibold tabular-nums text-muted-foreground">
+            {item.story_points} SP
           </span>
-        </div>
-
-        {/* Metadata derecha: SP + prioridad dot + overdue */}
-        <div className="flex items-center gap-1 shrink-0">
-          {overdue && <AlertTriangle className="h-3.5 w-3.5 text-destructive" aria-label="Vencido" />}
-          {item.story_points != null && (
-            <Badge variant="outline" className="text-[10px] tabular-nums h-5 px-1.5">
-              {item.story_points} SP
-            </Badge>
-          )}
-          <div className={`h-2.5 w-2.5 rounded-full ${p.dot}`} title={`Prioridad ${p.label}`} />
-        </div>
+        )}
+        {item.wsjf != null && item.wsjf > 0 && (
+          <span className="ml-auto shrink-0 text-[10px] font-bold tabular-nums text-primary" title={`WSJF ${item.wsjf}`}>
+            {item.wsjf}
+          </span>
+        )}
       </div>
 
       <Select value={item.scrum_status || "backlog"} onValueChange={(v) => onMove(item, v)}>
@@ -246,23 +266,42 @@ export function SprintBoard({ items, activeSprints, onMove }: Props) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         {COLUMNS.map(col => {
           const colItems = items.filter(i => (i.scrum_status || "backlog") === col.key);
-          const isOverloaded = col.key === "in_progress" && colItems.length > 8;
+          const colPoints = colItems.reduce((sum, i) => sum + (i.story_points || 0), 0);
+          // El límite se excede POR ENCIMA, no al alcanzarlo: 3 de 3 es el
+          // tope permitido, 4 de 3 es el problema.
+          const overWip = col.wip !== null && colItems.length > col.wip;
           return (
-            <Card key={col.key} className="flex flex-col">
-              <CardHeader className={`pb-2 rounded-t-lg ${col.bg}`}>
-                <CardTitle className="text-xs flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <col.Icon className={`h-3.5 w-3.5 ${col.accent}`} />
-                    {col.label}
+            <Card key={col.key} className="flex flex-col min-w-0">
+              <CardHeader className={`pb-2 rounded-t-lg ${col.bg} space-y-1`}>
+                <CardTitle className="text-xs flex items-center justify-between gap-1.5 min-w-0">
+                  <span className="flex items-center gap-1.5 min-w-0">
+                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${col.dot}`} />
+                    <span className="truncate">{col.label}</span>
                   </span>
-                  <Badge
-                    variant="outline"
-                    className={`tabular-nums text-[11px] ${isOverloaded ? "bg-destructive/10 text-destructive border-destructive/30" : ""}`}
-                  >
+                  <Badge variant="outline" className="tabular-nums text-[11px] shrink-0">
                     {colItems.length}
-                    {isOverloaded && " ⚠"}
                   </Badge>
                 </CardTitle>
+                {/* Segunda línea: carga de la columna. */}
+                <div className="flex items-center justify-between gap-1.5 min-w-0">
+                  <span className="text-[10px] font-semibold tabular-nums text-muted-foreground shrink-0">
+                    {colPoints} SP
+                  </span>
+                  {col.wip !== null && (
+                    <span
+                      title={overWip
+                        ? `${colItems.length} en curso sobre un límite de ${col.wip}`
+                        : `Límite de trabajo en curso: ${col.wip}`}
+                      className={`shrink-0 rounded px-1 py-px text-[9.5px] font-bold tabular-nums ${
+                        overWip
+                          ? "bg-destructive/15 text-destructive"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      WIP {colItems.length}/{col.wip}
+                    </span>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="flex-1 space-y-2 max-h-[540px] overflow-auto pr-1 pt-2">
                 {colItems.length === 0 ? (

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { meterTone } from "@/components/support/CaseClientCard";
+import { meterTone } from "@/lib/meterTone";
 
 /**
  * §9 pide explícitamente que "el color sale del umbral, no fijo". Un medidor
