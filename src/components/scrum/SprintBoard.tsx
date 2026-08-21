@@ -1,18 +1,17 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import {
   PackageOpen, CheckCircle2, PlayCircle, Flame, Flag, Target,
-  Building2, Calendar, X, type LucideIcon,
+  Building2, Calendar, type LucideIcon,
 } from "lucide-react";
-import { normalizePrioridad } from "@/lib/ticketStatus";
 import type { ScrumWorkItem, UnifiedSprint } from "@/hooks/useTeamScrum";
 import { useClients } from "@/hooks/useClients";
 import { useUpdateWorkItemScrum } from "@/hooks/useTeamScrum";
 import { ActivePolicyBar } from "@/components/policy/ActivePolicyBar";
 import { toast } from "sonner";
+import { ScrumItemCard } from "./ScrumItemCard";
 
 // ─── Columnas del tablero ────────────────────────────────────────────────
 
@@ -30,117 +29,13 @@ const COLUMNS: Array<{ key: string; label: string; Icon: LucideIcon; accent: str
 
 // ─── Estilos por prioridad ───────────────────────────────────────────────
 
-function priorityStyles(p: string | null | undefined) {
-  const n = normalizePrioridad(p);
-  switch (n) {
-    case "critica": return { border: "border-l-destructive", dot: "bg-destructive ring-2 ring-destructive/30", text: "text-destructive", label: "Crítica" };
-    case "alta":    return { border: "border-l-destructive/70", dot: "bg-destructive/70", text: "text-destructive/80", label: "Alta" };
-    case "media":   return { border: "border-l-warning", dot: "bg-warning", text: "text-warning", label: "Media" };
-    case "baja":    return { border: "border-l-muted-foreground/40", dot: "bg-muted-foreground/50", text: "text-muted-foreground", label: "Baja" };
-    default:        return { border: "border-l-border", dot: "bg-muted-foreground/30", text: "text-muted-foreground", label: "—" };
-  }
-}
 
 // ─── Utils ────────────────────────────────────────────────────────────────
 
-function initials(name?: string | null) {
-  if (!name || name === "—") return "?";
-  return name.split(/\s+/).map(s => s[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
-}
 
-/** "14 mar" — cabe en el ancho de columna del tablero, "14/03/2026" no. */
-function fmtShortDate(dueDate: string) {
-  const d = new Date(`${dueDate.slice(0, 10)}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("es", { day: "numeric", month: "short" });
-}
 
-function isOverdue(dueDate: string | null | undefined) {
-  if (!dueDate) return false;
-  return new Date(dueDate).getTime() < Date.now();
-}
 
 // ─── Card individual ─────────────────────────────────────────────────────
-
-function ItemCard({ item, onMove, onRemoveFromSprint }: { item: ScrumWorkItem; onMove: (i: ScrumWorkItem, status: string) => void; onRemoveFromSprint?: (i: ScrumWorkItem) => void }) {
-  const rawPriority = (item.raw?.prioridad as string) || item.priority;
-  const p = priorityStyles(rawPriority);
-  const overdue = isOverdue(item.due_date);
-
-  return (
-    <div className={`group p-3 rounded-lg border bg-card border-l-4 ${p.border} space-y-2 hover:border-primary/40 hover:shadow-sm transition-all relative`}>
-      {/* Botón "Quitar del sprint" — visible al hover */}
-      {onRemoveFromSprint && (
-        <button
-          onClick={() => {
-            if (confirm(`Quitar "${item.title.slice(0, 60)}" del sprint y devolver al backlog?`)) {
-              onRemoveFromSprint(item);
-            }
-          }}
-          className="absolute top-1.5 right-1.5 h-5 w-5 rounded hover:bg-destructive/15 text-muted-foreground hover:text-destructive flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-          title="Quitar del sprint (volver al backlog)"
-        >
-          <X className="h-3 w-3" />
-        </button>
-      )}
-
-      {/* Fila 1: origen · prioridad en texto · fecha (roja si vencida) */}
-      <div className="flex items-center gap-1.5 min-w-0 pr-5">
-        <Badge variant="outline" className="text-[10px] h-5 font-semibold shrink-0">
-          {item.source === "task" ? "T" : "C"}
-        </Badge>
-        <span className={`text-[10px] font-semibold truncate ${p.text}`}>{p.label}</span>
-        {item.due_date && (
-          <span className={`ml-auto shrink-0 text-[10px] font-semibold tabular-nums ${overdue ? "text-destructive" : "text-muted-foreground"}`}>
-            {fmtShortDate(item.due_date)}
-          </span>
-        )}
-      </div>
-
-      <p className="text-[11.5px] font-medium leading-snug line-clamp-2 min-h-[2.2rem]">{item.title}</p>
-
-      {/* El handoff dibuja aquí un chip "BLOQUEO", pero el modelo no tiene
-          estado de bloqueo: scrum_status sólo va de backlog a done. Se omite
-          en vez de derivarlo de algo que no significa lo mismo. */}
-      {item.client_name && (
-        <p className="text-[11px] text-muted-foreground truncate">{item.client_name}</p>
-      )}
-
-      {/* Pie: a ~140px de ancho de columna todo esto compite por el espacio,
-          así que cada hijo va con shrink-0 y el contenedor recorta. El WSJF va
-          sólo numérico: con el prefijo "WSJF" el pie desbordaba. */}
-      <div className="flex items-center gap-1.5 overflow-hidden border-t border-border pt-1.5">
-        <div
-          className="h-5 w-5 shrink-0 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center"
-          title={item.owner || "sin responsable"}
-        >
-          {initials(item.owner)}
-        </div>
-        <span
-          className={`h-1.5 w-1.5 shrink-0 rounded-full ${item.visibility === "externa" ? "bg-success" : "bg-info"}`}
-          title={item.visibility === "externa" ? "Externa — el cliente la ve" : "Interna — sólo SVA"}
-        />
-        {item.story_points != null && (
-          <span className="shrink-0 text-[10px] font-semibold tabular-nums text-muted-foreground">
-            {item.story_points} SP
-          </span>
-        )}
-        {item.wsjf != null && item.wsjf > 0 && (
-          <span className="ml-auto shrink-0 text-[10px] font-bold tabular-nums text-primary" title={`WSJF ${item.wsjf}`}>
-            {item.wsjf}
-          </span>
-        )}
-      </div>
-
-      <Select value={item.scrum_status || "backlog"} onValueChange={(v) => onMove(item, v)}>
-        <SelectTrigger className="h-7 text-[11px]"><SelectValue /></SelectTrigger>
-        <SelectContent>
-          {COLUMNS.map(c => <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>)}
-        </SelectContent>
-      </Select>
-    </div>
-  );
-}
 
 // ─── Board principal ─────────────────────────────────────────────────────
 
@@ -307,7 +202,14 @@ export function SprintBoard({ items, activeSprints, onMove }: Props) {
                 {colItems.length === 0 ? (
                   <p className="text-xs text-center text-muted-foreground/50 py-8 italic">—</p>
                 ) : colItems.map(item => (
-                  <ItemCard key={`${item.source}-${item.id}`} item={item} onMove={onMove} onRemoveFromSprint={removeFromSprint} />
+                  <ScrumItemCard
+                    key={`${item.source}-${item.id}`}
+                    item={item}
+                    variant="desk"
+                    onMove={onMove}
+                    onRemoveFromSprint={removeFromSprint}
+                    columns={COLUMNS}
+                  />
                 ))}
               </CardContent>
             </Card>

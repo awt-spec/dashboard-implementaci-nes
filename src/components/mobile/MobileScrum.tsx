@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import type { ReactNode } from "react";
 import { SectionLabel, StatusChip } from "@/components/common/StatCard";
 import type { Tone } from "@/components/common/StatCard";
 import {
@@ -12,9 +11,10 @@ import {
 import type { FilterChipOption } from "@/components/mobile/MobileScreen";
 import { useClients } from "@/hooks/useClients";
 import { useAllScrumWorkItems, useAllSprints } from "@/hooks/useTeamScrum";
-import type { ScrumWorkItem, UnifiedSprint } from "@/hooks/useTeamScrum";
-import { priorityTone } from "@/lib/priority";
+import type { UnifiedSprint } from "@/hooks/useTeamScrum";
 import { cn } from "@/lib/utils";
+import { ScrumItemCard } from "@/components/scrum/ScrumItemCard";
+import { shortName } from "@/lib/scrumItem";
 
 /* -------------------------------------------------------------------------- */
 /* Columnas del tablero                                                       */
@@ -61,43 +61,11 @@ function daysUntil(iso: string | null): number | null {
   return Math.round((date.getTime() - startOfToday().getTime()) / 86400000);
 }
 
-const DATE_FMT = new Intl.DateTimeFormat("es-CR", { day: "numeric", month: "short" });
 
-function formatDate(iso: string | null): string | null {
-  const date = parseDate(iso);
-  return date ? DATE_FMT.format(date) : null;
-}
 
-function initials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return "—";
-  return words.slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
-}
 
-/** Nombre corto para el pie de la tarjeta: nombre + inicial del apellido. */
-function shortName(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return "Sin asignar";
-  if (words.length === 1) return words[0];
-  return `${words[0]} ${words[1][0].toUpperCase()}.`;
-}
 
-/**
- * priorityTone() entrega fondo + texto + borde en una sola cadena; para el
- * filete izquierdo sólo sirve la clase de borde, así que se extrae de ahí en
- * vez de duplicar el mapa de prioridades.
- */
-function priorityBorder(priority?: string | null): string {
-  return priorityTone(priority).split(" ").find((c) => c.startsWith("border-")) ?? "border-border";
-}
 
-/** Identificador visible real: ticket_id en soporte, hu_code/original_id en tareas. */
-function shortId(item: ScrumWorkItem): string | null {
-  const raw = item.raw ?? {};
-  if (item.source === "ticket") return raw.ticket_id ?? null;
-  if (raw.hu_code) return String(raw.hu_code);
-  return raw.original_id != null ? `#${raw.original_id}` : null;
-}
 
 /** Tono del chip de días restantes del sprint. */
 function daysTone(days: number): Tone {
@@ -132,18 +100,6 @@ const LOAD_TEXT: Record<LoadLevel, string> = {
 /* Micro-chip                                                                 */
 /* -------------------------------------------------------------------------- */
 
-function MicroChip({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex shrink-0 items-center rounded-lg border px-1.5 py-0.5 text-[9.5px] font-bold uppercase leading-none tracking-[0.04em]",
-        className,
-      )}
-    >
-      {children}
-    </span>
-  );
-}
 
 /* -------------------------------------------------------------------------- */
 /* Tarjeta de sprint                                                          */
@@ -195,69 +151,6 @@ function SprintCard({ sprint, clientName, done, total }: SprintCardProps) {
 /* -------------------------------------------------------------------------- */
 /* Tarjeta de item                                                            */
 /* -------------------------------------------------------------------------- */
-
-function ItemCard({ item }: { item: ScrumWorkItem }) {
-  const id = shortId(item);
-  const due = formatDate(item.due_date);
-  const dueDays = daysUntil(item.due_date);
-  const isOverdue = dueDays !== null && dueDays < 0;
-  const estimated = item.story_points != null && item.story_points > 0;
-  const hasWsjf = item.wsjf > 0;
-  const owner = item.owner && item.owner !== "—" ? item.owner : null;
-
-  return (
-    <MobileCard className={cn("border-l-[3px] p-[11px] pl-[13px]", priorityBorder(item.priority))}>
-      <div className="flex items-center gap-1.5">
-        <MicroChip
-          className={
-            item.source === "ticket"
-              ? "border-info/30 bg-info/10 text-info"
-              : "border-primary/30 bg-primary/10 text-primary"
-          }
-        >
-          {item.source === "ticket" ? "Soporte" : "Impl."}
-        </MicroChip>
-        {id ? (
-          <span className="truncate text-[9.5px] font-bold tabular-nums text-muted-foreground">{id}</span>
-        ) : null}
-        <MicroChip
-          className={
-            item.visibility === "interna"
-              ? "border-border bg-muted text-muted-foreground"
-              : "border-success/30 bg-success/10 text-success"
-          }
-        >
-          {item.visibility === "interna" ? "Interna" : "Externa"}
-        </MicroChip>
-        <span
-          className={cn(
-            "ml-auto shrink-0 text-[10px] font-semibold tabular-nums",
-            isOverdue ? "text-destructive" : "text-muted-foreground",
-          )}
-        >
-          {due ?? "Sin fecha"}
-        </span>
-      </div>
-
-      <p className="mt-1.5 text-[12.5px] font-semibold leading-[1.35] text-foreground">{item.title}</p>
-
-      <div className="mt-2 flex items-center gap-[7px]">
-        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[9px] font-bold text-muted-foreground">
-          {owner ? initials(owner) : "—"}
-        </span>
-        <span className="min-w-0 truncate text-[10.5px] font-medium text-muted-foreground">
-          {owner ? shortName(owner) : "Sin asignar"}
-        </span>
-        <span className="ml-auto shrink-0 whitespace-nowrap text-[10px] font-semibold tabular-nums text-muted-foreground">
-          {estimated ? `${item.story_points} SP` : "sin estimar"}
-        </span>
-        <span className="shrink-0 whitespace-nowrap text-[10px] font-semibold tabular-nums text-destructive">
-          {hasWsjf ? `WSJF ${item.wsjf.toFixed(1)}` : "WSJF —"}
-        </span>
-      </div>
-    </MobileCard>
-  );
-}
 
 /* -------------------------------------------------------------------------- */
 /* Pantalla                                                                   */
@@ -402,7 +295,7 @@ export function MobileScrum({ onMenu }: MobileScrumProps) {
           </p>
         </MobileCard>
       ) : (
-        visibleItems.map((item) => <ItemCard key={`${item.source}-${item.id}`} item={item} />)
+        visibleItems.map((item) => <ScrumItemCard key={`${item.source}-${item.id}`} item={item} variant="compact" />)
       )}
 
       {columnItems.length > visibleItems.length ? (
