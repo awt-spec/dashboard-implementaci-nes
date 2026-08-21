@@ -454,8 +454,9 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
         </TabsList>
 
         <TabsContent value="inbox" className="mt-4 space-y-4">
-          {/* §9: los seis indicadores de la cola, antes de la cola misma. */}
-          <SupportKpiRow />
+          {/* §9: los seis indicadores de la cola, antes de la cola misma, y
+              acotados al mismo cliente que la lista de abajo. */}
+          <SupportKpiRow clientId={isClientView ? initialClientId : (selectedClient !== "all" ? selectedClient : undefined)} />
           <SupportInbox
             clientId={selectedClient !== "all" ? selectedClient : undefined}
             mode="inbox"

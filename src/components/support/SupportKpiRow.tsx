@@ -1,4 +1,4 @@
-import { useSLASummary } from "@/hooks/useSLASummary";
+import { useSlaCompliance } from "@/hooks/useSlaCompliance";
 
 type Tone = "primary" | "destructive" | "warning" | "success" | "muted";
 
@@ -17,28 +17,33 @@ interface Kpi {
   title: string;
 }
 
+export interface SupportKpiRowProps {
+  /** Acota los indicadores al cliente en pantalla. Sin valor, toda la cola. */
+  clientId?: string;
+}
+
 /**
  * Fila de 6 KPIs del centro de mando (§9).
  *
- * Los seis salen de get_sla_summary() — la RPC que recomputa el SLA
- * server-side leyendo las reglas vigentes. Ninguno está escrito a mano.
+ * Se derivan de useSlaCompliance sobre los MISMOS casos que muestra la lista
+ * de abajo. Antes salían de get_sla_summary(), que es global: en la vista de
+ * un cliente la fila anunciaba 383 casos encima de una lista de 12. Los
+ * números contradecían lo que el usuario tenía delante.
  *
- * "Cumplimiento" es el único derivado: en plazo sobre los casos que TIENEN
- * SLA. Meter los `no_sla` en el denominador haría bajar el porcentaje por
- * casos que ninguna regla cubre, que es exactamente lo contrario de lo que
- * mide un indicador de cumplimiento.
+ * "Cumplimiento" es el que trae el hook —no incumplidos sobre casos con SLA—,
+ * la misma definición que usa el medidor de la ficha del cliente, para que la
+ * app no tenga dos cumplimientos distintos.
  */
-export function SupportKpiRow() {
-  const { data: sla } = useSLASummary();
+export function SupportKpiRow({ clientId }: SupportKpiRowProps) {
+  const { summary } = useSlaCompliance(clientId);
 
-  const total = sla?.total ?? 0;
-  const overdue = sla?.overdue ?? 0;
-  const warning = sla?.warning ?? 0;
-  const ok = sla?.ok ?? 0;
-  const noSla = sla?.no_sla ?? 0;
-
-  const conSla = total - noSla;
-  const cumplimiento = conSla > 0 ? Math.round((ok / conSla) * 100) : null;
+  const overdue = summary.breached;
+  const warning = summary.atRisk;
+  const ok = summary.onTrack;
+  const noSla = summary.sinSla;
+  const conSla = summary.withSla;
+  const total = conSla + noSla;
+  const cumplimiento = summary.compliancePct;
 
   const kpis: Kpi[] = [
     { label: "Casos abiertos", value: String(total), tone: "primary", title: "Casos abiertos en total" },
@@ -52,7 +57,7 @@ export function SupportKpiRow() {
       tone: cumplimiento === null ? "muted" : cumplimiento >= 90 ? "success" : cumplimiento >= 75 ? "warning" : "destructive",
       title: cumplimiento === null
         ? "Sin casos con SLA aplicable"
-        : `${ok} en plazo de ${conSla} casos con SLA · meta 90%`,
+        : `${conSla - overdue} sin incumplir de ${conSla} casos con SLA · meta 90%`,
     },
   ];
 

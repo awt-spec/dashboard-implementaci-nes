@@ -223,16 +223,19 @@ export function ClientList({ onSelectClient, selectedClientId }: ClientListProps
                     derecha quedaban sin nombre. */}
                 <CardContent className="p-0 max-h-[58vh] overflow-y-auto">
                   <Table className="table-fixed">
-                    {/* Anchos del handoff §11. table-fixed los respeta; el
-                        layout automático los ignora y le da todo al nombre. */}
+                    {/* Anchos del handoff §11 (1.6 1 .9 .7 .7 .8 .7 sobre 6.4),
+                        normalizados a porcentaje: TIENEN que sumar 100 o el
+                        navegador reparte el sobrante y las proporciones se
+                        pierden. table-fixed los respeta; el layout automático
+                        los ignora y le da casi todo al nombre. */}
                     <colgroup>
-                      <col style={{ width: "22.5%" }} />
-                      <col style={{ width: "14%" }} />
-                      <col style={{ width: "12.7%" }} />
-                      <col style={{ width: "9.9%" }} />
-                      <col style={{ width: "9.9%" }} />
-                      <col style={{ width: "11.3%" }} />
-                      <col style={{ width: "9.9%" }} />
+                      <col style={{ width: "25%" }} />
+                      <col style={{ width: "15.625%" }} />
+                      <col style={{ width: "14.0625%" }} />
+                      <col style={{ width: "10.9375%" }} />
+                      <col style={{ width: "10.9375%" }} />
+                      <col style={{ width: "12.5%" }} />
+                      <col style={{ width: "10.9375%" }} />
                     </colgroup>
                     <TableHeader className="sticky top-0 z-10 bg-muted/60 backdrop-blur-sm">
                       <TableRow>

@@ -9,14 +9,14 @@ import { meterTone } from "@/lib/meterTone";
 
 function Meter({
   label, value, pct, note, higherIsBetter,
-}: { label: string; value: string; pct: number; note: string; higherIsBetter: boolean }) {
+}: { label: string; value: string; pct: number | null; note: string; higherIsBetter: boolean }) {
   const tone = meterTone(pct, higherIsBetter);
   return (
     <div className="min-w-0">
       <p className="text-[9.5px] font-bold uppercase tracking-[0.07em] text-muted-foreground truncate">{label}</p>
       <p className={`mt-0.5 text-[19px] font-extrabold leading-none tabular-nums ${tone.text}`}>{value}</p>
       <div className="mt-1.5 h-[5px] rounded-full bg-muted overflow-hidden">
-        <div className={`h-full rounded-full transition-all ${tone.bar}`} style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
+        <div className={`h-full rounded-full transition-all ${tone.bar}`} style={{ width: `${pct === null ? 0 : Math.min(100, Math.max(0, pct))}%` }} />
       </div>
       <p className="mt-1 text-[10px] leading-snug text-muted-foreground">{note}</p>
     </div>
@@ -64,6 +64,7 @@ export function CaseClientCard({ clientId, currentTicketId, onOpenTicket }: Prop
   // Otros casos abiertos del mismo cliente, los vencidos primero: si hay uno
   // roto, es lo que hay que ver antes de seguir con éste.
   const levelByTicket = new Map(rows.map(r => [r.ticket.id, r]));
+  const currentIsOpen = tickets.some(t => t.id === currentTicketId && !isTicketClosed(t.estado));
   const others = tickets
     .filter(t => !isTicketClosed(t.estado) && t.id !== currentTicketId)
     .sort((a, b) => (levelByTicket.get(b.id)?.pct ?? -1) - (levelByTicket.get(a.id)?.pct ?? -1));
@@ -77,7 +78,7 @@ export function CaseClientCard({ clientId, currentTicketId, onOpenTicket }: Prop
     const created = (t.created_at || "").slice(0, 7);
     return created === monthKey ? sum + (Number(t.tiempo_cobrado_minutos) || 0) / 60 : sum;
   }, 0);
-  const hoursPct = includedHours > 0 ? Math.round((usedHours / includedHours) * 100) : 0;
+  const hoursPct = includedHours > 0 ? Math.round((usedHours / includedHours) * 100) : null;
 
   if (!client) return null;
 
@@ -101,7 +102,7 @@ export function CaseClientCard({ clientId, currentTicketId, onOpenTicket }: Prop
         <Meter
           label="Cumplimiento SLA"
           value={summary.compliancePct === null ? "—" : `${summary.compliancePct}%`}
-          pct={summary.compliancePct ?? 0}
+          pct={summary.compliancePct}
           higherIsBetter
           note={
             summary.compliancePct === null
@@ -115,7 +116,7 @@ export function CaseClientCard({ clientId, currentTicketId, onOpenTicket }: Prop
           pct={hoursPct}
           higherIsBetter={false}
           note={
-            includedHours > 0
+            hoursPct !== null
               ? `${hoursPct}% del contrato`
               : "el contrato no define horas incluidas"
           }
@@ -125,7 +126,8 @@ export function CaseClientCard({ clientId, currentTicketId, onOpenTicket }: Prop
       {/* 3 · Tres pares */}
       <div className="border-t border-border pt-1.5">
         <Pair label="Contrato" value={contract?.contract_type || "Sin contrato registrado"} />
-        <Pair label="Casos abiertos" value={`${others.length + (currentTicketId ? 1 : 0)}`} />
+        {/* El caso que se está viendo puede estar cerrado: sólo suma si sigue abierto. */}
+        <Pair label="Casos abiertos" value={`${others.length + (currentIsOpen ? 1 : 0)}`} />
         <Pair
           label="Reaperturas 90d"
           value={reopen ? `${reopen.reopens_90d} de ${reopen.entregados_90d}` : "—"}

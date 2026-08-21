@@ -23,6 +23,18 @@ describe("meterTone", () => {
     expect(meterTone(95, false).bar).toBe("bg-destructive");
   });
 
+  it("sin dato no es un resultado: no pinta ni alarma ni visto bueno", () => {
+    // El bug que esto cubre: "sin casos con SLA" caía en pct=0 y salía ROJO,
+    // y "sin horas de contrato" salía VERDE por la escala invertida.
+    for (const higherIsBetter of [true, false]) {
+      const t = meterTone(null, higherIsBetter);
+      expect(t.bar).not.toContain("destructive");
+      expect(t.bar).not.toContain("success");
+      expect(t.bar).not.toContain("warning");
+      expect(t.text).toBe("text-muted-foreground");
+    }
+  });
+
   it("mantiene el texto y la barra en el mismo tono", () => {
     for (const pct of [0, 25, 50, 75, 100]) {
       const t = meterTone(pct, true);
