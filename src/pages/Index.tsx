@@ -3,6 +3,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/dashboard/AppSidebar";
 import { AppHeader } from "@/components/dashboard/AppHeader";
 import { useIsDeskWide } from "@/hooks/use-mobile";
+import { applyTheme, readStoredTheme, storeTheme } from "@/lib/theme";
 import { ExecutiveOverview } from "@/components/dashboard/ExecutiveOverview";
 
 // Lazy: dashboards específicos por rol o sección. Solo se descargan cuando
@@ -95,7 +96,8 @@ const Index = () => {
       setDidLandRedirect(true);
     }
   }, [role, didLandRedirect, activeSection]);
-  const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
+  // El tema ya se aplicó en main.tsx; acá sólo se lee para el botón.
+  const [dark, setDark] = useState(() => readStoredTheme() === "dark");
 
   // §8: expandido a partir de 1180px, colapsado a 60px por debajo. El provider
   // queda controlado para que el ancho siga al breakpoint, pero SidebarTrigger
@@ -115,7 +117,9 @@ const Index = () => {
   const [loadingAssignment, setLoadingAssignment] = useState(false);
 
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", dark);
+    const theme = dark ? "dark" : "light";
+    applyTheme(theme);
+    storeTheme(theme);
   }, [dark]);
 
   // Fetch gerente's assigned client(s). Antes usaba .maybeSingle(), que ante

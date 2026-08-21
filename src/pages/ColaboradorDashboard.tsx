@@ -27,6 +27,7 @@ import { FordLineView } from "@/components/scrum/FordLineView";
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { CommandPalette, CommandTrigger, useCommandPalette } from "@/components/common/CommandPalette";
 import type { NavItem } from "@/lib/navigation";
+import { applyTheme, readStoredTheme, storeTheme } from "@/lib/theme";
 
 // Vistas del colaborador para ⌘K (el rol no pasa por la nav del sidebar).
 const COLAB_VIEWS: NavItem[] = [
@@ -53,7 +54,7 @@ export default function ColaboradorDashboard() {
   const [logHoursOpen, setLogHoursOpen] = useState(false);
   const [agentOpenSignal, setAgentOpenSignal] = useState(0);
   const [isDark, setIsDark] = useState<boolean>(() =>
-    typeof window !== "undefined" && document.documentElement.classList.contains("dark")
+    typeof window !== "undefined" && readStoredTheme() === "dark"
   );
   const [view, setView] = useState<"mi-trabajo" | "linea-ford">("mi-trabajo");
   // ⌘K sobre las vistas del colaborador (shell propio, sin el sidebar global).
@@ -172,9 +173,13 @@ export default function ColaboradorDashboard() {
     if (top) await handleTimerToggle(top);
   };
 
+  // Persiste igual que el botón del header: el colaborador tenía su propio
+  // toggle y su elección se perdía en cada recarga.
   const toggleDark = () => {
-    document.documentElement.classList.toggle("dark");
-    setIsDark(document.documentElement.classList.contains("dark"));
+    const next = isDark ? "light" : "dark";
+    applyTheme(next);
+    storeTheme(next);
+    setIsDark(next === "dark");
   };
 
   const totalPoints = sprintItems.reduce((s, i) => s + (i.story_points || 0), 0);
