@@ -25,7 +25,7 @@ import { ContractsSLATab } from "@/components/clients/ContractsSLATab";
 import { DevOpsPanel } from "./DevOpsPanel";
 import { NewTicketForm } from "./NewTicketForm";
 import { SupportInbox } from "./SupportInbox";
-import { SupportKpiRow } from "./SupportKpiRow";
+import { SupportCommandCenter } from "./SupportCommandCenter";
 import { ClientSupportView } from "./ClientSupportView";
 import { ExportTicketsMenu } from "./ExportTicketsMenu";
 import { Plus, Inbox, Settings, Database, Briefcase } from "lucide-react";
@@ -453,13 +453,12 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="inbox" className="mt-4 space-y-4">
-          {/* §9: los seis indicadores de la cola, antes de la cola misma, y
-              acotados al mismo cliente que la lista de abajo. */}
-          <SupportKpiRow clientId={isClientView ? initialClientId : (selectedClient !== "all" ? selectedClient : undefined)} />
-          <SupportInbox
-            clientId={selectedClient !== "all" ? selectedClient : undefined}
-            mode="inbox"
+        {/* §9: indicadores + cola + detalle en una pantalla. La bandeja
+            agrupada anterior sigue viva en "Explorar" — no se borró trabajo
+            que funciona, se le puso delante la vista del diseño. */}
+        <TabsContent value="inbox" className="mt-4 flex min-h-0 flex-1 flex-col">
+          <SupportCommandCenter
+            clientId={isClientView ? initialClientId : (selectedClient !== "all" ? selectedClient : undefined)}
             onNewTicket={readOnly ? undefined : () => setNewTicketOpen(true)}
           />
         </TabsContent>
@@ -467,6 +466,11 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
         {/* ============ 1. OPERACIÓN: KPIs visuales + tabla de casos ============ */}
         {/* ============ EXPLORAR: operación + insights + minutas unificados ============ */}
         <TabsContent value="explorar" className="mt-4 space-y-4">
+          <SupportInbox
+            clientId={selectedClient !== "all" ? selectedClient : undefined}
+            mode="inbox"
+            onNewTicket={readOnly ? undefined : () => setNewTicketOpen(true)}
+          />
           {/* Panel SLA por cliente — solo si NO estamos scoped a un cliente
               (si hay scope, el panel "por cliente" no aporta — solo hay 1) */}
           {!isClientView && selectedClient === "all" && (
