@@ -1,6 +1,8 @@
 import { useState, useEffect, lazy, Suspense, type CSSProperties } from "react";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/dashboard/AppSidebar";
+import { AppHeader } from "@/components/dashboard/AppHeader";
+import { useIsDeskWide } from "@/hooks/use-mobile";
 import { ExecutiveOverview } from "@/components/dashboard/ExecutiveOverview";
 
 // Lazy: dashboards específicos por rol o sección. Solo se descargan cuando
@@ -43,11 +45,9 @@ import { useClients } from "@/hooks/useClients";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyPermissions } from "@/hooks/usePermissions";
 import { projectInfo } from "@/data/projectData";
-import { Moon, Sun, Loader2, AlertTriangle, Menu, Search } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 import { ShareReportDialog } from "@/components/dashboard/ShareReportDialog";
-import { NotificationBell } from "@/components/dashboard/NotificationBell";
-import { CommandPalette, CommandTrigger, useCommandPalette } from "@/components/common/CommandPalette";
+import { CommandPalette, useCommandPalette } from "@/components/common/CommandPalette";
 import { MobileNavDrawer } from "@/components/common/MobileNavDrawer";
 import { MobileOverdueStrip } from "@/components/common/MobileOverdueStrip";
 import { MobileTabBar, type MobileTabItem } from "@/components/common/MobileTabBar";
@@ -96,6 +96,17 @@ const Index = () => {
     }
   }, [role, didLandRedirect, activeSection]);
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
+
+  // §8: expandido a partir de 1180px, colapsado a 60px por debajo. El provider
+  // queda controlado para que el ancho siga al breakpoint, pero SidebarTrigger
+  // sigue mandando: si el usuario lo toca, su elección vale hasta que vuelva a
+  // cruzar el breakpoint.
+  const isDeskWide = useIsDeskWide();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  useEffect(() => {
+    if (isDeskWide === undefined) return;
+    setSidebarOpen(isDeskWide);
+  }, [isDeskWide]);
   const { data: clients } = useClients();
   // Un gerente puede tener 1..N clientes asignados (el diálogo de admin usa
   // checkboxes multi-selección). Guardamos la lista completa + cuál está activo.
@@ -256,73 +267,40 @@ const Index = () => {
     return "Dashboard";
   };
 
+  // El subtítulo describe la VISTA, no la app: repetir "SYSDE — …" en las cinco
+  // secciones gasta la segunda línea del header sin informar nada.
+  const getSubtitle = () => {
+    if (role === "gerente" && gerenteClient) return `${projectInfo.name} — ${projectInfo.company}`;
+    if (activeSection === "overview") return "Estado de la operación · clientes, equipo y riesgos";
+    if (activeSection === "clients") return "Cartera de proyectos · fases, entregables y riesgos";
+    if (activeSection === "soporte") return "Cola de casos · SLA, prioridad y responsables";
+    if (activeSection === "team-scrum") return "Sprints activos · tablero, bloqueos y carga";
+    if (activeSection === "config") return "Catálogos, permisos y parámetros del sistema";
+    return `${projectInfo.name} — ${projectInfo.company}`;
+  };
+
   return (
     // Anchos del handoff (§8): 216px expandido / 60px colapsado. shadcn trae
     // 16rem/3rem por defecto; se sobreescriben por variable CSS en el provider.
     <SidebarProvider
+      open={sidebarOpen}
+      onOpenChange={setSidebarOpen}
       style={{ "--sidebar-width": "216px", "--sidebar-width-icon": "60px" } as CSSProperties}
     >
       <div className="min-h-screen flex w-full">
         <AppSidebar activeSection={activeSection} onSectionChange={handleSectionChange} />
 
         <div className="flex-1 flex flex-col min-w-0 min-h-0">
-          <header className="h-14 flex items-center justify-between border-b border-border bg-card px-4 shrink-0">
-            <div className="flex items-center gap-2 md:gap-3 min-w-0">
-              {/* Escritorio: colapsa/expande el sidebar. En móvil el sidebar no
-                  se usa — su lugar lo toma MobileNavDrawer. */}
-              <SidebarTrigger className="hidden md:flex" />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="md:hidden h-8 w-8 shrink-0"
-                onClick={() => setNavDrawerOpen(true)}
-                aria-label="Abrir navegación"
-              >
-                <Menu className="h-4 w-4" />
-              </Button>
-              <div className="min-w-0">
-                <h1 className="text-[13.5px] font-bold leading-tight text-foreground truncate">{getTitle()}</h1>
-                <p className="text-[11.5px] text-muted-foreground truncate">{projectInfo.name} — {projectInfo.company}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <CommandTrigger onClick={() => setPaletteOpen(true)} className="hidden md:flex w-[190px] lg:w-[230px]" />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="md:hidden h-8 w-8"
-                onClick={() => setPaletteOpen(true)}
-                aria-label="Buscar"
-              >
-                <Search className="h-4 w-4" />
-              </Button>
-              {/* Pill global de "casos vencidos" — abre OverdueTicketsSheet
-                  con la lista COMPLETA (no solo bandeja).
-                  Si el user está en una vista de cliente específica, pasa el
-                  clientId al evento → la sheet se scope automáticamente. */}
-              {showOverdueEntry && (
-                <button
-                  onClick={openOverdue}
-                  className="hidden md:inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full border border-destructive/40 bg-destructive/[0.06] hover:bg-destructive/[0.12] text-destructive text-xs font-bold transition-colors group"
-                  title={`${overdueCount} casos vencidos · click para gestionar${selectedSupportClientId ? " (filtrado a este cliente)" : ""}`}
-                >
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-60" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive" />
-                  </span>
-                  <AlertTriangle className="h-3.5 w-3.5" />
-                  <span className="tabular-nums">{overdueCount}</span>
-                  <span>vencido{overdueCount === 1 ? "" : "s"}</span>
-                  <span className="text-[10px] uppercase tracking-wider opacity-60 group-hover:opacity-100 transition-opacity hidden lg:inline">→ ver</span>
-                </button>
-              )}
-              <NotificationBell />
-              {role !== "gerente" && <ShareReportDialog />}
-              <Button variant="ghost" size="icon" onClick={() => setDark(!dark)}>
-                {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </Button>
-            </div>
-          </header>
+          <AppHeader
+            title={getTitle()}
+            subtitle={getSubtitle()}
+            onMobileMenu={() => setNavDrawerOpen(true)}
+            onOpenPalette={() => setPaletteOpen(true)}
+            overdue={showOverdueEntry ? { count: overdueCount, scoped: !!selectedSupportClientId, onClick: openOverdue } : null}
+            dark={dark}
+            onToggleDark={() => setDark(!dark)}
+            trailing={role !== "gerente" ? <ShareReportDialog /> : undefined}
+          />
 
           {/* Franja móvil de vencidos: mismo evento que el pill del header. */}
           {showOverdueEntry && <MobileOverdueStrip count={overdueCount} onClick={openOverdue} />}

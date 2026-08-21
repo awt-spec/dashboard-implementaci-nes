@@ -41,3 +41,24 @@ export function useIsXlUp() {
 
   return isXl;
 }
+
+/**
+ * Ancho a partir del cual el escritorio muestra el sidebar expandido (§8 del
+ * handoff). Por debajo —pero encima del breakpoint de teléfono— el shell sigue
+ * siendo de escritorio pero con el sidebar colapsado a 60px.
+ */
+export const DESK_WIDE_BREAKPOINT = 1180;
+
+export function useIsDeskWide() {
+  const [isWide, setIsWide] = React.useState<boolean | undefined>(undefined);
+
+  React.useEffect(() => {
+    const mql = window.matchMedia(`(min-width: ${DESK_WIDE_BREAKPOINT}px)`);
+    const onChange = () => setIsWide(mql.matches);
+    mql.addEventListener("change", onChange);
+    setIsWide(mql.matches);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+
+  return isWide;
+}
