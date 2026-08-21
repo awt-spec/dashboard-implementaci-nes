@@ -1,3 +1,4 @@
+import { toCsv, downloadCsv } from "@/lib/exportCsv";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useClients } from "@/hooks/useClients";
@@ -187,6 +188,21 @@ export function ClientList({ onSelectClient, selectedClientId }: ClientListProps
             tickets: all.reduce((s, c) => s + (openTicketsByClient[c.id] || 0), 0),
             riesgos: all.reduce((s, c) => s + c.risks.filter(r => r.status === "abierto").length, 0),
           };
+          // Las MISMAS columnas que la tabla de arriba. El CSV de "Datos &
+          // Sync" exporta otra cosa (id, industria, nivel de servicio) y no
+          // sirve para llevarse lo que se está viendo.
+          const exportVisible = () => downloadCsv(
+            `estado-general-${new Date().toLocaleDateString("en-CA")}.csv`,
+            toCsv(all, [
+              { key: "name",     header: "Cliente",  get: c => c.name },
+              { key: "country",  header: "País",     get: c => c.country },
+              { key: "status",   header: "Estado",   get: c => statusConfig[c.status]?.label ?? c.status },
+              { key: "progress", header: "Prog.",    get: c => c.progress },
+              { key: "tasks",    header: "Tareas",   get: c => c.tasks.length },
+              { key: "tickets",  header: "Tickets",  get: c => openTicketsByClient[c.id] || 0 },
+              { key: "risks",    header: "Riesgos",  get: c => c.risks.filter(r => r.status === "abierto").length },
+            ]),
+          );
           return (
             <>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -196,16 +212,36 @@ export function ClientList({ onSelectClient, selectedClientId }: ClientListProps
                 <Card><CardContent className="p-3"><p className="text-[10px] uppercase text-muted-foreground">Riesgos abiertos</p><p className="text-2xl font-bold text-warning">{totals.riesgos}</p></CardContent></Card>
               </div>
               <Card>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
+                <CardHeader className="flex-row items-center justify-between gap-2 space-y-0 py-3">
+                  <CardTitle className="text-sm">Estado general — todos los clientes</CardTitle>
+                  <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs shrink-0" onClick={exportVisible}>
+                    <Download className="h-3.5 w-3.5" /> Exportar CSV
+                  </Button>
+                </CardHeader>
+                {/* El cuerpo scrollea, la cabecera queda pegada: con 29 clientes
+                    la fila de títulos se iba de pantalla y las columnas de la
+                    derecha quedaban sin nombre. */}
+                <CardContent className="p-0 max-h-[58vh] overflow-y-auto">
+                  <Table className="table-fixed">
+                    {/* Anchos del handoff §11. table-fixed los respeta; el
+                        layout automático los ignora y le da todo al nombre. */}
+                    <colgroup>
+                      <col style={{ width: "22.5%" }} />
+                      <col style={{ width: "14%" }} />
+                      <col style={{ width: "12.7%" }} />
+                      <col style={{ width: "9.9%" }} />
+                      <col style={{ width: "9.9%" }} />
+                      <col style={{ width: "11.3%" }} />
+                      <col style={{ width: "9.9%" }} />
+                    </colgroup>
+                    <TableHeader className="sticky top-0 z-10 bg-muted/60 backdrop-blur-sm">
                       <TableRow>
                         <TableHead>Cliente</TableHead>
                         <TableHead>País</TableHead>
                         <TableHead>Estado</TableHead>
-                        <TableHead className="text-right">Progreso</TableHead>
+                        <TableHead className="text-right">Prog.</TableHead>
                         <TableHead className="text-right">Tareas</TableHead>
-                        <TableHead className="text-right">Tickets abiertos</TableHead>
+                        <TableHead className="text-right">Tickets</TableHead>
                         <TableHead className="text-right">Riesgos</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -217,8 +253,8 @@ export function ClientList({ onSelectClient, selectedClientId }: ClientListProps
                         const openRisks = c.risks.filter(r => r.status === "abierto").length;
                         return (
                           <TableRow key={c.id} className="cursor-pointer" onClick={() => onSelectClient(c.id)}>
-                            <TableCell className="font-medium">{c.name}</TableCell>
-                            <TableCell className="text-muted-foreground text-xs">{c.country}</TableCell>
+                            <TableCell className="font-medium truncate" title={c.name}>{c.name}</TableCell>
+                            <TableCell className="text-muted-foreground text-xs truncate">{c.country}</TableCell>
                             <TableCell><Badge className={`${cfg.className} text-[10px]`}>{cfg.label}</Badge></TableCell>
                             <TableCell className="text-right tabular-nums">{c.progress}%</TableCell>
                             <TableCell className="text-right tabular-nums">{c.tasks.length}</TableCell>
