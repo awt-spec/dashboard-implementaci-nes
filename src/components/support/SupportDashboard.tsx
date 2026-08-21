@@ -25,6 +25,7 @@ import { ContractsSLATab } from "@/components/clients/ContractsSLATab";
 import { DevOpsPanel } from "./DevOpsPanel";
 import { NewTicketForm } from "./NewTicketForm";
 import { SupportInbox } from "./SupportInbox";
+import { SupportKpiRow } from "./SupportKpiRow";
 import { ClientSupportView } from "./ClientSupportView";
 import { ExportTicketsMenu } from "./ExportTicketsMenu";
 import { Plus, Inbox, Settings, Database, Briefcase } from "lucide-react";
@@ -452,7 +453,9 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="inbox" className="mt-4">
+        <TabsContent value="inbox" className="mt-4 space-y-4">
+          {/* §9: los seis indicadores de la cola, antes de la cola misma. */}
+          <SupportKpiRow />
           <SupportInbox
             clientId={selectedClient !== "all" ? selectedClient : undefined}
             mode="inbox"

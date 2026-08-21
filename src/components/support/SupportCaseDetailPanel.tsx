@@ -26,7 +26,8 @@ import { CaseCompliancePanel } from "./CaseCompliancePanel";
 import { TicketLegacyView } from "./TicketLegacyView";
 import { QuoteList } from "./quotes/QuoteList";
 import { useQuotes } from "@/hooks/useQuotes";
-import { Shield, ScrollText, FileText } from "lucide-react";
+import { Shield, ScrollText, FileText, Building2 } from "lucide-react";
+import { CaseClientCard } from "./CaseClientCard";
 import { useSupportClients } from "@/hooks/useSupportTickets";
 
 const TAG_COLORS = ["#6366f1", "#ec4899", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6", "#06b6d4", "#f97316"];
@@ -135,6 +136,9 @@ export function SupportCaseDetailPanel({ ticket }: Props) {
         <TabsTrigger value="policy" className="text-[10px] h-6 px-2 gap-1 flex-1">
           <Shield className="h-3 w-3" />Política
         </TabsTrigger>
+        <TabsTrigger value="cliente" className="text-[10px] h-6 px-2 gap-1 flex-1">
+          <Building2 className="h-3 w-3" />Cliente
+        </TabsTrigger>
         <TabsTrigger value="legacy" className="text-[10px] h-6 px-2 gap-1 flex-1">
           <ScrollText className="h-3 w-3" />Vista clásica
         </TabsTrigger>
@@ -168,6 +172,14 @@ export function SupportCaseDetailPanel({ ticket }: Props) {
       </TabsList>
 
       {/* Política v4.5 */}
+      {/* §9: ficha del cliente del caso — identidad, medidores, pares,
+          otros casos abiertos y reincidencia, en ese orden de lectura. */}
+      <TabsContent value="cliente" className="mt-3">
+        {t.client_id
+          ? <CaseClientCard clientId={t.client_id} currentTicketId={t.id} />
+          : <p className="text-xs text-muted-foreground">El caso no tiene cliente asociado.</p>}
+      </TabsContent>
+
       <TabsContent value="policy" className="mt-3">
         <CaseCompliancePanel ticketId={ticket.id} clientId={(ticket as any).client_id} />
       </TabsContent>
