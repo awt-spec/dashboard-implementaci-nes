@@ -456,7 +456,7 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
         {/* §9: indicadores + cola + detalle en una pantalla. La bandeja
             agrupada anterior sigue viva en "Explorar" — no se borró trabajo
             que funciona, se le puso delante la vista del diseño. */}
-        <TabsContent value="inbox" className="mt-4 flex min-h-0 flex-1 flex-col">
+        <TabsContent value="inbox" className="mt-4">
           <SupportCommandCenter
             clientId={isClientView ? initialClientId : (selectedClient !== "all" ? selectedClient : undefined)}
             onNewTicket={readOnly ? undefined : () => setNewTicketOpen(true)}
