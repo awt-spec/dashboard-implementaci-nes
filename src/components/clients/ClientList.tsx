@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { CreateClientDialog } from "./CreateClientDialog";
 import { ClientPreviewPanel } from "./ClientPreviewPanel";
 import { useSetHeaderActions } from "@/hooks/useHeaderActions";
+import { useNavigate } from "react-router-dom";
 import { useIsXlUp } from "@/hooks/use-mobile";
 
 const statusConfig: Record<Client["status"], { label: string; className: string }> = {
@@ -40,6 +41,9 @@ export function ClientList({ onSelectClient, selectedClientId }: ClientListProps
   const hasPreview = useIsXlUp();
   const [previewId, setPreviewId] = useState<string | null>(null);
   const openOrPreview = (id: string) => (hasPreview ? setPreviewId(id) : onSelectClient(id));
+  // El expediente es una ruta propia: enlace compartible y sobrevive al refresh.
+  const navigate = useNavigate();
+  const openDossier = (id: string) => navigate(`/clientes/${id}?ctx=impl`);
 
   // Tickets abiertos por cliente, para la vista de estado general (ERP-072).
   const openTicketsByClient = useMemo(() => {
@@ -290,6 +294,7 @@ export function ClientList({ onSelectClient, selectedClientId }: ClientListProps
       <ClientPreviewPanel
         client={(clients || []).find(c => c.id === previewId) ?? null}
         onOpenFull={onSelectClient}
+        onOpenDossier={openDossier}
       />
       </div>
       </TabsContent>

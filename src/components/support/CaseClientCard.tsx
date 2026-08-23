@@ -1,4 +1,5 @@
-import { Building2, RotateCcw } from "lucide-react";
+import { Building2, ExternalLink, RotateCcw } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useSupportClients, useSupportTickets } from "@/hooks/useSupportTickets";
 import { useSlaCompliance } from "@/hooks/useSlaCompliance";
 import { useReopenRate90d } from "@/hooks/useTicketReopens";
@@ -53,6 +54,7 @@ interface Props {
  * con un valor inventado haría que la ficha mienta.
  */
 export function CaseClientCard({ clientId, currentTicketId, onOpenTicket }: Props) {
+  const navigate = useNavigate();
   const { data: clients = [] } = useSupportClients();
   const { data: tickets = [] } = useSupportTickets(clientId);
   const { data: contracts = [] } = useClientContracts(clientId);
@@ -90,7 +92,19 @@ export function CaseClientCard({ clientId, currentTicketId, onOpenTicket }: Prop
           <Building2 className="h-4 w-4 text-primary" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[12.5px] font-bold leading-tight text-foreground truncate">{client.name}</p>
+          {/* Al expediente 360: el caso y el riesgo del proyecto suelen ser el
+              mismo problema y hasta ahora vivían en pantallas distintas. */}
+          <button
+            type="button"
+            onClick={() => navigate(`/clientes/${clientId}?ctx=soporte`)}
+            className="flex min-w-0 items-center gap-1 text-left"
+            title="Abrir el expediente del cliente"
+          >
+            <span className="truncate text-[12.5px] font-bold leading-tight text-foreground hover:text-primary">
+              {client.name}
+            </span>
+            <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
+          </button>
           <p className="text-[10.5px] text-muted-foreground truncate">
             {[client.country, client.industry].filter(Boolean).join(" · ") || "Sin datos de ficha"}
           </p>
