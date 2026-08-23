@@ -185,14 +185,19 @@ export function SupportCommandCenter({ clientId, onNewTicket }: SupportCommandCe
   const selPrio = normalizePrioridad(selected?.prioridad) || "baja";
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3.5">
+    /* La altura NO se hereda: para 'soporte' el <main> es un bloque que
+       scrollea, no una columna flex de altura fija, así que flex-1 + min-h-0
+       no tiene de dónde agarrarse y colapsaría todo a cero. De lg para arriba
+       se fija una altura concreta y ahí sí funciona la cadena interna; en
+       teléfono cada panel crece a lo suyo con su propio tope de scroll. */
+    <div className="flex flex-col gap-3.5 lg:h-[calc(100vh-13rem)] lg:min-h-[520px]">
       <SupportKpiRow clientId={clientId} />
 
       {/* Cola 406px + detalle. min-h-0 en la grilla y en cada columna: sin eso
           el scroll interno nunca se activa y crece la página entera. */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3.5 lg:grid-cols-[406px_1fr]">
+      <div className="grid grid-cols-1 gap-3.5 lg:min-h-0 lg:flex-1 lg:grid-cols-[406px_1fr]">
         {/* ── Cola ── */}
-        <section className="flex min-h-0 flex-col rounded-xl border border-border bg-card">
+        <section className="flex flex-col rounded-xl border border-border bg-card lg:min-h-0">
           <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3.5 py-2.5">
             <p className="truncate text-[9.5px] font-bold uppercase tracking-[0.07em] text-muted-foreground">
               Cola priorizada por SLA
@@ -201,7 +206,7 @@ export function SupportCommandCenter({ clientId, onNewTicket }: SupportCommandCe
               <Button size="sm" className="h-7 shrink-0 text-xs" onClick={onNewTicket}>Nuevo caso</Button>
             )}
           </div>
-          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2.5">
+          <div className="max-h-[55vh] space-y-2 overflow-y-auto p-2.5 lg:max-h-none lg:min-h-0 lg:flex-1">
             {queue.length === 0 ? (
               <p className="py-8 text-center text-xs text-muted-foreground">Sin casos abiertos.</p>
             ) : queue.map(t => (
@@ -218,7 +223,7 @@ export function SupportCommandCenter({ clientId, onNewTicket }: SupportCommandCe
         </section>
 
         {/* ── Detalle ── */}
-        <section className="flex min-h-0 flex-col rounded-xl border border-border bg-card">
+        <section className="flex flex-col rounded-xl border border-border bg-card lg:min-h-0">
           {!selected ? (
             <p className="p-8 text-center text-xs text-muted-foreground">
               Elegí un caso de la cola para verlo acá.
@@ -263,8 +268,8 @@ export function SupportCommandCenter({ clientId, onNewTicket }: SupportCommandCe
               </div>
 
               {/* Cuerpo: 1fr + ficha del cliente de 268px */}
-              <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[1fr_268px]">
-                <div className="min-h-0 space-y-3 overflow-y-auto p-3.5">
+              <div className="grid grid-cols-1 lg:min-h-0 lg:flex-1 xl:grid-cols-[1fr_268px]">
+                <div className="space-y-3 p-3.5 lg:min-h-0 lg:overflow-y-auto">
                   {/* Estados */}
                   <div className="flex flex-wrap gap-1.5">
                     {ESTADOS.map(e => (
@@ -325,7 +330,7 @@ export function SupportCommandCenter({ clientId, onNewTicket }: SupportCommandCe
                 </div>
 
                 {/* Ficha del cliente */}
-                <aside className="hidden min-h-0 overflow-y-auto border-l border-border bg-muted/30 p-3.5 xl:block">
+                <aside className="hidden border-l border-border bg-muted/30 p-3.5 xl:block xl:min-h-0 xl:overflow-y-auto">
                   {selected.client_id && (
                     <CaseClientCard
                       clientId={selected.client_id}

@@ -21,6 +21,7 @@ const SharedSupportPresentation = lazy(() => import("./pages/SharedSupportPresen
 const SharedTicketHistory       = lazy(() => import("./pages/SharedTicketHistory"));
 const SharedQuote               = lazy(() => import("./pages/SharedQuote"));
 const MemberProfile             = lazy(() => import("./pages/MemberProfile"));
+const ClientDossier             = lazy(() => import("./pages/ClientDossier"));
 const NotFound                  = lazy(() => import("./pages/NotFound"));
 
 // Spinner consistente con AuthGate — evita flash visual al cambiar de ruta lazy.
@@ -61,6 +62,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<AuthGate />} />
               <Route path="/report" element={<Report />} />
+              <Route path="/clientes/:id" element={<ClientDossier />} />
               <Route path="/shared/:token" element={<SharedPresentation />} />
               <Route path="/shared-support/:token" element={<SharedSupportPresentation />} />
               <Route path="/historial-caso/:token" element={<SharedTicketHistory />} />

@@ -37,6 +37,8 @@ interface Props {
   client: Client | null;
   /** Navega a la ficha completa del cliente (contratos, SLAs, estado de cuenta…). */
   onOpenFull: (clientId: string) => void;
+  /** Abre el expediente 360 (/clientes/:id), que cruza soporte e implementación. */
+  onOpenDossier?: (clientId: string) => void;
 }
 
 /**
@@ -46,7 +48,7 @@ interface Props {
  * Es un PREVIEW, no un reemplazo de la ficha: el detalle completo vive en
  * ClientDetail y se llega con "Abrir ficha completa".
  */
-export function ClientPreviewPanel({ client, onOpenFull }: Props) {
+export function ClientPreviewPanel({ client, onOpenFull, onOpenDossier }: Props) {
   const [tab, setTab] = useState<Tab>("fases");
 
   // Al cambiar de cliente el tab vuelve a Fases: mantener "Riesgos" abierto
@@ -171,10 +173,20 @@ export function ClientPreviewPanel({ client, onOpenFull }: Props) {
         </div>
 
         {/* Salida a la ficha completa: el panel es un vistazo, no la ficha. */}
-        <div className="border-t border-border p-3">
-          <Button size="sm" className="w-full h-8 gap-1.5 text-xs" onClick={() => onOpenFull(client.id)}>
+        <div className="space-y-1.5 border-t border-border p-3">
+          <Button size="sm" className="h-8 w-full gap-1.5 text-xs" onClick={() => onOpenFull(client.id)}>
             Abrir ficha completa <ArrowRight className="h-3.5 w-3.5" />
           </Button>
+          {onOpenDossier && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 w-full gap-1.5 text-xs"
+              onClick={() => onOpenDossier(client.id)}
+            >
+              Expediente 360 <ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
       </div>
     </aside>
