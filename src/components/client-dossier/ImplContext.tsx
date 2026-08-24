@@ -28,8 +28,8 @@ export function ImplContext({ dossier, onGoToSupport, highlightId }: ImplContext
   const gap = real - expected;
 
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_340px]">
-      <div className="flex min-h-0 flex-col gap-3">
+    <div className="grid grid-cols-1 gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="flex flex-col gap-3 lg:min-h-0">
         {/* Stepper de fases */}
         {phases.length > 0 && (
           <div className="flex shrink-0 gap-2 overflow-x-auto">
@@ -74,7 +74,7 @@ export function ImplContext({ dossier, onGoToSupport, highlightId }: ImplContext
       </div>
 
       {/* Derecha — scrollea sola */}
-      <aside className="flex min-h-0 flex-col gap-2.5 overflow-y-auto">
+      <aside className="flex flex-col gap-2.5 lg:min-h-0 lg:overflow-y-auto">
         {/* Avance vs plan */}
         <div className="rounded-xl border border-border bg-card p-3">
           <div className="flex items-center justify-between gap-2">

@@ -45,7 +45,7 @@ export function DossierTable({
   };
 
   return (
-    <section className="flex min-h-0 flex-col rounded-xl border border-border bg-card">
+    <section className="flex flex-col rounded-xl border border-border bg-card lg:min-h-0">
       {/* Tabs + exportación */}
       <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-border px-3 py-2.5">
         {tabs.map(t => {
@@ -82,7 +82,9 @@ export function DossierTable({
       </div>
 
       {/* Cuerpo: es lo único que scrollea de este lado */}
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      {/* Tope en teléfono para que la tabla no empuje el resto
+          fuera de la vista; en escritorio llena el alto disponible. */}
+      <div className="max-h-[60vh] overflow-y-auto lg:max-h-none lg:min-h-0 lg:flex-1">
         {tab.rows.length === 0 ? (
           <p className="py-10 text-center text-xs text-muted-foreground">Sin registros.</p>
         ) : tab.rows.map(r => {

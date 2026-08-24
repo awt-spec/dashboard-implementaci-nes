@@ -79,7 +79,12 @@ export default function ClientDossier() {
               }
             />
 
-            <main className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-4 md:p-5">
+            {/* En teléfono la página scrollea: la banda, los 5 KPIs y el
+                contexto no entran en una pantalla y `overflow-hidden` los
+                recortaba sin forma de llegar a ellos. De lg para arriba vuelve
+                la altura fija, donde el layout de dos columnas tiene sus
+                propios scrolls internos. */}
+            <main className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4 md:p-5 lg:overflow-hidden">
               {dossier.isLoading ? (
                 <div className="flex flex-1 items-center justify-center">
                   <Loader2 className="h-7 w-7 animate-spin text-primary" />
