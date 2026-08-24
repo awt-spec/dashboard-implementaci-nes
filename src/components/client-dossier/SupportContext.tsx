@@ -22,9 +22,9 @@ export function SupportContext({ dossier, onOpenCase, onGoToRisk, highlightId }:
   const linkedRisk = dossier.reopenCount > 0 ? dossier.openRisks[0] ?? null : null;
 
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_340px]">
+    <div className="grid grid-cols-1 gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_340px]">
       {/* Izquierda */}
-      <div className="flex min-h-0 flex-col gap-3">
+      <div className="flex flex-col gap-3 lg:min-h-0">
         <DossierTable
           tabs={dossier.supportTabs}
           active={tab}
@@ -84,7 +84,7 @@ export function SupportContext({ dossier, onOpenCase, onGoToRisk, highlightId }:
       </div>
 
       {/* Derecha — scrollea sola */}
-      <aside className="flex min-h-0 flex-col gap-2.5 overflow-y-auto">
+      <aside className="flex flex-col gap-2.5 lg:min-h-0 lg:overflow-y-auto">
         {/* SLA por mes */}
         <div className="rounded-xl border border-border bg-card p-3">
           <p className="text-[9.5px] font-bold uppercase tracking-[0.07em] text-muted-foreground">SLA por mes</p>

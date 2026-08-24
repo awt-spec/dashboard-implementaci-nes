@@ -34,6 +34,8 @@ import { MobileResumen } from "@/components/mobile/MobileResumen";
 import { MobileClientes } from "@/components/mobile/MobileClientes";
 import { MobileScrum } from "@/components/mobile/MobileScrum";
 import { MobileTabBar } from "@/components/common/MobileTabBar";
+import { DossierTable } from "@/components/client-dossier/DossierTable";
+import { Sparkline } from "@/components/client-dossier/Sparkline";
 import type { ScrumWorkItem } from "@/hooks/useTeamScrum";
 import { visibleNav } from "@/lib/navigation";
 
@@ -97,5 +99,51 @@ describe("móvil — las pantallas siguen montando", () => {
     // sección desaparece de ahí, desaparece del teléfono sin avisar.
     expect(container.querySelectorAll("button").length).toBe(5);
     expect(container.querySelector('[aria-current="page"]')).toBeTruthy();
+  });
+});
+
+
+/**
+ * El expediente (/clientes/:id) es alcanzable desde el teléfono: la ficha del
+ * cliente se ve en móvil y trae el botón "Expediente 360". Estos casos fijan
+ * que sus piezas no dependan de un ancho de escritorio para funcionar.
+ */
+describe("expediente — piezas que también se ven en teléfono", () => {
+  const TABS = [{
+    key: "abiertos",
+    label: "Casos abiertos",
+    count: 1,
+    cols: ["Boleta", "Asunto", "Responsable", "Estado", "SLA"] as [string, string, string, string, string],
+    rows: [{
+      id: "t1", c1: "BOL-1", c2: "Cierre contable no genera asiento",
+      c3: "Fernando P.", chip: "vencido", chipTone: "red" as const,
+      c5: "153%", valTone: "red" as const, rail: "red" as const,
+    }],
+  }];
+
+  it("la tabla renderiza y acota su alto en teléfono", () => {
+    const { container } = wrap(
+      <DossierTable tabs={TABS} active="abiertos" onActiveChange={() => {}} exportName="x" />,
+    );
+    expect(screen.getByText("BOL-1")).toBeTruthy();
+    expect(screen.getByText("vencido")).toBeTruthy();
+    // El cuerpo lleva tope de scroll en móvil: sin él empujaba el resto de la
+    // página fuera de la vista.
+    expect(container.querySelector('[class*="max-h-[60vh]"]')).toBeTruthy();
+  });
+
+  it("cambiar de tab no rompe cuando el tab pedido no existe", () => {
+    expect(() =>
+      wrap(<DossierTable tabs={TABS} active="no-existe" onActiveChange={() => {}} exportName="x" />),
+    ).not.toThrow();
+  });
+
+  it("el sparkline no se dibuja sin serie suficiente", () => {
+    const { container: vacio } = wrap(<Sparkline values={[]} tone="blue" />);
+    expect(vacio.querySelector("span")).toBeNull();
+    const { container: uno } = wrap(<Sparkline values={[3]} tone="blue" />);
+    expect(uno.querySelector("span")).toBeNull();
+    const { container: ok } = wrap(<Sparkline values={[1, 5, 3]} tone="blue" />);
+    expect(ok.querySelectorAll("span").length).toBe(3);
   });
 });

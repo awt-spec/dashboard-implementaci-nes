@@ -180,7 +180,9 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
                       <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {client.contactEmail}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  {/* flex-wrap: con el botón del expediente son cuatro
+                      acciones y en un teléfono no entran en una línea. */}
+                  <div className="flex flex-wrap items-center gap-2">
                     {/* Salida al expediente 360, que cruza soporte con el
                         proyecto. Soporte ya tenía ese puente desde la ficha del
                         caso; Implementación no tenía ninguno y las dos
