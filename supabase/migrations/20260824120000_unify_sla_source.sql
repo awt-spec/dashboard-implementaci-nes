@@ -102,6 +102,9 @@ as $$
           and cs.is_active = true
           and cs.resolution_time_hours is not null
           and cs.resolution_time_hours > 0
+          -- Sin este guard, un priority_level vacío haría LIKE '%%' y
+          -- matchearía con cualquier prioridad.
+          and coalesce(cs.priority_level, '') <> ''
           and public.sla_norm(b.prioridad) like '%' || public.sla_norm(cs.priority_level) || '%'
         order by case when coalesce(cs.case_type, 'all') = 'all' then 0 else 1 end
         limit 1
