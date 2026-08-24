@@ -1,13 +1,16 @@
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-
-// ── Urgencia basada en SLA real por contrato ────────────────────────────────
-// Lee client_slas (tiempos de respuesta/resolución por prioridad y cliente) y
-// evalúa cada ticket contra su SLA en lugar de una heurística de antigüedad.
+/**
+ * Urgencia por SLA para el tablero de CSR.
+ *
+ * Antes leía client_slas y evaluaba por su cuenta con umbral de riesgo al 75%,
+ * mientras el resto de la app usaba 80% y el panorama 70%: el mismo caso podía
+ * salir "en riesgo" en una pantalla y "ok" en la de al lado. Ahora consulta la
+ * misma fuente que todo lo demás — get_tickets_sla_status() — y sólo traduce
+ * el resultado al vocabulario que usa este tablero.
+ */
+import { useMemo } from "react";
+import { useSlaStatusRows } from "@/hooks/useSlaCompliance";
 
 export type SlaLevel = "critica" | "alta" | "media" | "baja";
-export interface SlaTimes { resp: number; reso: number }
-export type SlaMap = Map<string, Map<SlaLevel, SlaTimes>>;
 
 export function normLevel(p?: string | null): SlaLevel {
   const s = (p || "").toLowerCase();
@@ -17,46 +20,35 @@ export function normLevel(p?: string | null): SlaLevel {
   return "media";
 }
 
-export function useClientSlaMap() {
-  return useQuery({
-    queryKey: ["csr-sla-map"],
-    staleTime: 5 * 60_000,
-    queryFn: async (): Promise<SlaMap> => {
-      const { data } = await supabase
-        .from("client_slas")
-        .select("client_id, priority_level, response_time_hours, resolution_time_hours")
-        .eq("is_active", true);
-      const map: SlaMap = new Map();
-      for (const r of (data as any[]) || []) {
-        const lvl = normLevel(r.priority_level);
-        if (!map.has(r.client_id)) map.set(r.client_id, new Map());
-        map.get(r.client_id)!.set(lvl, {
-          resp: Number(r.response_time_hours) || 0,
-          reso: Number(r.resolution_time_hours) || 0,
-        });
-      }
-      return map;
-    },
-  });
-}
-
 export type SlaKind = "breach" | "risk" | "ok" | "none";
 export interface SlaEval { kind: SlaKind; pct: number | null; hoursLeft: number | null; reso: number | null }
 
-// Evalúa un ticket contra el SLA de su cliente/prioridad. `start` es la fecha de
-// registro (o creación). Devuelve kind 'none' si el cliente no tiene SLA.
-export function evalSla(
-  t: { client_id?: string | null; prioridad?: string | null; fecha_registro?: string | null; created_at?: string | null },
-  slaMap?: SlaMap,
-): SlaEval {
-  const sla = t.client_id ? slaMap?.get(t.client_id)?.get(normLevel(t.prioridad)) : undefined;
-  if (!sla || !sla.reso) return { kind: "none", pct: null, hoursLeft: null, reso: null };
-  const startStr = t.fecha_registro || t.created_at;
-  const startMs = startStr ? Date.parse(startStr) : NaN;
-  if (isNaN(startMs)) return { kind: "none", pct: null, hoursLeft: null, reso: sla.reso };
-  const elapsedH = (Date.now() - startMs) / 3_600_000;
-  const pct = elapsedH / sla.reso;
-  const hoursLeft = sla.reso - elapsedH;
-  const kind: SlaKind = pct >= 1 ? "breach" : pct >= 0.75 ? "risk" : "ok";
-  return { kind, pct, hoursLeft, reso: sla.reso };
+const NONE: SlaEval = { kind: "none", pct: null, hoursLeft: null, reso: null };
+
+/** Evaluación ya resuelta por la base, indexada por id de ticket. */
+export type SlaMap = Map<string, SlaEval>;
+
+export function useClientSlaMap() {
+  const query = useSlaStatusRows();
+  const data = useMemo<SlaMap>(() => {
+    const map: SlaMap = new Map();
+    for (const r of query.data ?? []) {
+      const limit = Number(r.limit_hours) || 0;
+      const elapsed = Number(r.elapsed_hours) || 0;
+      if (r.sla_status === "no_sla" || !limit) { map.set(r.ticket_id, NONE); continue; }
+      map.set(r.ticket_id, {
+        kind: r.sla_status === "overdue" ? "breach" : r.sla_status === "warning" ? "risk" : "ok",
+        pct: elapsed / limit,
+        hoursLeft: limit - elapsed,
+        reso: limit,
+      });
+    }
+    return map;
+  }, [query.data]);
+  return { ...query, data };
+}
+
+/** Ya no calcula nada: busca lo que la base resolvió para ese ticket. */
+export function evalSla(t: { id?: string | null }, slaMap?: SlaMap): SlaEval {
+  return (t.id ? slaMap?.get(t.id) : undefined) ?? NONE;
 }

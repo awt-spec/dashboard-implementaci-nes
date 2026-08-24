@@ -1,6 +1,4 @@
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,15 +9,9 @@ import {
 import { cn } from "@/lib/utils";
 import { isTicketClosed } from "@/lib/ticketStatus";
 import type { SupportTicket } from "@/hooks/useSupportTickets";
+import { useSlaStatusRows } from "@/hooks/useSlaCompliance";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────
-
-interface ClientSla {
-  client_id: string;
-  priority_level: string;
-  response_time_hours: number;
-  resolution_time_hours: number;
-}
 
 type SlaStatus = "ok" | "riesgo" | "vencido" | "sin_sla";
 
@@ -46,11 +38,6 @@ interface Props {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
 
-function normalizePriority(prio?: string | null): string {
-  if (!prio) return "Media";
-  if (/critica/i.test(prio)) return "Critica, Impacto Negocio";
-  return prio;
-}
 
 function hoursSince(iso: string | null | undefined): number {
   if (!iso) return 0;
@@ -60,44 +47,32 @@ function hoursSince(iso: string | null | undefined): number {
 // ─── Componente ──────────────────────────────────────────────────────────
 
 export function SupportPanoramaPanel({ tickets, clientName, onOpenTicket }: Props) {
-  // Fetch SLAs de todos los clientes (la lista no suele ser grande)
-  const { data: slas = [] } = useQuery({
-    queryKey: ["client-slas-all"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("client_slas")
-        .select("client_id, priority_level, response_time_hours, resolution_time_hours")
-        .eq("is_active", true);
-      if (error) throw error;
-      return (data || []) as ClientSla[];
-    },
-    staleTime: 5 * 60 * 1000,
-  });
+  // Una sola fuente: la misma función de la base que usa el resto de la app.
+  // Antes este panel consultaba client_slas y evaluaba por su cuenta con
+  // umbral de riesgo al 70%, mientras el resto usaba 80%: el mismo caso salía
+  // "en riesgo" acá y "ok" en la pantalla de al lado.
+  const { data: slaRows = [] } = useSlaStatusRows();
 
-  // Indexa SLAs por client+priority para lookup O(1)
-  const slaIndex = useMemo(() => {
-    const map = new Map<string, ClientSla>();
-    slas.forEach(s => map.set(`${s.client_id}|${normalizePriority(s.priority_level)}`, s));
-    return map;
-  }, [slas]);
+  const slaByTicket = useMemo(
+    () => new Map(slaRows.map(r => [r.ticket_id, r])),
+    [slaRows],
+  );
 
-  // Enriquece tickets con estado SLA
   const enriched: TicketWithSla[] = useMemo(() => {
     return tickets.map(t => {
       const isOpen = !isTicketClosed(t.estado);
-      const key = `${t.client_id}|${normalizePriority(t.prioridad)}`;
-      const sla = slaIndex.get(key);
+      const row = slaByTicket.get(t.id);
       const age = hoursSince(t.fecha_registro || t.created_at);
+      const limit = Number(row?.limit_hours) || 0;
 
       let status: SlaStatus = "sin_sla";
       let usedPct = 0;
-      if (sla && isOpen) {
-        usedPct = (age / sla.resolution_time_hours) * 100;
-        if (usedPct >= 100) status = "vencido";
-        else if (usedPct >= 70) status = "riesgo";
-        else status = "ok";
+      if (row && limit && isOpen && row.sla_status !== "no_sla") {
+        usedPct = (Number(row.elapsed_hours) || 0) / limit * 100;
+        status = row.sla_status === "overdue" ? "vencido" : row.sla_status === "warning" ? "riesgo" : "ok";
       } else if (isOpen) {
-        // Sin SLA pero abierto: clasificamos por edad raw (> 30d = riesgo, > 90d = vencido)
+        // Sin regla aplicable pero abierto: se clasifica por edad cruda, igual
+        // que antes, para no dejar la fila sin ningún indicador.
         const days = age / 24;
         if (days > 90) status = "vencido";
         else if (days > 30) status = "riesgo";
@@ -109,10 +84,10 @@ export function SupportPanoramaPanel({ tickets, clientName, onOpenTicket }: Prop
         _slaStatus: status,
         _slaUsedPct: usedPct,
         _hoursAge: age,
-        _slaResolutionHours: sla?.resolution_time_hours ?? null,
+        _slaResolutionHours: limit || null,
       };
     });
-  }, [tickets, slaIndex]);
+  }, [tickets, slaByTicket]);
 
   // KPIs
   const openTickets = enriched.filter(t => !isTicketClosed(t.estado));
