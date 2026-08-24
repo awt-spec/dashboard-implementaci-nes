@@ -281,6 +281,10 @@ const Index = () => {
     if (activeSection === "soporte") return "Cola de casos · SLA, prioridad y responsables";
     if (activeSection === "team-scrum") return "Sprints activos · tablero, bloqueos y carga";
     if (activeSection === "config") return "Catálogos, permisos y parámetros del sistema";
+    // Vistas de un cliente: el subtítulo dice DÓNDE está parado, no el nombre
+    // de la app, que ya se lee en el sidebar.
+    if (selectedSupportClientId) return "Soporte del cliente · cola, SLA y contrato";
+    if (selectedClient) return "Ficha del cliente · fases, entregables y riesgos";
     return `${projectInfo.name} — ${projectInfo.company}`;
   };
 
