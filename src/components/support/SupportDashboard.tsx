@@ -74,6 +74,7 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
   };
 
   const isClientView = !!initialClientId;
+  const [clientTab, setClientTab] = useState("mando");
 
 
   const tickets = useMemo(() => {
@@ -234,9 +235,11 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
         </motion.div>
       )}
 
-      {/* KPI Cards + Filtros — ocultos en Bandeja (que tiene su propio header
-          dedicado y se beneficia de menos ruido visual). Visibles en Explorar. */}
-      {activeTab !== "inbox" && (
+      {/* KPI Cards + Filtros — ocultos en Bandeja y en el Centro de mando, que
+          traen su propia fila de indicadores. Sin esta condición la vista de
+          cliente apilaba TRES filas de KPIs: estos 7, los 6 del centro de mando
+          y los 4 de ClientSupportView. */}
+      {(isClientView ? clientTab !== "mando" : activeTab !== "inbox") && (
       <>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
         {[
@@ -423,16 +426,38 @@ export function SupportDashboard({ initialClientId, onBack }: SupportDashboardPr
         title="Política v4.5 aplicada a esta operación"
       />
 
-      {/* En CLIENT VIEW renderizamos un layout completamente distinto a la
-          bandeja triage — feedback COO 30/04: "que sea diferente, adaptado
-          al cliente, refleje lo necesario en la cancha". KPIs específicos +
-          casos agrupados por estado del flujo + insights inline + histórico. */}
+      {/* La vista de cliente ANTES cortocircuitaba acá y devolvía sólo
+          ClientSupportView, así que el centro de mando no se veía nunca
+          entrando por un cliente — únicamente por el ítem "Soporte" del
+          sidebar. Ahora las dos conviven como pestañas: manda el centro de
+          mando, y la vista por cliente (feedback COO 30/04: "que sea
+          diferente, adaptado al cliente") queda a un clic, entera. */}
       {isClientView ? (
-        <ClientSupportView
-          clientId={initialClientId!}
-          clientName={clientName(initialClientId)}
-          onNewTicket={() => setNewTicketOpen(true)}
-        />
+        <Tabs value={clientTab} onValueChange={setClientTab}>
+          <TabsList className="flex-wrap">
+            <TabsTrigger value="mando" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <Inbox className="h-3.5 w-3.5" /> Centro de mando
+            </TabsTrigger>
+            <TabsTrigger value="cliente" className="gap-1.5">
+              <Sparkles className="h-3.5 w-3.5" /> Vista del cliente
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="mando" className="mt-4">
+            <SupportCommandCenter
+              clientId={initialClientId}
+              onNewTicket={readOnly ? undefined : () => setNewTicketOpen(true)}
+            />
+          </TabsContent>
+
+          <TabsContent value="cliente" className="mt-4">
+            <ClientSupportView
+              clientId={initialClientId!}
+              clientName={clientName(initialClientId)}
+              onNewTicket={() => setNewTicketOpen(true)}
+            />
+          </TabsContent>
+        </Tabs>
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="flex-wrap">
