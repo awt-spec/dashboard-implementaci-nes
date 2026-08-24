@@ -266,11 +266,18 @@ export function ClientList({ onSelectClient, selectedClientId }: ClientListProps
                         ) : all.map(c => {
                           const cfg = statusConfig[c.status];
                           const openRisks = c.risks.filter(r => r.status === "abierto").length;
+                          // La FILA navega a la ficha; la TARJETA de arriba
+                          // alimenta el panel lateral. Son dos gestos con
+                          // intención distinta: la tabla es "ir a este
+                          // cliente", las tarjetas son "mirar la cartera".
+                          // Cuando ambas alimentaban el panel no quedaba ningún
+                          // camino de un clic hasta la ficha en 1280px o más.
                           return (
                             <TableRow
                               key={c.id}
-                              className={`cursor-pointer ${previewId === c.id ? "bg-primary/[0.06]" : ""}`}
-                              onClick={() => openOrPreview(c.id)}
+                              className="cursor-pointer"
+                              onClick={() => onSelectClient(c.id)}
+                              title={`Abrir la ficha de ${c.name}`}
                             >
                               <TableCell className="font-medium truncate" title={c.name}>{c.name}</TableCell>
                               <TableCell className="text-muted-foreground text-xs truncate">{c.country}</TableCell>
