@@ -42,7 +42,7 @@ export function SlaBreachAlert({ clientId, onSelectTicket, showOk = false }: Pro
       <div className="flex-1 min-w-0">
         <p className="text-xs font-semibold truncate">{s.ticket.asunto}</p>
         <p className="text-[10px] text-muted-foreground truncate">
-          {s.ticket.ticket_id} · {s.ticket.producto || "—"} · {s.sla.priority_level}
+          {s.ticket.ticket_id} · {s.ticket.producto || "—"} · {s.priorityLevel}
         </p>
       </div>
       <div className="text-right shrink-0">

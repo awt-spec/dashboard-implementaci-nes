@@ -81,8 +81,8 @@ export interface DossierBadge {
 export interface ClientDossier {
   isLoading: boolean;
   client: Client | null;
-  /** 0-100 derivado; ver `healthScore`. */
-  health: number;
+  /** 0-100 derivado, o null si no hay señal. Ver `healthScore`. */
+  health: number | null;
   healthTone: Tone;
   badges: DossierBadge[];
   identityLine: string;
@@ -141,28 +141,42 @@ function deltaOf(series: number[], unit: string): string | null {
 }
 
 /**
- * Score de salud 0-100. NO es un campo de la base: se deriva de cuatro señales
- * que sí existen, con el peso indicado. Se documenta acá porque un número
- * redondo en un anillo grande invita a creer que alguien lo calculó formalmente.
+ * Score de salud 0-100, o `null` cuando no hay señal suficiente.
  *
- *  40% cumplimiento de SLA · 25% casos vencidos · 20% riesgos altos abiertos
- *  15% avance del proyecto
+ * NO es un campo de la base: se pondera lo que exista. Cada señal entra sólo
+ * si hay dato, y los pesos se renormalizan sobre las incluidas.
+ *
+ *   cumplimiento de SLA 40 · casos vencidos 25 · riesgos altos 20 · avance 15
+ *
+ * Dos cosas que la primera versión hacía mal y conviene no repetir:
+ *
+ *  - Sin casos con SLA tomaba el cumplimiento como 100. Resultado: los
+ *    clientes SIN actividad de soporte salían más sanos que los atendidos.
+ *    De 29 clientes, los 5 "verdes" lo eran por no tener un solo caso.
+ *  - Los riesgos sumaban 20 puntos fijos a todos porque la tabla está vacía:
+ *    un quinto del score era una constante.
+ *
+ * La ausencia de dato no es un buen resultado; es ausencia de dato.
  */
 export function healthScore(input: {
   compliancePct: number | null;
   breached: number;
   openCases: number;
-  highRisks: number;
-  progress: number;
-}): number {
-  const sla = input.compliancePct ?? 100;
-  const breachPenalty = input.openCases > 0 ? (input.breached / input.openCases) * 100 : 0;
-  const riskPenalty = Math.min(100, input.highRisks * 25);
-  const score =
-    sla * 0.4 +
-    (100 - breachPenalty) * 0.25 +
-    (100 - riskPenalty) * 0.2 +
-    input.progress * 0.15;
+  /** `null` cuando el cliente no tiene riesgos registrados (no es lo mismo que cero). */
+  highRisks: number | null;
+  progress: number | null;
+}): number | null {
+  const parts: { value: number; weight: number }[] = [];
+
+  if (input.compliancePct !== null) parts.push({ value: input.compliancePct, weight: 40 });
+  if (input.openCases > 0) parts.push({ value: 100 - (input.breached / input.openCases) * 100, weight: 25 });
+  if (input.highRisks !== null) parts.push({ value: 100 - Math.min(100, input.highRisks * 25), weight: 20 });
+  if (input.progress !== null) parts.push({ value: input.progress, weight: 15 });
+
+  const total = parts.reduce((s, p) => s + p.weight, 0);
+  if (total === 0) return null;
+
+  const score = parts.reduce((s, p) => s + p.value * p.weight, 0) / total;
   return Math.max(0, Math.min(100, Math.round(score)));
 }
 
@@ -190,7 +204,7 @@ export function useClientDossier(clientId: string | undefined): ClientDossier {
 
     if (!client) {
       return {
-        isLoading, client: null, health: 0, healthTone: "grey", badges: [], identityLine: "",
+        isLoading, client: null, health: null, healthTone: "grey", badges: [], identityLine: "",
         supportSublabel: "", implSublabel: "", supportKpis: [], implKpis: [],
         supportTabs: [], implTabs: [], phases: [], activePhaseIndex: -1,
         hoursBySpecialist: [], recurringTopics: [], slaByMonth: [], openRisks: [],
@@ -205,14 +219,18 @@ export function useClientDossier(clientId: string | undefined): ClientDossier {
     const highRisks = openRisks.filter(r => r.impact === "alto");
 
     /* ── Salud ── */
+    // `openRisks` vacío puede significar "sin riesgos" o "nadie los cargó".
+    // Hoy la tabla está vacía para todos, así que la señal no discrimina y se
+    // excluye en vez de regalar sus 20 puntos a cada cliente por igual.
+    const hasRiskData = client.risks.length > 0;
     const health = healthScore({
       compliancePct: summary.compliancePct,
       breached: summary.breached,
       openCases: open.length,
-      highRisks: highRisks.length,
-      progress: client.progress,
+      highRisks: hasRiskData ? highRisks.length : null,
+      progress: client.progress ?? null,
     });
-    const healthTone = toneAbove(health, 85, 70);
+    const healthTone: Tone = health === null ? "grey" : toneAbove(health, 85, 70);
 
     /* ── Etiquetas de contexto: derivadas, no decorativas ── */
     const contract = contracts.find((c: { is_active?: boolean }) => c.is_active) ?? contracts[0];

@@ -13,15 +13,24 @@ const RING: Record<Tone, string> = {
   grey: "hsl(220 13% 88%)",
 };
 
-function HealthRing({ score, tone }: { score: number; tone: Tone }) {
+function HealthRing({ score, tone }: { score: number | null; tone: Tone }) {
+  // Sin señal el anillo queda vacío y muestra "—": pintar un 0 se leería como
+  // "salud pésima" cuando lo que pasa es que no hay con qué medir.
+  const deg = score === null ? 0 : score * 3.6;
   return (
     <div
       className="relative h-[52px] w-[52px] shrink-0 rounded-full"
-      style={{ background: `conic-gradient(${RING[tone]} ${score * 3.6}deg, hsl(220 14% 92%) 0deg)` }}
-      title={`Salud ${score}/100 — derivada de SLA, casos vencidos, riesgos altos y avance`}
+      style={{ background: `conic-gradient(${RING[tone]} ${deg}deg, hsl(220 14% 92%) 0deg)` }}
+      title={
+        score === null
+          ? "Sin señal suficiente para calcular la salud"
+          : `Salud ${score}/100 — pondera cumplimiento de SLA, casos vencidos, riesgos altos y avance, sólo con las señales que tienen dato`
+      }
     >
       <div className="absolute inset-[5px] flex flex-col items-center justify-center rounded-full bg-card">
-        <span className="text-[13px] font-extrabold leading-none tabular-nums text-foreground">{score}</span>
+        <span className="text-[13px] font-extrabold leading-none tabular-nums text-foreground">
+          {score === null ? "—" : score}
+        </span>
         <span className="text-[6.5px] font-bold uppercase tracking-[0.08em] text-muted-foreground">salud</span>
       </div>
     </div>
