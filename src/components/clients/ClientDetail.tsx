@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { type Client } from "@/data/projectData";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +9,7 @@ import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Building2, MapPin, Mail, User, Calendar, TrendingUp,
+  Building2, MapPin, Mail, User, Calendar, TrendingUp, LayoutDashboard,
   CheckCircle2, Loader2, Circle, Clock, AlertTriangle,
   ArrowLeft, Download, ArrowRightLeft, Plus, Pencil, Link2,
 } from "lucide-react";
@@ -68,6 +69,7 @@ interface ClientDetailProps {
 }
 
 export function ClientDetail({ client, onBack }: ClientDetailProps) {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const readOnly = useReadOnly();
   const updateClient = useUpdateClient();
@@ -179,6 +181,18 @@ export function ClientDetail({ client, onBack }: ClientDetailProps) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    {/* Salida al expediente 360, que cruza soporte con el
+                        proyecto. Soporte ya tenía ese puente desde la ficha del
+                        caso; Implementación no tenía ninguno y las dos
+                        pantallas quedaban incomunicadas. */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={() => navigate(`/clientes/${client.id}?ctx=impl`)}
+                    >
+                      <LayoutDashboard className="h-3.5 w-3.5" /> Expediente 360
+                    </Button>
                     {!readOnly && (
                       <>
                         <Button
