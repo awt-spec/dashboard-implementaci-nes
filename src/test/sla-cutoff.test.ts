@@ -112,3 +112,33 @@ describe("formato de la fecha de corte", () => {
     expect(formatCutoff("no soy una fecha")).toBeNull();
   });
 });
+
+/**
+ * El KPI del expediente mezclaba dos fuentes: el valor sale de la medición con
+ * corte, el delta y la tendencia salían de get_sla_history() (casos cerrados,
+ * sin corte). Con un número arriba la diferencia no se notaba; con "—" quedaba
+ * un guión coronado por "+12 pts".
+ */
+describe("KPI de cumplimiento del expediente", () => {
+  function kpi(compliancePct: number | null, serie: number[]) {
+    return {
+      value: compliancePct === null ? "—" : `${compliancePct}%`,
+      delta: compliancePct === null ? null : (serie.length < 2 ? null : "+12 pts"),
+      series: compliancePct === null ? [] : serie,
+    };
+  }
+
+  it("sin medición no muestra ni variación ni tendencia", () => {
+    const k = kpi(null, [70, 82]);
+    expect(k.value).toBe("—");
+    expect(k.delta).toBeNull();
+    expect(k.series).toEqual([]);
+  });
+
+  it("con medición sí las muestra", () => {
+    const k = kpi(94, [70, 82]);
+    expect(k.value).toBe("94%");
+    expect(k.delta).not.toBeNull();
+    expect(k.series).toHaveLength(2);
+  });
+});

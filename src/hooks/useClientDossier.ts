@@ -284,9 +284,14 @@ export function useClientDossier(clientId: string | undefined): ClientDossier {
       {
         label: "Cumplimiento SLA",
         value: summary.compliancePct === null ? "—" : `${summary.compliancePct}%`,
-        delta: deltaOf(slaSeries, "pts"),
+        // delta y series salen de get_sla_history() — casos CERRADOS, que no
+        // conoce la fecha de corte. Con un valor numérico arriba la diferencia
+        // pasaba desapercibida; con "—" quedaba un guión coronado por
+        // "+12 pts" y una línea de tendencia, que se lee como pantalla rota.
+        // Sin número que explicar, no hay variación que mostrar.
+        delta: summary.compliancePct === null ? null : deltaOf(slaSeries, "pts"),
         tone: summary.compliancePct === null ? "grey" : toneAbove(summary.compliancePct, 90, 75),
-        series: slaSeries,
+        series: summary.compliancePct === null ? [] : slaSeries,
         title: summary.compliancePct === null
           ? "Todavía no hay casos registrados desde la fecha de corte de medición"
           : `${summary.measured - summary.measuredBreached} sin incumplir de ${summary.measured} casos medidos · meta 90%`,
