@@ -6,6 +6,12 @@
  *
  * Devuelve: { total, overdue, warning, ok, no_sla }
  *
+ * OJO: estos son números de INVENTARIO — todo lo abierto, de cualquier fecha.
+ * No sirven para calcular cumplimiento: `ok / total` daría el porcentaje sobre
+ * los 293 casos viejos que ya rompieron su plazo y que la migración
+ * 20260825140000 sacó a propósito de la medición. El porcentaje sale de
+ * useSlaCompliance().summary.compliancePct o de get_sla_summary().compliance_pct.
+ *
  * Refresco: 60s. Suficiente para que un casos vencidos aparezcan en el sidebar
  * casi en tiempo real sin saturar el servidor.
  */

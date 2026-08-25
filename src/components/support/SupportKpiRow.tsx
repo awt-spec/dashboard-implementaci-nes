@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useSlaCompliance } from "@/hooks/useSlaCompliance";
+import { useSlaCompliance, formatCutoff } from "@/hooks/useSlaCompliance";
 import { useSupportTickets } from "@/hooks/useSupportTickets";
 import { useReopenRate90d } from "@/hooks/useTicketReopens";
 
@@ -39,7 +39,7 @@ export interface SupportKpiRowProps {
  * sale de datos reales.
  */
 export function SupportKpiRow({ clientId }: SupportKpiRowProps) {
-  const { summary } = useSlaCompliance(clientId);
+  const { summary, cutoff } = useSlaCompliance(clientId);
   const { data: tickets = [] } = useSupportTickets(clientId);
   const { data: reopen } = useReopenRate90d(clientId);
 
@@ -50,10 +50,14 @@ export function SupportKpiRow({ clientId }: SupportKpiRowProps) {
   }, [tickets]);
 
   const abiertos = summary.withSla + summary.sinSla;
+  // Sólo sobre lo registrado desde el corte. Vencidos/En riesgo/Abiertos, en
+  // cambio, siguen siendo el inventario completo: son trabajo que existe y hay
+  // que verlo, aunque su incumplimiento no se le cobre al equipo de hoy.
   const cumplimiento = summary.compliancePct;
+  const desde = formatCutoff(cutoff);
 
   const kpis: Kpi[] = [
-    { label: "Vencidos", value: String(summary.breached), tone: "destructive", title: "Superaron el tiempo de resolución del SLA" },
+    { label: "Vencidos", value: String(summary.breached), tone: "destructive", title: "Superaron el tiempo de resolución del SLA. Incluye los anteriores al corte de medición." },
     { label: "En riesgo", value: String(summary.atRisk), tone: "warning", title: "Al 80% o más del SLA" },
     { label: "Abiertos", value: String(abiertos), tone: "info", title: "Casos abiertos en total" },
     {
@@ -69,9 +73,14 @@ export function SupportKpiRow({ clientId }: SupportKpiRowProps) {
       label: "Cumplimiento",
       value: cumplimiento === null ? "—" : `${cumplimiento}%`,
       tone: cumplimiento === null ? "muted" : cumplimiento >= 90 ? "success" : cumplimiento >= 75 ? "warning" : "destructive",
+      // El guión no es un error ni un cero: es "todavía no hay con qué
+      // juzgarlos". Si no se explica de dónde sale, parece que la pantalla
+      // está rota.
       title: cumplimiento === null
-        ? "Sin casos con SLA aplicable"
-        : `${summary.withSla - summary.breached} sin incumplir de ${summary.withSla} casos con SLA · meta 90%`,
+        ? desde
+          ? `Todavía no hay casos registrados desde el ${desde}. Los ${summary.breached} vencidos son anteriores al corte y no entran al porcentaje.`
+          : "Sin casos con SLA aplicable"
+        : `${summary.measured - summary.measuredBreached} sin incumplir de ${summary.measured} casos medidos${desde ? ` desde el ${desde}` : ""} · meta 90%`,
     },
   ];
 
