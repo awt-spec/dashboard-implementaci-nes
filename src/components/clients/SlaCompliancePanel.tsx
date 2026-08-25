@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Gauge, TriangleAlert, Clock, CheckCircle2, ShieldCheck } from "lucide-react";
-import { useSlaCompliance, type SlaLevel } from "@/hooks/useSlaCompliance";
+import { useSlaCompliance, formatCutoff, type SlaLevel } from "@/hooks/useSlaCompliance";
 import { TicketDetailSheet } from "@/components/support/TicketDetailSheet";
 import type { SupportTicket } from "@/hooks/useSupportTickets";
 
@@ -19,8 +19,10 @@ const LEVEL: Record<SlaLevel, { label: string; badge: string; bar: string }> = {
 };
 
 export function SlaCompliancePanel({ clientId }: { clientId: string }) {
-  const { rows, summary } = useSlaCompliance(clientId);
+  const { rows, summary, cutoff } = useSlaCompliance(clientId);
   const [detail, setDetail] = useState<SupportTicket | null>(null);
+  const desde = formatCutoff(cutoff);
+  const pct = summary.compliancePct;
 
   return (
     <div className="space-y-3">
@@ -40,11 +42,17 @@ export function SlaCompliancePanel({ clientId }: { clientId: string }) {
           {/* Resumen */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Card className="overflow-hidden">
-              <div className={`h-1 w-full ${summary.compliancePct != null && summary.compliancePct >= 90 ? "bg-success" : summary.compliancePct != null && summary.compliancePct >= 70 ? "bg-warning" : "bg-destructive"}`} />
+              {/* Gris cuando no hay nada medido: pintarlo de rojo sería acusar
+                  al equipo de un 0% que todavía nadie ganó ni perdió. */}
+              <div className={`h-1 w-full ${pct == null ? "bg-muted" : pct >= 90 ? "bg-success" : pct >= 70 ? "bg-warning" : "bg-destructive"}`} />
               <CardContent className="p-3">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> Cumplimiento</p>
-                <p className="text-2xl font-black tabular-nums">{summary.compliancePct}%</p>
-                <p className="text-[10px] text-muted-foreground">{summary.withSla - summary.breached}/{summary.withSla} dentro del SLA</p>
+                <p className={`text-2xl font-black tabular-nums ${pct == null ? "text-muted-foreground" : ""}`}>{pct == null ? "—" : `${pct}%`}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {pct == null
+                    ? desde ? `sin casos desde el ${desde}` : "sin casos medibles"
+                    : `${summary.measured - summary.measuredBreached}/${summary.measured} dentro del SLA`}
+                </p>
               </CardContent>
             </Card>
             <KpiMini icon={<CheckCircle2 className="h-3 w-3" />} tone="text-success" label="A tiempo" value={summary.onTrack} />
@@ -53,6 +61,16 @@ export function SlaCompliancePanel({ clientId }: { clientId: string }) {
           </div>
           {summary.sinSla > 0 && (
             <p className="text-[11px] text-muted-foreground">{summary.sinSla} caso(s) abiertos sin SLA aplicable a su prioridad (no se miden).</p>
+          )}
+          {/* La tabla de abajo lista TODOS los casos abiertos; el porcentaje de
+              arriba sale sólo de los posteriores al corte. Sin decirlo, los dos
+              números se contradicen a la vista. */}
+          {desde && summary.withSla > summary.measured && (
+            <p className="text-[11px] text-muted-foreground">
+              El cumplimiento se mide sobre los {summary.measured} caso(s) registrados desde el {desde}.
+              Los {summary.withSla - summary.measured} anteriores se listan abajo y hay que atenderlos, pero
+              su plazo ya venció antes del corte y no entran al porcentaje.
+            </p>
           )}
 
           {/* Tabla por caso */}

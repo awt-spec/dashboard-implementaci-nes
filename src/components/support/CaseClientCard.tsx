@@ -1,7 +1,7 @@
 import { Building2, ExternalLink, RotateCcw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useSupportClients, useSupportTickets } from "@/hooks/useSupportTickets";
-import { useSlaCompliance } from "@/hooks/useSlaCompliance";
+import { useSlaCompliance, formatCutoff } from "@/hooks/useSlaCompliance";
 import { useReopenRate90d } from "@/hooks/useTicketReopens";
 import { useClientContracts } from "@/hooks/useClientContracts";
 import { isTicketClosed } from "@/lib/ticketStatus";
@@ -59,7 +59,8 @@ export function CaseClientCard({ clientId, currentTicketId, onOpenTicket }: Prop
   const { data: tickets = [] } = useSupportTickets(clientId);
   const { data: contracts = [] } = useClientContracts(clientId);
   const { data: reopen } = useReopenRate90d(clientId);
-  const { rows, summary } = useSlaCompliance(clientId);
+  const { rows, summary, cutoff } = useSlaCompliance(clientId);
+  const desde = formatCutoff(cutoff);
 
   const client = clients.find((c: { id: string }) => c.id === clientId);
 
@@ -118,10 +119,13 @@ export function CaseClientCard({ clientId, currentTicketId, onOpenTicket }: Prop
           value={summary.compliancePct === null ? "—" : `${summary.compliancePct}%`}
           pct={summary.compliancePct}
           higherIsBetter
+          // El medidor mide desde el corte; el conteo de incumplidos que
+          // acompaña tiene que ser el mismo subconjunto, o la nota estaría
+          // explicando un número que no es el de arriba.
           note={
             summary.compliancePct === null
-              ? "sin casos con SLA aplicable"
-              : `meta 90% · ${summary.breached} incumplido${summary.breached === 1 ? "" : "s"}`
+              ? desde ? `sin casos desde el ${desde}` : "sin casos con SLA aplicable"
+              : `meta 90% · ${summary.measuredBreached} incumplido${summary.measuredBreached === 1 ? "" : "s"} de ${summary.measured}`
           }
         />
         <Meter

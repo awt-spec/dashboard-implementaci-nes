@@ -223,6 +223,11 @@ export function useClientDossier(clientId: string | undefined): ClientDossier {
     // Hoy la tabla está vacía para todos, así que la señal no discrimina y se
     // excluye en vez de regalar sus 20 puntos a cada cliente por igual.
     const hasRiskData = client.risks.length > 0;
+    // compliancePct viene null mientras no haya casos posteriores a la fecha
+    // de corte (migración 20260825140000). El score no lo trata como cero: el
+    // eje se cae y los pesos se renormalizan, así que hasta septiembre el
+    // anillo se apoya en casos vencidos y avance del proyecto. Cambia lo que
+    // el anillo significa, y es preferible a promediar un 0% que nadie ganó.
     const health = healthScore({
       compliancePct: summary.compliancePct,
       breached: summary.breached,
@@ -282,7 +287,9 @@ export function useClientDossier(clientId: string | undefined): ClientDossier {
         delta: deltaOf(slaSeries, "pts"),
         tone: summary.compliancePct === null ? "grey" : toneAbove(summary.compliancePct, 90, 75),
         series: slaSeries,
-        title: "No incumplidos sobre casos con SLA · meta 90%",
+        title: summary.compliancePct === null
+          ? "Todavía no hay casos registrados desde la fecha de corte de medición"
+          : `${summary.measured - summary.measuredBreached} sin incumplir de ${summary.measured} casos medidos · meta 90%`,
       },
       {
         label: "Horas del mes",
