@@ -102,9 +102,14 @@ describe("resumen de SLA con fecha de corte", () => {
 });
 
 describe("formato de la fecha de corte", () => {
-  it("rinde la fecha que devuelve la base", () => {
+  it("rinde el 1 de septiembre sin importar la zona del navegador", () => {
     // 06:00Z = 00:00 en Costa Rica, que es como la define sla_measurement_start().
-    expect(formatCutoff("2026-09-01T06:00:00+00:00")).toMatch(/2026/);
+    // Antes esto dependía de la zona local: en America/Tijuana (UTC-8) daba
+    // "31 de agosto". La frontera es la misma para todos, la etiqueta también.
+    const out = formatCutoff("2026-09-01T06:00:00+00:00");
+    expect(out).toContain("septiembre");
+    expect(out).toContain("2026");
+    expect(out).not.toContain("agosto");
   });
 
   it("aguanta null y basura sin reventar la pantalla", () => {

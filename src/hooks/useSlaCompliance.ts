@@ -202,10 +202,25 @@ export function summarizeSla(rows: SlaCaseRow[], sinSla: number): SlaSummary {
   };
 }
 
-/** "1 de septiembre de 2026", para explicar en pantalla de dónde sale el corte. */
+/**
+ * "1 de septiembre de 2026", para explicar en pantalla de dónde sale el corte.
+ *
+ * Se rinde en hora de Costa Rica, no en la del navegador. El corte está
+ * DEFINIDO en hora CR (sla_measurement_start() usa el offset -06), así que la
+ * medianoche del 1 de septiembre viaja como 06:00Z. Sin fijar la zona, un
+ * navegador al oeste de UTC-6 restaba horas y mostraba el día anterior:
+ *
+ *   America/Costa_Rica -> 1 de septiembre de 2026
+ *   UTC                -> 1 de septiembre de 2026
+ *   America/Tijuana    -> 31 de agosto de 2026     <- la fecha equivocada
+ *
+ * La frontera es la misma para todos; la etiqueta también tiene que serlo.
+ */
 export function formatCutoff(iso: string | null): string | null {
   if (!iso) return null;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleDateString("es-CR", { day: "numeric", month: "long", year: "numeric" });
+  return d.toLocaleDateString("es-CR", {
+    day: "numeric", month: "long", year: "numeric", timeZone: "America/Costa_Rica",
+  });
 }
