@@ -122,7 +122,7 @@ export function useSupportTickets(clientId?: string) {
   return useQuery({
     queryKey: ["support-tickets", clientId, isCliente ? "safe" : "full"],
     queryFn: async () => {
-      const all: any[] = [];
+      const all: Parameters<typeof normTicket>[0][] = [];
       for (let from = 0; ; from += PAGE_SIZE) {
         // El builder no se puede reusar después de ejecutarlo: se arma de nuevo
         // en cada vuelta.
@@ -140,7 +140,7 @@ export function useSupportTickets(clientId?: string) {
         }
         const { data, error } = await query;
         if (error) throw error;
-        const page = (data || []) as any[];
+        const page = (data || []) as typeof all;
         all.push(...page);
         // Página incompleta = última página. Si viene llena hay que pedir otra
         // aunque resulte vacía: no hay forma de saberlo sin preguntar.
