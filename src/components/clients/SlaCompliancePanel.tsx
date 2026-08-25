@@ -72,6 +72,16 @@ export function SlaCompliancePanel({ clientId }: { clientId: string }) {
               su plazo ya venció antes del corte y no entran al porcentaje.
             </p>
           )}
+          {/* Retrodatar la fecha saca el caso de la medición. A veces es
+              correcto —llegó antes y se registró tarde— así que no se bloquea.
+              Pero es la única salida por la que un caso deja de medirse sin
+              que nadie lo note, y por eso se cuenta a la vista. */}
+          {summary.registeredLate > 0 && (
+            <p className="text-[11px] text-warning">
+              {summary.registeredLate} caso(s) se cargaron después del corte con fecha anterior, así que
+              quedaron fuera de la medición. Si la fecha está mal, corregila para que el caso vuelva a contar.
+            </p>
+          )}
 
           {/* Tabla por caso */}
           <Card><CardContent className="p-0">

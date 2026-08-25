@@ -9,7 +9,7 @@ import { summarizeSla, formatCutoff, type SlaCaseRow, type SlaLevel } from "@/ho
  * vuelven a colarse al denominador, la pantalla no se rompe — simplemente
  * muestra 0% para siempre y nadie sabe por qué.
  */
-function row(level: SlaLevel, inScope: boolean, i = 0): SlaCaseRow {
+function row(level: SlaLevel, inScope: boolean, i = 0, registeredLate = false): SlaCaseRow {
   return {
     ticket: { id: `t${i}` } as SlaCaseRow["ticket"],
     priorityLevel: "Alta",
@@ -19,6 +19,7 @@ function row(level: SlaLevel, inScope: boolean, i = 0): SlaCaseRow {
     pct: 42,
     level,
     inScope,
+    registeredLate,
   };
 }
 
@@ -79,8 +80,24 @@ describe("resumen de SLA con fecha de corte", () => {
     const s = summarizeSla([], 0);
     expect(s).toEqual({
       withSla: 0, breached: 0, atRisk: 0, onTrack: 0, sinSla: 0,
-      measured: 0, measuredBreached: 0, compliancePct: null,
+      measured: 0, measuredBreached: 0, compliancePct: null, registeredLate: 0,
     });
+  });
+
+  it("cuenta los cargados tarde sin meterlos en la medición", () => {
+    const rows = [
+      row("breached", false, 1, true),   // retrodatado: fuera del cociente
+      row("breached", false, 2, true),
+      row("breached", false, 3),        // viejo de verdad, cargado antes del corte
+      row("on_track", true, 4),
+    ];
+    const s = summarizeSla(rows, 0);
+    expect(s.registeredLate).toBe(2);
+    expect(s.measured).toBe(1);
+    // Los retrodatados no tocan el porcentaje: siguen contando como vencidos
+    // en el inventario, que es donde deben verse.
+    expect(s.compliancePct).toBe(100);
+    expect(s.breached).toBe(3);
   });
 });
 

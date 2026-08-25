@@ -37,6 +37,8 @@ export interface SlaStatusRow {
   sla_status: "ok" | "warning" | "overdue" | "no_sla";
   /** Registrado desde la fecha de corte: cuenta para el cumplimiento. */
   in_scope: boolean;
+  /** Cargado después del corte pero fechado antes: sale de la medición. */
+  registered_late: boolean;
 }
 
 export interface SlaCaseRow {
@@ -51,6 +53,8 @@ export interface SlaCaseRow {
   level: SlaLevel;
   /** Si entra al cociente de cumplimiento. */
   inScope: boolean;
+  /** Cargado tras el corte con fecha anterior. */
+  registeredLate: boolean;
 }
 
 export interface SlaSummary {
@@ -65,6 +69,13 @@ export interface SlaSummary {
   measuredBreached: number;
   /** Sobre `measured`, no sobre `withSla`. null = todavía no hay qué medir. */
   compliancePct: number | null;
+  /**
+   * Cargados tras el corte con fecha anterior — quedaron fuera de la medición.
+   * A veces es legítimo (el caso llegó antes y se registró tarde), así que no
+   * se bloquea. Se cuenta para que la salida sea visible: si no, un caso deja
+   * de medirse y nadie se entera.
+   */
+  registeredLate: number;
 }
 
 export interface SlaComplianceResult {
@@ -76,7 +87,7 @@ export interface SlaComplianceResult {
 
 const EMPTY_SUMMARY: SlaSummary = {
   withSla: 0, breached: 0, atRisk: 0, onTrack: 0, sinSla: 0,
-  measured: 0, measuredBreached: 0, compliancePct: null,
+  measured: 0, measuredBreached: 0, compliancePct: null, registeredLate: 0,
 };
 
 /** Una sola llamada para toda la app; se filtra por cliente en memoria. */
@@ -155,6 +166,7 @@ export function useSlaCompliance(clientId?: string): SlaComplianceResult {
         // base sin migrar da 0 medidos y "—", que es lo mismo que dirá el día
         // uno del corte. Nunca un porcentaje inventado.
         inScope: s.in_scope === true,
+        registeredLate: s.registered_late === true,
       });
     }
 
@@ -183,7 +195,11 @@ export function summarizeSla(rows: SlaCaseRow[], sinSla: number): SlaSummary {
     ? Math.round(((measured - measuredBreached) / measured) * 100)
     : null;
 
-  return { withSla: rows.length, breached, atRisk, onTrack, sinSla, measured, measuredBreached, compliancePct };
+  return {
+    withSla: rows.length, breached, atRisk, onTrack, sinSla,
+    measured, measuredBreached, compliancePct,
+    registeredLate: rows.filter(r => r.registeredLate).length,
+  };
 }
 
 /** "1 de septiembre de 2026", para explicar en pantalla de dónde sale el corte. */
