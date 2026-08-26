@@ -1,0 +1,354 @@
+
+<title>IA sobre Contratos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Sans+3:wght@400;600;700&display=swap">
+<style>
+:root{
+  --paper:#EDF0F0;--surface:#FFFFFF;--surface-2:#F5F7F7;
+  --ink:#111A1B;--ink-2:#33454A;--muted:#5F7378;--line:#D2DADB;--line-2:#E3E9E9;
+  --accent:#0E5F66;--accent-soft:#0E5F661A;--on-accent:#FFFFFF;
+  --ok:#1B6E4A;--ok-soft:#1B6E4A18;
+  --warn:#9C6206;--warn-soft:#9C620618;
+  --bad:#A62C3B;--bad-soft:#A62C3B18;
+  --shadow:0 1px 2px #111A1B0D,0 8px 24px -12px #111A1B1F;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0B1214;--surface:#121C1F;--surface-2:#182427;
+  --ink:#E6EDEC;--ink-2:#B4C4C6;--muted:#84979A;--line:#26363A;--line-2:#1D2B2E;
+  --accent:#54B9BF;--accent-soft:#54B9BF1F;--on-accent:#0B1214;
+  --ok:#54BE8C;--ok-soft:#54BE8C1F;--warn:#DFA341;--warn-soft:#DFA3411F;
+  --bad:#E7788A;--bad-soft:#E7788A1F;
+  --shadow:0 1px 2px #0006,0 10px 28px -14px #0009;
+}}
+:root[data-theme="dark"]{
+  --paper:#0B1214;--surface:#121C1F;--surface-2:#182427;
+  --ink:#E6EDEC;--ink-2:#B4C4C6;--muted:#84979A;--line:#26363A;--line-2:#1D2B2E;
+  --accent:#54B9BF;--accent-soft:#54B9BF1F;--on-accent:#0B1214;
+  --ok:#54BE8C;--ok-soft:#54BE8C1F;--warn:#DFA341;--warn-soft:#DFA3411F;
+  --bad:#E7788A;--bad-soft:#E7788A1F;
+  --shadow:0 1px 2px #0006,0 10px 28px -14px #0009;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:"Source Sans 3","Segoe UI",system-ui,sans-serif;font-size:15px;line-height:1.55;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1060px;margin:0 auto;padding:clamp(20px,4vw,56px) clamp(16px,4vw,40px) 80px}
+h1,h2,h3{font-family:"Bricolage Grotesque","Source Sans 3",sans-serif;text-wrap:balance;margin:0}
+h1{font-size:clamp(30px,4.6vw,46px);font-weight:800;letter-spacing:-.022em;line-height:1.05}
+h2{font-size:clamp(19px,2.2vw,23px);font-weight:800;letter-spacing:-.012em}
+h3{font-size:16px;font-weight:600;letter-spacing:-.005em}
+p{margin:0}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.eyebrow{font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:600;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
+.lede{color:var(--ink-2);font-size:clamp(15.5px,1.7vw,17.5px);max-width:64ch}
+.sub{color:var(--muted);font-size:13.5px}
+section{margin-top:clamp(38px,5vw,62px)}
+.head-rule{display:flex;align-items:baseline;gap:14px;padding-bottom:12px;
+  border-bottom:2px solid var(--ink);margin-bottom:22px}
+.head-rule .n{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:600;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:4px;box-shadow:var(--shadow)}
+.grid{display:grid;gap:12px}
+.stats{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+.stat{padding:15px 16px;border-left:3px solid var(--line)}
+.stat.ok{border-left-color:var(--ok)}.stat.warn{border-left-color:var(--warn)}
+.stat.bad{border-left-color:var(--bad)}.stat.acc{border-left-color:var(--accent)}
+.stat .v{font-family:"Bricolage Grotesque",sans-serif;font-size:32px;font-weight:800;
+  line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.stat .k{font-size:12px;font-weight:600;color:var(--ink-2);margin-top:7px}
+.stat .d{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.4}
+.pill{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:600;
+  padding:3px 8px;border-radius:2px;white-space:nowrap}
+.p-ok{background:var(--ok-soft);color:var(--ok)}
+.p-warn{background:var(--warn-soft);color:var(--warn)}
+.p-bad{background:var(--bad-soft);color:var(--bad)}
+.p-acc{background:var(--accent-soft);color:var(--accent)}
+.p-mut{background:var(--surface-2);color:var(--muted);border:1px solid var(--line-2)}
+/* ── Pipeline ── */
+ol.pipe{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0}
+.stg{display:grid;grid-template-columns:52px 1fr;gap:0;position:relative}
+.stg-n{grid-column:1;padding:20px 0 0;font-size:12px;font-weight:600;color:var(--muted);
+  text-align:center;position:relative}
+/* El riel vertical es el encadenamiento: lo que baja es el artefacto, no una decoración. */
+.stg-n::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:2px;
+  transform:translateX(-50%);background:var(--line)}
+.stg:first-child .stg-n::before{top:20px}
+.stg:last-child .stg-n::before{bottom:calc(100% - 20px)}
+.stg-n span{position:relative;display:inline-block;background:var(--paper);padding:2px 0;width:100%}
+.stg-body{grid-column:2;padding:16px 0 26px 18px;border-left:1px solid transparent}
+.stg-hd{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.fn{font-size:11.5px;color:var(--accent);background:var(--accent-soft);
+  padding:2px 7px;border-radius:2px;display:inline-block;margin-top:7px}
+.fn-none{font-size:11.5px;color:var(--muted);font-style:italic;display:inline-block;margin-top:7px}
+dl.io{margin:12px 0 0;display:flex;flex-direction:column;gap:7px}
+dl.io > div{display:grid;grid-template-columns:58px 1fr;gap:12px;align-items:baseline}
+dl.io dt{font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:600;
+  letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+dl.io dd{margin:0;font-size:13.5px;color:var(--ink-2);max-width:62ch}
+dl.io dd code{font-size:12px;color:var(--ink);background:var(--surface-2);
+  padding:1px 5px;border-radius:2px}
+.meta{margin-top:12px;display:flex;flex-wrap:wrap;gap:6px 18px;font-size:11.5px;color:var(--muted)}
+.meta b{font-family:"IBM Plex Mono",monospace;font-size:9.5px;font-weight:600;
+  letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-right:5px}
+.meta .ev{color:var(--ink-2)}
+.s-gate .stg-body{background:var(--accent-soft);border-radius:4px;padding-left:16px;
+  border-left:2px solid var(--accent)}
+.s-never .stg-n::after,.s-idle .stg-n::after{content:"";position:absolute;left:50%;top:20px;bottom:0;
+  width:2px;transform:translateX(-50%);
+  background:repeating-linear-gradient(var(--paper) 0 4px,var(--line) 4px 8px)}
+/* ── Auxiliares ── */
+.aux{padding:16px 18px;border-top:1px solid var(--line-2)}
+.aux:first-child{border-top:0}
+.aux p{font-size:13.5px;color:var(--ink-2);margin-top:9px;max-width:66ch}
+.note{padding:16px 18px;font-size:13.5px;color:var(--ink-2);max-width:70ch}
+.note + .note{border-top:1px solid var(--line-2)}
+.note strong{color:var(--ink)}
+.note code{font-family:"IBM Plex Mono",monospace;font-size:12px;background:var(--surface-2);
+  padding:1px 5px;border-radius:2px}
+footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);
+  font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px 18px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media (max-width:640px){
+  .stg{grid-template-columns:36px 1fr}
+  .stg-body{padding-left:12px}
+  dl.io > div{grid-template-columns:1fr;gap:2px}
+}
+</style>
+<div class="wrap">
+<header>
+  <p class="eyebrow">Arquitectura · SYSDE ERP</p>
+  <h1>Cómo la IA acompaña<br>a los contratos</h1>
+  <p class="lede" style="margin-top:16px">
+    Seis etapas que van del PDF firmado a los términos aplicados en el sistema, y una compuerta humana en el
+    medio que la IA no puede saltar. Cada etapa dice qué recibe, qué deja escrito y si alguna vez corrió.
+  </p>
+</header>
+
+<section>
+  <div class="grid stats">
+    <div class="card stat acc"><div class="v">6</div><div class="k">funciones sobre contratos</div>
+      <div class="d">de 35 en el proyecto</div></div>
+    <div class="card stat ok"><div class="v">123</div><div class="k">fragmentos indexados</div>
+      <div class="d">3 documentos · 41 cada uno</div></div>
+    <div class="card stat ok"><div class="v">6</div><div class="k">extracciones ejecutadas</div>
+      <div class="d">última el 9 de julio de 2026</div></div>
+    <div class="card stat bad"><div class="v">0</div><div class="k">llegaron al sistema</div>
+      <div class="d">ningún contrato pasó la compuerta</div></div>
+  </div>
+</section>
+
+<section>
+  <div class="head-rule"><span class="n">01</span><h2>El encadenamiento</h2></div>
+  <p class="sub" style="margin-bottom:22px;max-width:70ch">
+    El riel vertical es lo que baja de una etapa a la siguiente. Donde se vuelve punteado, la cadena
+    todavía no se recorrió con datos reales.
+  </p>
+  <ol class="pipe">
+    <li class="stg s-ok">
+      <div class="stg-n mono"><span>01</span></div>
+      <div class="stg-body">
+        <div class="stg-hd">
+          <h3>Ingesta e indexado</h3>
+          <span class="pill p-ok">en uso</span>
+        </div>
+        <code class="mono fn">ingest-contract-doc</code>
+        <dl class="io">
+          <div><dt>Entra</dt><dd>PDF del contrato firmado. El texto lo extrae el navegador con pdfjs-dist; al servidor sólo viaja texto.</dd></div>
+          <div><dt>Hace</dt><dd>Fragmenta con solapamiento y genera un embedding por fragmento.</dd></div>
+          <div><dt>Deja</dt><dd><code class="mono">contract_document_chunks</code></dd></div>
+        </dl>
+        <div class="meta">
+          <span><b>modelo</b> gemini-embedding-001 · 1536 dims</span>
+          <span><b>permiso</b> admin · pm</span>
+          <span class="ev"><b>hoy</b> 3 documentos · 123 fragmentos · 41 por documento</span>
+        </div>
+      </div>
+    </li>
+    <li class="stg s-ok">
+      <div class="stg-n mono"><span>02</span></div>
+      <div class="stg-body">
+        <div class="stg-hd">
+          <h3>Recuperación por similitud</h3>
+          <span class="pill p-ok">en uso</span>
+        </div>
+        <code class="mono fn">match_contract_chunks</code>
+        <dl class="io">
+          <div><dt>Entra</dt><dd>Una pregunta sobre el contrato, convertida a embedding.</dd></div>
+          <div><dt>Hace</dt><dd>Devuelve los fragmentos más cercanos por distancia coseno. Es lo que hace que las etapas siguientes citen el documento en vez de suponer.</dd></div>
+          <div><dt>Deja</dt><dd><code class="mono">fragmentos + su evidencia</code></dd></div>
+        </dl>
+        <div class="meta">
+          <span><b>modelo</b> pgvector · coseno</span>
+          <span><b>permiso</b> interno</span>
+          <span class="ev"><b>hoy</b> función SQL viva, con parámetros</span>
+        </div>
+      </div>
+    </li>
+    <li class="stg s-ok">
+      <div class="stg-n mono"><span>03</span></div>
+      <div class="stg-body">
+        <div class="stg-hd">
+          <h3>Extracción estructurada</h3>
+          <span class="pill p-ok">en uso</span>
+        </div>
+        <code class="mono fn">extract-contract-terms</code>
+        <dl class="io">
+          <div><dt>Entra</dt><dd>Los fragmentos recuperados para cada aspecto: SLAs, bolsas de horas, hitos de facturación, disparadores de alerta.</dd></div>
+          <div><dt>Hace</dt><dd>Lee la evidencia y arma una propuesta estructurada. No escribe sobre el contrato: deja un artefacto para revisar.</dd></div>
+          <div><dt>Deja</dt><dd><code class="mono">pm_ai_analysis + contract_milestones como &#x27;propuesto&#x27;</code></dd></div>
+        </dl>
+        <div class="meta">
+          <span><b>modelo</b> claude-haiku-4-5</span>
+          <span><b>permiso</b> admin · pm</span>
+          <span class="ev"><b>hoy</b> 6 extracciones registradas · última el 9 jul 2026</span>
+        </div>
+      </div>
+    </li>
+    <li class="stg s-gate">
+      <div class="stg-n mono"><span>04</span></div>
+      <div class="stg-body">
+        <div class="stg-hd">
+          <h3>Revisión humana</h3>
+          <span class="pill p-acc">compuerta</span>
+        </div>
+        <span class="fn-none">sin función · lo hace una persona</span>
+        <dl class="io">
+          <div><dt>Entra</dt><dd>La propuesta de la etapa 03.</dd></div>
+          <div><dt>Hace</dt><dd>Una persona compara lo extraído contra el documento y decide qué se promueve. Es el único punto donde la IA deja de decidir.</dd></div>
+          <div><dt>Deja</dt><dd><code class="mono">aprobación</code></dd></div>
+        </dl>
+        <div class="meta">
+          <span><b>modelo</b> —</span>
+          <span><b>permiso</b> persona</span>
+          <span class="ev"><b>hoy</b> sin esta aprobación nada llega a las tablas del sistema</span>
+        </div>
+      </div>
+    </li>
+    <li class="stg s-idle">
+      <div class="stg-n mono"><span>05</span></div>
+      <div class="stg-body">
+        <div class="stg-hd">
+          <h3>Aplicación al sistema</h3>
+          <span class="pill p-warn">sin uso</span>
+        </div>
+        <code class="mono fn">apply-contract-terms</code>
+        <dl class="io">
+          <div><dt>Entra</dt><dd>Los términos aprobados.</dd></div>
+          <div><dt>Hace</dt><dd>Escribe el contrato, sus SLAs y la suscripción de facturación con service_role, validando el permiso del lado del servidor.</dd></div>
+          <div><dt>Deja</dt><dd><code class="mono">client_contracts · client_slas · billed_packages</code></dd></div>
+        </dl>
+        <div class="meta">
+          <span><b>modelo</b> —</span>
+          <span><b>permiso</b> admin · pm · cliente.gestionar_datos</span>
+          <span class="ev"><b>hoy</b> 0 de 30 contratos muestran haber pasado por acá</span>
+        </div>
+      </div>
+    </li>
+    <li class="stg s-never">
+      <div class="stg-n mono"><span>06</span></div>
+      <div class="stg-body">
+        <div class="stg-hd">
+          <h3>Auditoría de alcance</h3>
+          <span class="pill p-bad">nunca corrió</span>
+        </div>
+        <code class="mono fn">audit-contract-scope</code>
+        <dl class="io">
+          <div><dt>Entra</dt><dd>El alcance del contrato recuperado de la KB + los casos recientes del cliente.</dd></div>
+          <div><dt>Hace</dt><dd>Clasifica cada gestión como dentro, fuera o dudosa respecto del contrato, citando la evidencia. Responde a «no realizar gestiones fuera del contrato».</dd></div>
+          <div><dt>Deja</dt><dd><code class="mono">pm_ai_analysis (consultivo)</code></dd></div>
+        </dl>
+        <div class="meta">
+          <span><b>modelo</b> claude-haiku-4-5 + embeddings</span>
+          <span><b>permiso</b> admin · pm</span>
+          <span class="ev"><b>hoy</b> ninguna auditoría registrada</span>
+        </div>
+      </div>
+    </li></ol>
+</section>
+
+<section>
+  <div class="head-rule"><span class="n">02</span><h2>Lo que corre al costado</h2></div>
+  <p class="sub" style="margin-bottom:16px;max-width:70ch">
+    No forman cadena: se disparan solos, cada uno desde su pantalla.
+  </p>
+  <div class="card">
+    <div class="aux">
+      <div class="stg-hd"><h3>Análisis de riesgos y obligaciones</h3><span class="pill p-bad">nunca corrió</span></div>
+      <code class="mono fn">analyze-contract-ai</code>
+      <p>Lee el contrato ya cargado en el sistema —cláusulas, valores, SLAs, hitos— y devuelve riesgos, obligaciones y recomendaciones. No usa la KB: trabaja sobre los campos, no sobre el PDF.</p>
+      <div class="meta">
+        <span><b>deja</b> <code class="mono">client_contracts.ai_analysis + pm_ai_analysis</code></span>
+        <span><b>permiso</b> admin · pm · gerente · colaborador</span>
+        <span class="ev"><b>hoy</b> 0 de 30 contratos tienen ai_analysis guardado</span>
+      </div>
+    </div>
+    <div class="aux">
+      <div class="stg-hd"><h3>Cumplimiento del caso contra la regla</h3><span class="pill p-bad">nunca corrió</span></div>
+      <code class="mono fn">evaluate-case-compliance</code>
+      <p>Evalúa un caso contra business_rules y los overrides del cliente. Es el puente entre la política y el caso concreto.</p>
+      <div class="meta">
+        <span><b>deja</b> <code class="mono">case_compliance</code></span>
+        <span><b>permiso</b> interno</span>
+        <span class="ev"><b>hoy</b> tabla vacía · 5 reglas cargadas · 0 overrides</span>
+      </div>
+    </div>
+    <div class="aux">
+      <div class="stg-hd"><h3>Asistente de políticas</h3><span class="pill p-mut">auxiliar</span></div>
+      <code class="mono fn">policy-ai-assistant</code>
+      <p>Consulta en lenguaje natural sobre la política vigente, para no tener que leer el JSON de business_rules.</p>
+      <div class="meta">
+        <span><b>deja</b> <code class="mono">respuesta en pantalla</code></span>
+        <span><b>permiso</b> staff</span>
+        <span class="ev"><b>hoy</b> auxiliar, fuera del flujo del contrato</span>
+      </div>
+    </div></div>
+</section>
+
+<section>
+  <div class="head-rule"><span class="n">03</span><h2>Las decisiones de diseño que sostienen esto</h2></div>
+  <div class="card">
+    <div class="note"><strong>El PDF nunca viaja entero al modelo.</strong>
+      El navegador extrae el texto con <code>pdfjs-dist</code> y al servidor sólo va texto. Después se fragmenta
+      y se recupera por similitud, así que un contrato de 60 páginas no compite contra el límite de contexto:
+      cada pregunta trae sólo los fragmentos que la responden, con su evidencia.</div>
+    <div class="note"><strong>Dos proveedores, un motivo concreto.</strong>
+      El juicio corre en Claude; los embeddings en Gemini, porque el stack de chat no expone API de embeddings.
+      Las funciones piden <code>gemini-2.5-flash-lite</code> por herencia de una configuración vieja y la pasarela
+      lo normaliza a <code>claude-haiku-4-5</code>. Está documentado en el código, pero el nombre en la constante
+      dice una cosa y el modelo que responde es otro — vale renombrarlo antes de que alguien lo lea al revés.</div>
+    <div class="note"><strong>La IA propone; nadie promueve por ella.</strong>
+      La extracción escribe en <code>pm_ai_analysis</code> y los hitos quedan como <code>propuesto</code> con
+      <code>source='rag'</code>. Nada toca <code>client_contracts</code> ni <code>client_slas</code> hasta que
+      una persona lo aprueba y corre la etapa 05. La auditoría de alcance es explícitamente consultiva.</div>
+    <div class="note"><strong>El permiso se valida en el servidor, no en el botón.</strong>
+      Cada función pide su rol con <code>requireRole</code>, y la que escribe usa <code>service_role</code>
+      después de comprobar el permiso — porque antes esa escritura se hacía desde el navegador y la RLS de
+      <code>client_contracts</code> la rechazaba para cualquiera que no fuera admin o PM.</div>
+  </div>
+</section>
+
+<section>
+  <div class="head-rule"><span class="n">04</span><h2>Qué falta para que esto opere</h2></div>
+  <div class="card">
+    <div class="note"><strong>Un corpus real.</strong>
+      Los 3 documentos indexados son <em>el mismo PDF</em> —<code>Contrato_SYSDE_SAF_BanSuma…</code>— subido dos
+      veces a Aurum y una a ION. Y los tres tienen <code>contract_id</code> en nulo, así que el documento no está
+      atado al contrato que describe. Con 30 contratos en cartera, la KB cubre uno, mal enlazado.</div>
+    <div class="note"><strong>Cerrar la cadena una vez, de punta a punta.</strong>
+      Las etapas 01 a 03 funcionan y dejaron rastro. La 05 nunca escribió: 0 de 30 contratos muestran haber
+      pasado por ahí. Hasta que un contrato recorra el camino completo, no sabemos si la compuerta humana es
+      practicable o si el paso de aprobar es demasiado incómodo para usarse.</div>
+    <div class="note"><strong>La auditoría de alcance es la pieza con más valor sin estrenar.</strong>
+      Responde a «no realizar gestiones fuera del contrato» clasificando cada caso como dentro, fuera o dudoso,
+      con la cláusula que lo respalda. Nunca corrió. Ahora que la cobertura por fechas quedó en cero, esta es la
+      capa que falta: no si el caso cae dentro de la <em>vigencia</em>, sino si cae dentro del <em>alcance</em>.</div>
+  </div>
+</section>
+
+<footer>
+  <span>Estado leído de Supabase el 26 de agosto de 2026</span><span>·</span>
+  <span>6 funciones · 3 documentos · 123 fragmentos · 27 análisis</span><span>·</span>
+  <span>Juicio en <code class="mono">claude-haiku-4-5</code> · embeddings en <code class="mono">gemini-embedding-001</code></span>
+</footer>
+</div>
