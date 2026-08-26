@@ -104,22 +104,49 @@ export function useSupportClients() {
   });
 }
 
+/**
+ * PostgREST corta la respuesta en su `max-rows` (1000 por defecto en Supabase)
+ * y NO avisa: devuelve 200 con menos filas. Sin paginar, esta consulta —
+ * ordenada por antigüedad descendente— dejaría afuera primero los casos MÁS
+ * NUEVOS, que son justo los que entran a la medición del SLA. El cumplimiento
+ * se calcularía sobre una muestra recortada sin que nada se vea roto.
+ *
+ * Al escribir esto la tabla tiene 840 filas, o sea el 84% del techo, y el
+ * equipo recién empieza a cargar casos.
+ */
+const PAGE_SIZE = 1000;
+
 export function useSupportTickets(clientId?: string) {
   const { role } = useAuth();
   const isCliente = role === "cliente";
   return useQuery({
     queryKey: ["support-tickets", clientId, isCliente ? "safe" : "full"],
     queryFn: async () => {
-      let query = supabase
-        .from("support_tickets")
-        .select(isCliente ? CLIENT_SAFE_COLUMNS : "*")
-        .order("dias_antiguedad", { ascending: false });
-      if (clientId) {
-        query = query.eq("client_id", clientId);
+      const all: Parameters<typeof normTicket>[0][] = [];
+      for (let from = 0; ; from += PAGE_SIZE) {
+        // El builder no se puede reusar después de ejecutarlo: se arma de nuevo
+        // en cada vuelta.
+        let query = supabase
+          .from("support_tickets")
+          .select(isCliente ? CLIENT_SAFE_COLUMNS : "*")
+          .order("dias_antiguedad", { ascending: false })
+          // Sin un segundo criterio el orden entre filas con la misma
+          // antigüedad no está definido, y una fila podría aparecer en dos
+          // páginas o en ninguna. `id` es único, así que fija el orden.
+          .order("id", { ascending: true })
+          .range(from, from + PAGE_SIZE - 1);
+        if (clientId) {
+          query = query.eq("client_id", clientId);
+        }
+        const { data, error } = await query;
+        if (error) throw error;
+        const page = (data || []) as typeof all;
+        all.push(...page);
+        // Página incompleta = última página. Si viene llena hay que pedir otra
+        // aunque resulte vacía: no hay forma de saberlo sin preguntar.
+        if (page.length < PAGE_SIZE) break;
       }
-      const { data, error } = await query;
-      if (error) throw error;
-      return ((data || []) as any[]).map(normTicket);
+      return all.map(normTicket);
     },
   });
 }

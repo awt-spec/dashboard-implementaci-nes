@@ -149,7 +149,11 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
             const avgRate = main && main.n ? Math.round(main.rateSum / main.n) : 0;
             const cur = mainCur;
             const dleft = daysUntil(activeContract?.end_date);
-            const vencTone = activeContract?.auto_renewal ? "success" : dleft == null ? "muted" : dleft < 0 ? "destructive" : dleft < 30 ? "destructive" : dleft < 90 ? "warning" : "success";
+            // Mismo orden que la tarjeta: primero vencido, después renovación.
+            const vencTone = activeContract?.status === "vencido" || (dleft != null && dleft < 0) ? "destructive"
+              : activeContract?.auto_renewal ? "success"
+              : dleft == null ? "muted"
+              : dleft < 30 ? "destructive" : dleft < 90 ? "warning" : "success";
             const barTone: Record<string, string> = { success: "bg-success", warning: "bg-warning", destructive: "bg-destructive", muted: "bg-muted-foreground/30", primary: "bg-primary" };
             const textTone: Record<string, string> = { success: "text-success", warning: "text-warning", destructive: "text-destructive", muted: "text-muted-foreground" };
             return (
@@ -187,12 +191,14 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
                   <div className={`h-1 w-full ${barTone[vencTone]}`} />
                   <CardContent className="p-4">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1"><CalendarClock className="h-3 w-3" /> Vencimiento</p>
-                    {activeContract?.auto_renewal ? (
+                    {/* Vencido primero, igual que el color de arriba: si no,
+                        la barra dice rojo y el texto dice "Renovación auto". */}
+                    {activeContract?.status === "vencido" || (dleft != null && dleft < 0) ? (
+                      <p className="text-lg font-black mt-1 text-destructive flex items-center gap-1.5"><TriangleAlert className="h-4 w-4" /> Vencido</p>
+                    ) : activeContract?.auto_renewal ? (
                       <p className="text-lg font-black mt-1 flex items-center gap-1.5 text-success"><RefreshCw className="h-4 w-4" /> Renovación auto</p>
                     ) : dleft == null ? (
                       <p className="text-lg font-black mt-1 text-muted-foreground">Indefinido</p>
-                    ) : dleft < 0 ? (
-                      <p className="text-lg font-black mt-1 text-destructive flex items-center gap-1.5"><TriangleAlert className="h-4 w-4" /> Vencido</p>
                     ) : (
                       <p className={`text-2xl font-black tabular-nums mt-1 ${textTone[vencTone]}`}>{dleft}<span className="text-xs font-normal text-muted-foreground"> días</span></p>
                     )}
@@ -278,7 +284,17 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
                 const typeLabel = CONTRACT_TYPES.find(t => t.value === c.contract_type)?.label || c.contract_type;
                 const pct = vigenciaPct(c.start_date, c.end_date);
                 const dleft = daysUntil(c.end_date);
-                const dtone = c.auto_renewal ? "text-success" : dleft == null ? "text-muted-foreground" : dleft < 0 ? "text-destructive" : dleft < 30 ? "text-destructive" : dleft < 90 ? "text-warning" : "text-muted-foreground";
+                // El vencimiento manda sobre la renovación automática. Antes
+                // este ternario preguntaba por auto_renewal PRIMERO, así que un
+                // contrato vencido con renovación automática se pintaba verde y
+                // decía "renueva solo" — y como el job de avisos también lo
+                // excluía, no había forma de enterarse. Ahora el ciclo de vida
+                // rueda la fecha o lo vence; si algo quedó vencido es porque no
+                // se pudo rodar, y eso hay que verlo en rojo.
+                const dtone = c.status === "vencido" || (dleft != null && dleft < 0) ? "text-destructive"
+                  : c.auto_renewal ? "text-success"
+                  : dleft == null ? "text-muted-foreground"
+                  : dleft < 30 ? "text-destructive" : dleft < 90 ? "text-warning" : "text-muted-foreground";
                 const ptone = pct == null ? "bg-primary" : pct >= 90 ? "bg-destructive" : pct >= 75 ? "bg-warning" : "bg-primary";
                 return (
                   <Card key={c.id} className={`overflow-hidden ${c.is_active ? "" : "opacity-70"}`}>
@@ -334,7 +350,11 @@ export function ContractsSLATab({ clientId }: { clientId: string }) {
                           <div className="flex items-center justify-between text-[11px] mb-1">
                             <span className="flex items-center gap-1 text-muted-foreground"><CalendarClock className="h-3 w-3" /> {c.start_date || "—"} → {c.end_date || "indefinido"}</span>
                             <span className={`font-semibold ${dtone}`}>
-                              {c.auto_renewal ? "renueva solo" : dleft == null ? "sin vencimiento" : dleft < 0 ? `vencido hace ${Math.abs(dleft)}d` : `faltan ${dleft} días`}
+                              {c.status === "vencido" || (dleft != null && dleft < 0)
+                                ? `vencido hace ${dleft == null ? "—" : Math.abs(dleft)}d`
+                                : c.auto_renewal ? "renueva solo"
+                                : dleft == null ? "sin vencimiento"
+                                : `faltan ${dleft} días`}
                             </span>
                           </div>
                           {pct != null && (

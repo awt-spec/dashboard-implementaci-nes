@@ -37,6 +37,11 @@ export interface SlaStatusRow {
   sla_status: "ok" | "warning" | "overdue" | "no_sla";
   /** Registrado desde la fecha de corte: cuenta para el cumplimiento. */
   in_scope: boolean;
+  /** Cargado después del corte pero fechado antes: sale de la medición. */
+  registered_late: boolean;
+  /** Si la fecha del caso cae dentro de la vigencia de un contrato. */
+  coverage: "cubierto" | "fuera_de_vigencia" | "sin_contrato" | null;
+  contract_id: string | null;
 }
 
 export interface SlaCaseRow {
@@ -51,6 +56,10 @@ export interface SlaCaseRow {
   level: SlaLevel;
   /** Si entra al cociente de cumplimiento. */
   inScope: boolean;
+  /** Cargado tras el corte con fecha anterior. */
+  registeredLate: boolean;
+  /** Cobertura contractual de la fecha del caso. null si la base no la trajo. */
+  coverage: "cubierto" | "fuera_de_vigencia" | "sin_contrato" | null;
 }
 
 export interface SlaSummary {
@@ -65,6 +74,18 @@ export interface SlaSummary {
   measuredBreached: number;
   /** Sobre `measured`, no sobre `withSla`. null = todavía no hay qué medir. */
   compliancePct: number | null;
+  /**
+   * Cargados tras el corte con fecha anterior — quedaron fuera de la medición.
+   * A veces es legítimo (el caso llegó antes y se registró tarde), así que no
+   * se bloquea. Se cuenta para que la salida sea visible: si no, un caso deja
+   * de medirse y nadie se entera.
+   */
+  registeredLate: number;
+  /**
+   * Casos abiertos que se están trabajando sin respaldo contractual: la fecha
+   * cae fuera de toda vigencia, o el cliente no tiene contrato.
+   */
+  uncovered: number;
 }
 
 export interface SlaComplianceResult {
@@ -76,7 +97,7 @@ export interface SlaComplianceResult {
 
 const EMPTY_SUMMARY: SlaSummary = {
   withSla: 0, breached: 0, atRisk: 0, onTrack: 0, sinSla: 0,
-  measured: 0, measuredBreached: 0, compliancePct: null,
+  measured: 0, measuredBreached: 0, compliancePct: null, registeredLate: 0, uncovered: 0,
 };
 
 /** Una sola llamada para toda la app; se filtra por cliente en memoria. */
@@ -155,6 +176,8 @@ export function useSlaCompliance(clientId?: string): SlaComplianceResult {
         // base sin migrar da 0 medidos y "—", que es lo mismo que dirá el día
         // uno del corte. Nunca un porcentaje inventado.
         inScope: s.in_scope === true,
+        registeredLate: s.registered_late === true,
+        coverage: s.coverage ?? null,
       });
     }
 
@@ -183,13 +206,35 @@ export function summarizeSla(rows: SlaCaseRow[], sinSla: number): SlaSummary {
     ? Math.round(((measured - measuredBreached) / measured) * 100)
     : null;
 
-  return { withSla: rows.length, breached, atRisk, onTrack, sinSla, measured, measuredBreached, compliancePct };
+  return {
+    withSla: rows.length, breached, atRisk, onTrack, sinSla,
+    measured, measuredBreached, compliancePct,
+    registeredLate: rows.filter(r => r.registeredLate).length,
+    // Sólo lo que la base afirmó que NO está cubierto. Un null —migración sin
+    // aplicar— no cuenta como descubierto: sería inventar una alarma.
+    uncovered: rows.filter(r => r.coverage === "fuera_de_vigencia" || r.coverage === "sin_contrato").length,
+  };
 }
 
-/** "1 de septiembre de 2026", para explicar en pantalla de dónde sale el corte. */
+/**
+ * "1 de septiembre de 2026", para explicar en pantalla de dónde sale el corte.
+ *
+ * Se rinde en hora de Costa Rica, no en la del navegador. El corte está
+ * DEFINIDO en hora CR (sla_measurement_start() usa el offset -06), así que la
+ * medianoche del 1 de septiembre viaja como 06:00Z. Sin fijar la zona, un
+ * navegador al oeste de UTC-6 restaba horas y mostraba el día anterior:
+ *
+ *   America/Costa_Rica -> 1 de septiembre de 2026
+ *   UTC                -> 1 de septiembre de 2026
+ *   America/Tijuana    -> 31 de agosto de 2026     <- la fecha equivocada
+ *
+ * La frontera es la misma para todos; la etiqueta también tiene que serlo.
+ */
 export function formatCutoff(iso: string | null): string | null {
   if (!iso) return null;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleDateString("es-CR", { day: "numeric", month: "long", year: "numeric" });
+  return d.toLocaleDateString("es-CR", {
+    day: "numeric", month: "long", year: "numeric", timeZone: "America/Costa_Rica",
+  });
 }

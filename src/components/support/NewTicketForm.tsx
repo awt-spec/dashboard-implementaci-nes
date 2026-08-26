@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useContractCoverage, coverageLabel } from "@/hooks/useContractCoverage";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Loader2, Ticket, ChevronDown, ChevronRight, Building2, FileText,
   Settings, Eye, CheckCircle2, AlertTriangle, Lock, Copy, Flame, Circle,
+  ShieldCheck, ShieldAlert,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSupportClients, useCreateSupportTicket, type SupportTicket } from "@/hooks/useSupportTickets";
@@ -136,6 +138,12 @@ export function NewTicketForm({
   });
 
   const { register, handleSubmit, formState: { errors }, watch, setValue, reset } = form;
+  // Cobertura contractual de la fecha de alta. No bloquea: avisa. Puede haber
+  // razones legítimas para atender fuera de contrato —una prórroga verbal, un
+  // contrato que todavía no se cargó— y frenar el alta empujaría al equipo a
+  // registrar el caso con otro cliente o a no registrarlo.
+  const { data: coverage } = useContractCoverage(watch("client_id") || undefined);
+  const cov = coverageLabel(coverage);
   const selectedClient = clients.find(c => c.id === watch("client_id"));
 
   const resetAndClose = () => {
@@ -420,6 +428,34 @@ export function NewTicketForm({
               </div>
               <p className="text-xs text-muted-foreground pl-5">
                 El ID del caso y el consecutivo se asignan automáticamente al guardar.
+              </p>
+            </div>
+          )}
+
+          {/* ── Cobertura contractual ── */}
+          {/* Va pegado al preview y no arriba del todo: es lo último que se
+              mira antes de apretar "Crear caso", que es cuando la advertencia
+              todavía puede cambiar la decisión. */}
+          {cov && watch("client_id") && (
+            <div
+              className={`p-3 rounded-lg border space-y-1 ${
+                cov.tone === "success" ? "border-success/30 bg-success/5"
+                : cov.tone === "destructive" ? "border-destructive/40 bg-destructive/5"
+                : "border-warning/40 bg-warning/5"
+              }`}
+            >
+              <p className={`text-[11px] font-bold flex items-center gap-1.5 ${
+                cov.tone === "success" ? "text-success"
+                : cov.tone === "destructive" ? "text-destructive" : "text-warning"
+              }`}>
+                {cov.tone === "success"
+                  ? <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+                  : <ShieldAlert className="h-3.5 w-3.5 shrink-0" />}
+                {cov.title}
+              </p>
+              <p className="text-[11px] leading-snug text-muted-foreground">
+                {cov.detail}
+                {cov.tone !== "success" && " El caso se puede crear igual; quedará marcado como sin respaldo contractual."}
               </p>
             </div>
           )}

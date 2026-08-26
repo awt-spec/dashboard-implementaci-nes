@@ -6,6 +6,7 @@ import { useReopenRate90d } from "@/hooks/useTicketReopens";
 import { useClientContracts } from "@/hooks/useClientContracts";
 import { isTicketClosed } from "@/lib/ticketStatus";
 import { meterTone } from "@/lib/meterTone";
+import { ShieldAlert, ShieldCheck } from "lucide-react";
 
 
 function Meter({
@@ -67,6 +68,9 @@ export function CaseClientCard({ clientId, currentTicketId, onOpenTicket }: Prop
   // Otros casos abiertos del mismo cliente, los vencidos primero: si hay uno
   // roto, es lo que hay que ver antes de seguir con éste.
   const levelByTicket = new Map(rows.map(r => [r.ticket.id, r]));
+  // La cobertura sale de la misma fila que el SLA: una sola consulta, y la
+  // regla la resolvió la base contra la fecha del caso.
+  const currentCoverage = currentTicketId ? levelByTicket.get(currentTicketId)?.coverage ?? null : null;
   const currentIsOpen = tickets.some(t => t.id === currentTicketId && !isTicketClosed(t.estado));
   const others = tickets
     .filter(t => !isTicketClosed(t.estado) && t.id !== currentTicketId)
@@ -140,6 +144,30 @@ export function CaseClientCard({ clientId, currentTicketId, onOpenTicket }: Prop
           }
         />
       </div>
+
+      {/* 2b · Cobertura contractual del caso abierto */}
+      {/* Va arriba de los pares y no entre ellos: si el caso no tiene respaldo,
+          eso pesa más que el tipo de contrato o el conteo de abiertos. */}
+      {currentCoverage && currentCoverage !== "cubierto" && (
+        <div className="rounded-[10px] border border-destructive/35 bg-destructive/[0.06] p-2.5">
+          <div className="flex items-center gap-1.5">
+            <ShieldAlert className="h-3.5 w-3.5 text-destructive shrink-0" />
+            <p className="text-[11px] font-bold text-destructive">
+              {currentCoverage === "sin_contrato" ? "Cliente sin contrato" : "Caso fuera de vigencia"}
+            </p>
+          </div>
+          <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
+            {currentCoverage === "sin_contrato"
+              ? "No hay contrato registrado que respalde este caso."
+              : "La fecha de registro no cae dentro de ningún contrato del cliente."}
+          </p>
+        </div>
+      )}
+      {currentCoverage === "cubierto" && (
+        <p className="flex items-center gap-1 text-[10px] text-success">
+          <ShieldCheck className="h-3 w-3 shrink-0" /> Caso dentro de contrato
+        </p>
+      )}
 
       {/* 3 · Tres pares */}
       <div className="border-t border-border pt-1.5">

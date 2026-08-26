@@ -9,7 +9,10 @@ import { summarizeSla, formatCutoff, type SlaCaseRow, type SlaLevel } from "@/ho
  * vuelven a colarse al denominador, la pantalla no se rompe — simplemente
  * muestra 0% para siempre y nadie sabe por qué.
  */
-function row(level: SlaLevel, inScope: boolean, i = 0): SlaCaseRow {
+function row(
+  level: SlaLevel, inScope: boolean, i = 0, registeredLate = false,
+  coverage: SlaCaseRow["coverage"] = "cubierto",
+): SlaCaseRow {
   return {
     ticket: { id: `t${i}` } as SlaCaseRow["ticket"],
     priorityLevel: "Alta",
@@ -19,6 +22,8 @@ function row(level: SlaLevel, inScope: boolean, i = 0): SlaCaseRow {
     pct: 42,
     level,
     inScope,
+    registeredLate,
+    coverage,
   };
 }
 
@@ -79,19 +84,114 @@ describe("resumen de SLA con fecha de corte", () => {
     const s = summarizeSla([], 0);
     expect(s).toEqual({
       withSla: 0, breached: 0, atRisk: 0, onTrack: 0, sinSla: 0,
-      measured: 0, measuredBreached: 0, compliancePct: null,
+      measured: 0, measuredBreached: 0, compliancePct: null, registeredLate: 0, uncovered: 0,
     });
+  });
+
+  it("cuenta los casos sin respaldo contractual, y un null no cuenta", () => {
+    const s = summarizeSla([
+      row("on_track", true, 1, false, "cubierto"),
+      row("breached", false, 2, false, "fuera_de_vigencia"),
+      row("breached", false, 3, false, "sin_contrato"),
+      // Migración sin aplicar: la base no trajo la columna. No se inventa
+      // una alarma que no se comprobó.
+      row("on_track", true, 4, false, null),
+    ], 0);
+    expect(s.uncovered).toBe(2);
+  });
+
+  it("cuenta los cargados tarde sin meterlos en la medición", () => {
+    const rows = [
+      row("breached", false, 1, true),   // retrodatado: fuera del cociente
+      row("breached", false, 2, true),
+      row("breached", false, 3),        // viejo de verdad, cargado antes del corte
+      row("on_track", true, 4),
+    ];
+    const s = summarizeSla(rows, 0);
+    expect(s.registeredLate).toBe(2);
+    expect(s.measured).toBe(1);
+    // Los retrodatados no tocan el porcentaje: siguen contando como vencidos
+    // en el inventario, que es donde deben verse.
+    expect(s.compliancePct).toBe(100);
+    expect(s.breached).toBe(3);
   });
 });
 
 describe("formato de la fecha de corte", () => {
-  it("rinde la fecha que devuelve la base", () => {
+  it("rinde el 1 de septiembre sin importar la zona del navegador", () => {
     // 06:00Z = 00:00 en Costa Rica, que es como la define sla_measurement_start().
-    expect(formatCutoff("2026-09-01T06:00:00+00:00")).toMatch(/2026/);
+    // Antes esto dependía de la zona local: en America/Tijuana (UTC-8) daba
+    // "31 de agosto". La frontera es la misma para todos, la etiqueta también.
+    const out = formatCutoff("2026-09-01T06:00:00+00:00");
+    expect(out).toContain("septiembre");
+    expect(out).toContain("2026");
+    expect(out).not.toContain("agosto");
   });
 
   it("aguanta null y basura sin reventar la pantalla", () => {
     expect(formatCutoff(null)).toBeNull();
     expect(formatCutoff("no soy una fecha")).toBeNull();
+  });
+});
+
+/**
+ * El KPI del expediente mezclaba dos fuentes: el valor sale de la medición con
+ * corte, el delta y la tendencia salían de get_sla_history() (casos cerrados,
+ * sin corte). Con un número arriba la diferencia no se notaba; con "—" quedaba
+ * un guión coronado por "+12 pts".
+ */
+describe("KPI de cumplimiento del expediente", () => {
+  function kpi(compliancePct: number | null, serie: number[]) {
+    return {
+      value: compliancePct === null ? "—" : `${compliancePct}%`,
+      delta: compliancePct === null ? null : (serie.length < 2 ? null : "+12 pts"),
+      series: compliancePct === null ? [] : serie,
+    };
+  }
+
+  it("sin medición no muestra ni variación ni tendencia", () => {
+    const k = kpi(null, [70, 82]);
+    expect(k.value).toBe("—");
+    expect(k.delta).toBeNull();
+    expect(k.series).toEqual([]);
+  });
+
+  it("con medición sí las muestra", () => {
+    const k = kpi(94, [70, 82]);
+    expect(k.value).toBe("94%");
+    expect(k.delta).not.toBeNull();
+    expect(k.series).toHaveLength(2);
+  });
+});
+
+/**
+ * El semáforo del contrato preguntaba por auto_renewal ANTES que por el
+ * vencimiento, así que un contrato vencido con renovación automática se pintaba
+ * verde y decía "renueva solo". Como el job de avisos también lo excluía, no
+ * había forma de enterarse.
+ */
+describe("orden del semáforo de vencimiento", () => {
+  function tone(status: string, autoRenewal: boolean, dleft: number | null) {
+    return status === "vencido" || (dleft != null && dleft < 0) ? "destructive"
+      : autoRenewal ? "success"
+      : dleft == null ? "muted"
+      : dleft < 30 ? "destructive" : dleft < 90 ? "warning" : "success";
+  }
+
+  it("vencido gana sobre renovación automática", () => {
+    expect(tone("vencido", true, -10)).toBe("destructive");
+    expect(tone("vigente", true, -10)).toBe("destructive");
+  });
+
+  it("renovación automática sigue en verde mientras el contrato viva", () => {
+    expect(tone("vigente", true, 200)).toBe("success");
+    expect(tone("vigente", true, 5)).toBe("success");
+  });
+
+  it("sin renovación, la cercanía manda", () => {
+    expect(tone("vigente", false, 200)).toBe("success");
+    expect(tone("vigente", false, 60)).toBe("warning");
+    expect(tone("vigente", false, 10)).toBe("destructive");
+    expect(tone("vigente", false, null)).toBe("muted");
   });
 });
