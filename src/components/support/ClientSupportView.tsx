@@ -33,6 +33,7 @@ import { ReopensInsightsPanel } from "./ReopensInsightsPanel";
 import { SlaBreachAlert } from "./SlaBreachAlert";
 import { TicketDetailSheet } from "./TicketDetailSheet";
 import { ReopenBadge } from "./ReopenBadge";
+import { ContractValidityStrip } from "@/components/clients/ContractValidityStrip";
 import { ContractsSLATab } from "@/components/clients/ContractsSLATab";
 import { AccountStatementPanel } from "@/components/clients/AccountStatementPanel";
 import { QuoteList } from "./quotes/QuoteList";
@@ -238,6 +239,11 @@ export function ClientSupportView({ clientId, clientName, onNewTicket }: Props) 
       animate={{ opacity: 1, y: 0 }}
       className="space-y-4"
     >
+      {/* ═══ Vigencia del contrato ═══ */}
+      {/* Arriba de todo, no en la pestaña de Contrato: si la cuenta está fuera
+          de vigencia, eso condiciona la lectura de todo lo que sigue. */}
+      <ContractValidityStrip clientId={clientId} />
+
       {/* ═══ KPIs del cliente ═══ */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <KpiCard
