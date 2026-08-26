@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { useSlaStatusRows } from "@/hooks/useSlaCompliance";
 import type { SupportTicket } from "@/hooks/useSupportTickets";
 import {
   useTicketSubtasks, useCreateTicketSubtask, useToggleTicketSubtask, useDeleteTicketSubtask,
@@ -67,7 +68,18 @@ export function SupportCaseDetailPanel({ ticket }: Props) {
   const createNote = useCreateTicketNote();
   const deleteNote = useDeleteTicketNote();
   const [newNote, setNewNote] = useState("");
+  // Arranca en externa mientras el caso no tenga respuesta: si alguien escribe
+  // la PRIMERA nota de un caso sin contestar, casi siempre está contestando.
+  // Dejarlo en interna por defecto hacía que el reloj de respuesta no se
+  // detuviera nunca, que es como esta función moriría en la práctica.
+  // Una vez respondido vuelve a interna, que es la nota de trabajo habitual.
   const [noteVisibility, setNoteVisibility] = useState<"interna" | "externa">("interna");
+  const { data: slaRows = [] } = useSlaStatusRows();
+  const slaRow = slaRows.find(r => r.ticket_id === t?.id);
+  const sinResponder = slaRow ? !slaRow.first_response_at && slaRow.response_status !== null : false;
+  useEffect(() => {
+    setNoteVisibility(sinResponder ? "externa" : "interna");
+  }, [sinResponder, t?.id]);
 
   // Dependencies
   const { data: dependencies = [] } = useTicketDependencies(t.id);
@@ -359,6 +371,14 @@ export function SupportCaseDetailPanel({ ticket }: Props) {
           {notes.length === 0 && <p className="text-[11px] text-muted-foreground/60 italic">Sin notas</p>}
         </div>
         <div className="space-y-2">
+          {/* Sin esto nadie sabe que el botón "Externa" es lo que detiene el
+              reloj: la etiqueta dice dónde se ve la nota, no qué provoca. */}
+          {sinResponder && (
+            <p className="mb-1.5 text-[10.5px] leading-snug text-warning">
+              Este caso todavía no tiene respuesta registrada. Una nota <strong>externa</strong> la registra
+              y detiene el reloj del SLA; una interna no, porque el cliente no la ve.
+            </p>
+          )}
           <Textarea className="text-xs min-h-[60px]" placeholder="Agregar nota..." value={newNote}
             onChange={e => setNewNote(e.target.value)} />
           <div className="flex items-center gap-2 justify-between">
@@ -369,7 +389,7 @@ export function SupportCaseDetailPanel({ ticket }: Props) {
               </Button>
               <Button variant={noteVisibility === "externa" ? "default" : "outline"} size="sm"
                 className="h-7 text-[10px] px-2 gap-1" onClick={() => setNoteVisibility("externa")}>
-                <Globe className="h-2.5 w-2.5" /> Externa
+                <Globe className="h-2.5 w-2.5" /> Externa{sinResponder ? " · responde" : ""}
               </Button>
             </div>
             <Button size="sm" className="h-7 text-xs px-3 gap-1" onClick={handleAddNote} disabled={!newNote.trim()}>

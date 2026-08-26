@@ -25,6 +25,16 @@ import { useSupportTickets, type SupportTicket } from "@/hooks/useSupportTickets
 
 export type SlaLevel = "breached" | "at_risk" | "on_track";
 
+/**
+ * Estado de la primera respuesta.
+ *   ok       ya se respondió, dentro del plazo
+ *   late     ya se respondió, fuera del plazo
+ *   pending  todavía no, y el reloj sigue corriendo
+ *   overdue  todavía no, y el plazo ya venció
+ * `pending` es el único que no es un veredicto: sale del denominador.
+ */
+export type ResponseStatus = "ok" | "late" | "pending" | "overdue";
+
 /** Fila cruda que devuelve la RPC. */
 export interface SlaStatusRow {
   ticket_id: string;
@@ -42,6 +52,10 @@ export interface SlaStatusRow {
   /** Si la fecha del caso cae dentro de la vigencia de un contrato. */
   coverage: "cubierto" | "fuera_de_vigencia" | "sin_contrato" | null;
   contract_id: string | null;
+  first_response_at: string | null;
+  response_limit_hours: number | null;
+  response_hours: number | null;
+  response_status: ResponseStatus | null;
 }
 
 export interface SlaCaseRow {
@@ -58,6 +72,12 @@ export interface SlaCaseRow {
   inScope: boolean;
   /** Cargado tras el corte con fecha anterior. */
   registeredLate: boolean;
+  /** Primera respuesta: estado, límite y horas transcurridas o consumidas. */
+  responseStatus: ResponseStatus | null;
+  responseLimitHours: number | null;
+  responseHours: number | null;
+  /** Horas que faltan para incumplir. Negativo = ya se pasó. null = sin regla. */
+  responseHoursLeft: number | null;
   /** Cobertura contractual de la fecha del caso. null si la base no la trajo. */
   coverage: "cubierto" | "fuera_de_vigencia" | "sin_contrato" | null;
 }
@@ -86,6 +106,16 @@ export interface SlaSummary {
    * cae fuera de toda vigencia, o el cliente no tiene contrato.
    */
   uncovered: number;
+  /** Primera respuesta, sobre el mismo subconjunto medido que la resolución. */
+  respOk: number;
+  respLate: number;
+  respPending: number;
+  respOverdue: number;
+  /**
+   * Sobre los que ya tienen veredicto. Los que siguen en plazo no cuentan como
+   * incumplidos ni como cumplidos: todavía no pasó nada.
+   */
+  respCompliancePct: number | null;
 }
 
 export interface SlaComplianceResult {
@@ -98,6 +128,7 @@ export interface SlaComplianceResult {
 const EMPTY_SUMMARY: SlaSummary = {
   withSla: 0, breached: 0, atRisk: 0, onTrack: 0, sinSla: 0,
   measured: 0, measuredBreached: 0, compliancePct: null, registeredLate: 0, uncovered: 0,
+  respOk: 0, respLate: 0, respPending: 0, respOverdue: 0, respCompliancePct: null,
 };
 
 /** Una sola llamada para toda la app; se filtra por cliente en memoria. */
@@ -178,6 +209,13 @@ export function useSlaCompliance(clientId?: string): SlaComplianceResult {
         inScope: s.in_scope === true,
         registeredLate: s.registered_late === true,
         coverage: s.coverage ?? null,
+        responseStatus: s.response_status ?? null,
+        responseLimitHours: s.response_limit_hours === null || s.response_limit_hours === undefined
+          ? null : Number(s.response_limit_hours),
+        responseHours: s.response_hours === null || s.response_hours === undefined
+          ? null : Number(s.response_hours),
+        responseHoursLeft: s.response_limit_hours == null || s.response_hours == null
+          ? null : Number(s.response_limit_hours) - Number(s.response_hours),
       });
     }
 
@@ -213,6 +251,27 @@ export function summarizeSla(rows: SlaCaseRow[], sinSla: number): SlaSummary {
     // Sólo lo que la base afirmó que NO está cubierto. Un null —migración sin
     // aplicar— no cuenta como descubierto: sería inventar una alarma.
     uncovered: rows.filter(r => r.coverage === "fuera_de_vigencia" || r.coverage === "sin_contrato").length,
+    ...summarizeResponse(rows.filter(r => r.inScope)),
+  };
+}
+
+/**
+ * Primera respuesta sobre el subconjunto medido. Pura, para poder probar la
+ * regla del denominador sin montar la app.
+ */
+export function summarizeResponse(inScope: SlaCaseRow[]) {
+  const con = inScope.filter(r => r.responseStatus !== null);
+  const respOk = con.filter(r => r.responseStatus === "ok").length;
+  const respLate = con.filter(r => r.responseStatus === "late").length;
+  const respPending = con.filter(r => r.responseStatus === "pending").length;
+  const respOverdue = con.filter(r => r.responseStatus === "overdue").length;
+  // Denominador: sólo lo que ya tiene veredicto. Un caso que sigue en plazo no
+  // respondió, pero tampoco incumplió — contarlo como fallo sería castigar al
+  // equipo por casos que todavía puede atender bien.
+  const juzgables = respOk + respLate + respOverdue;
+  return {
+    respOk, respLate, respPending, respOverdue,
+    respCompliancePct: juzgables > 0 ? Math.round((respOk / juzgables) * 100) : null,
   };
 }
 

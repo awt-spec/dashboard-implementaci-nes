@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useSupportClients, useSupportTickets, useUpdateSupportTicket, type SupportTicket } from "@/hooks/useSupportTickets";
 import { useSlaCompliance, type SlaCaseRow } from "@/hooks/useSlaCompliance";
+import { ResponseClock } from "@/components/support/ResponseClock";
 import { isTicketClosed, normalizePrioridad } from "@/lib/ticketStatus";
 import { TicketHistoryTimeline } from "./TicketHistoryTimeline";
 import { CaseClientCard } from "./CaseClientCard";
@@ -81,6 +82,20 @@ function QueueCard({
       <p className="mt-1 truncate text-[10.5px] text-muted-foreground">
         {clientName || "—"} · {ticket.responsable || "Sin asignar"}
       </p>
+      {/* El reloj de respuesta va en la fila, no en un panel: es el único dato
+          del caso que dice qué hacer AHORA. El SLA de resolución se mide en
+          días y puede esperar; éste se mide en horas. */}
+      {row?.responseStatus && (
+        <div className="mt-1.5">
+          <ResponseClock
+            compact
+            status={row.responseStatus}
+            hoursLeft={row.responseHoursLeft}
+            hours={row.responseHours}
+            limitHours={row.responseLimitHours}
+          />
+        </div>
+      )}
     </button>
   );
 }
@@ -116,7 +131,21 @@ export function SupportCommandCenter({ clientId, onNewTicket }: SupportCommandCe
   const queue = useMemo(() => {
     return tickets
       .filter(t => !isTicketClosed(t.estado))
-      .sort((a, b) => (rowByTicket.get(b.id)?.pct ?? -1) - (rowByTicket.get(a.id)?.pct ?? -1));
+      // Primero lo que hay que CONTESTAR, después lo que hay que resolver. Un
+      // caso sin responder de hace 3 h urge más que uno al 90% de un plazo de
+      // cinco días: el cliente está esperando en el primero.
+      .sort((a, b) => {
+        const ra = rowByTicket.get(a.id), rb = rowByTicket.get(b.id);
+        const urge = (r?: SlaCaseRow) =>
+          r?.responseStatus === "overdue" ? 2 : r?.responseStatus === "pending" ? 1 : 0;
+        const d = urge(rb) - urge(ra);
+        if (d !== 0) return d;
+        // Dentro del mismo grado, el que tiene menos margen de respuesta.
+        if (urge(ra) > 0 && ra?.responseHoursLeft != null && rb?.responseHoursLeft != null) {
+          return ra.responseHoursLeft - rb.responseHoursLeft;
+        }
+        return (rb?.pct ?? -1) - (ra?.pct ?? -1);
+      });
   }, [tickets, rowByTicket]);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);

@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { summarizeSla, formatCutoff, type SlaCaseRow, type SlaLevel } from "@/hooks/useSlaCompliance";
+import {
+  summarizeSla, summarizeResponse, formatCutoff,
+  type SlaCaseRow, type SlaLevel,
+} from "@/hooks/useSlaCompliance";
 
 /**
  * La regla del corte (migración 20260825140000): el inventario cuenta todo lo
@@ -12,6 +15,7 @@ import { summarizeSla, formatCutoff, type SlaCaseRow, type SlaLevel } from "@/ho
 function row(
   level: SlaLevel, inScope: boolean, i = 0, registeredLate = false,
   coverage: SlaCaseRow["coverage"] = "cubierto",
+  responseStatus: SlaCaseRow["responseStatus"] = null,
 ): SlaCaseRow {
   return {
     ticket: { id: `t${i}` } as SlaCaseRow["ticket"],
@@ -24,6 +28,10 @@ function row(
     inScope,
     registeredLate,
     coverage,
+    responseStatus,
+    responseLimitHours: responseStatus === null ? null : 4,
+    responseHours: responseStatus === null ? null : 2,
+    responseHoursLeft: responseStatus === null ? null : 2,
   };
 }
 
@@ -85,6 +93,7 @@ describe("resumen de SLA con fecha de corte", () => {
     expect(s).toEqual({
       withSla: 0, breached: 0, atRisk: 0, onTrack: 0, sinSla: 0,
       measured: 0, measuredBreached: 0, compliancePct: null, registeredLate: 0, uncovered: 0,
+      respOk: 0, respLate: 0, respPending: 0, respOverdue: 0, respCompliancePct: null,
     });
   });
 
@@ -193,5 +202,44 @@ describe("orden del semáforo de vencimiento", () => {
     expect(tone("vigente", false, 60)).toBe("warning");
     expect(tone("vigente", false, 10)).toBe("destructive");
     expect(tone("vigente", false, null)).toBe("muted");
+  });
+});
+
+
+/**
+ * La regla del denominador de la primera respuesta. Un caso que todavía está
+ * en plazo no respondió, pero tampoco incumplió: si contara como fallo, el
+ * porcentaje castigaría al equipo por casos que aún puede atender bien.
+ */
+describe("cumplimiento de primera respuesta", () => {
+  const r = (st: SlaCaseRow["responseStatus"], i: number) =>
+    row("on_track", true, i, false, "cubierto", st);
+
+  it("los que siguen en plazo salen del denominador", () => {
+    const s = summarizeResponse([r("ok", 1), r("late", 2), r("overdue", 3), r("pending", 4)]);
+    expect(s.respPending).toBe(1);
+    // 1 a tiempo sobre 3 juzgables, no sobre 4.
+    expect(s.respCompliancePct).toBe(33);
+  });
+
+  it("cuando el que estaba en plazo responde a tiempo, el número sube", () => {
+    const s = summarizeResponse([r("ok", 1), r("ok", 2), r("late", 3), r("overdue", 4)]);
+    expect(s.respCompliancePct).toBe(50);
+  });
+
+  it("todo en plazo todavía no es un veredicto: null, no 0", () => {
+    const s = summarizeResponse([r("pending", 1), r("pending", 2)]);
+    expect(s.respPending).toBe(2);
+    expect(s.respCompliancePct).toBeNull();
+  });
+
+  it("sin regla de respuesta no se inventa un incumplimiento", () => {
+    const s = summarizeResponse([r(null, 1), r(null, 2)]);
+    expect(s.respOk + s.respLate + s.respPending + s.respOverdue).toBe(0);
+    expect(s.respCompliancePct).toBeNull();
+  });
+
+  it("responder tarde sí es incumplir", () => {
+    expect(summarizeResponse([r("late", 1), r("late", 2)]).respCompliancePct).toBe(0);
   });
 });
