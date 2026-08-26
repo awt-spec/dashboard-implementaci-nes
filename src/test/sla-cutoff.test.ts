@@ -9,7 +9,10 @@ import { summarizeSla, formatCutoff, type SlaCaseRow, type SlaLevel } from "@/ho
  * vuelven a colarse al denominador, la pantalla no se rompe — simplemente
  * muestra 0% para siempre y nadie sabe por qué.
  */
-function row(level: SlaLevel, inScope: boolean, i = 0, registeredLate = false): SlaCaseRow {
+function row(
+  level: SlaLevel, inScope: boolean, i = 0, registeredLate = false,
+  coverage: SlaCaseRow["coverage"] = "cubierto",
+): SlaCaseRow {
   return {
     ticket: { id: `t${i}` } as SlaCaseRow["ticket"],
     priorityLevel: "Alta",
@@ -20,6 +23,7 @@ function row(level: SlaLevel, inScope: boolean, i = 0, registeredLate = false): 
     level,
     inScope,
     registeredLate,
+    coverage,
   };
 }
 
@@ -80,8 +84,20 @@ describe("resumen de SLA con fecha de corte", () => {
     const s = summarizeSla([], 0);
     expect(s).toEqual({
       withSla: 0, breached: 0, atRisk: 0, onTrack: 0, sinSla: 0,
-      measured: 0, measuredBreached: 0, compliancePct: null, registeredLate: 0,
+      measured: 0, measuredBreached: 0, compliancePct: null, registeredLate: 0, uncovered: 0,
     });
+  });
+
+  it("cuenta los casos sin respaldo contractual, y un null no cuenta", () => {
+    const s = summarizeSla([
+      row("on_track", true, 1, false, "cubierto"),
+      row("breached", false, 2, false, "fuera_de_vigencia"),
+      row("breached", false, 3, false, "sin_contrato"),
+      // Migración sin aplicar: la base no trajo la columna. No se inventa
+      // una alarma que no se comprobó.
+      row("on_track", true, 4, false, null),
+    ], 0);
+    expect(s.uncovered).toBe(2);
   });
 
   it("cuenta los cargados tarde sin meterlos en la medición", () => {
@@ -145,5 +161,37 @@ describe("KPI de cumplimiento del expediente", () => {
     expect(k.value).toBe("94%");
     expect(k.delta).not.toBeNull();
     expect(k.series).toHaveLength(2);
+  });
+});
+
+/**
+ * El semáforo del contrato preguntaba por auto_renewal ANTES que por el
+ * vencimiento, así que un contrato vencido con renovación automática se pintaba
+ * verde y decía "renueva solo". Como el job de avisos también lo excluía, no
+ * había forma de enterarse.
+ */
+describe("orden del semáforo de vencimiento", () => {
+  function tone(status: string, autoRenewal: boolean, dleft: number | null) {
+    return status === "vencido" || (dleft != null && dleft < 0) ? "destructive"
+      : autoRenewal ? "success"
+      : dleft == null ? "muted"
+      : dleft < 30 ? "destructive" : dleft < 90 ? "warning" : "success";
+  }
+
+  it("vencido gana sobre renovación automática", () => {
+    expect(tone("vencido", true, -10)).toBe("destructive");
+    expect(tone("vigente", true, -10)).toBe("destructive");
+  });
+
+  it("renovación automática sigue en verde mientras el contrato viva", () => {
+    expect(tone("vigente", true, 200)).toBe("success");
+    expect(tone("vigente", true, 5)).toBe("success");
+  });
+
+  it("sin renovación, la cercanía manda", () => {
+    expect(tone("vigente", false, 200)).toBe("success");
+    expect(tone("vigente", false, 60)).toBe("warning");
+    expect(tone("vigente", false, 10)).toBe("destructive");
+    expect(tone("vigente", false, null)).toBe("muted");
   });
 });

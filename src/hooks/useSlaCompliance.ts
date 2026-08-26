@@ -39,6 +39,9 @@ export interface SlaStatusRow {
   in_scope: boolean;
   /** Cargado después del corte pero fechado antes: sale de la medición. */
   registered_late: boolean;
+  /** Si la fecha del caso cae dentro de la vigencia de un contrato. */
+  coverage: "cubierto" | "fuera_de_vigencia" | "sin_contrato" | null;
+  contract_id: string | null;
 }
 
 export interface SlaCaseRow {
@@ -55,6 +58,8 @@ export interface SlaCaseRow {
   inScope: boolean;
   /** Cargado tras el corte con fecha anterior. */
   registeredLate: boolean;
+  /** Cobertura contractual de la fecha del caso. null si la base no la trajo. */
+  coverage: "cubierto" | "fuera_de_vigencia" | "sin_contrato" | null;
 }
 
 export interface SlaSummary {
@@ -76,6 +81,11 @@ export interface SlaSummary {
    * de medirse y nadie se entera.
    */
   registeredLate: number;
+  /**
+   * Casos abiertos que se están trabajando sin respaldo contractual: la fecha
+   * cae fuera de toda vigencia, o el cliente no tiene contrato.
+   */
+  uncovered: number;
 }
 
 export interface SlaComplianceResult {
@@ -87,7 +97,7 @@ export interface SlaComplianceResult {
 
 const EMPTY_SUMMARY: SlaSummary = {
   withSla: 0, breached: 0, atRisk: 0, onTrack: 0, sinSla: 0,
-  measured: 0, measuredBreached: 0, compliancePct: null, registeredLate: 0,
+  measured: 0, measuredBreached: 0, compliancePct: null, registeredLate: 0, uncovered: 0,
 };
 
 /** Una sola llamada para toda la app; se filtra por cliente en memoria. */
@@ -167,6 +177,7 @@ export function useSlaCompliance(clientId?: string): SlaComplianceResult {
         // uno del corte. Nunca un porcentaje inventado.
         inScope: s.in_scope === true,
         registeredLate: s.registered_late === true,
+        coverage: s.coverage ?? null,
       });
     }
 
@@ -199,6 +210,9 @@ export function summarizeSla(rows: SlaCaseRow[], sinSla: number): SlaSummary {
     withSla: rows.length, breached, atRisk, onTrack, sinSla,
     measured, measuredBreached, compliancePct,
     registeredLate: rows.filter(r => r.registeredLate).length,
+    // Sólo lo que la base afirmó que NO está cubierto. Un null —migración sin
+    // aplicar— no cuenta como descubierto: sería inventar una alarma.
+    uncovered: rows.filter(r => r.coverage === "fuera_de_vigencia" || r.coverage === "sin_contrato").length,
   };
 }
 
