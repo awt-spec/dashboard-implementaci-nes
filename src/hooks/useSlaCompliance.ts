@@ -55,7 +55,8 @@ export interface SlaStatusRow {
   first_response_at: string | null;
   response_limit_hours: number | null;
   response_hours: number | null;
-  response_status: ResponseStatus | null;
+  /** La RPC también devuelve 'no_sla'; la capa de arriba lo traduce a null. */
+  response_status: ResponseStatus | "no_sla" | null;
 }
 
 export interface SlaCaseRow {
@@ -209,7 +210,12 @@ export function useSlaCompliance(clientId?: string): SlaComplianceResult {
         inScope: s.in_scope === true,
         registeredLate: s.registered_late === true,
         coverage: s.coverage ?? null,
-        responseStatus: s.response_status ?? null,
+        // 'no_sla' NO es un estado que se muestre: es "acá no hay reloj".
+        // Sin esta traducción llegaba entero a ResponseClock, que sólo descarta
+        // null, y un caso entregado volvía a pintar "responder en X" — el mismo
+        // bug que la migración acaba de cerrar del lado de la base.
+        responseStatus: s.response_status && s.response_status !== "no_sla"
+          ? s.response_status : null,
         responseLimitHours: s.response_limit_hours === null || s.response_limit_hours === undefined
           ? null : Number(s.response_limit_hours),
         responseHours: s.response_hours === null || s.response_hours === undefined

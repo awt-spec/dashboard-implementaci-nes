@@ -243,3 +243,47 @@ describe("cumplimiento de primera respuesta", () => {
     expect(summarizeResponse([r("late", 1), r("late", 2)]).respCompliancePct).toBe(0);
   });
 });
+
+/**
+ * Reglas que salieron del QA sobre el SLA de respuesta. Se prueban acá, del
+ * lado del cliente, porque son las que la UI tiene que reflejar: si la base
+ * dice no_sla, la fila no debe pintar un reloj corriendo.
+ */
+describe("estados que NO son un reloj de respuesta", () => {
+  const r = (st: SlaCaseRow["responseStatus"], i: number) =>
+    row("on_track", true, i, false, "cubierto", st);
+
+  it("no_sla llega como null y no entra en ningún conteo", () => {
+    // La RPC devuelve 'no_sla' para entregados, horas negativas y sin regla;
+    // la capa TS lo recibe como null porque no hay nada que mostrar.
+    const s = summarizeResponse([r(null, 1), r("ok", 2)]);
+    expect(s.respOk).toBe(1);
+    expect(s.respPending + s.respOverdue + s.respLate).toBe(0);
+    expect(s.respCompliancePct).toBe(100);
+  });
+
+  it("un caso sin regla de respuesta no arrastra el porcentaje", () => {
+    // Cuatro sin regla y uno tarde: el porcentaje habla del único medible.
+    const s = summarizeResponse([r(null, 1), r(null, 2), r(null, 3), r(null, 4), r("late", 5)]);
+    expect(s.respCompliancePct).toBe(0);
+    expect(s.respLate).toBe(1);
+  });
+});
+
+/**
+ * La traducción de 'no_sla' a null. Es la costura donde el arreglo de la base
+ * se perdía: ResponseClock sólo descarta null, así que un 'no_sla' entero
+ * volvía a pintar una cuenta regresiva sobre un caso ya entregado.
+ */
+describe("traducción de no_sla", () => {
+  const map = (v: string | null) => (v && v !== "no_sla" ? v : null);
+
+  it("no_sla se apaga; los demás pasan tal cual", () => {
+    expect(map("no_sla")).toBeNull();
+    expect(map(null)).toBeNull();
+    expect(map("pending")).toBe("pending");
+    expect(map("overdue")).toBe("overdue");
+    expect(map("ok")).toBe("ok");
+    expect(map("late")).toBe("late");
+  });
+});
