@@ -89,9 +89,18 @@ create policy "cliente sin analisis de IA" on public.pm_ai_analysis
   using (not public.is_cliente_user())
   with check (not public.is_cliente_user());
 
--- ── Verificación posterior ──────────────────────────────────────────────────
---   Con sesión de colaborador, tasks debe responder rápido y acotado:
---     select count(*) from public.tasks;
---   Con sesión de cliente:
---     select count(*) from public.pm_ai_analysis;   -> 0
---   Con sesión de admin, ambas sin cambio: 2108 y 27.
+-- ── Comprobación ────────────────────────────────────────────────────────────
+-- Devuelve UNA FILA. Si al terminar ves "Success. No rows returned" en vez de
+-- una tabla con números, el archivo no corrió entero — casi siempre porque
+-- quedó texto seleccionado en el editor y Supabase ejecuta sólo la selección.
+-- Ctrl+A dentro del editor y Run de nuevo.
+select
+  (select count(*) from pg_indexes
+     where tablename = 'tasks'
+       and indexname in ('tasks_assigned_user_client_idx','tasks_assignees_gin_idx')) as indices_nuevos,
+  (select count(*) from pg_policies
+     where tablename = 'pm_ai_analysis' and policyname = 'cliente sin analisis de IA'
+       and permissive = 'RESTRICTIVE')                                                as policy_restrictiva,
+  (select count(*) from pg_policies
+     where tablename = 'pm_ai_analysis' and policyname = 'Staff lee analisis de IA')   as policy_vieja,
+  'esperado: 2, 1, 0'                                                                  as esperado;
