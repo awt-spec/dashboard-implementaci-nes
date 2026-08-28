@@ -156,6 +156,13 @@ export function NewTicketForm({
     try {
       // zod garantiza client_id+asunto no vacíos pero TS los infiere opcionales
       // por defaultValues — refinamos con assertion para satisfacer la firma.
+      // El select de responsable guarda el NOMBRE. Sin el user_id además, el
+      // caso queda con un texto y sin dueño real: no hay "mis casos", no se
+      // dispara la notificación de asignación —que escucha assigned_user_id— y
+      // el nombre queda tan huérfano como los 122 casos históricos asignados a
+      // personas que no existen en el sistema. El detalle del caso ya hacía
+      // este vínculo; el alta no.
+      const asignado = members.find((m: { name?: string }) => m.name === values.responsable);
       const inserted = await create.mutateAsync({
         ...values,
         client_id: values.client_id,
@@ -164,6 +171,7 @@ export function NewTicketForm({
         fecha_registro: new Date().toISOString().slice(0, 10),
         dias_antiguedad: 0,
         fuente: mode === "cliente" ? "cliente" : "interno",
+        ...(asignado?.user_id ? { assigned_user_id: asignado.user_id } : {}),
       });
       toast.success(`Caso ${inserted.ticket_id} creado`, {
         description: `Consecutivo cliente #${inserted.consecutivo_cliente} · Global ${inserted.consecutivo_global}${

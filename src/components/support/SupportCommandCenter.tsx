@@ -125,6 +125,7 @@ export function SupportCommandCenter({ clientId, onNewTicket }: SupportCommandCe
   const update = useUpdateSupportTicket();
 
   const rowByTicket = useMemo(() => new Map(rows.map(r => [r.ticket.id, r])), [rows]);
+  const [soloSinDueno, setSoloSinDueno] = useState(false);
 
   // Cola: abiertos, el más comprometido primero. `pct` ya es "porcentaje del
   // SLA consumido", así que ordenar por él pone arriba lo vencido.
@@ -145,8 +146,18 @@ export function SupportCommandCenter({ clientId, onNewTicket }: SupportCommandCe
           return ra.responseHoursLeft - rb.responseHoursLeft;
         }
         return (rb?.pct ?? -1) - (ra?.pct ?? -1);
-      });
-  }, [tickets, rowByTicket]);
+      })
+      // El filtro va al final, sobre la cola ya priorizada, para que el orden
+      // dentro del subconjunto sea el mismo que fuera.
+      .filter(t => !soloSinDueno || !t.assigned_user_id);
+  }, [tickets, rowByTicket, soloSinDueno]);
+
+  // Se cuenta sobre TODOS los abiertos, no sobre la cola: si se contara sobre
+  // la cola filtrada, activar el filtro dejaría el contador clavado en sí mismo.
+  const sinDueno = useMemo(
+    () => tickets.filter(t => !isTicketClosed(t.estado) && !t.assigned_user_id).length,
+    [tickets],
+  );
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = queue.find(t => t.id === selectedId) ?? queue[0] ?? null;
@@ -228,9 +239,30 @@ export function SupportCommandCenter({ clientId, onNewTicket }: SupportCommandCe
         {/* ── Cola ── */}
         <section className="flex flex-col rounded-xl border border-border bg-card lg:min-h-0">
           <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3.5 py-2.5">
-            <p className="truncate text-[9.5px] font-bold uppercase tracking-[0.07em] text-muted-foreground">
-              Cola priorizada por SLA
-            </p>
+            <div className="flex min-w-0 items-center gap-2">
+              <p className="truncate text-[9.5px] font-bold uppercase tracking-[0.07em] text-muted-foreground">
+                Cola priorizada por SLA
+              </p>
+              {/* Un caso sin dueño no lo mira nadie: no aparece en "mis casos"
+                  de ningún colaborador ni dispara la notificación de asignación,
+                  que escucha assigned_user_id. Hoy son 226 de 295 y sólo se
+                  veían fila por fila. */}
+              {sinDueno > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSoloSinDueno(v => !v)}
+                  aria-pressed={soloSinDueno}
+                  title={`${sinDueno} caso(s) abiertos sin nadie asignado. Clic para ver sólo esos.`}
+                  className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold tabular-nums transition-colors ${
+                    soloSinDueno
+                      ? "bg-warning text-background"
+                      : "bg-warning/15 text-warning hover:bg-warning/25"
+                  }`}
+                >
+                  {sinDueno} sin dueño
+                </button>
+              )}
+            </div>
             {onNewTicket && (
               <Button size="sm" className="h-7 shrink-0 text-xs" onClick={onNewTicket}>Nuevo caso</Button>
             )}
