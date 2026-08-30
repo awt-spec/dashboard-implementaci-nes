@@ -29,7 +29,14 @@ if (!URL || !SERVICE) {
 const sbAdmin = createClient(URL, SERVICE, { auth: { persistSession: false } });
 
 const CEO_EMAIL = "ceo@sysde.com";
-const CEO_PASSWORD = "CeoSysde2026!";
+// La contraseña NO vive en el repo. Se pasa por entorno al correr el script:
+//   CEO_PASSWORD='...' node scripts/seed-ceo-user.mjs
+const CEO_PASSWORD = process.env.CEO_PASSWORD;
+if (!CEO_PASSWORD) {
+  console.error("Falta CEO_PASSWORD en el entorno. No se usa un valor por defecto a propósito:");
+  console.error("una contraseña por defecto en el código es una contraseña publicada.");
+  process.exit(2);
+}
 const CEO_FULL_NAME = "Director Ejecutivo (Demo)";
 
 // ── 1) Buscar si ya existe el usuario por email ────────────────────

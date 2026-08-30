@@ -1402,16 +1402,21 @@ bun run test:watch    # Vitest watch
 
 ### 13.4 Cuentas de prueba (login en `/`)
 
-Listadas en `src/pages/Login.tsx:26-150`. Algunas relevantes:
+Los usuarios están listados en `src/pages/Login.tsx:26-150`. **Las contraseñas
+no viven en el repositorio**: se guardan en el gestor de secretos del equipo.
 
-| Email | Password | Rol |
-|---|---|---|
-| `ceo@sysde.com` | `CeoSysde2026!` | ceo |
-| `admin@sysde.com` | `AdminSysde2026!` | admin |
-| `pm@sysde.com` | `PmFernando2026!` | pm |
-| `carlos.castante@sysde.com` | `CarlosCastante2026!` | gerente_soporte |
-| `lalfaro-contratista@sysde.com` | `Sysde2026!` | colaborador (Dos Pinos, 56 tasks) |
-| `cliente.apex@sysde.com` | `ClienteApex2026!` | cliente (Apex) |
+| Email | Rol |
+|---|---|
+| `ceo@sysde.com` | ceo |
+| `admin@sysde.com` | admin |
+| `pm@sysde.com` | pm |
+| `carlos.castante@sysde.com` | gerente_soporte |
+| `lalfaro-contratista@sysde.com` | colaborador (Dos Pinos, 56 tasks) |
+| `cliente.apex@sysde.com` | cliente (Apex) |
+
+Los seeds toman la contraseña del entorno (`CEO_PASSWORD`, `SEED_PASSWORD`,
+`CLIENTE_PASSWORDS`) y fallan si falta: un valor por defecto en el código es
+un valor publicado.
 
 ### 13.5 Troubleshooting
 

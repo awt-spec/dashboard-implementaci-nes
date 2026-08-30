@@ -30,7 +30,12 @@ if (!URL || !SERVICE) {
 const sb = createClient(URL, SERVICE, { auth: { persistSession: false } });
 
 const EMAIL    = "carlos.castante@sysde.com";
-const PASSWORD = "CarlosCastante2026!";
+// Igual que el resto de los seeds: la contraseña entra por entorno.
+const PASSWORD = process.env.SEED_PASSWORD;
+if (!PASSWORD) {
+  console.error("Falta SEED_PASSWORD en el entorno.");
+  process.exit(2);
+}
 const FULLNAME = "Carlos Castante";
 
 console.log(`→ Buscando usuario ${EMAIL}...`);

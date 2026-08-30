@@ -21,19 +21,29 @@ const URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const ANON = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+// Las contraseñas NO viven acá. Se pasan por entorno como un JSON:
+//   CLIENTE_PASSWORDS='{"apex":"...","arkfin":"..."}' node scripts/verify-cliente-logins.mjs
+// Sin eso el script no corre: una lista de credenciales en el repo es una
+// lista publicada, aunque el repo sea privado.
+const PW = JSON.parse(process.env.CLIENTE_PASSWORDS || "{}");
+if (Object.keys(PW).length === 0) {
+  console.error("Falta CLIENTE_PASSWORDS en el entorno (JSON: client_id -> password).");
+  process.exit(2);
+}
+
 const CREDS = [
-  { label: "Apex",                   email: "cliente.apex@sysde.com",      pw: "ClienteApex2026!",                 expectClient: "apex" },
-  { label: "Arkfin",                 email: "cliente.arkfin@sysde.com",    pw: "ClienteArkfin2026!",               expectClient: "arkfin" },
-  { label: "Aurum",                  email: "cliente.aurum@sysde.com",     pw: "ClienteAurum2026!",                expectClient: "aurum" },
-  { label: "CFE Panamá",             email: "cliente.cfe@sysde.com",       pw: "ClienteCfePanam2026!",             expectClient: "cfe" },
-  { label: "CMI",                    email: "cliente.cmi@sysde.com",       pw: "ClienteCmi2026!",                  expectClient: "cmi" },
-  { label: "Coopecar",               email: "cliente.coopecar@sysde.com",  pw: "ClienteCoopecar2026!",             expectClient: "coopecar" },
-  { label: "Credicefi",              email: "cliente.credicefi@sysde.com", pw: "ClienteCredicefi2026!",            expectClient: "credicefi" },
-  { label: "FIACG",                  email: "cliente.fiacg@sysde.com",     pw: "ClienteFiacg2026!",                expectClient: "fiacg" },
-  { label: "Fundap",                 email: "cliente.fundap@sysde.com",    pw: "ClienteFundap2026!",               expectClient: "fundap" },
-  { label: "Quiero Confianza (ION)", email: "cliente.ion@sysde.com",       pw: "ClienteQuieroConfianzaIon2026!",   expectClient: "ion" },
-  { label: "SAF UPV",                email: "cliente.safupv@sysde.com",    pw: "ClienteSafUpv2026!",               expectClient: "saf-upv" },
-];
+  { label: "Apex",                    email: "cliente.apex@sysde.com",                expectClient: "apex" },
+  { label: "Arkfin",                  email: "cliente.arkfin@sysde.com",              expectClient: "arkfin" },
+  { label: "Aurum",                   email: "cliente.aurum@sysde.com",               expectClient: "aurum" },
+  { label: "CFE Panamá",              email: "cliente.cfe@sysde.com",                 expectClient: "cfe" },
+  { label: "CMI",                     email: "cliente.cmi@sysde.com",                 expectClient: "cmi" },
+  { label: "Coopecar",                email: "cliente.coopecar@sysde.com",            expectClient: "coopecar" },
+  { label: "Credicefi",               email: "cliente.credicefi@sysde.com",           expectClient: "credicefi" },
+  { label: "FIACG",                   email: "cliente.fiacg@sysde.com",               expectClient: "fiacg" },
+  { label: "Fundap",                  email: "cliente.fundap@sysde.com",              expectClient: "fundap" },
+  { label: "Quiero Confianza (ION)",  email: "cliente.ion@sysde.com",                 expectClient: "ion" },
+  { label: "SAF UPV",                 email: "cliente.safupv@sysde.com",              expectClient: "saf-upv" },
+].map((c) => ({ ...c, pw: PW[c.expectClient] })).filter((c) => c.pw);
 
 const sbAdmin = createClient(URL, SERVICE, { auth: { persistSession: false } });
 

@@ -5,7 +5,7 @@
  *
  * Convención:
  *   • email:    cliente.{slug}@sysde.com      (reutiliza pattern existente)
- *   • password: Cliente{Slug}2026!
+ *   • password: aleatoria por usuario, se imprime una sola vez al terminar
  *   • role:     cliente
  *   • permiso:  admin  (el primer usuario del cliente puede invitar más)
  *   • assign:   cliente_company_assignments ↔ client_id
@@ -17,6 +17,7 @@
  *   SUPABASE_SERVICE_ROLE_KEY=sb_secret_xxx bun run scripts/seed-cliente-users.mjs
  */
 
+import crypto from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync, existsSync } from "node:fs";
 
@@ -25,6 +26,12 @@ if (existsSync(".env")) {
     const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*"?([^"\r\n]*)"?\s*$/);
     if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
   });
+}
+
+// 20 bytes de crypto.randomBytes en base64url + un símbolo, para satisfacer
+// cualquier política de complejidad sin depender de una lista de palabras.
+function randomPassword() {
+  return crypto.randomBytes(20).toString("base64url") + "!aA1";
 }
 
 const URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
@@ -123,7 +130,12 @@ async function invokeAsAdmin(jwt, body) {
     const slug = slugify(c.id || c.name);
     const pascalName = pascal(c.name);
     const email = `cliente.${slug}@sysde.com`;
-    const password = `Cliente${pascalName}2026!`;
+    // Contraseña aleatoria por usuario. Antes se derivaba del nombre del
+    // cliente —`Cliente{Nombre}2026!`— que es peor que una lista fija: el
+    // patrón es público y cualquiera que sepa el nombre del cliente la
+    // calcula. Se imprime UNA vez al final para entregarla por canal seguro;
+    // no queda en ningún archivo del repo.
+    const password = randomPassword();
 
     try {
       await invokeAsAdmin(boot.jwt, {
