@@ -1,0 +1,184 @@
+
+<title>Estado del ERP SYSDE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Sans+3:wght@400;600;700&display=swap">
+<style>
+:root{--paper:#EDF0F0;--surface:#FFFFFF;--surface-2:#F5F7F7;
+ --ink:#111A1B;--ink-2:#33454A;--muted:#5F7378;--line:#D2DADB;--line-2:#E3E9E9;
+ --accent:#0E5F66;--accent-soft:#0E5F661A;--on-accent:#FFFFFF;
+ --ok:#1B6E4A;--ok-soft:#1B6E4A18;--warn:#9C6206;--warn-soft:#9C620618;
+ --bad:#A62C3B;--bad-soft:#A62C3B18;--shadow:0 1px 2px #111A1B0D,0 8px 24px -12px #111A1B1F;}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+ --paper:#0B1214;--surface:#121C1F;--surface-2:#182427;
+ --ink:#E6EDEC;--ink-2:#B4C4C6;--muted:#84979A;--line:#26363A;--line-2:#1D2B2E;
+ --accent:#54B9BF;--accent-soft:#54B9BF1F;--on-accent:#0B1214;
+ --ok:#54BE8C;--ok-soft:#54BE8C1F;--warn:#DFA341;--warn-soft:#DFA3411F;
+ --bad:#E7788A;--bad-soft:#E7788A1F;--shadow:0 1px 2px #0006,0 10px 28px -14px #0009;}}
+:root[data-theme="dark"]{--paper:#0B1214;--surface:#121C1F;--surface-2:#182427;
+ --ink:#E6EDEC;--ink-2:#B4C4C6;--muted:#84979A;--line:#26363A;--line-2:#1D2B2E;
+ --accent:#54B9BF;--accent-soft:#54B9BF1F;--on-accent:#0B1214;
+ --ok:#54BE8C;--ok-soft:#54BE8C1F;--warn:#DFA341;--warn-soft:#DFA3411F;
+ --bad:#E7788A;--bad-soft:#E7788A1F;--shadow:0 1px 2px #0006,0 10px 28px -14px #0009;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+ font-family:"Source Sans 3","Segoe UI",system-ui,sans-serif;font-size:15px;line-height:1.55;
+ -webkit-font-smoothing:antialiased}
+.wrap{max-width:1080px;margin:0 auto;padding:clamp(20px,4vw,56px) clamp(16px,4vw,40px) 80px}
+h1,h2,h3{font-family:"Bricolage Grotesque","Source Sans 3",sans-serif;text-wrap:balance;margin:0}
+h1{font-size:clamp(30px,4.6vw,46px);font-weight:800;letter-spacing:-.022em;line-height:1.05}
+h2{font-size:clamp(19px,2.2vw,23px);font-weight:800;letter-spacing:-.012em}
+h3{font-size:15px;font-weight:700}
+p{margin:0}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.eyebrow{font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:600;
+ letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
+.lede{color:var(--ink-2);font-size:clamp(15.5px,1.7vw,17.5px);max-width:62ch}
+.sub{color:var(--muted);font-size:12.5px;margin-top:2px}
+section{margin-top:clamp(36px,5vw,58px)}
+.head-rule{display:flex;align-items:baseline;gap:14px;padding-bottom:12px;
+ border-bottom:2px solid var(--ink);margin-bottom:20px}
+.head-rule .n{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:600;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:4px;box-shadow:var(--shadow)}
+.veredicto{border-left:3px solid var(--accent);padding:18px 20px;margin-top:26px}
+.veredicto p{font-size:15.5px;color:var(--ink-2);max-width:70ch}
+.veredicto p+p{margin-top:10px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(152px,1fr))}
+.stat{padding:14px 16px;border-left:3px solid var(--line)}
+.stat.bad{border-left-color:var(--bad)}.stat.warn{border-left-color:var(--warn)}
+.stat.ok{border-left-color:var(--ok)}.stat.acc{border-left-color:var(--accent)}
+.stat .v{font-family:"Bricolage Grotesque",sans-serif;font-size:30px;font-weight:800;
+ line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.stat .k{font-size:11.5px;font-weight:600;color:var(--ink-2);margin-top:6px}
+.stat .d{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:640px}
+th{text-align:left;font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:600;
+ letter-spacing:.09em;text-transform:uppercase;color:var(--muted);padding:11px 12px;
+ border-bottom:1px solid var(--line);background:var(--surface-2);white-space:nowrap}
+td{padding:11px 12px;border-bottom:1px solid var(--line-2);vertical-align:top}
+tbody tr:hover{background:var(--surface-2)}
+td.uso{width:150px;white-space:nowrap}
+td.ev{color:var(--muted);font-size:12.5px;max-width:34ch}
+.bar{display:inline-block;width:86px;height:7px;border-radius:4px;background:var(--line-2);
+ overflow:hidden;vertical-align:middle}
+.fill{display:block;height:100%;border-radius:4px}
+.f-bad{background:var(--bad)}.f-warn{background:var(--warn)}.f-ok{background:var(--ok)}
+.pct{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;
+ margin-left:8px;font-variant-numeric:tabular-nums}
+.p-bad{color:var(--bad)}.p-warn{color:var(--warn)}.p-ok{color:var(--ok)}
+.pill{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:600;
+ padding:3px 8px;border-radius:2px;white-space:nowrap}
+.pill.p-bad{background:var(--bad-soft);color:var(--bad)}
+.pill.p-warn{background:var(--warn-soft);color:var(--warn)}
+.riesgo{padding:16px 18px;border-top:1px solid var(--line-2)}
+.riesgo:first-child{border-top:0}
+.rh{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.riesgo p{font-size:13.5px;color:var(--ink-2);margin-top:8px;max-width:74ch}
+.riesgo .acc{margin-top:9px;font-size:12.5px;color:var(--ink)}
+.riesgo .acc span{font-family:"IBM Plex Mono",monospace;font-size:9.5px;font-weight:600;
+ letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-right:7px}
+.nota{padding:16px 18px;font-size:13.5px;color:var(--ink-2);max-width:74ch}
+.nota+.nota{border-top:1px solid var(--line-2)}
+.nota strong{color:var(--ink)}
+.nota code{font-family:"IBM Plex Mono",monospace;font-size:12px;background:var(--surface-2);
+ padding:1px 5px;border-radius:2px}
+footer{margin-top:54px;padding-top:20px;border-top:1px solid var(--line);
+ font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px 18px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<div class="wrap">
+<header>
+  <p class="eyebrow">Estado · 27 agosto 2026 · vista de PM</p>
+  <h1>El ERP está construido.<br>No está en uso.</h1>
+  <div class="card veredicto">
+    <p>Casi todo lo que hace falta ya existe y funciona: 29 clientes, 30 contratos, 113 SLAs,
+    2 108 tareas, 840 casos, 35 funciones de servidor. Lo que no existe es la operación encima.</p>
+    <p>El último caso se registró el <strong>3 de julio</strong>, hace 55 días. En 840 casos hay
+    <strong>cero notas</strong>, <strong>cero horas cobradas</strong> y <strong>un</strong> responsable
+    vinculado a un usuario real. El sistema emitió <strong>una</strong> notificación en toda su vida.</p>
+    <p>Eso cambia el tipo de problema. No es una lista de funciones por construir: es una decisión
+    de adopción, y una sola —volver a conectar DevOps— decide la mayor parte.</p>
+  </div>
+</header>
+
+<section>
+  <div class="grid">
+    <div class="card stat bad"><div class="v">55</div><div class="k">días sin registrar un caso</div>
+      <div class="d">el último, el 3 de julio</div></div>
+    <div class="card stat bad"><div class="v">0</div><div class="k">notas en 840 casos</div>
+      <div class="d">la bitácora nunca se usó</div></div>
+    <div class="card stat bad"><div class="v">0</div><div class="k">horas cobradas</div>
+      <div class="d">20 de 30 contratos son bolsa</div></div>
+    <div class="card stat warn"><div class="v">295</div><div class="k">casos abiertos</div>
+      <div class="d">293 vencidos · 226 sin dueño</div></div>
+    <div class="card stat ok"><div class="v">100%</div><div class="k">con respaldo contractual</div>
+      <div class="d">eran 78 sin cobertura el lunes</div></div>
+  </div>
+</section>
+
+<section>
+  <div class="head-rule"><span class="n">01</span><h2>Capacidad construida contra uso real</h2></div>
+  <p class="sub" style="margin-bottom:18px;max-width:70ch">
+    La columna de uso no mide calidad del código: mide cuánto de esa capacidad está produciendo
+    datos hoy. Cada cifra sale de la base, no de una estimación.
+  </p>
+  <div class="card scroll">
+    <table>
+      <thead><tr><th>Módulo</th><th>Uso real</th><th>Evidencia</th></tr></thead>
+      <tbody><tr><td><strong>Casos de soporte</strong><div class="sub">840 casos · 29 clientes · cola priorizada por SLA</div></td><td class="uso"><div class="bar"><span class="fill f-bad" style="width:2%"></span></div><span class="pct p-bad">0%</span></td><td class="ev">último caso registrado el 3 de julio · 55 días sin altas</td></tr><tr><td><strong>Bitácora del caso</strong><div class="sub">pestaña de notas, interna y externa, con adjuntos</div></td><td class="uso"><div class="bar"><span class="fill f-bad" style="width:2%"></span></div><span class="pct p-bad">0%</span></td><td class="ev">0 notas en 840 casos</td></tr><tr><td><strong>Registro de horas</strong><div class="sub">campo por caso + temporizador + entrada manual</div></td><td class="uso"><div class="bar"><span class="fill f-bad" style="width:2%"></span></div><span class="pct p-bad">0%</span></td><td class="ev">0 casos con tiempo cobrado · 20 de 30 contratos son bolsa de horas</td></tr><tr><td><strong>Asignación</strong><div class="sub">select de responsable en alta y detalle, 19 miembros vinculados</div></td><td class="uso"><div class="bar"><span class="fill f-warn" style="width:2%"></span></div><span class="pct p-warn">1%</span></td><td class="ev">1 de 840 casos con usuario real · 226 abiertos sin nadie</td></tr><tr><td><strong>Notificaciones internas</strong><div class="sub">trigger de asignación + avisos de contrato</div></td><td class="uso"><div class="bar"><span class="fill f-warn" style="width:2%"></span></div><span class="pct p-warn">1%</span></td><td class="ev">1 notificación emitida en toda la vida del sistema</td></tr><tr><td><strong>Notificaciones al cliente</strong><div class="sub">tabla y edge function listas</div></td><td class="uso"><div class="bar"><span class="fill f-bad" style="width:2%"></span></div><span class="pct p-bad">0%</span></td><td class="ev">0 enviadas · el cliente no recibe nada del sistema</td></tr><tr><td><strong>SLA de resolución</strong><div class="sub">fuente única en SQL, contrato sobre política</div></td><td class="uso"><div class="bar"><span class="fill f-ok" style="width:60%"></span></div><span class="pct p-ok">60%</span></td><td class="ev">295 casos evaluados · mide bien, pero sobre inventario viejo</td></tr><tr><td><strong>SLA de primera respuesta</strong><div class="sub">medido desde la nota externa, por iteración</div></td><td class="uso"><div class="bar"><span class="fill f-bad" style="width:2%"></span></div><span class="pct p-bad">0%</span></td><td class="ev">contratado en las 113 filas · 0 respuestas registradas</td></tr><tr><td><strong>Cobertura contractual</strong><div class="sub">cada caso cruzado con la vigencia de su contrato</div></td><td class="uso"><div class="bar"><span class="fill f-ok" style="width:100%"></span></div><span class="pct p-ok">100%</span></td><td class="ev">295 de 295 cubiertos tras corregir 23 fechas de inicio</td></tr><tr><td><strong>Ciclo de vida del contrato</strong><div class="sub">cron diario: vence o rueda la vigencia</div></td><td class="uso"><div class="bar"><span class="fill f-ok" style="width:100%"></span></div><span class="pct p-ok">100%</span></td><td class="ev">agendado · 0 vencidos hoy, el primero vence el 23/04/2027</td></tr><tr><td><strong>IA sobre contratos</strong><div class="sub">6 etapas del PDF a los términos aplicados</div></td><td class="uso"><div class="bar"><span class="fill f-warn" style="width:25%"></span></div><span class="pct p-warn">25%</span></td><td class="ev">3 documentos indexados, los tres el mismo PDF · 0 llegaron al sistema</td></tr><tr><td><strong>Integración con DevOps</strong><div class="sub">sync bidireccional completo, pull y push</div></td><td class="uso"><div class="bar"><span class="fill f-bad" style="width:2%"></span></div><span class="pct p-bad">0%</span></td><td class="ev">0 conexiones configuradas · 574 de 840 casos nacieron ahí</td></tr></tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="head-rule"><span class="n">02</span><h2>Riesgos abiertos</h2></div>
+  <div class="card"><div class="riesgo"><div class="rh"><span class="pill p-bad">alto</span><h3>Un cliente lee los análisis de IA de otros clientes</h3></div><p>Apex accede a la extracción del contrato de Aurum: nombre de su cliente final (BanSuma) y escalonamiento de precios (USD 749 meses 1-6, USD 999 desde el 7). La corrección está escrita y verificada en local; no logra aplicarse en la base.</p><p class="acc"><span>Acción</span> Correr la policy restrictiva sobre pm_ai_analysis. Son 3 líneas.</p></div><div class="riesgo"><div class="rh"><span class="pill p-bad">alto</span><h3>El tablero del colaborador no abre</h3></div><p>El acotamiento de permisos que apliqué hoy es O(n²) sobre 2108 tareas: la consulta se corta a los 8,6 s con statement timeout. El aislamiento funciona —ve 3 clientes en vez de 29— pero no puede trabajar.</p><p class="acc"><span>Acción</span> Correr la migración con los dos índices. Ya está escrita.</p></div><div class="riesgo"><div class="rh"><span class="pill p-bad">alto</span><h3>Las contraseñas demo siguen en texto plano en el repositorio</h3></div><p>AdminSysde2026! está en README.md, ARCHITECTURE.md y scripts/seed-ceo-user.mjs. Es la credencial con la que verifiqué cada cambio de esta semana desde afuera: funciona, y cualquiera con acceso al repo la tiene.</p><p class="acc"><span>Acción</span> Rotarlas en Supabase Auth y sacarlas de los tres archivos.</p></div><div class="riesgo"><div class="rh"><span class="pill p-warn">medio</span><h3>Un contratista externo ve la estructura de precios completa</h3></div><p>El rol colaborador lee monthly_value y hourly_rate de los 30 contratos —tarifas de 23 a 116 USD por hora— y puede cerrar cualquiera de los 840 casos. La corrección está escrita.</p><p class="acc"><span>Acción</span> Misma migración pendiente que el punto 2.</p></div><div class="riesgo"><div class="rh"><span class="pill p-warn">medio</span><h3>Tres migraciones no logran aplicarse</h3></div><p>Tres intentos en tres días. Los síntomas son idénticos antes y después, y la primera sentencia de cada archivo es idempotente, así que no es un fallo parcial: no se ejecuta nada. La hipótesis más probable es que el editor corra sólo el texto seleccionado.</p><p class="acc"><span>Acción</span> Confirmar qué devuelve la consulta de comprobación del final de cada archivo.</p></div></div>
+</section>
+
+<section>
+  <div class="head-rule"><span class="n">03</span><h2>La decisión que ordena el resto</h2></div>
+  <div class="card">
+    <div class="nota"><strong>574 de los 840 casos nacieron en Azure DevOps.</strong>
+      La función <code>sync-devops</code> está completa y es bidireccional —tiene pull y push— y le
+      falta exactamente una fila de credenciales: organización, proyecto y token. Hoy tiene cero
+      conexiones configuradas.</div>
+    <div class="nota"><strong>Mientras el equipo viva en DevOps y esto sea una copia, la copia se
+      congela.</strong> Es literalmente lo que pasó desde julio. Ninguna de las otras mejoras cambia
+      eso: el reloj de respuesta, la cobertura contractual y el cumplimiento miden trabajo que no se
+      está registrando acá.</div>
+    <div class="nota"><strong>Con DevOps conectado, el resto se ordena solo.</strong> Los casos entran
+      sin que nadie los copie, el reloj de respuesta arranca de verdad, el corte del 1 de septiembre
+      empieza a llenarse con datos reales y la bolsa de horas tiene sobre qué descontar. Sin eso, lo
+      demás es instrumentación sobre una sala vacía.</div>
+  </div>
+</section>
+
+<section>
+  <div class="head-rule"><span class="n">04</span><h2>Qué se entregó esta semana</h2></div>
+  <div class="card">
+    <div class="nota"><strong>29 commits en main.</strong> El SLA pasó de cinco implementaciones que
+      se contradecían a una sola en SQL, con fecha de corte para que el equipo se mida desde que
+      empieza a registrar y no contra 293 casos fósiles. Se agregó el SLA de primera respuesta, que
+      ya estaba vendido en los 113 contratos y nadie medía.</div>
+    <div class="nota"><strong>Los contratos pasaron de archivo a proceso.</strong> Antes ninguno
+      vencía nunca —la fecha se evaluaba una sola vez, en una migración de agosto— y
+      <code>auto_renewal</code> no renovaba nada. Ahora hay un cron diario que vence o rueda la
+      vigencia, y cada caso sabe si está dentro del contrato que lo ampara.</div>
+    <div class="nota"><strong>Se cerró el inventario muerto.</strong> 88 casos entregados o por
+      cerrar quedaron formalmente cerrados, y 23 contratos con fecha de inicio equivocada —la de la
+      carga de datos, no la de la relación— se corrigieron. Eso llevó los casos sin respaldo
+      contractual de 78 a 0.</div>
+    <div class="nota"><strong>Cuatro auditorías de permisos.</strong> Encontraron que un cliente
+      podía leer los casos de los otros 23, que un contratista externo veía la estructura de precios
+      completa, y que un cliente podía ejecutar el proceso de contratos de toda la cartera. Las tres
+      correcciones están escritas y verificadas; ninguna logra aplicarse todavía.</div>
+  </div>
+</section>
+
+<footer>
+  <span>Leído de Supabase el 27 de agosto de 2026</span><span>·</span>
+  <span>840 casos · 29 clientes · 30 contratos · 2 108 tareas · 41 usuarios</span><span>·</span>
+  <span>29 commits en main esta semana</span>
+</footer>
+</div>
