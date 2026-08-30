@@ -171,5 +171,13 @@ select
   (select count(*) from pg_policies
      where tablename = 'sysde_team_members'
        and policyname = 'cliente sin directorio interno')             as policy_vieja,
-  (select count(*) from pg_proc where proname = 'get_sla_history')    as fn_historico,
-  'esperado: 2, 0, 1'                                                 as esperado;
+  -- Ojo: no basta con buscar is_colaborador_user en el cuerpo. La versión
+  -- anterior también lo mencionaba, dentro de
+  -- "(not is_cliente_user() and not is_colaborador_user()) or ...". Un chequeo
+  -- ingenuo daba falso positivo y me hizo creer que la función se había
+  -- reemplazado cuando no. Se distingue por el "and" que la vieja lleva delante.
+  (select case when prosrc like '%not public.is_colaborador_user()%'
+                and prosrc not like '%and not public.is_colaborador_user()%'
+               then 'OK' else 'VIEJA' end
+     from pg_proc where proname = 'get_sla_history')                  as fn_historico,
+  'esperado: 2, 0, OK'                                                as esperado;
