@@ -1,78 +1,11 @@
-import { useState, type ComponentType } from "react";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { LogIn, Eye, EyeOff, Shield, Briefcase, Headphones, Crown, ShieldAlert, User as UserIcon, Headset, LifeBuoy, type LucideProps } from "lucide-react";
+import { LogIn, Eye, EyeOff } from "lucide-react";
 import sysdelogo from "@/assets/logo-sysde.png";
-import { cn } from "@/lib/utils";
-
-type DemoAccount = {
-  label: string;
-  email: string;
-  /** Si está presente, se renderiza con tratamiento destacado (botón hero) */
-  featured?: boolean;
-  /** Icono opcional para el avatar del botón */
-  Icon?: ComponentType<LucideProps>;
-  /** Tone del avatar: amber, primary, info, red, default */
-  tone?: "amber" | "primary" | "info" | "red" | "default";
-  /** Subtítulo opcional debajo del label */
-  hint?: string;
-};
-
-const SYSDE_USERS: DemoAccount[] = [
-  { label: "CEO", email: "ceo@sysde.com", Icon: Crown, tone: "amber", hint: "Cockpit ejecutivo · read-only" },
-  { label: "Carlos Castante · Gerente de Soporte", email: "carlos.castante@sysde.com", Icon: Headset, tone: "red", hint: "Acceso a clientes y boletas de soporte" },
-  { label: "CSR · Agente de Soporte", email: "csr@sysde.com", Icon: LifeBuoy, tone: "info", hint: "Atención de 1ª línea · atiende, responde y captura feedback" },
-  { label: "Admin", email: "admin@sysde.com", Icon: ShieldAlert, tone: "primary" },
-  { label: "PM", email: "pm@sysde.com", Icon: Briefcase, tone: "primary" },
-  { label: "Soporte (Hellen)", email: "hellen.calvo@sysde.com", Icon: Headphones, tone: "info" },
-  { label: "Fauricio Navarro", email: "navarro.fuentes@sysde.com", Icon: UserIcon },
-  { label: "Olga Lucia Cuervo", email: "olga.lucia@sysde.com", Icon: UserIcon },
-  { label: "Orlando Castro", email: "orlando.castro@sysde.com", Icon: UserIcon },
-  { label: "Carlos Solis", email: "solis.sequeira@sysde.com", Icon: UserIcon },
-  // Colaboradores de implementación. Cada uno ve sus tasks asignadas en
-  // ColaboradorDashboard via assigned_user_id.
-  { label: "Luis Alfaro", email: "lalfaro-contratista@sysde.com", Icon: UserIcon, hint: "56 tasks · Dos Pinos" },
-  { label: "Carlos Quesada", email: "cquesada-contratista@sysde.com", Icon: UserIcon, hint: "48 tasks · CMI Arrendamiento" },
-  { label: "Maria Vargas", email: "mavargas-contratista@sysde.com", Icon: UserIcon, hint: "45 tasks · ARKFIN/CMI" },
-  { label: "Carlos Andrés Rico", email: "crico@sysde.com", Icon: UserIcon, hint: "34 tasks · Dos Pinos/CMI" },
-  { label: "Bryan Hernandez", email: "bhernandez-contratista@sysde.com", Icon: UserIcon, hint: "32 tasks · CMI/AMC" },
-  { label: "Walter Gómez", email: "wgomez-contratista@sysde.com", Icon: UserIcon, hint: "14 tasks · CMI" },
-  { label: "Andrés Julián Gómez", email: "ajgomez-contratista@sysde.com", Icon: UserIcon, hint: "7 tasks · Dos Pinos" },
-  { label: "Luis Mangel", email: "lmangel-contratista@sysde.com", Icon: UserIcon, hint: "6 tasks · CMI" },
-  { label: "Fernando Pinto", email: "fpinto-contratista@sysde.com", Icon: UserIcon, hint: "5 tasks · Aurum/Apex" },
-  { label: "Diego García", email: "dgarcia-contratista@sysde.com", Icon: UserIcon, hint: "5 tasks · CMI" },
-  { label: "Andrés Venegas", email: "avenegas-contratista@sysde.com", Icon: UserIcon, hint: "3 tasks · Dos Pinos" },
-  { label: "Marco Pisacreta", email: "mpisacreta-contratista@sysde.com", Icon: UserIcon, hint: "3 tasks · Dos Pinos" },
-  { label: "Sandra Guerra", email: "sguerra-contratista@sysde.com", Icon: UserIcon, hint: "Implementación" },
-];
-
-// Usuarios con rol "cliente" (Portal Cliente) — uno por cada empresa activa.
-// Generados por scripts/seed-cliente-users.mjs. Al loguearse van al
-// ClientPortalDashboard (panel horas + minutas + casos scopeados a su empresa).
-const IMPLEMENTATION_CLIENTS: DemoAccount[] = [
-  { label: "Apex",      email: "cliente.apex@sysde.com"      },
-  { label: "Arkfin",    email: "cliente.arkfin@sysde.com"    },
-  { label: "Aurum",     email: "cliente.aurum@sysde.com"     },
-  { label: "Dos Pinos", email: "cliente.dospinos@sysde.com"  },
-  { label: "AMC",       email: "cliente.amc@sysde.com"       },
-  // CMI tiene producto dual: Factoraje (soporte) + Arrendamiento (implementación).
-  // Su acceso cliente está en SUPPORT_CLIENTS abajo y ve ambos productos.
-];
-
-const SUPPORT_CLIENTS: DemoAccount[] = [
-  { label: "CFE Panamá", email: "cliente.cfe@sysde.com" },
-  { label: "CMI", email: "cliente.cmi@sysde.com" },
-  { label: "Coopecar", email: "cliente.coopecar@sysde.com" },
-  { label: "Credicefi", email: "cliente.credicefi@sysde.com" },
-  { label: "FIACG", email: "cliente.fiacg@sysde.com" },
-  { label: "Fundap", email: "cliente.fundap@sysde.com" },
-  { label: "Quiero Confianza (ION)", email: "cliente.ion@sysde.com" },
-  { label: "SAF UPV", email: "cliente.safupv@sysde.com" },
-];
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -89,90 +22,6 @@ export default function Login() {
       toast({ title: "Error de autenticación", description: error.message, variant: "destructive" });
     }
     setLoading(false);
-  };
-
-  // Prellena solo el email; la contraseña la escribe el usuario. (Antes se
-  // hardcodeaban las contraseñas de cuentas productivas en el bundle público.)
-  const fillCredentials = (acc: DemoAccount) => {
-    setEmail(acc.email);
-    setPassword("");
-  };
-
-  const TONE_STYLES: Record<NonNullable<DemoAccount["tone"]>, { avatar: string; ring: string; gradient: string }> = {
-    amber:   { avatar: "bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md shadow-amber-500/30", ring: "ring-amber-500/30 hover:ring-amber-500/50",   gradient: "from-amber-500/5 via-transparent to-amber-500/5" },
-    red:     { avatar: "bg-gradient-to-br from-[#C8200F] to-[#A81C0C] text-white shadow-md shadow-[#C8200F]/30",  ring: "ring-[#C8200F]/30 hover:ring-[#C8200F]/50",      gradient: "from-[#C8200F]/5 via-transparent to-[#C8200F]/5" },
-    primary: { avatar: "bg-primary/15 text-primary",                                                              ring: "ring-primary/20 hover:ring-primary/40",          gradient: "from-primary/5 via-transparent to-transparent" },
-    info:    { avatar: "bg-info/15 text-info",                                                                    ring: "ring-info/20 hover:ring-info/40",                gradient: "from-info/5 via-transparent to-transparent" },
-    default: { avatar: "bg-muted text-muted-foreground",                                                          ring: "ring-border hover:ring-primary/30",              gradient: "" },
-  };
-
-  const renderAccountList = (accounts: DemoAccount[]) => {
-    const featured = accounts.filter(a => a.featured);
-    const regular = accounts.filter(a => !a.featured);
-
-    return (
-      <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-        {/* Featured: botones grandes con avatar + label + hint */}
-        {featured.map((acc) => {
-          const tone = TONE_STYLES[acc.tone || "amber"];
-          const Icon = acc.Icon || Crown;
-          return (
-            <button
-              key={acc.email}
-              type="button"
-              onClick={() => fillCredentials(acc)}
-              className={cn(
-                "w-full group relative overflow-hidden flex items-center gap-3 p-2.5 rounded-lg border bg-card text-left transition-all ring-1",
-                tone.ring
-              )}
-            >
-              <div className={cn("absolute inset-0 bg-gradient-to-r opacity-50 group-hover:opacity-100 transition-opacity pointer-events-none", tone.gradient)} />
-              <div className={cn("relative h-9 w-9 rounded-xl flex items-center justify-center shrink-0", tone.avatar)}>
-                <Icon className="h-4 w-4" />
-              </div>
-              <div className="relative flex-1 min-w-0">
-                <p className="text-sm font-bold text-foreground leading-tight truncate">{acc.label}</p>
-                <p className="text-[10px] text-muted-foreground truncate mt-0.5">{acc.hint || acc.email}</p>
-              </div>
-              <span className="relative text-[9px] uppercase tracking-wider font-bold text-amber-500 shrink-0 px-1.5 py-0.5 rounded border border-amber-500/30 bg-amber-500/10">
-                Demo
-              </span>
-            </button>
-          );
-        })}
-
-        {/* Separador si hay featured + regular */}
-        {featured.length > 0 && regular.length > 0 && (
-          <div className="flex items-center gap-2 py-0.5">
-            <div className="h-px flex-1 bg-border/60" />
-            <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">Otros usuarios</span>
-            <div className="h-px flex-1 bg-border/60" />
-          </div>
-        )}
-
-        {/* Regular: filas compactas con avatar pequeño + label + email */}
-        {regular.map((acc) => {
-          const tone = TONE_STYLES[acc.tone || "default"];
-          const Icon = acc.Icon || UserIcon;
-          return (
-            <button
-              key={acc.email}
-              type="button"
-              onClick={() => fillCredentials(acc)}
-              className="w-full group flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent/60 transition-colors text-left"
-            >
-              <div className={cn("h-6 w-6 rounded-md flex items-center justify-center shrink-0 border border-border/40", tone.avatar)}>
-                <Icon className="h-3 w-3" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-foreground leading-tight truncate">{acc.label}</p>
-                <p className="text-[10px] text-muted-foreground truncate">{acc.email}</p>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-    );
   };
 
   return (
@@ -223,28 +72,6 @@ export default function Login() {
               {loading ? "Ingresando..." : "Ingresar"}
             </Button>
           </form>
-
-          <div className="mt-6 p-3 rounded-lg bg-muted/50 border border-border">
-            <p className="text-xs font-medium text-muted-foreground mb-2">
-              Cuentas demo <span className="italic">(clic para autocompletar)</span>:
-            </p>
-            <Tabs defaultValue="sysde" className="w-full">
-              <TabsList className="grid w-full grid-cols-3 h-auto">
-                <TabsTrigger value="sysde" className="text-[10px] gap-1 px-1 py-1.5">
-                  <Shield className="h-3 w-3" /> Sysde
-                </TabsTrigger>
-                <TabsTrigger value="impl" className="text-[10px] gap-1 px-1 py-1.5">
-                  <Briefcase className="h-3 w-3" /> Implem.
-                </TabsTrigger>
-                <TabsTrigger value="support" className="text-[10px] gap-1 px-1 py-1.5">
-                  <Headphones className="h-3 w-3" /> Soporte
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="sysde" className="mt-2">{renderAccountList(SYSDE_USERS)}</TabsContent>
-              <TabsContent value="impl" className="mt-2">{renderAccountList(IMPLEMENTATION_CLIENTS)}</TabsContent>
-              <TabsContent value="support" className="mt-2">{renderAccountList(SUPPORT_CLIENTS)}</TabsContent>
-            </Tabs>
-          </div>
         </CardContent>
       </Card>
     </div>
