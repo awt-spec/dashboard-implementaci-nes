@@ -67,8 +67,8 @@ export function DossierHeader({ dossier, ctx, onCtxChange }: DossierHeaderProps)
           <Building2 className="h-4 w-4 shrink-0 text-primary" />
           <h2 className="min-w-0 truncate text-[16px] font-bold leading-tight text-foreground">{client.name}</h2>
           {/* Etiquetas derivadas del dato: renovación, módulo con más casos,
-              incumplimientos. Ninguna es decorativa. */}
-          {badges.slice(0, 3).map(b => (
+              incumplimientos, cobertura contractual. Ninguna es decorativa. */}
+          {badges.slice(0, 4).map(b => (
             <span
               key={b.label}
               className={cn("shrink-0 rounded border px-1.5 py-px text-[10px] font-semibold", toneStyles(b.tone).chip)}

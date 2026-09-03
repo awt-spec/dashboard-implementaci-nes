@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useClients } from "@/hooks/useClients";
-import { useSupportTickets } from "@/hooks/useSupportTickets";
-import { useSlaCompliance } from "@/hooks/useSlaCompliance";
+import { useSupportTickets, type SupportTicket } from "@/hooks/useSupportTickets";
+import { useSlaCompliance, useSlaStatusRows } from "@/hooks/useSlaCompliance";
 import { useSlaHistory } from "@/hooks/useSlaHistory";
 import { useClientContracts } from "@/hooks/useClientContracts";
 import { useReopenRate90d } from "@/hooks/useTicketReopens";
@@ -81,6 +81,8 @@ export interface DossierBadge {
 export interface ClientDossier {
   isLoading: boolean;
   client: Client | null;
+  /** Casos crudos del cliente, abiertos y cerrados. Para abrir el detalle de uno. */
+  tickets: SupportTicket[];
   /** 0-100 derivado, o null si no hay señal. Ver `healthScore`. */
   health: number | null;
   healthTone: Tone;
@@ -107,9 +109,18 @@ export interface ClientDossier {
 
 const MES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
-/** Clave AAAA-MM local (no UTC: en UTC-6 el día 1 caía en el mes anterior). */
-function monthKey(d: Date): string {
-  return d.toLocaleDateString("en-CA").slice(0, 7);
+/**
+ * Clave AAAA-MM en hora de Costa Rica — para "hoy" y para cada `created_at`
+ * por igual. `thisMonth` usaba la hora local del navegador mientras las
+ * fechas de los tickets se cortaban crudas del ISO (que Postgres entrega en
+ * UTC): cerca de la medianoche, o con el reloj del sistema mal puesto,
+ * "Horas del mes" comparaba dos meses distintos sin que nada lo avisara.
+ * Mismo criterio que formatCutoff en useSlaCompliance.ts.
+ */
+export function monthKeyCR(input: Date | string): string {
+  const d = typeof input === "string" ? new Date(input) : input;
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-CA", { timeZone: "America/Costa_Rica" }).slice(0, 7);
 }
 
 /** Etiqueta de las últimas N semanas, de la más vieja a la más nueva. */
@@ -193,18 +204,27 @@ export function healthScore(input: {
 export function useClientDossier(clientId: string | undefined): ClientDossier {
   const { data: clients, isLoading: loadingClients } = useClients();
   const { data: tickets = [], isLoading: loadingTickets } = useSupportTickets(clientId);
-  const { data: contracts = [] } = useClientContracts(clientId);
-  const { data: slaHistory } = useSlaHistory(clientId);
-  const { data: reopen } = useReopenRate90d(clientId);
+  const { data: contracts = [], isLoading: loadingContracts } = useClientContracts(clientId);
+  const { data: slaHistory, isLoading: loadingSlaHistory } = useSlaHistory(clientId);
+  const { data: reopen, isLoading: loadingReopen } = useReopenRate90d(clientId);
   const { rows: slaRows, summary } = useSlaCompliance(clientId);
+  // useSlaCompliance no expone isLoading (se usa en muchos lados sin ese
+  // campo); se pide acá la misma query — react-query la dedupea por
+  // queryKey, así que no dispara una segunda llamada de red.
+  const { isLoading: loadingSlaStatus } = useSlaStatusRows();
 
   return useMemo<ClientDossier>(() => {
     const client = (clients || []).find(c => c.id === clientId) ?? null;
-    const isLoading = loadingClients || loadingTickets;
+    // Antes sólo miraba clientes y tickets: el spinner se apagaba con el
+    // contrato, el histórico de SLA o la reincidencia todavía en vuelo, y los
+    // KPIs que dependen de esos datos aparecían vacíos y "saltaban" al valor
+    // real unos milisegundos después de pintarse la pantalla como lista.
+    const isLoading = loadingClients || loadingTickets || loadingContracts
+      || loadingSlaHistory || loadingReopen || loadingSlaStatus;
 
     if (!client) {
       return {
-        isLoading, client: null, health: null, healthTone: "grey", badges: [], identityLine: "",
+        isLoading, client: null, tickets: [], health: null, healthTone: "grey", badges: [], identityLine: "",
         supportSublabel: "", implSublabel: "", supportKpis: [], implKpis: [],
         supportTabs: [], implTabs: [], phases: [], activePhaseIndex: -1,
         hoursBySpecialist: [], recurringTopics: [], slaByMonth: [], openRisks: [],
@@ -253,6 +273,9 @@ export function useClientDossier(clientId: string | undefined): ClientDossier {
     const topModule = [...byModule.entries()].sort((a, b) => b[1] - a[1])[0];
     if (topModule) badges.push({ label: `${topModule[0]} · ${topModule[1]} casos`, tone: "blue" });
     if (summary.breached > 0) badges.push({ label: `${summary.breached} fuera de SLA`, tone: "red" });
+    // summary.uncovered ya lo calcula useSlaCompliance (fecha del caso fuera de
+    // toda vigencia, o cliente sin contrato) y hasta acá llegaba sin usarse.
+    if (summary.uncovered > 0) badges.push({ label: `${summary.uncovered} sin cobertura`, tone: "red" });
 
     /* ── Identidad ── */
     // Sin plan comercial, ARR, usuarios ni fecha de alta en el modelo: la línea
@@ -272,10 +295,10 @@ export function useClientDossier(clientId: string | undefined): ClientDossier {
       .map(m => (m.total > 0 ? Math.round((m.met / m.total) * 100) : 0));
 
     const includedHours = Number(contract?.included_hours) || 0;
-    const thisMonth = monthKey(new Date());
+    const thisMonth = monthKeyCR(new Date());
     const usedHours = tickets.reduce((s, t) => {
-      const k = (t.created_at || "").slice(0, 7);
-      return k === thisMonth ? s + (Number(t.tiempo_cobrado_minutos) || 0) / 60 : s;
+      if (!t.created_at) return s;
+      return monthKeyCR(t.created_at) === thisMonth ? s + (Number(t.tiempo_cobrado_minutos) || 0) / 60 : s;
     }, 0);
     const hoursPct = includedHours > 0 ? Math.round((usedHours / includedHours) * 100) : null;
 
@@ -295,6 +318,19 @@ export function useClientDossier(clientId: string | undefined): ClientDossier {
         title: summary.compliancePct === null
           ? "Todavía no hay casos registrados desde la fecha de corte de medición"
           : `${summary.measured - summary.measuredBreached} sin incumplir de ${summary.measured} casos medidos · meta 90%`,
+      },
+      {
+        // summarizeResponse() ya lo calcula en useSlaCompliance y llegaba hasta
+        // acá sin usarse: el expediente medía resolución pero no si el equipo
+        // siquiera respondió a tiempo.
+        label: "Primera respuesta",
+        value: summary.respCompliancePct === null ? "—" : `${summary.respCompliancePct}%`,
+        delta: summary.respPending > 0 ? `${summary.respPending} en curso` : null,
+        tone: summary.respCompliancePct === null ? "grey" : toneAbove(summary.respCompliancePct, 90, 75),
+        series: [],
+        title: summary.respCompliancePct === null
+          ? "Sin casos con veredicto de primera respuesta todavía"
+          : `${summary.respOk} a tiempo de ${summary.respOk + summary.respLate + summary.respOverdue} con veredicto · ${summary.respPending} esperando`,
       },
       {
         label: "Horas del mes",
@@ -410,7 +446,11 @@ export function useClientDossier(clientId: string | undefined): ClientDossier {
       {
         key: "historico", label: "Histórico", count: closed.length,
         cols: ["Boleta", "Asunto", "Responsable", "Estado", "Entrega"],
-        rows: closed.slice(0, 100).map(t => ({
+        // Antes se cortaba en 100 filas mientras el chip de la pestaña seguía
+        // mostrando el total real: un cliente con 340 cerrados veía "340" y
+        // exportaba 100 al CSV, sin ningún aviso de que faltaba el resto. Las
+        // otras cinco pestañas no recortan; ésta tampoco debería.
+        rows: closed.map(t => ({
           id: t.id, c1: t.ticket_id, c2: t.asunto, c3: t.responsable || "Sin asignar",
           chip: t.estado, chipTone: "green" as Tone,
           c5: (t.fecha_entrega || "").slice(0, 10) || "—", valTone: "grey" as Tone, rail: "green" as Tone,
@@ -469,8 +509,7 @@ export function useClientDossier(clientId: string | undefined): ClientDossier {
     /* ── Paneles laterales ── */
     const byOwner = new Map<string, number>();
     for (const t of tickets) {
-      const k = (t.created_at || "").slice(0, 7);
-      if (k !== thisMonth) continue;
+      if (!t.created_at || monthKeyCR(t.created_at) !== thisMonth) continue;
       const who = (t.responsable || "").trim();
       if (!who) continue;
       byOwner.set(who, (byOwner.get(who) || 0) + (Number(t.tiempo_cobrado_minutos) || 0) / 60);
@@ -493,7 +532,7 @@ export function useClientDossier(clientId: string | undefined): ClientDossier {
     });
 
     return {
-      isLoading, client, health, healthTone, badges, identityLine,
+      isLoading, client, tickets, health, healthTone, badges, identityLine,
       supportSublabel: `${open.length} caso${open.length === 1 ? "" : "s"} abierto${open.length === 1 ? "" : "s"}`,
       implSublabel: activePhaseIndex >= 0
         ? `fase ${activePhaseIndex + 1} de ${phases.length}`
@@ -503,5 +542,8 @@ export function useClientDossier(clientId: string | undefined): ClientDossier {
       reincidenceModule: topModule?.[0] ?? null,
       reopenCount: reopen?.reopens_90d ?? 0,
     };
-  }, [clients, clientId, tickets, contracts, slaHistory, reopen, slaRows, summary, loadingClients, loadingTickets]);
+  }, [
+    clients, clientId, tickets, contracts, slaHistory, reopen, slaRows, summary,
+    loadingClients, loadingTickets, loadingContracts, loadingSlaHistory, loadingReopen, loadingSlaStatus,
+  ]);
 }

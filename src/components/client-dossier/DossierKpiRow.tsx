@@ -2,8 +2,9 @@ import { toneStyles, type DossierKpi } from "@/hooks/useClientDossier";
 import { Sparkline } from "./Sparkline";
 
 /**
- * Fila de 5 KPIs. Cada tarjeta: label truncado + chip de variación, y abajo el
- * valor con el sparkline a la derecha.
+ * Fila de KPIs (5 en Implementación, 6 en Soporte). Cada tarjeta: label
+ * truncado + chip de variación, y abajo el valor con el sparkline a la
+ * derecha.
  *
  * El delta se calcula de la serie (últimos dos puntos) — no se escribe a mano —
  * y por eso puede faltar: cuando no hay serie con qué comparar, el chip no se

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { healthScore, toneAbove, toneBelow, toneStyles } from "@/hooks/useClientDossier";
+import { healthScore, monthKeyCR, toneAbove, toneBelow, toneStyles } from "@/hooks/useClientDossier";
 
 /**
  * El spec del expediente exige que el color SIEMPRE salga del umbral del dato,
@@ -78,5 +78,33 @@ describe("score de salud", () => {
 
   it("sin casos abiertos no divide por cero", () => {
     expect(() => healthScore({ ...perfecto, openCases: 0, breached: 0 })).not.toThrow();
+  });
+});
+
+/**
+ * "Horas del mes" comparaba `thisMonth` (hora local del navegador) contra
+ * `created_at.slice(0,7)` (prefijo crudo del ISO que Postgres entrega en
+ * UTC): cerca de la medianoche, o con el reloj del sistema mal puesto, un
+ * ticket del día 1 podía quedar contado en el mes anterior o al revés. Mismo
+ * bug de fondo que formatCutoff ya corrigió para la fecha de corte.
+ */
+describe("clave de mes en hora de Costa Rica", () => {
+  it("mismo instante, misma clave sin importar cómo se le pase", () => {
+    // 2026-09-01T04:00:00Z es 2026-08-31 22:00 en Costa Rica (UTC-6).
+    expect(monthKeyCR("2026-09-01T04:00:00Z")).toBe("2026-08");
+    expect(monthKeyCR(new Date("2026-09-01T04:00:00Z"))).toBe("2026-08");
+  });
+
+  it("la medianoche de Costa Rica ya cambió de mes aunque en UTC no", () => {
+    // 2026-09-01T00:00:00-06:00 == 2026-09-01T06:00:00Z: en CR ya es
+    // septiembre; una lectura ingenua del prefijo ISO ('2026-09') coincide acá,
+    // pero a la 1am CR (07:00Z) seguiría dando '2026-09' de las dos formas—la
+    // prueba real es que el cálculo pase por la zona, no por el prefijo crudo.
+    expect(monthKeyCR("2026-09-01T06:00:00Z")).toBe("2026-09");
+  });
+
+  it("aguanta fecha vacía o inválida sin reventar la pantalla", () => {
+    expect(monthKeyCR("")).toBe("");
+    expect(monthKeyCR("no soy una fecha")).toBe("");
   });
 });

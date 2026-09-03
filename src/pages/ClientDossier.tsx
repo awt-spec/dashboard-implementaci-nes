@@ -1,17 +1,19 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/dashboard/AppSidebar";
 import { AppHeader } from "@/components/dashboard/AppHeader";
 import { HeaderActionsProvider } from "@/components/dashboard/HeaderActions";
 import { CommandPalette, useCommandPalette } from "@/components/common/CommandPalette";
+import { useAuth } from "@/hooks/useAuth";
 import { useClientDossier } from "@/hooks/useClientDossier";
 import { DossierHeader, type DossierCtx } from "@/components/client-dossier/DossierHeader";
 import { DossierKpiRow } from "@/components/client-dossier/DossierKpiRow";
 import { SupportContext } from "@/components/client-dossier/SupportContext";
 import { ImplContext } from "@/components/client-dossier/ImplContext";
+import { TicketDetailSheet } from "@/components/support/TicketDetailSheet";
 import { applyTheme, readStoredTheme, storeTheme } from "@/lib/theme";
 import type { CSSProperties } from "react";
 
@@ -27,7 +29,15 @@ export default function ClientDossier() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
+  const { role } = useAuth();
   const dossier = useClientDossier(id);
+
+  // Herramienta interna: cumplimiento de SLA, horas facturadas por
+  // especialista con nombre real, incumplimientos. RLS ya oculta los datos
+  // que no le tocan a cada rol, pero eso no evita que un cliente o un
+  // colaborador lleguen tecleando la URL y vean una pantalla pensada para
+  // uso interno, con paneles que no se adaptaron a su rol.
+  const blocked = role === "cliente" || role === "colaborador";
 
   const ctx: DossierCtx = params.get("ctx") === "impl" ? "impl" : "soporte";
   const setCtx = (next: DossierCtx) => {
@@ -39,6 +49,11 @@ export default function ClientDossier() {
 
   const [highlightId, setHighlightId] = useState<string | null>(null);
   useEffect(() => { setHighlightId(null); }, [ctx]);
+
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const selectedTicket = selectedTicketId
+    ? dossier.tickets.find(t => t.id === selectedTicketId) ?? null
+    : null;
 
   const [dark, setDark] = useState(() => readStoredTheme() === "dark");
   useEffect(() => {
@@ -85,7 +100,15 @@ export default function ClientDossier() {
                 la altura fija, donde el layout de dos columnas tiene sus
                 propios scrolls internos. */}
             <main className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4 md:p-5 lg:overflow-hidden">
-              {dossier.isLoading ? (
+              {blocked ? (
+                <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+                  <ShieldAlert className="h-7 w-7 text-muted-foreground" />
+                  <p className="max-w-xs text-sm text-muted-foreground">
+                    Esta vista es para uso interno del equipo. No está disponible con tu rol.
+                  </p>
+                  <Button size="sm" onClick={() => navigate("/")}>Volver</Button>
+                </div>
+              ) : dossier.isLoading ? (
                 <div className="flex flex-1 items-center justify-center">
                   <Loader2 className="h-7 w-7 animate-spin text-primary" />
                 </div>
@@ -101,6 +124,7 @@ export default function ClientDossier() {
                   {ctx === "soporte" ? (
                     <SupportContext
                       dossier={dossier}
+                      onOpenCase={setSelectedTicketId}
                       onGoToRisk={riskId => { setCtx("impl"); setHighlightId(riskId); }}
                       highlightId={highlightId}
                     />
@@ -119,6 +143,13 @@ export default function ClientDossier() {
       </HeaderActionsProvider>
 
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} onNavigate={() => navigate("/")} />
+
+      <TicketDetailSheet
+        ticket={selectedTicket}
+        open={!!selectedTicket}
+        onOpenChange={o => { if (!o) setSelectedTicketId(null); }}
+        canEditInternal={true}
+      />
     </SidebarProvider>
   );
 }
