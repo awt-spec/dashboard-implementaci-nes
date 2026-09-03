@@ -14,22 +14,36 @@ grant all on _v to authenticated;
 
 do $$
 declare
-  luis uuid; admin uuid; k int; j jsonb; cli text;
+  luis uuid; admin uuid; k int; j jsonb; cli text; ncerr int;
 begin
   select user_id into luis from public.sysde_team_members
     where email = 'lalfaro-contratista@sysde.com';
   select ur.user_id into admin from public.user_roles ur where ur.role = 'admin' limit 1;
 
-  select t.client_id into cli from public.tasks t where t.assigned_user_id = luis limit 1;
-  if cli is null then
-    select s.client_id into cli from public.support_tickets s
-      where s.assigned_user_id = luis limit 1;
-  end if;
+  -- El cliente de prueba NO puede elegirse con un "limit 1" arbitrario: si cae
+  -- uno sin casos cerrados, el histórico da 0 para todo el mundo y la prueba 15
+  -- pasa igual sin la migración. Falso verde. Se toma el que más cerrados tenga.
+  select x.client_id, x.cerrados into cli, ncerr
+  from (
+    select c.client_id,
+           (select count(*) from public.support_tickets t
+              where t.client_id = c.client_id
+                and t.estado in ('CERRADA','ENTREGADA','APROBADA')) as cerrados
+    from (
+      select distinct client_id from public.tasks where assigned_user_id = luis
+      union
+      select distinct client_id from public.support_tickets where assigned_user_id = luis
+    ) c
+    where c.client_id is not null
+  ) x
+  order by x.cerrados desc nulls last limit 1;
+  if coalesce(ncerr, 0) = 0 then cli := null; end if;
 
   insert into _v values (0,'Luis encontrado en el directorio','un uuid',
     coalesce(luis::text,'NO ENCONTRADO'));
-  insert into _v values (1,'cliente donde Luis trabaja','alguno',
-    coalesce(cli,'ninguno'));
+  insert into _v values (1,'cliente de prueba (con casos cerrados)','uno con >0',
+    coalesce(cli || ' (' || ncerr || ' cerrados)',
+             'NINGUNO — las pruebas 15 y 31 no se corren'));
 
   -- ═══════════════ COLABORADOR ═══════════════
   set local role authenticated;
@@ -96,7 +110,7 @@ begin
     (select count(*)::text from public.sysde_team_members));
   if cli is not null then
     j := public.get_sla_history(cli);
-    insert into _v values (31,'admin sigue viendo el histórico','mayor que 0',
+    insert into _v values (31,'admin sigue viendo el histórico', ncerr::text,
       coalesce(j->>'closed_total','(nulo)'));
   end if;
 
@@ -115,7 +129,6 @@ end $$;
 select n, prueba, esperado, obtenido,
   case
     when n < 10 then ''
-    when n = 31 then case when obtenido ~ '^[0-9]+$' and obtenido::int > 0 then 'OK' else 'REVISAR' end
     when n = 30 then case when obtenido ~ '^[0-9]+$' and obtenido::int > 1 then 'OK' else 'REVISAR' end
     when n = 13 then case when obtenido like 'Luis%' then 'OK' else 'REVISAR' end
     when n = 14 then case when obtenido not like 'NULO%' then 'OK' else 'REVISAR' end
