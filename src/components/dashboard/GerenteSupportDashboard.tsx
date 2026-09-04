@@ -63,7 +63,7 @@ function getHealth(openCount: number, criticalCount: number) {
 }
 
 export function GerenteSupportDashboard({ client, canCreateTickets = true, sidebarExtras }: Props) {
-  const { data: tickets = [], isLoading } = useSupportTickets(client.id);
+  const { data: tickets = [], isLoading, error, refetch } = useSupportTickets(client.id);
   const updateTicket = useUpdateSupportTicket();
   const { role } = useAuth();
   const isStaff = role !== "cliente";
@@ -170,6 +170,33 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
     return (
       <div className="flex items-center justify-center py-24">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Un fallo de carga NO puede leerse como buenas noticias. Sin este corte,
+  // `tickets` cae a [] y la pantalla pinta el héroe en verde con "Excelente",
+  // 0 casos abiertos y 0 críticos: al cliente se le presenta una caída de red
+  // como si todo estuviera en orden. Antes de decir nada sobre su salud, hay
+  // que poder afirmar que los datos llegaron.
+  if (error) {
+    return (
+      <div className="max-w-2xl mx-auto py-16 px-4">
+        <Card className="border-destructive/40">
+          <CardContent className="p-6 flex flex-col items-center text-center gap-3">
+            <AlertCircle className="h-9 w-9 text-destructive" />
+            <div>
+              <h2 className="text-base font-bold text-foreground">No pudimos cargar tus casos</h2>
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                Es un problema al traer la información, no un cambio en tus solicitudes.
+                Volvé a intentar en un momento; si sigue, escribinos.
+              </p>
+            </div>
+            <Button onClick={() => refetch()} className="gap-2 h-10">
+              <RotateCcw className="h-4 w-4" /> Reintentar
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }

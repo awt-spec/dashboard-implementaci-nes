@@ -6,8 +6,16 @@ import { useAuth } from "@/hooks/useAuth";
 // excluyen campos internos (prioridad_interna, reopen_count, tiempo_cobrado_
 // minutos, descripcion_cifrada, assigned_user_id, campos scrum, etc.) que hoy
 // viajaban al navegador del cliente por el select("*").
+//
+// tiempo_cobrado_minutos y tiempo_consumido_minutos estaban listados arriba
+// como excluidos y a la vez incluidos en la constante: las horas facturadas de
+// cada caso llegaban al navegador del cliente, invisibles en pantalla pero
+// legibles desde las herramientas del navegador. Ningún componente del portal
+// los usa —las horas del cliente salen de work_time_entries y del RPC del
+// estado de cuenta— así que se van. Los usa el lado interno, que sigue
+// pidiendo select("*").
 const CLIENT_SAFE_COLUMNS =
-  "id, client_id, ticket_id, consecutivo_cliente, producto, asunto, descripcion, tipo, prioridad, estado, fecha_registro, fecha_entrega, dias_antiguedad, responsable, ai_summary, notas, case_agreements, case_actions, tiempo_cobrado_minutos, tiempo_consumido_minutos, created_at, updated_at";
+  "id, client_id, ticket_id, consecutivo_cliente, producto, asunto, descripcion, tipo, prioridad, estado, fecha_registro, fecha_entrega, dias_antiguedad, responsable, ai_summary, notas, case_agreements, case_actions, created_at, updated_at";
 
 export interface CaseAgreementItem {
   text: string;

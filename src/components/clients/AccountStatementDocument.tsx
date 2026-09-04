@@ -61,43 +61,51 @@ export function AccountStatementDocument({ stmt, clientId }: { stmt: AccountStat
       </div>
 
       {/* ── Tabla: Paquetes de servicio ── */}
+      {/* El documento está pensado para papel: ocho columnas que a 356 px de
+          ancho no entran. El contenedor del panel es overflow-hidden, así que
+          sin este envoltorio las últimas columnas —vigencia y estado— quedaban
+          recortadas y sin forma de llegar a ellas. La barra de título queda
+          fija y sólo la tabla se desplaza; min-w evita que las columnas se
+          aplasten hasta ser ilegibles. */}
       <div className="border" style={{ borderColor: RED }}>
         <div className="text-center font-bold py-1.5 border-b" style={{ borderColor: RED }}>Paquetes de servicio</div>
-        <table className="w-full text-xs border-collapse">
-          <thead>
-            <tr style={{ background: RED }} className="text-white">
-              {["Póliza", "Paquete Servicio", "Horas contratadas", "Horas consumidas", "Saldo horas póliza", "Fecha inicial", "Fecha vencimiento", "Estado"].map(h => (
-                <th key={h} className="px-2 py-1.5 font-bold border" style={{ borderColor: "#fff3" }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loadingPkgs ? (
-              <tr><td colSpan={8} className="text-center py-4"><Loader2 className="h-4 w-4 animate-spin inline" /></td></tr>
-            ) : pkgRows.length === 0 ? (
-              <tr><td colSpan={8} className="text-center py-3 text-neutral-500">Sin paquetes en el período</td></tr>
-            ) : pkgRows.map(p => (
-              <tr key={p.id} className="text-center">
-                <td className="border px-2 py-1.5">{p.policy_number}</td>
-                <td className="border px-2 py-1.5">{p.package_number}</td>
-                <td className="border px-2 py-1.5 text-right">{n2(p.hours_contracted)}</td>
-                <td className="border px-2 py-1.5 text-right">{n2(p.consumed)}</td>
-                <td className="border px-2 py-1.5 text-right">{n2(p.balance)}</td>
-                <td className="border px-2 py-1.5">{fmtDate(p.start_date)}</td>
-                <td className="border px-2 py-1.5">{fmtDate(p.end_date)}</td>
-                <td className="border px-2 py-1.5">{p.estado}</td>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[760px] text-xs border-collapse">
+            <thead>
+              <tr style={{ background: RED }} className="text-white">
+                {["Póliza", "Paquete Servicio", "Horas contratadas", "Horas consumidas", "Saldo horas póliza", "Fecha inicial", "Fecha vencimiento", "Estado"].map(h => (
+                  <th key={h} className="px-2 py-1.5 font-bold border" style={{ borderColor: "#fff3" }}>{h}</th>
+                ))}
               </tr>
-            ))}
-            <tr className="font-bold">
-              <td className="border px-2 py-1.5" style={{ color: RED }}>TOTALES</td>
-              <td className="border px-2 py-1.5"></td>
-              <td className="border px-2 py-1.5 text-right">{n2(totContract)}</td>
-              <td className="border px-2 py-1.5 text-right">{n2(totConsumed)}</td>
-              <td className="border px-2 py-1.5 text-right">{n2(totBalance)}</td>
-              <td className="border px-2 py-1.5" colSpan={3}></td>
-            </tr>
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {loadingPkgs ? (
+                <tr><td colSpan={8} className="text-center py-4"><Loader2 className="h-4 w-4 animate-spin inline" /></td></tr>
+              ) : pkgRows.length === 0 ? (
+                <tr><td colSpan={8} className="text-center py-3 text-neutral-500">Sin paquetes en el período</td></tr>
+              ) : pkgRows.map(p => (
+                <tr key={p.id} className="text-center">
+                  <td className="border px-2 py-1.5">{p.policy_number}</td>
+                  <td className="border px-2 py-1.5">{p.package_number}</td>
+                  <td className="border px-2 py-1.5 text-right">{n2(p.hours_contracted)}</td>
+                  <td className="border px-2 py-1.5 text-right">{n2(p.consumed)}</td>
+                  <td className="border px-2 py-1.5 text-right">{n2(p.balance)}</td>
+                  <td className="border px-2 py-1.5">{fmtDate(p.start_date)}</td>
+                  <td className="border px-2 py-1.5">{fmtDate(p.end_date)}</td>
+                  <td className="border px-2 py-1.5">{p.estado}</td>
+                </tr>
+              ))}
+              <tr className="font-bold">
+                <td className="border px-2 py-1.5" style={{ color: RED }}>TOTALES</td>
+                <td className="border px-2 py-1.5"></td>
+                <td className="border px-2 py-1.5 text-right">{n2(totContract)}</td>
+                <td className="border px-2 py-1.5 text-right">{n2(totConsumed)}</td>
+                <td className="border px-2 py-1.5 text-right">{n2(totBalance)}</td>
+                <td className="border px-2 py-1.5" colSpan={3}></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <div className="flex">
           <div className="flex-1 px-2 py-2 font-bold text-white" style={{ background: RED }}>TOTAL SALDO HORAS ACTIVAS:</div>
           <div className="w-40 px-4 py-2 font-bold text-right">{n2(saldoActivas)}</div>
@@ -135,38 +143,40 @@ export function AccountStatementDocument({ stmt, clientId }: { stmt: AccountStat
         <p className="text-sm">Estado cuenta definido con el siguiente detalle de consumo:</p>
         <div className="border" style={{ borderColor: RED }}>
           <div className="text-center font-bold py-1.5 border-b" style={{ borderColor: RED }}>Solicitudes de servicio</div>
-          <table className="w-full text-xs border-collapse">
-            <thead>
-              <tr style={{ background: RED }} className="text-white">
-                {["Id", "Paquete Servicio", "Producto", "Cons. cliente", "Asunto", "Fecha registro", "Tipo", "Medio descuento", "Tiempo invertido"].map(h => (
-                  <th key={h} className="px-2 py-1.5 font-bold border" style={{ borderColor: "#fff3" }}>{h}</th>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[820px] text-xs border-collapse">
+              <thead>
+                <tr style={{ background: RED }} className="text-white">
+                  {["Id", "Paquete Servicio", "Producto", "Cons. cliente", "Asunto", "Fecha registro", "Tipo", "Medio descuento", "Tiempo invertido"].map(h => (
+                    <th key={h} className="px-2 py-1.5 font-bold border" style={{ borderColor: "#fff3" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.length === 0 ? (
+                  <tr><td colSpan={9} className="text-center py-3 text-neutral-500">Sin consumo registrado en el período</td></tr>
+                ) : rows.map(r => (
+                  <tr key={r.item_id}>
+                    <td className="border px-2 py-1.5">{r.ticket_code}</td>
+                    <td className="border px-2 py-1.5 text-center">{r.package_number ?? "—"}</td>
+                    <td className="border px-2 py-1.5">{r.producto}</td>
+                    <td className="border px-2 py-1.5 text-center">{r.consecutivo_cliente ?? "—"}</td>
+                    <td className="border px-2 py-1.5 max-w-[240px] truncate">{r.asunto}</td>
+                    <td className="border px-2 py-1.5 text-center">{fmtDate(r.fecha_registro)}</td>
+                    <td className="border px-2 py-1.5">{r.tipo}</td>
+                    <td className="border px-2 py-1.5 text-center">Póliza</td>
+                    <td className="border px-2 py-1.5 text-right">{n2(r.hours)}</td>
+                  </tr>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.length === 0 ? (
-                <tr><td colSpan={9} className="text-center py-3 text-neutral-500">Sin consumo registrado en el período</td></tr>
-              ) : rows.map(r => (
-                <tr key={r.item_id}>
-                  <td className="border px-2 py-1.5">{r.ticket_code}</td>
-                  <td className="border px-2 py-1.5 text-center">{r.package_number ?? "—"}</td>
-                  <td className="border px-2 py-1.5">{r.producto}</td>
-                  <td className="border px-2 py-1.5 text-center">{r.consecutivo_cliente ?? "—"}</td>
-                  <td className="border px-2 py-1.5 max-w-[240px] truncate">{r.asunto}</td>
-                  <td className="border px-2 py-1.5 text-center">{fmtDate(r.fecha_registro)}</td>
-                  <td className="border px-2 py-1.5">{r.tipo}</td>
-                  <td className="border px-2 py-1.5 text-center">Póliza</td>
-                  <td className="border px-2 py-1.5 text-right">{n2(r.hours)}</td>
-                </tr>
-              ))}
-              {rows.length > 0 && (
-                <tr className="font-bold">
-                  <td colSpan={8} className="border px-2 py-1.5 text-right" style={{ color: RED }}>TOTAL TIEMPO INVERTIDO</td>
-                  <td className="border px-2 py-1.5 text-right">{n2(totalInvertido)}</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                {rows.length > 0 && (
+                  <tr className="font-bold">
+                    <td colSpan={8} className="border px-2 py-1.5 text-right" style={{ color: RED }}>TOTAL TIEMPO INVERTIDO</td>
+                    <td className="border px-2 py-1.5 text-right">{n2(totalInvertido)}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
