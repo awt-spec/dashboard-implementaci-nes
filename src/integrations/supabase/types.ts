@@ -6302,6 +6302,14 @@ export type Database = {
         Returns: undefined
       }
       can_view_request: { Args: { _request_id: string }; Returns: boolean }
+      cliente_cambiar_estado_caso: {
+        Args: {
+          _motivo?: string | null
+          _nuevo_estado: string
+          _ticket_id: string
+        }
+        Returns: string
+      }
       decrypt_sensitive: {
         Args: { ciphertext: string; key: string }
         Returns: string

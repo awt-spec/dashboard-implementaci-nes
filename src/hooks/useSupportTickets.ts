@@ -220,6 +220,44 @@ export function useAllSupportTickets() {
   });
 }
 
+/**
+ * Validar y reabrir desde el portal del cliente.
+ *
+ * No puede ir por useUpdateSupportTicket: sobre support_tickets el rol cliente
+ * sólo tiene políticas de SELECT e INSERT, así que el UPDATE no afectaba
+ * ninguna fila y Postgres no protesta por eso. El botón cantaba éxito, el
+ * update optimista lo pintaba, y al refetch el caso seguía como estaba.
+ *
+ * La RPC (migración 20260905150000) es SECURITY DEFINER y sólo sabe hacer una
+ * cosa: mover el estado de un caso ENTREGADA/APROBADA a CERRADA o EN ATENCIÓN,
+ * comprobando que el caso sea de la empresa del usuario y que tenga permiso de
+ * edición. Una política de UPDATE no servía: RLS no distingue columnas y le
+ * habría dado también responsable, prioridad y fechas.
+ */
+export function useClienteCambiarEstado() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ ticketId, nuevoEstado, motivo }: {
+      ticketId: string;
+      nuevoEstado: "CERRADA" | "EN ATENCIÓN";
+      motivo?: string;
+    }) => {
+      const { data, error } = await supabase.rpc("cliente_cambiar_estado_caso", {
+        _ticket_id: ticketId,
+        _nuevo_estado: nuevoEstado,
+        _motivo: motivo ?? null,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["support-tickets"] });
+      qc.invalidateQueries({ queryKey: ["support-tickets-all"] });
+      qc.invalidateQueries({ queryKey: ["ticket-history"] });
+    },
+  });
+}
+
 export function useUpdateSupportTicket() {
   const qc = useQueryClient();
 

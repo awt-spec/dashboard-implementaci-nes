@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { type Client } from "@/data/projectData";
-import { useSupportTickets, useUpdateSupportTicket, type SupportTicket } from "@/hooks/useSupportTickets";
+import { useSupportTickets, useUpdateSupportTicket, useClienteCambiarEstado, type SupportTicket } from "@/hooks/useSupportTickets";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { SharedMinutasPanel } from "./SharedMinutasPanel";
@@ -169,9 +169,22 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
   const health = getHealth(openTickets.length, criticalTickets.length);
 
   // ── Acciones del cliente sobre tickets ENTREGADA ──
+  // El cliente no puede escribir support_tickets —sólo tiene SELECT e INSERT—
+  // así que va por la RPC, que es SECURITY DEFINER y sólo mueve el estado. El
+  // staff sí tiene su política de UPDATE y sigue por el camino de siempre.
+  // Antes ambos hacían UPDATE directo: para el cliente afectaba 0 filas sin dar
+  // error, y el botón cantaba éxito igual.
+  const cambiarEstadoCliente = useClienteCambiarEstado();
+  const cambiandoEstado = updateTicket.isPending || cambiarEstadoCliente.isPending;
+
+  const moverEstado = (ticket: SupportTicket, estado: "CERRADA" | "EN ATENCIÓN") =>
+    isStaff
+      ? updateTicket.mutateAsync({ id: ticket.id, updates: { estado } })
+      : cambiarEstadoCliente.mutateAsync({ ticketId: ticket.id, nuevoEstado: estado });
+
   const handleValidate = async (ticket: SupportTicket) => {
     try {
-      await updateTicket.mutateAsync({ id: ticket.id, updates: { estado: "CERRADA" } });
+      await moverEstado(ticket, "CERRADA");
       toast.success(`Caso ${ticket.ticket_id} cerrado`, {
         description: "Gracias por validar la entrega del caso.",
       });
@@ -182,7 +195,7 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
 
   const handleReopen = async (ticket: SupportTicket) => {
     try {
-      await updateTicket.mutateAsync({ id: ticket.id, updates: { estado: "EN ATENCIÓN" } });
+      await moverEstado(ticket, "EN ATENCIÓN");
       toast.info(`Caso ${ticket.ticket_id} reabierto`, {
         description: "El equipo SVA fue notificado para retomar el caso.",
       });
@@ -494,7 +507,7 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleReopen(t)}
-                                disabled={updateTicket.isPending}
+                                disabled={cambiandoEstado}
                                 className="flex-1 sm:flex-none h-11 sm:h-7 gap-1 text-[11px]"
                                 title="El caso no está resuelto — reabrir y notificar al SVA"
                               >
@@ -503,7 +516,7 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
                               <Button
                                 size="sm"
                                 onClick={() => handleValidate(t)}
-                                disabled={updateTicket.isPending}
+                                disabled={cambiandoEstado}
                                 className="flex-1 sm:flex-none h-11 sm:h-7 gap-1 text-[11px] bg-success hover:bg-success/90"
                                 title="Confirmar que la solución es correcta y cerrar el caso"
                               >
