@@ -17,7 +17,7 @@ grant all on _v to public;
 
 do $$
 declare
-  u_cli uuid; u_adm uuid; cid text; tid uuid;
+  u_cli uuid; u_adm uuid; u_col uuid; cid text; tid uuid;
   k bigint; e text; hay_columnas boolean;
 begin
   -- ── elegir sujetos reales: el cliente con MÁS casos, no el primero que
@@ -33,6 +33,9 @@ begin
 
   select ur.user_id into u_adm
     from public.user_roles ur where ur.role = 'admin' limit 1;
+
+  select ur.user_id into u_col
+    from public.user_roles ur where ur.role = 'colaborador' limit 1;
 
   if u_cli is null then
     insert into _v values (0,'hay un usuario cliente con casos','sí','NO — no se puede verificar');
@@ -94,6 +97,29 @@ begin
       case when k > 0 then k::text else '0 — SE ROMPIÓ EL STAFF' end);
   end if;
 
+  -- ── 6b · el colaborador tampoco: es externo y esto es dato comercial
+  if u_col is not null then
+    perform set_config('request.jwt.claim.sub', u_col::text, true);
+    select count(*) into k from public.support_ticket_time;
+    insert into _v values (8,'el colaborador ve filas de tiempo','0',k::text);
+
+    k := -1; e := null;
+    begin
+      delete from public.support_ticket_time;
+      get diagnostics k = row_count;
+      raise exception 'revertir';
+    exception when others then e := sqlerrm; end;
+    insert into _v values (9,'filas de tiempo que el colaborador BORRA','0',
+      case when e='revertir' then k::text else 'denegado (0)' end);
+
+    -- y que no le rompimos su pantalla: sigue viendo casos
+    select count(*) into k from public.support_tickets;
+    insert into _v values (10,'el colaborador sigue viendo casos','> 0',
+      case when k > 0 then k::text else '0 — SE ROMPIÓ EL COLABORADOR' end);
+  else
+    insert into _v values (8,'hay un usuario colaborador para probar','sí','no — sin sujeto');
+  end if;
+
   perform set_config('role','postgres',true);
 
   -- ── 7 · ¿ya se cerró el hueco?
@@ -108,7 +134,7 @@ select n, prueba, esperado, obtenido,
        case
          when esperado = '> 0' then case when obtenido ~ '^[1-9][0-9]*$' then 'OK' else 'REVISAR' end
          when obtenido = esperado then 'OK'
-         when n = 3 and obtenido like 'denegado%' then 'OK'
+         when obtenido like 'denegado%' and esperado = '0' then 'OK'
          else 'REVISAR'
        end as veredicto
   from _v order by n;
