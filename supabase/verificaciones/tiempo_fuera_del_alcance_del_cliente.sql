@@ -24,7 +24,7 @@ begin
   --    aparezca. Un cliente con cero casos haría pasar todas las pruebas de
   --    fuga sin probar nada.
   select ca.user_id, ca.client_id into u_cli, cid
-    from public.cliente_assignments ca
+    from public.cliente_company_assignments ca
     join public.user_roles ur on ur.user_id = ca.user_id and ur.role = 'cliente'
     join public.support_tickets t on t.client_id = ca.client_id
    group by ca.user_id, ca.client_id
