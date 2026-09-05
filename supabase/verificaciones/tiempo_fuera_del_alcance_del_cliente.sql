@@ -122,6 +122,22 @@ begin
 
   perform set_config('role','postgres',true);
 
+  -- ── 6c · comprobación directa de que la migración del colaborador quedó.
+  -- Las pruebas de arriba son de comportamiento y podrían pasar por la razón
+  -- equivocada —por ejemplo si no existe ningún usuario colaborador—, así que
+  -- se mira también la definición de las políticas.
+  select count(*) into k
+    from pg_policies
+   where schemaname = 'public' and tablename = 'support_ticket_time'
+     and qual like '%is_colaborador_user%';
+  insert into _v values (11,'políticas que nombran al colaborador','2',k::text);
+
+  select count(*) into k
+    from pg_policies
+   where schemaname = 'public' and tablename = 'support_ticket_time'
+     and permissive = 'RESTRICTIVE';
+  insert into _v values (12,'políticas restrictivas en la tabla','1',k::text);
+
   -- ── 7 · ¿ya se cerró el hueco?
   -- Tras la FASE 1 esto dice "sí" y es correcto: el hueco sigue abierto a
   -- propósito hasta que el frontend esté desplegado. Tras la FASE 2 debe decir
