@@ -18,7 +18,7 @@ grant all on _v to public;
 do $$
 declare
   u_cli uuid; u_adm uuid; u_col uuid; cid text; tid uuid;
-  k bigint; e text; hay_columnas boolean;
+  k bigint; e text; est text; hay_columnas boolean;
 begin
   -- ── elegir sujetos reales: el cliente con MÁS casos, no el primero que
   --    aparezca. Un cliente con cero casos haría pasar todas las pruebas de
@@ -77,17 +77,21 @@ begin
   insert into _v values (4,'el cliente sigue viendo sus casos','> 0',
     case when k > 0 then k::text else '0 — SE ROMPIÓ' end);
 
-  -- ── 5 · el cliente sigue pudiendo validar/reabrir y leer de vuelta
+  -- ── 5 · el UPDATE directo del cliente sigue bloqueado, y así debe ser.
+  -- Esta fila esperaba 1 y estaba mal planteada: se escribió suponiendo que el
+  -- cliente podía escribir support_tickets. No puede —sólo tiene SELECT e
+  -- INSERT— y ahí estaba el bug de Validar/Reabrir: el UPDATE afectaba cero
+  -- filas sin dar error. Que valga siga funcionando se comprueba en la fila 16,
+  -- por la RPC.
   select id into tid from public.support_tickets where client_id = cid limit 1;
   k := -1; e := null;
   begin
     update public.support_tickets set estado = estado where id = tid;
     get diagnostics k = row_count;
-    perform 1 from public.support_tickets where id = tid;
     raise exception 'revertir';
   exception when others then e := sqlerrm; end;
-  insert into _v values (5,'el cliente actualiza y lee de vuelta','1',
-    case when e='revertir' then k::text else 'ERROR '||e end);
+  insert into _v values (5,'el UPDATE directo del cliente sigue bloqueado','0',
+    case when e='revertir' then k::text else 'denegado (0)' end);
 
   -- ── 6 · el staff sí lee el tiempo
   if u_adm is not null then
@@ -137,6 +141,55 @@ begin
    where schemaname = 'public' and tablename = 'support_ticket_time'
      and permissive = 'RESTRICTIVE';
   insert into _v values (12,'políticas restrictivas en la tabla','1',k::text);
+
+  -- ── 6d · la RPC con la que el cliente valida y reabre (20260905150000).
+  -- Existir no basta: si el GRANT no entró, el cliente recibe "permission
+  -- denied" y los botones siguen sin funcionar, sólo que ahora ruidosamente.
+  select count(*) into k from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname='public' and p.proname='cliente_cambiar_estado_caso';
+  insert into _v values (13,'la RPC existe','1',k::text);
+
+  -- has_function_privilege() lanza error si la función no existe, y eso
+  -- abortaba el bloque entero: el escenario más probable —que la migración no
+  -- se haya corrido— daba un crash en vez de una tabla legible. Por eso las
+  -- dos filas de permisos van dentro del if.
+  if k > 0 then
+    insert into _v values (14,'authenticated puede ejecutarla','sí',
+      case when has_function_privilege('authenticated',
+             'public.cliente_cambiar_estado_caso(uuid,text,text)', 'EXECUTE')
+           then 'sí' else 'NO — falta el GRANT' end);
+
+    insert into _v values (15,'anon NO puede ejecutarla','no',
+      case when has_function_privilege('anon',
+             'public.cliente_cambiar_estado_caso(uuid,text,text)', 'EXECUTE')
+           then 'SÍ — falta el REVOKE' else 'no' end);
+  else
+    insert into _v values (14,'authenticated puede ejecutarla','sí','no existe la RPC');
+    insert into _v values (15,'anon NO puede ejecutarla','no','no existe la RPC');
+  end if;
+
+  -- La prueba de verdad: que el cliente mueva un caso suyo. Se revierte.
+  select id into tid from public.support_tickets
+   where client_id = cid and estado in ('ENTREGADA','APROBADA') limit 1;
+  if k = 0 then
+    insert into _v values (16,'el cliente valida un caso entregado','CERRADA','no existe la RPC');
+  elsif tid is null then
+    insert into _v values (16,'el cliente valida un caso entregado','CERRADA',
+      'sin caso entregado para probar');
+  else
+    perform set_config('role','authenticated',true);
+    perform set_config('request.jwt.claim.sub', u_cli::text, true);
+    e := null; est := null;
+    begin
+      perform public.cliente_cambiar_estado_caso(tid, 'CERRADA');
+      select estado into est from public.support_tickets where id = tid;
+      raise exception 'revertir';
+    exception when others then e := sqlerrm; end;
+    insert into _v values (16,'el cliente valida un caso entregado','CERRADA',
+      case when e = 'revertir' then est else 'ERROR: ' || e end);
+    perform set_config('role','postgres',true);
+  end if;
 
   -- ── 7 · ¿ya se cerró el hueco?
   -- Tras la FASE 1 esto dice "sí" y es correcto: el hueco sigue abierto a
