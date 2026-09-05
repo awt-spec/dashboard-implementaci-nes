@@ -7,15 +7,26 @@ import { useAuth } from "@/hooks/useAuth";
 // minutos, descripcion_cifrada, assigned_user_id, campos scrum, etc.) que hoy
 // viajaban al navegador del cliente por el select("*").
 //
-// tiempo_cobrado_minutos y tiempo_consumido_minutos estaban listados arriba
-// como excluidos y a la vez incluidos en la constante: las horas facturadas de
-// cada caso llegaban al navegador del cliente, invisibles en pantalla pero
-// legibles desde las herramientas del navegador. Ningún componente del portal
-// los usa —las horas del cliente salen de work_time_entries y del RPC del
-// estado de cuenta— así que se van. Los usa el lado interno, que sigue
-// pidiendo select("*").
+// tiempo_cobrado_minutos y tiempo_consumido_minutos ya no viven en
+// support_tickets: se movieron a support_ticket_time, que tiene RLS propia y
+// deja fuera al cliente (migraciones 20260905120000 y 20260905130000). Esta
+// lista era la única defensa y no lo era: RLS es por fila, así que la política
+// del cliente le entregaba la fila completa y las horas facturadas llegaban al
+// navegador aunque no se pintaran. Ahora la lista es sólo higiene de payload;
+// el límite lo pone la base.
 const CLIENT_SAFE_COLUMNS =
   "id, client_id, ticket_id, consecutivo_cliente, producto, asunto, descripcion, tipo, prioridad, estado, fecha_registro, fecha_entrega, dias_antiguedad, responsable, ai_summary, notas, case_agreements, case_actions, created_at, updated_at";
+
+// El lado interno sí necesita el tiempo, que ahora vive en otra tabla. Se pide
+// embebido para no hacer una segunda consulta ni cambiar a los seis
+// componentes que leen ticket.tiempo_*: normTicket lo vuelve a aplanar en la
+// forma de siempre.
+const STAFF_COLUMNS =
+  "*, support_ticket_time(tiempo_consumido_minutos, tiempo_cobrado_minutos)";
+
+// Campos que ya no viven en support_tickets y hay que desviar a
+// support_ticket_time al escribir.
+const CAMPOS_DE_TIEMPO = ["tiempo_consumido_minutos", "tiempo_cobrado_minutos"] as const;
 
 export interface CaseAgreementItem {
   text: string;
@@ -136,7 +147,7 @@ export function useSupportTickets(clientId?: string) {
         // en cada vuelta.
         let query = supabase
           .from("support_tickets")
-          .select(isCliente ? CLIENT_SAFE_COLUMNS : "*")
+          .select(isCliente ? CLIENT_SAFE_COLUMNS : STAFF_COLUMNS)
           .order("dias_antiguedad", { ascending: false })
           // Sin un segundo criterio el orden entre filas con la misma
           // antigüedad no está definido, y una fila podría aparecer en dos
@@ -160,8 +171,17 @@ export function useSupportTickets(clientId?: string) {
 }
 
 function normTicket(t: any): SupportTicket {
+  // PostgREST devuelve el embebido como objeto cuando la llave foránea es única
+  // y como arreglo cuando no puede probarlo. Se aceptan las dos formas para no
+  // depender de cómo lo deduzca. Si no vino nada —el cliente no lo pide, y a él
+  // la RLS se lo niega— quedan en 0, que es el default de la columna.
+  const emb = t.support_ticket_time;
+  const tiempo = Array.isArray(emb) ? emb[0] : emb;
+  const { support_ticket_time: _descartado, ...resto } = t;
   return {
-    ...t,
+    ...resto,
+    tiempo_consumido_minutos: tiempo?.tiempo_consumido_minutos ?? 0,
+    tiempo_cobrado_minutos: tiempo?.tiempo_cobrado_minutos ?? 0,
     case_agreements: normalizeItems(t.case_agreements),
     case_actions: normalizeItems(t.case_actions),
   };
@@ -191,7 +211,7 @@ export function useAllSupportTickets() {
       
       const { data, error } = await supabase
         .from("support_tickets")
-        .select("*")
+        .select(STAFF_COLUMNS)
         .in("client_id", ids)
         .order("dias_antiguedad", { ascending: false });
       if (error) throw error;
@@ -211,9 +231,38 @@ export function useUpdateSupportTicket() {
 
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Record<string, unknown> }) => {
+      // El cronómetro de SupportCommandCenter y el formulario de
+      // TicketLegacyView siguen mandando tiempo_* junto al resto del caso; acá
+      // se separan y cada parte va a su tabla. Así ninguno de los dos tuvo que
+      // enterarse de la mudanza.
+      const tiempo: Record<string, unknown> = {};
+      const resto: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(updates)) {
+        if ((CAMPOS_DE_TIEMPO as readonly string[]).includes(k)) tiempo[k] = v;
+        else resto[k] = v;
+      }
+
+      if (Object.keys(tiempo).length > 0) {
+        const { error } = await supabase
+          .from("support_ticket_time")
+          .upsert(
+            { ticket_id: id, ...tiempo, updated_at: new Date().toISOString() },
+            { onConflict: "ticket_id" },
+          );
+        if (error) throw error;
+      }
+
+      // Registrar tiempo nunca movió updated_at del caso —no hay trigger y el
+      // update sólo mandaba la columna de minutos— así que si no queda nada
+      // más que escribir, no se toca el caso: mover la fecha ahora haría subir
+      // el caso en "Actividad reciente", que el cliente ve.
+      if (Object.keys(resto).length === 0) {
+        return { id, ...updates };
+      }
+
       const { data, error } = await supabase
         .from("support_tickets")
-        .update(updates as any)
+        .update(resto as any)
         .eq("id", id)
         .select()
         .maybeSingle();
@@ -274,7 +323,10 @@ const CORE_FIELDS = new Set([
 ]);
 const POST_MIGRATION_FIELDS = new Set([
   "descripcion", "prioridad_interna", "orden_atencion", "ubicacion_error",
-  "unidad_fabricacion", "tiempo_consumido_minutos", "tiempo_cobrado_minutos",
+  // tiempo_consumido_minutos y tiempo_cobrado_minutos ya no están acá: viven en
+  // support_ticket_time. Un caso nuevo nace con su fila en 0 (trigger
+  // trg_crear_tiempo_del_caso), así que no hay nada que mandar al crear.
+  "unidad_fabricacion",
   "fecha_estimada_cierre", "is_confidential", "fuente",
   "assigned_user_id", "story_points", "business_value", "effort",
   "backlog_rank", "scrum_status", "sprint_id",
@@ -287,8 +339,6 @@ const POST_MIGRATION_FIELDS = new Set([
 // (la BD los rellena sola con el default del schema).
 const POST_MIGRATION_DEFAULTS: Record<string, any> = {
   orden_atencion: 0,
-  tiempo_consumido_minutos: 0,
-  tiempo_cobrado_minutos: 0,
   is_confidential: false,
   fuente: "interno",
   prioridad_interna: "pendiente",

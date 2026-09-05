@@ -4413,6 +4413,35 @@ export type Database = {
           },
         ]
       }
+      support_ticket_time: {
+        Row: {
+          ticket_id: string
+          tiempo_cobrado_minutos: number
+          tiempo_consumido_minutos: number
+          updated_at: string
+        }
+        Insert: {
+          ticket_id: string
+          tiempo_cobrado_minutos?: number
+          tiempo_consumido_minutos?: number
+          updated_at?: string
+        }
+        Update: {
+          ticket_id?: string
+          tiempo_cobrado_minutos?: number
+          tiempo_consumido_minutos?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_ticket_time_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: true
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       support_tickets: {
         Row: {
           ai_classification: string | null
@@ -4452,8 +4481,6 @@ export type Database = {
           sprint_id: string | null
           story_points: number | null
           ticket_id: string
-          tiempo_cobrado_minutos: number
-          tiempo_consumido_minutos: number
           tipo: string
           ubicacion_error: string | null
           unidad_fabricacion: string | null
@@ -4498,8 +4525,6 @@ export type Database = {
           sprint_id?: string | null
           story_points?: number | null
           ticket_id: string
-          tiempo_cobrado_minutos?: number
-          tiempo_consumido_minutos?: number
           tipo?: string
           ubicacion_error?: string | null
           unidad_fabricacion?: string | null
@@ -4544,8 +4569,6 @@ export type Database = {
           sprint_id?: string | null
           story_points?: number | null
           ticket_id?: string
-          tiempo_cobrado_minutos?: number
-          tiempo_consumido_minutos?: number
           tipo?: string
           ubicacion_error?: string | null
           unidad_fabricacion?: string | null
