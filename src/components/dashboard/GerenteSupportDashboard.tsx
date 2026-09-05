@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -68,6 +68,20 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
   const { role } = useAuth();
   const isStaff = role !== "cliente";
   const [tab, setTab] = useState("resumen");
+
+  // La pestaña "Cuenta" sólo existe bajo lg: su disparador y su contenido son
+  // `lg:hidden`. Si el usuario la deja activa y la ventana se ensancha —girar
+  // el teléfono, restaurar la ventana— no queda ni pestaña marcada ni panel
+  // que mostrar: la columna principal se vacía. Nada la devolvía a un valor
+  // válido, así que se hace acá.
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const lg = window.matchMedia("(min-width: 1024px)");
+    const alCruzar = () => { if (lg.matches) setTab(t => (t === "cuenta" ? "resumen" : t)); };
+    alCruzar();
+    lg.addEventListener("change", alCruzar);
+    return () => lg.removeEventListener("change", alCruzar);
+  }, []);
   const [search, setSearch] = useState("");
   const [filterPriority, setFilterPriority] = useState<string>("all");
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
@@ -126,6 +140,17 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
   const avgAge = openTickets.length
     ? Math.round(openTickets.reduce((a, t) => a + (t.dias_antiguedad ?? 0), 0) / openTickets.length)
     : 0;
+
+  // "Actividad reciente" mostraba los casos MÁS VIEJOS: el hook trae la lista
+  // ordenada por dias_antiguedad descendente y la tarjeta hacía
+  // `tickets.slice(0, 5)`. Exactamente lo contrario de lo que promete el
+  // título, y una lista que no cambiaba nunca. Se ordena por la última vez que
+  // el caso se movió, con respaldos por si updated_at viniera vacío.
+  const recentTickets = useMemo(() => {
+    const cuando = (t: SupportTicket) =>
+      new Date(t.updated_at || t.fecha_registro || t.created_at || 0).getTime() || 0;
+    return [...tickets].sort((a, b) => cuando(b) - cuando(a)).slice(0, 5);
+  }, [tickets]);
 
   const productCounts = useMemo(() => {
     const m = new Map<string, number>();
@@ -205,8 +230,12 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
     <div className="max-w-2xl lg:max-w-7xl mx-auto pb-24 md:pb-6 animate-fadein">
       <div className="flex flex-col lg:grid lg:grid-cols-[380px_1fr] lg:gap-6 lg:items-start">
 
-        {/* ─── LEFT / TOP COLUMN ─── (en móvil va DEBAJO de las pestañas) */}
-        <div className="order-2 lg:order-none lg:sticky lg:top-4 space-y-4 mt-4 lg:mt-0">
+        {/* ─── LEFT / TOP COLUMN ─── (en móvil va ARRIBA)
+            Iba debajo de las pestañas, y eso dejaba el contador de casos
+            abiertos y el botón "Nueva solicitud" a ~1100 px de scroll: para
+            pedir soporte desde el teléfono había que pasar pantalla y media de
+            tarjetas de resumen. El cliente entra al portal a eso. */}
+        <div className="order-1 lg:order-none lg:sticky lg:top-4 space-y-4 lg:mt-0">
           {/* Hero */}
           <motion.div
             initial={{ opacity: 0, y: -8 }}
@@ -281,31 +310,31 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
           {sidebarExtras && <div className="hidden lg:block">{sidebarExtras}</div>}
         </div>
 
-        {/* ─── RIGHT / MAIN COLUMN ─── (en móvil va PRIMERO: pestañas arriba) */}
-        <div className="order-1 lg:order-none min-w-0">
+        {/* ─── RIGHT / MAIN COLUMN ─── (en móvil va DESPUÉS del héroe) */}
+        <div className="order-2 lg:order-none min-w-0 mt-4 lg:mt-0">
           <Tabs value={tab} onValueChange={setTab}>
             <TabsList className={cn(
               "grid w-full sticky top-0 z-10 bg-background/95 backdrop-blur-sm h-11",
               sidebarExtras ? "grid-cols-4 lg:grid-cols-3" : "grid-cols-3",
             )}>
-              <TabsTrigger value="resumen" className="text-xs gap-1.5">
-                <Activity className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Resumen</span>
+              <TabsTrigger value="resumen" aria-label="Resumen" className="text-xs gap-1 sm:gap-1.5">
+                <Activity className="h-3.5 w-3.5" /> <span className="text-[10px] sm:text-xs">Resumen</span>
               </TabsTrigger>
-              <TabsTrigger value="abiertos" className="text-xs gap-1.5 relative">
-                <Ticket className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Abiertos</span>
+              <TabsTrigger value="abiertos" aria-label="Abiertos" className="text-xs gap-1 sm:gap-1.5 relative">
+                <Ticket className="h-3.5 w-3.5" /> <span className="text-[10px] sm:text-xs">Abiertos</span>
                 {openTickets.length > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 h-3.5 min-w-3.5 px-1 rounded-full bg-primary text-primary-foreground text-[8px] font-bold flex items-center justify-center">
                     {openTickets.length}
                   </span>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="historial" className="text-xs gap-1.5">
-                <CheckCircle2 className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Historial</span>
+              <TabsTrigger value="historial" aria-label="Historial" className="text-xs gap-1 sm:gap-1.5">
+                <CheckCircle2 className="h-3.5 w-3.5" /> <span className="text-[10px] sm:text-xs">Historial</span>
               </TabsTrigger>
               {/* Solo en móvil: los extras (cuenta) van como pestaña, no como scroll */}
               {sidebarExtras && (
-                <TabsTrigger value="cuenta" className="text-xs gap-1.5 lg:hidden">
-                  <Wallet className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Cuenta</span>
+                <TabsTrigger value="cuenta" aria-label="Cuenta" className="text-xs gap-1 sm:gap-1.5 lg:hidden">
+                  <Wallet className="h-3.5 w-3.5" /> <span className="text-[10px] sm:text-xs">Cuenta</span>
                 </TabsTrigger>
               )}
             </TabsList>
@@ -386,7 +415,7 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
                     <SectionLabel>Actividad reciente</SectionLabel>
                   </div>
                   <div className="space-y-2">
-                    {tickets.slice(0, 5).map(t => (
+                    {recentTickets.map(t => (
                       <button
                         key={t.id}
                         onClick={() => setSelectedTicketId(t.id)}
@@ -441,7 +470,7 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
                       {deliveredTickets.map(t => (
                         <div
                           key={t.id}
-                          className="flex items-center gap-2 p-2.5 rounded-md border border-success/30 bg-background"
+                          className="flex flex-col sm:flex-row sm:items-center gap-2 p-2.5 rounded-md border border-success/30 bg-background"
                         >
                           <button
                             onClick={() => setSelectedTicketId(t.id)}
@@ -454,15 +483,19 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
                             </p>
                           </button>
                           {/* Validar/reabrir son acciones: requieren permiso de
-                              edición (editor/admin), no un viewer de solo lectura. */}
+                              edición (editor/admin), no un viewer de solo lectura.
+                              En teléfono bajan a su propia fila con 44 px de alto:
+                              iban en 28, pegados, y son las dos decisiones que el
+                              portal le pide al cliente — validar cierra el caso.
+                              Errar el dedo entre una y otra no puede costar eso. */}
                           {canCreateTickets ? (
-                            <>
+                            <div className="flex gap-2 shrink-0">
                               <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleReopen(t)}
                                 disabled={updateTicket.isPending}
-                                className="h-7 gap-1 text-[11px]"
+                                className="flex-1 sm:flex-none h-11 sm:h-7 gap-1 text-[11px]"
                                 title="El caso no está resuelto — reabrir y notificar al SVA"
                               >
                                 <RotateCcw className="h-3 w-3" /> Reabrir
@@ -471,12 +504,12 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
                                 size="sm"
                                 onClick={() => handleValidate(t)}
                                 disabled={updateTicket.isPending}
-                                className="h-7 gap-1 text-[11px] bg-success hover:bg-success/90"
+                                className="flex-1 sm:flex-none h-11 sm:h-7 gap-1 text-[11px] bg-success hover:bg-success/90"
                                 title="Confirmar que la solución es correcta y cerrar el caso"
                               >
                                 <CheckCircle2 className="h-3 w-3" /> Validar
                               </Button>
-                            </>
+                            </div>
                           ) : (
                             <span className="text-[10px] text-muted-foreground italic px-1">Solo lectura</span>
                           )}

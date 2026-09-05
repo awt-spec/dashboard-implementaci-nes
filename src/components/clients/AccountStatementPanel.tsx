@@ -199,10 +199,17 @@ export function AccountStatementPanel({ clientId, enforceFinanceGate = true, hou
         </Card>
       )}
 
-      {/* Vista principal: documento SYSDE */}
+      {/* Vista principal: documento SYSDE.
+          El documento está en blanco y negro fijos porque es lo que se imprime
+          y lo que sale en el PDF — no se tematiza, o el cliente vería una cosa
+          en pantalla y otra en el archivo. En modo oscuro quedaba como una losa
+          blanca sin explicación; con el marco gris y la sombra se lee como lo
+          que es: una hoja. */}
       {stmt && !isLoading && view === "documento" && (
-        <div className="rounded-lg border border-border overflow-hidden">
-          <AccountStatementDocument stmt={stmt} clientId={clientId} />
+        <div className="rounded-lg border border-border overflow-hidden dark:bg-neutral-800 dark:p-3">
+          <div className="overflow-hidden dark:rounded-md dark:shadow-lg">
+            <AccountStatementDocument stmt={stmt} clientId={clientId} />
+          </div>
         </div>
       )}
 

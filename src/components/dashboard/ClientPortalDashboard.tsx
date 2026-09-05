@@ -98,13 +98,29 @@ export function ClientPortalDashboard() {
           <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
             <Shield className="h-4 w-4 text-primary" />
           </div>
+          {/* En teléfono el título quedaba en «Portal Clie…»: se recortaba lo
+              que identifica —el nombre de la empresa— y se conservaba lo
+              decorativo. Ahora en pantallas angostas el prefijo y el subtítulo
+              de producto ceden el lugar, y el badge de permiso se repliega al
+              subtítulo (abajo va `hidden sm:inline-flex`) para devolverle al
+              título los ~80 px que le faltaban. */}
           <div className="min-w-0">
-            <h1 className="text-sm font-bold truncate">Portal Cliente — {client.name}</h1>
-            <p className="text-[10px] text-muted-foreground">{projectInfo.name} — {projectInfo.company}</p>
+            <h1 className="text-sm font-bold truncate">
+              <span className="hidden sm:inline">Portal Cliente — </span>{client.name}
+            </h1>
+            <p className="hidden sm:block text-[10px] text-muted-foreground truncate">
+              {projectInfo.name} — {projectInfo.company}
+            </p>
+            <p className="sm:hidden text-[10px] text-muted-foreground truncate">
+              Portal Cliente · {permMeta.label}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Badge variant="outline" className={`gap-1 text-[10px] ${permMeta.tone} border-transparent`}>
+          <Badge
+            variant="outline"
+            className={`hidden sm:inline-flex gap-1 text-[10px] ${permMeta.tone} border-transparent`}
+          >
             <permMeta.Icon className="h-3 w-3" />
             {permMeta.label}
           </Badge>
