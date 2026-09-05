@@ -170,25 +170,37 @@ begin
   end if;
 
   -- La prueba de verdad: que el cliente mueva un caso suyo. Se revierte.
-  select id into tid from public.support_tickets
-   where client_id = cid and estado in ('ENTREGADA','APROBADA') limit 1;
+  --
+  -- Si su empresa no tiene ningún caso ENTREGADA, se crea uno acá dentro. La
+  -- primera versión se rendía con "sin caso entregado para probar" y dejaba sin
+  -- comprobar justo lo que más importa — le pasó al correrla contra la base
+  -- real. Todo ocurre en la subtransacción que se revierte, así que el caso
+  -- inventado no sobrevive.
   if k = 0 then
     insert into _v values (16,'el cliente valida un caso entregado','CERRADA','no existe la RPC');
-  elsif tid is null then
-    insert into _v values (16,'el cliente valida un caso entregado','CERRADA',
-      'sin caso entregado para probar');
   else
-    perform set_config('role','authenticated',true);
-    perform set_config('request.jwt.claim.sub', u_cli::text, true);
     e := null; est := null;
     begin
+      select id into tid from public.support_tickets
+       where client_id = cid and estado in ('ENTREGADA','APROBADA') limit 1;
+
+      if tid is null then
+        insert into public.support_tickets
+               (client_id, ticket_id, asunto, estado, fecha_entrega)
+        values (cid, '__verificacion__', 'Caso de prueba (se revierte)',
+                'ENTREGADA', now())
+        returning id into tid;
+      end if;
+
+      perform set_config('role','authenticated',true);
+      perform set_config('request.jwt.claim.sub', u_cli::text, true);
       perform public.cliente_cambiar_estado_caso(tid, 'CERRADA');
       select estado into est from public.support_tickets where id = tid;
       raise exception 'revertir';
     exception when others then e := sqlerrm; end;
-    insert into _v values (16,'el cliente valida un caso entregado','CERRADA',
-      case when e = 'revertir' then est else 'ERROR: ' || e end);
     perform set_config('role','postgres',true);
+    insert into _v values (16,'el cliente valida un caso entregado','CERRADA',
+      case when e = 'revertir' then coalesce(est,'sin lectura') else 'ERROR: ' || e end);
   end if;
 
   -- ── 7 · ¿ya se cerró el hueco?
