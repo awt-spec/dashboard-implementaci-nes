@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Activity, X, Flame, Clock, Shield, Zap, TrendingUp, AlertTriangle } from "lucide-react";
+import { Activity, X, Flame, Clock, Shield, Zap, TrendingUp, AlertTriangle, Bot, StickyNote } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { SupportTicket } from "@/hooks/useSupportTickets";
 
@@ -267,8 +267,8 @@ export function SupportClientHeatmap({ tickets, clientName }: Props) {
                             <motion.span
                               animate={{ scale: [1, 1.25, 1], rotate: [0, 5, -5, 0] }}
                               transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}
-                              className="absolute -top-1.5 -right-1.5 text-sm drop-shadow-md">
-                              🔥
+                              className="absolute -top-1.5 -right-1.5 drop-shadow-md text-warning">
+                              <Flame className="h-3.5 w-3.5" />
                             </motion.span>
                           )}
 
@@ -302,7 +302,7 @@ export function SupportClientHeatmap({ tickets, clientName }: Props) {
                                   <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-muted/60 text-muted-foreground font-mono">{t.dias_antiguedad}d</span>
                                 </div>
                                 {t.ai_summary && (
-                                  <p className="text-[9px] text-muted-foreground mt-1.5 pt-1.5 border-t border-border/40 italic line-clamp-2">🤖 {t.ai_summary}</p>
+                                  <p className="text-[9px] text-muted-foreground mt-1.5 pt-1.5 border-t border-border/40 italic line-clamp-2"><Bot className="h-2.5 w-2.5 inline mr-1" />{t.ai_summary}</p>
                                 )}
                               </div>
                               <div className="w-2.5 h-2.5 bg-popover/95 border-b border-r border-border rotate-45 absolute left-1/2 -translate-x-1/2 -bottom-1.5" />
@@ -362,8 +362,8 @@ export function SupportClientHeatmap({ tickets, clientName }: Props) {
                       { label: "Producto", value: expandedTicket.producto },
                       { label: "Responsable", value: expandedTicket.responsable || "Sin asignar" },
                       ...(expandedTicket.fecha_registro ? [{ label: "Registro", value: new Date(expandedTicket.fecha_registro).toLocaleDateString("es") }] : []),
-                      ...(expandedTicket.ai_classification ? [{ label: "🤖 Clasificación", value: expandedTicket.ai_classification }] : []),
-                      ...(expandedTicket.ai_risk_level ? [{ label: "🤖 Riesgo", value: expandedTicket.ai_risk_level }] : []),
+                      ...(expandedTicket.ai_classification ? [{ label: "Clasificación (IA)", value: expandedTicket.ai_classification }] : []),
+                      ...(expandedTicket.ai_risk_level ? [{ label: "Riesgo (IA)", value: expandedTicket.ai_risk_level }] : []),
                     ].map((item, i) => (
                       <motion.div key={i}
                         initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
@@ -381,7 +381,7 @@ export function SupportClientHeatmap({ tickets, clientName }: Props) {
                   {expandedTicket.ai_summary && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }}
                       className="mt-3 rounded-xl bg-violet-500/5 border border-violet-500/20 px-4 py-3">
-                      <div className="text-[10px] text-violet-400 font-bold uppercase tracking-wider mb-1">🤖 Resumen Inteligente</div>
+                      <div className="text-[10px] text-violet-400 font-bold uppercase tracking-wider mb-1 flex items-center gap-1"><Bot className="h-3 w-3" />Resumen Inteligente</div>
                       <p className="text-xs text-muted-foreground leading-relaxed">{expandedTicket.ai_summary}</p>
                     </motion.div>
                   )}
@@ -390,7 +390,7 @@ export function SupportClientHeatmap({ tickets, clientName }: Props) {
                   {expandedTicket.notas && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
                       className="mt-2 rounded-xl bg-muted/20 border border-border/30 px-4 py-3">
-                      <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-1">📝 Notas</div>
+                      <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-1 flex items-center gap-1"><StickyNote className="h-3 w-3" />Notas</div>
                       <p className="text-xs text-muted-foreground leading-relaxed">{expandedTicket.notas}</p>
                     </motion.div>
                   )}

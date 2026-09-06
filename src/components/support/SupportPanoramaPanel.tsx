@@ -277,7 +277,7 @@ export function SupportPanoramaPanel({ tickets, clientName, onOpenTicket }: Prop
               </div>
               <p className="text-sm font-semibold">Todo bajo control</p>
               <p className="text-[11px] text-muted-foreground mt-1">
-                No hay casos que requieran acción inmediata. Buen trabajo 👌
+                No hay casos que requieran acción inmediata. Buen trabajo.
               </p>
             </div>
           ) : (

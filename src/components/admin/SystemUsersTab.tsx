@@ -26,8 +26,7 @@ import {
   UserPlus, Shield, Briefcase, Eye, Trash2, KeyRound, Link2, Mail, User,
   Loader2, Users2, KeySquare, AlertCircle, Search, X, Copy, RefreshCw, Sparkles,
   CheckCircle2, ShieldAlert, ArrowUpDown, LayoutGrid, List, Filter,
-  ChevronDown, MailX, UserX, Headset, LifeBuoy,
-} from "lucide-react";
+  ChevronDown, MailX, UserX, Headset, LifeBuoy, Lightbulb } from "lucide-react";
 import { GerenteAssignmentsDialog } from "./GerenteAssignmentsDialog";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -1180,7 +1179,7 @@ function InviteDialog({
               </div>
             </div>
             <p className="text-[10px] text-muted-foreground">
-              💡 Generá una segura, copiala y envíasela al usuario. Puede cambiarla después.
+              <Lightbulb className="h-3 w-3 inline mr-1 -mt-0.5" />Generá una segura, copiala y envíasela al usuario. Puede cambiarla después.
             </p>
           </div>
 

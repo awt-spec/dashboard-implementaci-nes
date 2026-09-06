@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, ExternalLink, Sparkles, ShieldCheck, Briefcase, Users2, Plane, MapPin, GitCompare, UserCircle2 } from "lucide-react";
+import { Search, ExternalLink, Sparkles, ShieldCheck, Briefcase, Users2, Plane, MapPin, GitCompare, UserCircle2, CircleCheck, Flame } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useSysdeTeamMembers } from "@/hooks/useTeamMembers";
@@ -105,9 +105,9 @@ export function TeamDirectoryCards({ onCompare, onCompareMulti }: { onCompare?: 
           <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Toda disponibilidad</SelectItem>
-            <SelectItem value="available">✅ Disponibles</SelectItem>
-            <SelectItem value="overloaded">🔥 Sobrecargados</SelectItem>
-            <SelectItem value="ooo">✈️ Fuera hoy</SelectItem>
+            <SelectItem value="available"><span className="flex items-center gap-2"><CircleCheck className="h-3.5 w-3.5" /> Disponibles</span></SelectItem>
+            <SelectItem value="overloaded"><span className="flex items-center gap-2"><Flame className="h-3.5 w-3.5" /> Sobrecargados</span></SelectItem>
+            <SelectItem value="ooo"><span className="flex items-center gap-2"><Plane className="h-3.5 w-3.5" /> Fuera hoy</span></SelectItem>
           </SelectContent>
         </Select>
         {myMember && (

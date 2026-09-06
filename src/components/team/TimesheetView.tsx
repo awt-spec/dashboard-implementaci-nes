@@ -95,7 +95,7 @@ export function TimesheetView() {
         description: dropDesc || dropContext.item.title,
         is_billable: dropBillable,
       });
-      toast.success(`✓ ${h}h registradas en ${new Date(dropContext.day).toLocaleDateString("es", { weekday: "short", day: "2-digit", month: "short" })}`);
+      toast.success(`${h}h registradas en ${new Date(dropContext.day).toLocaleDateString("es", { weekday: "short", day: "2-digit", month: "short" })}`);
       setDropContext(null);
     } catch (e: any) { toast.error(e.message); }
   };
@@ -166,7 +166,7 @@ export function TimesheetView() {
                       <div className="space-y-1 flex-1 overflow-y-auto">
                         {list.length === 0 ? (
                           <p className="text-[10px] text-muted-foreground/50 text-center pt-4 italic">
-                            {isOver ? "✨ Soltar aquí" : "—"}
+                            {isOver ? "Soltar aquí" : "—"}
                           </p>
                         ) : list.map(e => (
                           <div key={e.id} className="text-[10px] p-1.5 rounded bg-background border border-border/50">

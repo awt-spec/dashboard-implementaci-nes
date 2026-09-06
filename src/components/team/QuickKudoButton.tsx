@@ -4,17 +4,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sparkles, Send } from "lucide-react";
+import { CATEGORIAS_KUDO } from "./catalogos";
 import { useGiveKudo } from "@/hooks/useTeamEngagement";
 import { useSysdeTeamMembers } from "@/hooks/useTeamMembers";
 
 const EMOJIS = ["👏", "🚀", "🔥", "💪", "🎉", "⭐", "🏆", "❤️"];
-const CATEGORIES = [
-  { value: "teamwork", label: "🤝 Teamwork" },
-  { value: "innovation", label: "💡 Innovación" },
-  { value: "delivery", label: "🚀 Entrega" },
-  { value: "mentor", label: "🧑‍🏫 Mentoría" },
-  { value: "quality", label: "✨ Calidad" },
-];
 
 export function QuickKudoButton({ toMemberId, size = "sm" }: { toMemberId: string; size?: "sm" | "icon" }) {
   const { data: members = [] } = useSysdeTeamMembers();
@@ -56,7 +50,11 @@ export function QuickKudoButton({ toMemberId, size = "sm" }: { toMemberId: strin
         </Select>
         <Select value={category} onValueChange={setCategory}>
           <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-          <SelectContent>{CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
+          <SelectContent>{CATEGORIAS_KUDO.map(c => (
+            <SelectItem key={c.value} value={c.value}>
+              <span className="flex items-center gap-2"><c.Icono className="h-3.5 w-3.5" /> {c.label}</span>
+            </SelectItem>
+          ))}</SelectContent>
         </Select>
         <div className="flex flex-wrap gap-0.5">
           {EMOJIS.map(e => (

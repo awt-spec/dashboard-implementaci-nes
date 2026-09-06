@@ -604,7 +604,7 @@ export default function MemberProfile() {
                   <Input type="range" min={0} max={150} value={allocation} onChange={e => setAllocation(Number(e.target.value))} />
                   <Progress value={Math.min(100, allocation)} className={allocation > 100 ? "[&>div]:bg-destructive" : allocation > 80 ? "[&>div]:bg-warning" : ""} />
                   <p className="text-xs text-muted-foreground">
-                    {allocation > 100 ? "⚠️ Sobrecargado" : allocation > 80 ? "Carga alta" : allocation < 30 ? "Subutilizado" : "Saludable"}
+                    {allocation > 100 ? "Sobrecargado" : allocation > 80 ? "Carga alta" : allocation < 30 ? "Subutilizado" : "Saludable"}
                   </p>
                 </div>
                 <Button onClick={() => handleSaveCapacity()} disabled={upsertCap.isPending} className="w-full">

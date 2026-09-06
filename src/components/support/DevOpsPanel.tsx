@@ -341,7 +341,7 @@ export function DevOpsPanel({ clientId, clientName }: DevOpsPanelProps) {
                       <div className="flex items-center gap-3">
                         <span className="text-green-400">↓{log.items_pulled}</span>
                         <span className="text-blue-400">↑{log.items_pushed}</span>
-                        {log.items_failed > 0 && <span className="text-red-400">✕{log.items_failed}</span>}
+                        {log.items_failed > 0 && <span className="text-red-400">{log.items_failed} con error</span>}
                         <span className="text-muted-foreground">{log.duration_ms}ms</span>
                         <Badge variant="outline" className="text-[10px]">{log.triggered_by}</Badge>
                       </div>

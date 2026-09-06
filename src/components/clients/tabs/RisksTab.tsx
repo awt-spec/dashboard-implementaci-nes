@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ShieldAlert, Plus, Trash2, AlertOctagon } from "lucide-react";
+import { ShieldAlert, Plus, Trash2, AlertOctagon, Shield, Construction } from "lucide-react";
 import { useCreateRisk, useDeleteRisk, useUpdateRisk } from "@/hooks/useClients";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -86,8 +86,8 @@ export function RisksTab({ risks, clientId }: RisksTabProps) {
                     <Select value={category} onValueChange={v => setCategory(v as any)}>
                       <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="riesgo">🛡️ Riesgo (potencial)</SelectItem>
-                        <SelectItem value="obstaculo">🚧 Obstáculo (bloqueante activo)</SelectItem>
+                        <SelectItem value="riesgo"><span className="flex items-center gap-2"><Shield className="h-3.5 w-3.5" /> Riesgo (potencial)</span></SelectItem>
+                        <SelectItem value="obstaculo"><span className="flex items-center gap-2"><Construction className="h-3.5 w-3.5" /> Obstáculo (bloqueante activo)</span></SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

@@ -17,7 +17,7 @@ export interface WidgetRegistryEntry {
   label: string;
   description: string;
   // El icono puede ser un emoji (string) o un componente Lucide / React.
-  // Esto deja al consumidor elegir entre `"📊"` o `BarChart3` directamente.
+  // Esto deja al consumidor pasar un componente de icono directamente.
   icon: string | React.ComponentType<{ className?: string }>;
   defaultSize: { w: number; h: number; minW?: number; minH?: number };
   render: () => React.ReactNode;

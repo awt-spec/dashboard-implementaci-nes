@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Lock } from "lucide-react";
 import { useMyTimeEntries, entryHours } from "@/hooks/useTimeTracking";
 import { ManualTimeEntryDialog } from "./ManualTimeEntryDialog";
 import { cn } from "@/lib/utils";
@@ -90,7 +90,7 @@ export function DailyCalendarView() {
                             <span className="font-mono font-bold">{entryHours(e).toFixed(1)}h</span>
                             <Badge variant="outline" className="text-[9px] h-4 capitalize">{cat}</Badge>
                             {e.is_billable && <Badge className="text-[9px] h-4 bg-success/20 text-success border-success/30">Fact.</Badge>}
-                            {e.is_locked && <Badge variant="outline" className="text-[9px] h-4">🔒</Badge>}
+                            {e.is_locked && <Badge variant="outline" className="text-[9px] h-4"><Lock className="h-2.5 w-2.5" /></Badge>}
                           </div>
                           {e.description && <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{e.description}</p>}
                         </div>

@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Zap, TrendingUp, Layers, Target, Save } from "lucide-react";
+import { Zap, TrendingUp, Layers, Target, Save, Flame } from "lucide-react";
 import { toast } from "sonner";
 import { useSprints, useUpdateTicketScrum, wsjf } from "@/hooks/useScrum";
 import type { SupportTicket } from "@/hooks/useSupportTickets";
@@ -102,7 +102,7 @@ export function SupportCaseScrumSection({ ticket }: Props) {
               <SelectItem value="__none__">Sin sprint (Backlog)</SelectItem>
               {sprints.map(s => (
                 <SelectItem key={s.id} value={s.id}>
-                  {s.name} {s.status === "activo" && "🔥"}
+                  {s.name} {s.status === "activo" && <Flame className="h-3 w-3 inline text-warning" />}
                 </SelectItem>
               ))}
             </SelectContent>

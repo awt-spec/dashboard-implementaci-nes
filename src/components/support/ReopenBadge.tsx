@@ -1,9 +1,9 @@
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, AlertTriangle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 /**
- * Badge "🔁 Reincidencia #N" — solo cara INTERNA.
+ * Badge "Reincidencia #N" — solo cara INTERNA.
  *
  * Reglas visuales (acordadas con María — COO):
  *   - count=0 → no renderiza (oculto, no ruido)
@@ -75,8 +75,8 @@ export function ReopenBadge({
         <p className="text-[10px] opacity-70">Última vez: {fmtDate}</p>
       )}
       {isCritical && (
-        <p className="text-[10px] uppercase tracking-wider text-destructive font-bold pt-1 border-t border-border/40">
-          ⚠ Intervención QA recomendada
+        <p className="text-[10px] uppercase tracking-wider text-destructive font-bold pt-1 border-t border-border/40 flex items-center gap-1">
+          <AlertTriangle className="h-2.5 w-2.5" /> Intervención QA recomendada
         </p>
       )}
     </div>

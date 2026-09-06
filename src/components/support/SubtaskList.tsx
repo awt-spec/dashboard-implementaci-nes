@@ -752,7 +752,7 @@ function EmptyState({ hasAny, hasFilters, onClearFilters }: {
   }
   return (
     <p className="text-xs text-center text-muted-foreground py-6">
-      Todas las subtareas están completadas 🎉
+      Todas las subtareas están completadas
     </p>
   );
 }

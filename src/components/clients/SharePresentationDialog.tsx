@@ -6,8 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Link2, Copy, Check, X, Share2, Eye, Loader2,
-  TrendingUp, ListChecks, Package, AlertTriangle, DollarSign, Sparkles, FileText
-} from "lucide-react";
+  TrendingUp, ListChecks, Package, AlertTriangle, DollarSign, Sparkles, FileText, ClipboardList, ThumbsUp, ThumbsDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -165,10 +164,10 @@ export function SharePresentationDialog({ client, open, onClose }: SharePresenta
 
                 {/* Info */}
                 <div className="rounded-xl bg-info/5 border border-info/15 p-3">
-                  <p className="text-[11px] text-info font-medium mb-0.5">📋 El cliente podrá:</p>
+                  <p className="text-[11px] text-info font-medium mb-0.5 flex items-center gap-1"><ClipboardList className="h-3 w-3" />El cliente podrá:</p>
                   <ul className="text-[10px] text-muted-foreground space-y-0.5">
                     <li>• Ver las diapositivas seleccionadas de forma interactiva</li>
-                    <li>• Calificar la calidad del servicio con 👍/👎</li>
+                    <li>• Calificar la calidad del servicio con <ThumbsUp className="h-3 w-3 inline" />/<ThumbsDown className="h-3 w-3 inline" /></li>
                     <li>• Evaluar cada entregable y respuesta de SYSDE</li>
                     <li>• El enlace expira en 7 días</li>
                   </ul>

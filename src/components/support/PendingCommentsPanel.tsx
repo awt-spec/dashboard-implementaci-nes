@@ -42,7 +42,7 @@ export function PendingCommentsPanel({ clientId }: { clientId?: string }) {
           <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
         ) : pending.length === 0 ? (
           <p className="text-xs text-center text-muted-foreground py-6">
-            Sin comentarios de clientes pendientes de respuesta. ✓
+            Sin comentarios de clientes pendientes de respuesta.
           </p>
         ) : (
           <div className="space-y-2">

@@ -158,7 +158,7 @@ function MediaRecorderWidget({ onRecorded, sharedId }: { onRecorded: (url: strin
         <div className="mb-[16px] p-[16px] rounded-[16px] bg-[hsl(var(--success)/0.05)] border border-[hsl(var(--success)/0.2)] flex items-center gap-[16px]">
           <CheckCircle2 style={{ width: 24, height: 24, color: "hsl(var(--success))" }} />
           <span className="text-[18px] text-[hsl(var(--success))] font-medium flex-1">
-            {uploading ? "Subiendo..." : "Grabación guardada ✓"}
+            {uploading ? "Subiendo…" : "Grabación guardada"}
           </span>
           <button onClick={deleteRecording} className="p-[8px] rounded-full hover:bg-[hsl(var(--muted))]">
             <Trash2 style={{ width: 18, height: 18, color: "hsl(var(--muted-foreground))" }} />
@@ -223,12 +223,14 @@ export default function SharedPresentation() {
   const [mediaUrls, setMediaUrls] = useState<{ url: string; type: "audio" | "video" }[]>([]);
 
   const [activePopup, setActivePopup] = useState<string | null>(null);
+  // Sin emoji al frente: el popup ya pinta un MessageSquare, así que el emoji
+  // sólo repetía el icono con peor tipografía.
   const popupMessages = [
-    "👋 ¿Te funciona bien esta gestión?",
-    "💡 ¿Necesitas algo más de SYSDE?",
-    "📦 ¿Este entregable resuelve tu necesidad?",
-    "⚡ ¿La prioridad es correcta?",
-    "🎤 Graba un mensaje de voz con tu feedback",
+    "¿Te funciona bien esta gestión?",
+    "¿Necesitás algo más de SYSDE?",
+    "¿Este entregable resuelve tu necesidad?",
+    "¿La prioridad es correcta?",
+    "Grabá un mensaje de voz con tu feedback",
   ];
 
   useEffect(() => {
@@ -377,7 +379,15 @@ export default function SharedPresentation() {
             <h1 className="text-[96px] font-extrabold text-white leading-[1.05] mb-[40px]">{client.name}</h1>
             <div className="w-[200px] h-[6px] bg-white/40 rounded-full mb-[40px]" />
             <p className="text-[36px] text-white/80">{title}</p>
-            <p className="text-[22px] text-white/50 mt-[24px]">👍👎 Califica cada elemento · 🎤 Graba tu feedback · ↕️ Prioriza lo importante</p>
+            <p className="text-[22px] text-white/50 mt-[24px] flex items-center justify-center gap-[10px] flex-wrap">
+                  <ThumbsUp style={{ width: 20, height: 20 }} />
+                  <ThumbsDown style={{ width: 20, height: 20 }} />
+                  Califica cada elemento
+                  <span className="opacity-40">·</span>
+                  <Mic style={{ width: 20, height: 20 }} /> Graba tu feedback
+                  <span className="opacity-40">·</span>
+                  <ArrowUpDown style={{ width: 20, height: 20 }} /> Prioriza lo importante
+                </p>
           </motion.div>
         </div>
       </SlideLayout>
@@ -422,7 +432,11 @@ export default function SharedPresentation() {
           <div className="flex items-center gap-[16px] mb-[36px]">
             <div className="w-[8px] h-[48px] rounded-full bg-[hsl(var(--warning))]" />
             <h2 className="text-[56px] font-bold text-[hsl(var(--foreground))]">Estado de Tareas</h2>
-            <span className="text-[20px] text-[hsl(var(--muted-foreground))] ml-auto">👍👎 Califica cada tarea</span>
+            <span className="text-[20px] text-[hsl(var(--muted-foreground))] ml-auto flex items-center gap-[6px]">
+                    <ThumbsUp style={{ width: 18, height: 18 }} />
+                    <ThumbsDown style={{ width: 18, height: 18 }} />
+                    Califica cada tarea
+                  </span>
           </div>
           <div className="grid grid-cols-4 gap-[24px] mb-[32px]">
             {[
@@ -474,7 +488,11 @@ export default function SharedPresentation() {
           <div className="flex items-center gap-[16px] mb-[36px]">
             <div className="w-[8px] h-[48px] rounded-full bg-[hsl(var(--info))]" />
             <h2 className="text-[56px] font-bold text-[hsl(var(--foreground))]">Entregables</h2>
-            <span className="text-[20px] text-[hsl(var(--muted-foreground))] ml-auto">👍👎 Evalúa cada uno</span>
+            <span className="text-[20px] text-[hsl(var(--muted-foreground))] ml-auto flex items-center gap-[6px]">
+                    <ThumbsUp style={{ width: 18, height: 18 }} />
+                    <ThumbsDown style={{ width: 18, height: 18 }} />
+                    Evalúa cada uno
+                  </span>
           </div>
           <div className="grid grid-cols-2 gap-[24px]">
             {client.deliverables.slice(0, 6).map((d, i) => {
@@ -513,7 +531,11 @@ export default function SharedPresentation() {
           <div className="flex items-center gap-[16px] mb-[36px]">
             <div className="w-[8px] h-[48px] rounded-full bg-[hsl(var(--destructive))]" />
             <h2 className="text-[56px] font-bold text-[hsl(var(--foreground))]">Riesgos</h2>
-            <span className="text-[20px] text-[hsl(var(--muted-foreground))] ml-auto">👍👎 ¿Están bien gestionados?</span>
+            <span className="text-[20px] text-[hsl(var(--muted-foreground))] ml-auto flex items-center gap-[6px]">
+                    <ThumbsUp style={{ width: 18, height: 18 }} />
+                    <ThumbsDown style={{ width: 18, height: 18 }} />
+                    ¿Están bien gestionados?
+                  </span>
           </div>
           <div className="space-y-[16px]">
             {client.risks.slice(0, 5).map((r, i) => {
@@ -723,7 +745,12 @@ export default function SharedPresentation() {
               <MessageSquare className="h-5 w-5 text-primary shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-semibold text-foreground">{activePopup}</p>
-                <p className="text-xs text-muted-foreground mt-1">Usa 👍👎 en cada elemento para opinar</p>
+                <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                  Usá
+                  <ThumbsUp className="h-3 w-3" />
+                  <ThumbsDown className="h-3 w-3" />
+                  en cada elemento para opinar
+                </p>
               </div>
               <button onClick={() => setActivePopup(null)} className="text-muted-foreground hover:text-foreground text-lg shrink-0">×</button>
             </div>

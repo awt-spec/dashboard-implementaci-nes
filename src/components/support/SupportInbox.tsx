@@ -7,8 +7,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import {
   Inbox, Building2, Clock, Lock, AlertTriangle, Flame, User,
   ChevronDown, ChevronRight, CheckCheck, Eye, RefreshCw, Radio, Zap,
-  Search, X, ArrowUpDown, SlidersHorizontal, Plus, Check, RotateCcw,
-} from "lucide-react";
+  Search, X, ArrowUpDown, SlidersHorizontal, Plus, Check, RotateCcw, Lightbulb } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -387,7 +386,7 @@ export function SupportInbox({ clientId, clientName, mode = "inbox", onOpenTicke
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm truncate">Nuevo caso de {client?.name || t.client_id}</p>
                 <p className="text-[11px] text-muted-foreground line-clamp-1">{t.ticket_id} · {t.asunto}</p>
-                {isCritical && <p className="text-[11px] text-destructive font-bold mt-0.5">🔥 Prioridad crítica</p>}
+                {isCritical && <p className="text-[11px] text-destructive font-bold mt-0.5"><Flame className="h-3 w-3 inline mr-1 -mt-0.5" />Prioridad crítica</p>}
               </div>
             </div>,
             { duration: isCritical ? 15000 : 6000 }
@@ -780,7 +779,7 @@ export function SupportInbox({ clientId, clientName, mode = "inbox", onOpenTicke
             {/* Hint si no hay sortBy */}
             {groupBy !== "cliente" && (
               <p className="text-[10px] text-muted-foreground italic px-1 pt-1 border-t border-border/60">
-                💡 Agrupando por <strong>{GROUP_LABELS[groupBy].toLowerCase()}</strong>: el orden es automático (críticos / pendientes / más antiguos primero).
+                <Lightbulb className="h-3 w-3 inline mr-1 -mt-0.5" />Agrupando por <strong>{GROUP_LABELS[groupBy].toLowerCase()}</strong>: el orden es automático (críticos / pendientes / más antiguos primero).
               </p>
             )}
           </PopoverContent>
@@ -832,7 +831,7 @@ export function SupportInbox({ clientId, clientName, mode = "inbox", onOpenTicke
                   <CheckCheck className="h-6 w-6 text-success" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold">Bandeja vacía 🎉</p>
+                  <p className="text-sm font-semibold">Bandeja vacía</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     No hay tickets pendientes. Los nuevos aparecerán aquí en tiempo real.
                   </p>

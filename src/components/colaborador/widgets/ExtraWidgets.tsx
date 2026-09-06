@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, Clock } from "lucide-react";
+import { AlertTriangle, Clock, Building2, BarChart3 } from "lucide-react";
 import type { ScrumWorkItem } from "@/hooks/useTeamScrum";
 
 export function OverdueTasksWidget({ items }: { items: ScrumWorkItem[] }) {
@@ -17,7 +17,7 @@ export function OverdueTasksWidget({ items }: { items: ScrumWorkItem[] }) {
       </div>
       <div className="flex-1 overflow-auto space-y-1.5">
         {overdue.length === 0 && (
-          <p className="text-xs text-muted-foreground text-center py-6">Sin tareas vencidas 🎉</p>
+          <p className="text-xs text-muted-foreground text-center py-6">Sin tareas vencidas</p>
         )}
         {overdue.map(i => {
           const days = Math.floor((Date.now() - new Date(i.due_date!).getTime()) / 86400000);
@@ -52,7 +52,7 @@ export function TopClientsWidget({ items, clientNames }: { items: ScrumWorkItem[
   return (
     <div className="p-4 h-full flex flex-col">
       <div className="flex items-center gap-2 mb-3">
-        <h3 className="text-sm font-bold">🏢 Top clientes</h3>
+        <h3 className="text-sm font-bold flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" />Top clientes</h3>
         <Badge variant="outline" className="text-[10px]">{top.length}</Badge>
       </div>
       <div className="flex-1 overflow-auto space-y-2">
@@ -80,7 +80,7 @@ export function PersonalKpiWidget({
   const hours = (todayMinutes / 60).toFixed(1);
   return (
     <div className="p-4 h-full flex flex-col">
-      <h3 className="text-sm font-bold mb-3">📊 Mi KPI personal</h3>
+      <h3 className="text-sm font-bold mb-3 flex items-center gap-1.5"><BarChart3 className="h-3.5 w-3.5" />Mi KPI personal</h3>
       <div className="grid grid-cols-2 gap-2 flex-1">
         <div className="rounded-lg border border-border/50 p-3 flex flex-col justify-center">
           <p className="text-[10px] uppercase text-muted-foreground">Hoy</p>

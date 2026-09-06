@@ -103,7 +103,7 @@ export function SLAByClientPanel({ limit = 8, embedded = false, onClientClick, o
     return embedded ? null : (
       <Card>
         <CardContent className="py-6 text-center text-xs text-muted-foreground">
-          Sin boletas vencidas — todas dentro de plazo 🎉
+          Sin boletas vencidas — todas dentro de plazo
         </CardContent>
       </Card>
     );

@@ -219,7 +219,7 @@ function PipelineView({
                         <TooltipContent side="top" className="text-xs max-w-xs">
                           <p className="font-semibold">{item.title}</p>
                           <p className="text-muted-foreground text-[11px]">{item.client_name} · {item.owner}</p>
-                          {stale && <p className="text-destructive text-[11px]">⚠ {days} días en estación</p>}
+                          {stale && <p className="text-destructive text-[11px] flex items-center gap-1"><AlertTriangle className="h-3 w-3" />{days} días en estación</p>}
                         </TooltipContent>
                       </Tooltip>
                     );

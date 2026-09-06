@@ -77,7 +77,7 @@ export interface SupportTicket {
   // Reincidencias / Inconformidades (migración 20260429140000_ticket_reopens)
   // El trigger detect_ticket_reopen incrementa reopen_count cuando el ticket
   // pasa de ENTREGADA/APROBADA a un estado activo. Cara cliente: invisible
-  // (sigue viendo el estado actual). Cara interna: badge "🔁 Reincidencia #N".
+  // (sigue viendo el estado actual). Cara interna: badge "Reincidencia #N".
   reopen_count?: number | null;
   last_reopen_at?: string | null;
   last_reopen_reason?: string | null;
@@ -543,7 +543,7 @@ export function useCreateSupportTicket() {
           type: tipoNotif,
           title: `Nuevo caso ${inserted.ticket_id}: ${String(data.asunto).slice(0, 60)}`,
           message: `${data.tipo || "Solicitud"} · prioridad ${data.prioridad || "Media"} · creado desde ${origen}${
-            data.is_confidential ? " · 🔒 confidencial" : ""
+            data.is_confidential ? " · confidencial" : ""
           }`,
         });
       } catch {

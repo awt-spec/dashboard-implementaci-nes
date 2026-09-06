@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   LogOut, Moon, Sun, Loader2, Factory,
-  Sunrise, Target, Zap, Bot, LayoutGrid, CalendarDays, AlertTriangle, Building2, BarChart3,
-} from "lucide-react";
+  Sunrise, Target, Zap, Bot, LayoutGrid, CalendarDays, AlertTriangle, Building2, BarChart3, ClipboardList } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAllScrumWorkItems, useAllSprints, useUpdateWorkItemScrum, type ScrumWorkItem } from "@/hooks/useTeamScrum";
 import { useWorkTimer, useActivityTracker } from "@/hooks/useActivityTracker";
@@ -269,7 +268,7 @@ export default function ColaboradorDashboard() {
         donePoints={donePoints} totalPoints={totalPoints} />,
     },
     fordMini: {
-      type: "fordMini", label: "Flujo de trabajo (mini)", description: "Mi pipeline de tareas y tickets", icon: "🏭",
+      type: "fordMini", label: "Flujo de trabajo (mini)", description: "Mi pipeline de tareas y tickets", icon: Factory,
       defaultSize: { w: 12, h: 8, minW: 8, minH: 6 },
       render: () => <div className="p-2"><FordLineView items={myItems} onSelect={setSelectedItem} onMove={handleMoveItem} title="Mi flujo de trabajo" /></div>,
     },
@@ -309,7 +308,7 @@ export default function ColaboradorDashboard() {
       <main className="px-6 py-4 max-w-[1600px] mx-auto">
         <Tabs value={view} onValueChange={(v) => setView(v as any)} className="w-full">
           <TabsList className="mb-3">
-            <TabsTrigger value="mi-trabajo">📋 Mi trabajo</TabsTrigger>
+            <TabsTrigger value="mi-trabajo" className="gap-1.5"><ClipboardList className="h-3.5 w-3.5" /> Mi trabajo</TabsTrigger>
             <TabsTrigger value="linea-ford"><Factory className="h-3.5 w-3.5 mr-1" />Línea de trabajo</TabsTrigger>
           </TabsList>
 

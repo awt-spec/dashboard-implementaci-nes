@@ -185,7 +185,7 @@ export function TeamAnalytics() {
             <h3 className="text-sm font-semibold flex items-center gap-1.5"><AlertTriangle className="h-4 w-4 text-destructive" /> Necesitan atención</h3>
           </div>
           <div className="space-y-2">
-            {atRisk.length === 0 && <p className="text-xs text-muted-foreground py-6 text-center">¡Todo el equipo está bien! 🎉</p>}
+            {atRisk.length === 0 && <p className="text-xs text-muted-foreground py-6 text-center">¡Todo el equipo está bien!</p>}
             {atRisk.map((m: any) => (
               <Link key={m.id} to={`/team/${m.id}`} className="block p-2 rounded-md bg-destructive/5 border border-destructive/20 hover:bg-destructive/10 transition">
                 <div className="flex items-center gap-2">

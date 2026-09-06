@@ -15,7 +15,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { LayoutList, Columns3, Calendar, GanttChart, Search, Loader2, CheckCircle2, AlertOctagon, Clock, Loader, Globe, Lock } from "lucide-react";
+import { LayoutList, Columns3, Calendar, GanttChart, Search, Loader2, CheckCircle2, AlertOctagon, Clock, Loader, Globe, Lock, Star, Users } from "lucide-react";
 
 type ViewType = "table" | "kanban" | "calendar" | "timeline";
 
@@ -202,8 +202,8 @@ export default function TasksDashboard() {
             <SelectTrigger className="h-8 w-[150px] text-xs"><SelectValue placeholder="Responsable" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos los responsables</SelectItem>
-              {myName && <SelectItem value={MINE}>★ Mis tareas</SelectItem>}
-              {hasSupervisees && <SelectItem value={SUPERVISEES}>👥 Mis supervisados</SelectItem>}
+              {myName && <SelectItem value={MINE}><span className="flex items-center gap-2"><Star className="h-3.5 w-3.5" /> Mis tareas</span></SelectItem>}
+              {hasSupervisees && <SelectItem value={SUPERVISEES}><span className="flex items-center gap-2"><Users className="h-3.5 w-3.5" /> Mis supervisados</span></SelectItem>}
               {ownersList.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
             </SelectContent>
           </Select>

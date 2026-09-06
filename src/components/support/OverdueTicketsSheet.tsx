@@ -25,8 +25,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   AlertTriangle, Search, X, Building2, ListMinus, Eye, Lock,
-  CheckCheck, UserPlus, Loader2, Flame, Clock, Check, ChevronDown,
-} from "lucide-react";
+  CheckCheck, UserPlus, Loader2, Flame, Clock, Check, ChevronDown, Lightbulb } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -371,7 +370,7 @@ export function OverdueTicketsSheet() {
                 <Lock className="h-4 w-4 text-emerald-500 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
-                    💡 Win rápido: {stats.byAction.easy_close.count} boleta{stats.byAction.easy_close.count === 1 ? "" : "s"} listas para cerrar
+                    <Lightbulb className="h-3 w-3 inline mr-1 -mt-0.5" />Win rápido: {stats.byAction.easy_close.count} boleta{stats.byAction.easy_close.count === 1 ? "" : "s"} listas para cerrar
                   </p>
                   <p className="text-[10px] text-muted-foreground">
                     Trabajo hecho · selecciónalas y "Cerrar" baja tu count en {stats.byAction.easy_close.count}
@@ -557,7 +556,7 @@ export function OverdueTicketsSheet() {
                   <CheckCheck className="h-10 w-10 text-emerald-500 mx-auto" />
                   <p className="text-sm font-bold">Sin boletas vencidas con esos filtros</p>
                   <p className="text-xs text-muted-foreground">
-                    {stats.total === 0 ? "Todas las boletas están dentro de plazo 🎉" : "Limpiá los filtros para ver el resto"}
+                    {stats.total === 0 ? "Todas las boletas están dentro de plazo" : "Limpiá los filtros para ver el resto"}
                   </p>
                 </CardContent>
               </Card>

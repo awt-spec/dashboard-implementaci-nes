@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Plus, Pencil, Trash2, Package, Lock } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Package, Lock, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -167,7 +167,7 @@ export function BilledPackagesTab({ clientId }: { clientId: string }) {
                       return (
                         <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                           <Badge variant="outline" className="text-[9px] gap-1 bg-primary/10 text-primary border-primary/30">
-                            🔄 Suscripción {(p as any).billing_cycle || "mensual"}
+                            <RefreshCw className="h-3 w-3 inline mr-1 -mt-0.5" />Suscripción {(p as any).billing_cycle || "mensual"}
                           </Badge>
                           {nd && (
                             <span className={`text-[10px] ${activa ? "text-success" : "text-destructive"}`}>

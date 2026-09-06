@@ -623,7 +623,7 @@ Genera una minuta ejecutiva de soporte con título, resumen, acuerdos y acciones
       {criticalTickets.length > 0 && (
         <Card className="border-destructive/20">
           <CardContent className="p-3">
-            <p className="text-xs font-medium text-destructive mb-2">⚠ {criticalTickets.length} casos críticos/altos pendientes</p>
+            <p className="text-xs font-medium text-destructive mb-2 flex items-center gap-1"><AlertTriangle className="h-3 w-3" />{criticalTickets.length} casos críticos/altos pendientes</p>
             <div className="flex flex-wrap gap-1.5">
               {criticalTickets.slice(0, 8).map(t => (
                 <Badge key={t.id} variant="outline" className="text-[10px] border-destructive/30 text-destructive">

@@ -6,7 +6,7 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
   AreaChart, Area, Legend, LineChart, Line,
 } from "recharts";
-import { Sparkles, TrendingUp, Loader2, Activity, Target, Zap } from "lucide-react";
+import { Sparkles, TrendingUp, Loader2, Activity, Target, Zap, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useAllSprints, useAllScrumWorkItems } from "@/hooks/useTeamScrum";
 import { useSprintForecast } from "@/hooks/useSprintCeremonies";
@@ -166,7 +166,7 @@ export function SprintAnalytics() {
               </div>
               {forecastResult.risk_factors?.length > 0 && (
                 <div>
-                  <p className="text-[10px] font-bold uppercase mb-1 text-destructive">⚠ Factores de riesgo</p>
+                  <p className="text-[10px] font-bold uppercase mb-1 text-destructive flex items-center gap-1"><AlertTriangle className="h-3 w-3" />Factores de riesgo</p>
                   <ul className="text-xs space-y-0.5 list-disc list-inside text-muted-foreground">
                     {forecastResult.risk_factors.map((r: string, i: number) => <li key={i}>{r}</li>)}
                   </ul>

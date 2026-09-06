@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, ArrowRightCircle, MessageSquare, Loader2 } from "lucide-react";
+import { CheckCircle2, ArrowRightCircle, MessageSquare, Loader2, SkipForward } from "lucide-react";
 import { toast } from "sonner";
 import { useSprintReview, useUpsertReview } from "@/hooks/useSprintCeremonies";
 import type { UnifiedSprint, ScrumWorkItem } from "@/hooks/useTeamScrum";
@@ -97,9 +97,9 @@ export function SprintReviewDialog({ sprint, items, open, onOpenChange, onComple
           </Card>
           <Card>
             <CardContent className="p-3">
-              <h4 className="text-xs font-bold uppercase mb-2 flex items-center gap-1.5">⏭️ Carry-over al próximo</h4>
+              <h4 className="text-xs font-bold uppercase mb-2 flex items-center gap-1.5"><SkipForward className="h-3.5 w-3.5" />Carry-over al próximo</h4>
               <div className="space-y-1 max-h-[200px] overflow-auto">
-                {carryOver.length === 0 && <p className="text-[11px] text-muted-foreground italic">Nada queda pendiente 🎉</p>}
+                {carryOver.length === 0 && <p className="text-[11px] text-muted-foreground italic">Nada queda pendiente</p>}
                 {carryOver.map(i => (
                   <div key={i.id} className="text-[11px] p-1.5 rounded bg-warning/5 border border-warning/20 flex items-center justify-between gap-2">
                     <span className="truncate">{i.title}</span>

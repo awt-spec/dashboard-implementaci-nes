@@ -68,7 +68,7 @@ export function PendientesModule() {
         <Button size="sm" className="h-8 gap-1.5" onClick={add} disabled={upsert.isPending}><Plus className="h-3.5 w-3.5" /> Agregar</Button>
       </div>
       {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mx-auto my-6" /> : tasks.length === 0 ? (
-        <EmptyState icon={<ListChecks className="h-5 w-5" />} title="Sin pendientes ✨" hint="Agregá tareas de seguimiento con clientes desde el campo de arriba." />
+        <EmptyState icon={<ListChecks className="h-5 w-5" />} title="Sin pendientes" hint="Agregá tareas de seguimiento con clientes desde el campo de arriba." />
       ) : (
         <div className="space-y-1.5">
           {tasks.map((t) => (

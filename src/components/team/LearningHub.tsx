@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { GraduationCap, BookOpen, Plus, Send, Bot, User, ExternalLink, Clock, Star } from "lucide-react";
+import { GraduationCap, BookOpen, Plus, Send, Bot, User, ExternalLink, Clock, Star, Lightbulb } from "lucide-react";
 import { useCourses, useEnrollments, useUpsertCourse, useEnroll, useUpdateEnrollment } from "@/hooks/useTeamEngagement";
 import { useSysdeTeamMembers } from "@/hooks/useTeamMembers";
 import { supabase } from "@/integrations/supabase/client";
@@ -222,7 +222,7 @@ export function LearningHub() {
             <div className="space-y-2">
               {mentorMsgs.length === 0 && (
                 <div className="text-[11px] text-muted-foreground bg-violet-500/5 rounded-md p-2 border border-violet-500/20">
-                  💡 Pregunta cosas como: <em>"¿Qué cursos hago para llegar a Senior IFS Consultant?"</em> o <em>"Plan de 3 meses para mejorar en SQL Server"</em>
+                  <Lightbulb className="h-3 w-3 inline mr-1 -mt-0.5" />Pregunta cosas como: <em>"¿Qué cursos hago para llegar a Senior IFS Consultant?"</em> o <em>"Plan de 3 meses para mejorar en SQL Server"</em>
                 </div>
               )}
               {mentorMsgs.map((m, i) => (

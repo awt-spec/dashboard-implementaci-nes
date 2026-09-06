@@ -7,17 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { CalendarPlus, Plane, Check, X, AlertTriangle, Calendar as CalendarIcon } from "lucide-react";
+import { TIPOS_AUSENCIA as TYPES } from "./catalogos";
 import { useSysdeTeamMembers } from "@/hooks/useTeamMembers";
 import { useTimeOff, useRequestTimeOff, useUpdateTimeOff } from "@/hooks/useTeamEngagement";
 import { format, eachDayOfInterval, isWithinInterval, parseISO, addDays } from "date-fns";
 import { es } from "date-fns/locale";
 
-const TYPES = [
-  { value: "vacation", label: "🏖️ Vacaciones", color: "bg-cyan-500" },
-  { value: "sick", label: "🤒 Enfermedad", color: "bg-rose-500" },
-  { value: "personal", label: "🏠 Personal", color: "bg-violet-500" },
-  { value: "training", label: "📚 Capacitación", color: "bg-amber-500" },
-];
 
 export function TimeOffCalendar() {
   const { data: members = [] } = useSysdeTeamMembers();
@@ -81,7 +76,11 @@ export function TimeOffCalendar() {
               </Select>
               <Select value={type} onValueChange={setType}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+                <SelectContent>{TYPES.map(t => (
+                  <SelectItem key={t.value} value={t.value}>
+                    <span className="flex items-center gap-2"><t.Icono className="h-3.5 w-3.5" /> {t.label}</span>
+                  </SelectItem>
+                ))}</SelectContent>
               </Select>
               <div className="grid grid-cols-2 gap-2">
                 <div><label className="text-xs">Desde</label><Input type="date" value={start} onChange={e => setStart(e.target.value)} /></div>
@@ -98,7 +97,7 @@ export function TimeOffCalendar() {
         <Card className="p-3 border-amber-500/40 bg-amber-500/5">
           <div className="flex items-center gap-2 text-amber-600 mb-1">
             <AlertTriangle className="h-4 w-4" />
-            <span className="text-xs font-semibold">⚠ Alertas de cobertura ({alerts.length} días)</span>
+            <span className="text-xs font-semibold">Alertas de cobertura ({alerts.length} días)</span>
           </div>
           <div className="text-[11px] text-muted-foreground">
             Más del 30% del equipo estará ausente en: {alerts.slice(0, 5).map(a => format(a.date, "d MMM", { locale: es })).join(", ")}
@@ -127,7 +126,7 @@ export function TimeOffCalendar() {
             <span className="flex items-center gap-1"><div className="h-2.5 w-2.5 rounded-sm bg-muted/30 border" />0</span>
             <span className="flex items-center gap-1"><div className="h-2.5 w-2.5 rounded-sm bg-emerald-500/20 border border-emerald-500/40" />1-15%</span>
             <span className="flex items-center gap-1"><div className="h-2.5 w-2.5 rounded-sm bg-amber-500/30 border border-amber-500/50" />15-30%</span>
-            <span className="flex items-center gap-1"><div className="h-2.5 w-2.5 rounded-sm bg-rose-500/40 border border-rose-500/60" />&gt;30% ⚠</span>
+            <span className="flex items-center gap-1"><div className="h-2.5 w-2.5 rounded-sm bg-rose-500/40 border border-rose-500/60" />&gt;30%</span>
           </div>
         </Card>
 
@@ -168,7 +167,10 @@ export function TimeOffCalendar() {
                       <div className="text-xs font-medium truncate">{r.sysde_team_members?.name}</div>
                       <div className="text-[10px] text-muted-foreground">{format(parseISO(r.start_date), "d MMM", { locale: es })} → {format(parseISO(r.end_date), "d MMM", { locale: es })}</div>
                     </div>
-                    <Badge variant="outline" className="text-[9px]">{tInfo?.label.split(" ")[0]}</Badge>
+                    <Badge variant="outline" className="text-[9px] gap-1">
+                      {tInfo?.Icono && <tInfo.Icono className="h-2.5 w-2.5" />}
+                      {tInfo?.label}
+                    </Badge>
                   </div>
                 );
               })}

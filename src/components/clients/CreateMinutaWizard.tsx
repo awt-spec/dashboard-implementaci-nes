@@ -8,8 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   FileText, Sparkles, Loader2, ChevronRight, ChevronLeft, Check,
   ClipboardPaste, ListChecks, Users, CheckSquare, ArrowRight,
-  AlertTriangle, CircleDot, Clock, CheckCircle2, X, Calendar, MessageSquare
-} from "lucide-react";
+  AlertTriangle, CircleDot, Clock, CheckCircle2, X, Calendar, MessageSquare, Lightbulb } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useCreateMeetingMinute, useUpdateTask } from "@/hooks/useClients";
@@ -560,7 +559,7 @@ function TaskUpdateRow({ tu, index, taskUpdates, setTaskUpdates }: {
           <p className="text-[11px] font-medium text-foreground truncate">{tu.task.title}</p>
         </div>
         {tu.enabled && tu.note && (
-          <p className="text-[10px] text-muted-foreground mt-0.5 italic truncate">💡 {tu.note}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5 italic truncate"><Lightbulb className="h-2.5 w-2.5 inline mr-1" />{tu.note}</p>
         )}
       </div>
 

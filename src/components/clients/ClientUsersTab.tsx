@@ -18,8 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   UserPlus, Mail, Users, Shield, ShieldCheck, Eye, Loader2, Trash2, KeyRound,
-  Search, X, Copy, RefreshCw,
-} from "lucide-react";
+  Search, X, Copy, RefreshCw, Lightbulb } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -550,7 +549,7 @@ function InviteDialog({
               </div>
             </div>
             <p className="text-[10px] text-muted-foreground">
-              💡 Generá una segura, copiala y envíasela al usuario. Puede cambiarla después.
+              <Lightbulb className="h-3 w-3 inline mr-1 -mt-0.5" />Generá una segura, copiala y envíasela al usuario. Puede cambiarla después.
             </p>
           </div>
 
