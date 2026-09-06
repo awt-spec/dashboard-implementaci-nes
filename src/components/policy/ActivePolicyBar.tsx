@@ -13,6 +13,7 @@ import {
   ShieldCheck, ChevronDown, ChevronUp, ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { matchDeadline } from "@/lib/slaMatch";
 
 interface ActivePolicyBarProps {
   /** Filtra qué tipos de regla mostrar. Default: muestra todas. */
@@ -196,29 +197,7 @@ export function computeSLAStatus(
   if (!slaRule) return null;
 
   const deadlines: any[] = slaRule.content?.deadlines || [];
-  const prio = (ticket.prioridad || "").toLowerCase();
-  const tipo = (ticket.tipo || "").toLowerCase();
-
-  const matchesPrio = (d: any) =>
-    !!d.priority && prio.includes((d.priority as string).toLowerCase());
-  const matchesType = (d: any) =>
-    !!d.case_type && tipo.includes((d.case_type as string).toLowerCase());
-
-  // 1) ambos coinciden — más específico
-  let match: any = deadlines.find(d => matchesPrio(d) && matchesType(d));
-
-  // 2) priority solo (orden por deadline_days ASC para preferir el más estricto)
-  if (!match) {
-    const candidates = deadlines.filter(matchesPrio);
-    candidates.sort((a, b) => (a.deadline_days || 999) - (b.deadline_days || 999));
-    match = candidates[0];
-  }
-
-  // 3) case_type solo
-  if (!match) match = deadlines.find(matchesType);
-
-  // 4) fallback "media"
-  if (!match) match = deadlines.find(d => (d.priority || "").toLowerCase() === "media");
+  const match = matchDeadline(deadlines, { prioridad: ticket.prioridad, tipo: ticket.tipo });
 
   if (!match || !match.deadline_days) return null;
 

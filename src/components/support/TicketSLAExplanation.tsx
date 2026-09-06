@@ -21,6 +21,7 @@ import {
   ArrowRight, Info, BookOpen, Target,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { matchDeadline } from "@/lib/slaMatch";
 
 interface Props {
   ticket: {
@@ -51,29 +52,7 @@ export function TicketSLAExplanation({ ticket, clientName }: Props) {
   const matchedDeadline = useMemo(() => {
     if (!slaRule || !sla) return null;
     const deadlines: any[] = slaRule.content?.deadlines || [];
-    const prio = (ticket.prioridad || "").toLowerCase();
-    const tipo = (ticket.tipo || "").toLowerCase();
-
-    // 1) priority + case_type
-    let m: any = deadlines.find(d =>
-      d.priority && d.case_type &&
-      prio.includes(d.priority.toLowerCase()) && tipo.includes(d.case_type.toLowerCase())
-    );
-    if (m) return { ...m, matchType: "priority+type" };
-
-    // 2) priority sólo (más estricto)
-    const prioMatches = deadlines.filter(d => d.priority && prio.includes(d.priority.toLowerCase()));
-    prioMatches.sort((a, b) => (a.deadline_days || 999) - (b.deadline_days || 999));
-    if (prioMatches[0]) return { ...prioMatches[0], matchType: "priority-only" };
-
-    // 3) case_type sólo
-    m = deadlines.find(d => d.case_type && tipo.includes(d.case_type.toLowerCase()));
-    if (m) return { ...m, matchType: "type-only" };
-
-    // 4) media fallback
-    m = deadlines.find(d => (d.priority || "").toLowerCase() === "media");
-    if (m) return { ...m, matchType: "fallback" };
-    return null;
+    return matchDeadline(deadlines, { prioridad: ticket.prioridad, tipo: ticket.tipo });
   }, [slaRule, sla, ticket.prioridad, ticket.tipo]);
 
   if (!sla) return null;

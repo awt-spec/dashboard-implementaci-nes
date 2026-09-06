@@ -12,6 +12,35 @@ const CLOSED_TASK_STATES = new Set([
   "completada", "completado", "completed", "closed",
 ]);
 
+/**
+ * Espejo exacto de `sla_norm()` en la base (migración 20260824120000):
+ *   translate(lower(coalesce(txt, '')), 'áéíóúüñ', 'aeiouun')
+ *
+ * Importa que sean idénticas: el vencimiento de un caso lo calcula el SQL y
+ * la pantalla lo explica. Si normalizan distinto, la base marca "vencido" con
+ * un plazo y la explicación muestra otro.
+ *
+ * Deliberadamente NO usa `norm()`, que además hace trim() y quita cualquier
+ * diacrítico vía NFD. Se comparó caso por caso contra la función real y esas
+ * dos libertades producían discrepancias: con una regla guardada como
+ * "alta " (espacio al final) el SQL no cruza y el JS sí. La base manda, así
+ * que acá se copia su comportamiento, no se mejora.
+ *
+ * Diferencia conocida que queda: el SQL compara con LIKE, donde `%` y `_` del
+ * patrón son comodines, y acá se usa includes(), donde son literales. Sólo se
+ * notaría con una prioridad o un tipo de caso que contuviera esos caracteres.
+ */
+export function slaNorm(s: string | null | undefined): string {
+  const DE = "áéíóúüñ";
+  const A  = "aeiouun";
+  let r = "";
+  for (const ch of (s ?? "").toLowerCase()) {
+    const i = DE.indexOf(ch);
+    r += i === -1 ? ch : A[i];
+  }
+  return r;
+}
+
 function norm(s: string | null | undefined): string {
   if (!s) return "";
   return s
