@@ -9,7 +9,7 @@ import {
   AlertTriangle, CheckCircle2, Clock, Ban,
   Users, Target, Zap, Eye, Filter, TrendingUp, 
   ArrowUpRight, Flame, Shield, Search, LayoutGrid, List,
-  GripVertical
+  GripVertical, User, Building2, Hourglass, Wrench, Globe, ChevronDown
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -40,12 +40,16 @@ interface FunnelItem {
   originalId: string | number;
 }
 
+// Cada etapa ya traía su icono de lucide y además un emoji: se pintaba el
+// emoji y el icono no se usaba. Los emojis se ven distintos en cada sistema
+// operativo, no heredan el color de la etapa y no escalan con el texto. Queda
+// el icono, teñido con `tint`.
 const STAGES = [
-  { id: "identificado", label: "Identificado", icon: Eye, color: "var(--muted-foreground)", accent: "bg-muted/60", ring: "ring-muted-foreground/20", emoji: "🔍" },
-  { id: "analisis", label: "Análisis", icon: Target, color: "var(--info)", accent: "bg-info/10", ring: "ring-info/20", emoji: "🔬" },
-  { id: "en-progreso", label: "Progreso", icon: Clock, color: "var(--warning)", accent: "bg-warning/10", ring: "ring-warning/20", emoji: "⚡" },
-  { id: "bloqueado", label: "Bloqueado", icon: Ban, color: "var(--destructive)", accent: "bg-destructive/10", ring: "ring-destructive/20", emoji: "🚫" },
-  { id: "resuelto", label: "Resuelto", icon: CheckCircle2, color: "var(--success)", accent: "bg-success/10", ring: "ring-success/20", emoji: "✅" },
+  { id: "identificado", label: "Identificado", icon: Eye,          color: "var(--muted-foreground)", accent: "bg-muted/60",        ring: "ring-muted-foreground/20", tint: "text-muted-foreground" },
+  { id: "analisis",     label: "Análisis",     icon: Target,       color: "var(--info)",             accent: "bg-info/10",         ring: "ring-info/20",             tint: "text-info" },
+  { id: "en-progreso",  label: "Progreso",     icon: Clock,        color: "var(--warning)",          accent: "bg-warning/10",      ring: "ring-warning/20",          tint: "text-warning" },
+  { id: "bloqueado",    label: "Bloqueado",    icon: Ban,          color: "var(--destructive)",      accent: "bg-destructive/10",  ring: "ring-destructive/20",      tint: "text-destructive" },
+  { id: "resuelto",     label: "Resuelto",     icon: CheckCircle2, color: "var(--success)",          accent: "bg-success/10",      ring: "ring-success/20",          tint: "text-success" },
 ];
 
 const IMPACT_COLORS: Record<string, string> = {
@@ -54,6 +58,24 @@ const IMPACT_COLORS: Record<string, string> = {
   bajo: "text-success bg-success/10 border-success/20",
   critica: "text-destructive-foreground bg-destructive border-destructive",
 };
+
+/** Cuántas tarjetas muestra una columna del kanban antes de pedir el resto. */
+const POR_COLUMNA = 6;
+
+/** Quién tiene la pelota cuando algo está bloqueado. Antes iba con emoji
+ *  (⏳ 🔧 🌐), que no toma el color del badge ni escala con el texto. */
+function LadoDelBloqueo({ lado }: { lado?: string | null }) {
+  const mapa: Record<string, { Icono: typeof Shield; texto: string }> = {
+    cliente: { Icono: Hourglass, texto: "Cliente" },
+    sysde:   { Icono: Wrench,    texto: "SYSDE" },
+  };
+  const { Icono, texto } = mapa[lado ?? ""] ?? { Icono: Globe, texto: "Externo" };
+  return (
+    <span className="inline-flex items-center gap-1">
+      <Icono className="h-2.5 w-2.5" /> {texto}
+    </span>
+  );
+}
 
 const TYPE_CONFIG: Record<string, { label: string; icon: typeof Shield; cls: string }> = {
   task: { label: "Tarea", icon: CheckCircle2, cls: "bg-info/10 text-info" },
@@ -79,6 +101,8 @@ export function FunnelTab({ client }: FunnelTabProps) {
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
   const [dragItem, setDragItem] = useState<FunnelItem | null>(null);
   const [dragOverStage, setDragOverStage] = useState<string | null>(null);
+  /** Qué columnas del kanban están mostrando todas sus tarjetas. */
+  const [columnasAbiertas, setColumnasAbiertas] = useState<Record<string, boolean>>({});
   const qc = useQueryClient();
 
   const funnelItems = useMemo<FunnelItem[]>(() => {
@@ -204,11 +228,13 @@ export function FunnelTab({ client }: FunnelTabProps) {
 
         {/* Impact badges */}
         <div className="flex gap-1.5 mb-3">
-          <span className={cn("text-[10px] font-bold px-2 py-1 rounded-lg border", IMPACT_COLORS[item.clientImpact])}>
-            👤 {item.clientImpact}
+          <span className={cn("inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg border", IMPACT_COLORS[item.clientImpact])}
+                title="Impacto para el cliente">
+            <User className="h-3 w-3" /> {item.clientImpact}
           </span>
-          <span className={cn("text-[10px] font-bold px-2 py-1 rounded-lg border", IMPACT_COLORS[item.internalImpact])}>
-            🏢 {item.internalImpact}
+          <span className={cn("inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg border", IMPACT_COLORS[item.internalImpact])}
+                title="Impacto interno SYSDE">
+            <Building2 className="h-3 w-3" /> {item.internalImpact}
           </span>
         </div>
 
@@ -223,7 +249,7 @@ export function FunnelTab({ client }: FunnelTabProps) {
                   "text-[10px] font-bold px-2 py-0.5 rounded-full ml-auto uppercase tracking-wide",
                   item.blockerSide === "cliente" ? "bg-warning/15 text-warning" : item.blockerSide === "sysde" ? "bg-info/15 text-info" : "bg-muted text-muted-foreground"
                 )}>
-                  {item.blockerSide === "cliente" ? "⏳ Cliente" : item.blockerSide === "sysde" ? "🔧 SYSDE" : "🌐 Externo"}
+                  <LadoDelBloqueo lado={item.blockerSide} />
                 </span>
               )}
             </div>
@@ -273,7 +299,7 @@ export function FunnelTab({ client }: FunnelTabProps) {
                           "border-border hover:border-primary/30 hover:bg-primary/5 active:scale-95 transition-all"
                         )}
                       >
-                        <span>{s.emoji}</span>
+                        <s.icon className={cn("h-3.5 w-3.5", s.tint)} />
                         {s.label}
                       </button>
                     ))}
@@ -363,7 +389,7 @@ export function FunnelTab({ client }: FunnelTabProps) {
             {stageGroups.map((stage, i) => (
               <div key={stage.id} className="flex-1 text-center">
                 <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: i * 0.08, type: "spring" }}>
-                  <span className="text-lg">{stage.emoji}</span>
+                  <stage.icon className={cn("h-4 w-4 mx-auto mb-1", stage.tint)} />
                   <p className="text-2xl font-black text-foreground">{stage.items.length}</p>
                   <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{stage.label}</p>
                 </motion.div>
@@ -412,22 +438,41 @@ export function FunnelTab({ client }: FunnelTabProps) {
                 dragOverStage === stage.id && "ring-2 ring-primary border-primary/40 scale-[1.02]"
               )}>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm">{stage.emoji}</span>
+                  <stage.icon className={cn("h-3.5 w-3.5 shrink-0", stage.tint)} />
                   <span className="text-xs font-bold text-foreground truncate">{stage.label}</span>
                   <Badge variant="secondary" className="ml-auto text-[10px] h-5 px-2 rounded-lg font-bold">{stage.items.length}</Badge>
                 </div>
               </div>
+              {/* Cada columna tenía su propio scroll de 520 px dentro del scroll
+                  de la página: la rueda hacía una cosa u otra según sobre qué
+                  columna estuviera el puntero, y arrastrar una tarjeta a una
+                  columna cuyo destino estaba fuera de vista obligaba a hacer
+                  scroll con la tarjeta agarrada. Ahora la columna crece y las
+                  que tienen muchas se despliegan a pedido. */}
               <div className={cn(
-                "space-y-2 min-h-[120px] max-h-[520px] overflow-y-auto pr-0.5 rounded-xl transition-all",
+                "space-y-2 min-h-[120px] pr-0.5 rounded-xl transition-all",
                 dragOverStage === stage.id && "bg-primary/5 ring-2 ring-dashed ring-primary/20"
-              )} style={{ scrollbarWidth: "thin" }}>
-                {stage.items.map((item, i) => renderItemCard(item, stage, i))}
+              )}>
+                {(columnasAbiertas[stage.id] ? stage.items : stage.items.slice(0, POR_COLUMNA))
+                  .map((item, i) => renderItemCard(item, stage, i))}
+
+                {stage.items.length > POR_COLUMNA && (
+                  <button
+                    onClick={() => setColumnasAbiertas(c => ({ ...c, [stage.id]: !c[stage.id] }))}
+                    className="w-full flex items-center justify-center gap-1.5 h-8 rounded-xl border border-dashed
+                               border-border text-[10px] font-bold text-muted-foreground
+                               hover:bg-muted/60 hover:text-foreground transition-colors"
+                  >
+                    <ChevronDown className={cn("h-3 w-3 transition-transform", columnasAbiertas[stage.id] && "rotate-180")} />
+                    {columnasAbiertas[stage.id] ? "Ver menos" : `+${stage.items.length - POR_COLUMNA} más`}
+                  </button>
+                )}
                 {stage.items.length === 0 && (
                   <div className={cn(
                     "text-center py-10 rounded-2xl border border-dashed border-border transition-all",
                     dragOverStage === stage.id && "border-primary bg-primary/5"
                   )}>
-                    <span className="text-2xl block mb-2">{stage.emoji}</span>
+                    <stage.icon className={cn("h-6 w-6 mx-auto mb-2 opacity-40", stage.tint)} />
                     <p className="text-xs text-muted-foreground/60 font-medium">
                       {dragOverStage === stage.id ? "Suelta aquí" : "Arrastra aquí"}
                     </p>
@@ -481,7 +526,7 @@ export function FunnelTab({ client }: FunnelTabProps) {
                             <div className="flex items-center gap-1 mt-0.5">
                               <AlertTriangle className="h-3 w-3 text-destructive" />
                               <span className="text-[10px] text-destructive font-medium truncate">
-                                {item.blockerSide === "cliente" ? "⏳ Cliente" : item.blockerSide === "sysde" ? "🔧 SYSDE" : "Bloqueado"}
+                                <LadoDelBloqueo lado={item.blockerSide} />
                               </span>
                             </div>
                           )}
@@ -489,7 +534,7 @@ export function FunnelTab({ client }: FunnelTabProps) {
                       </div>
                       <span className={cn("text-[10px] font-bold px-2 py-1 rounded-lg w-fit", tb.cls)}>{tb.label}</span>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-sm">{stageInfo.emoji}</span>
+                        <stageInfo.icon className={cn("h-3.5 w-3.5", stageInfo.tint)} />
                         <span className="text-xs text-foreground font-medium">{stageInfo.label}</span>
                       </div>
                       <span className={cn("text-[10px] font-bold px-2 py-1 rounded-lg border w-fit", IMPACT_COLORS[item.clientImpact])}>
@@ -522,7 +567,7 @@ export function FunnelTab({ client }: FunnelTabProps) {
                                   onClick={e => { e.stopPropagation(); handleStageChange(item, s.id); }}
                                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border border-border hover:border-primary/30 hover:bg-primary/5 active:scale-95 transition-all"
                                 >
-                                  <span>{s.emoji}</span>
+                                  <s.icon className={cn("h-3.5 w-3.5", s.tint)} />
                                   {s.label}
                                 </button>
                               ))}

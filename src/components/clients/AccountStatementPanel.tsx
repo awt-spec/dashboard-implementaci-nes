@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Download, Calendar, Clock, FileText, Users, AlertTriangle, TrendingUp, ListTree, Package, ClipboardList } from "lucide-react";
+import { Loader2, Download, Calendar, Clock, FileText, Users, AlertTriangle, TrendingUp, ListTree, Package, ClipboardList, ChevronDown, ChevronUp, CalendarRange, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip as RTooltip } from "recharts";
 import { useAccountStatement, getPeriodDates, type StatementPeriod } from "@/hooks/useAccountStatement";
@@ -47,6 +47,12 @@ export function AccountStatementPanel({ clientId, enforceFinanceGate = true, hou
   const [customTo, setCustomTo] = useState("");
   const [detailOpen, setDetailOpen] = useState(false);
   const [view, setView] = useState<"documento" | "analisis">("documento");
+  // En el portal del cliente el documento llegaba desplegado: una hoja larga
+  // ocupando la pantalla antes de que nadie la pidiera. Ahora arranca cerrado
+  // con una portada que responde de un vistazo "¿cuántas horas me quedan?", y
+  // el documento aparece al abrirlo. En la vista interna no cambia: el staff
+  // entra a leerlo.
+  const [abierto, setAbierto] = useState(!hoursOnly);
 
   const dates = useMemo(
     () => getPeriodDates(period, { from: customFrom, to: customTo }),
@@ -72,12 +78,23 @@ export function AccountStatementPanel({ clientId, enforceFinanceGate = true, hou
     }
   };
 
+  // Saldo agregado de las bolsas vigentes: es la pregunta que el cliente trae
+  // cuando abre esta sección.
+  const bolsasActivas = useMemo(() => pkgRows.filter(p => p.estado === "Activo"), [pkgRows]);
+  const saldoTotal = useMemo(
+    () => bolsasActivas.reduce((a, p) => a + Number(p.balance || 0), 0),
+    [bolsasActivas],
+  );
+
   const overage = stmt && stmt.consumption.overage_hours > 0;
   const utilization = stmt?.consumption.utilization_pct ?? null;
 
   return (
     <div className="space-y-4">
-      {/* Toolbar */}
+      {/* Toolbar. En el portal aparece sólo con el estado de cuenta abierto: el
+          selector de período y los botones de exportar no ayudan a decidir si
+          querés abrirlo. */}
+      {(!hoursOnly || abierto) && (
       <Card>
         <CardContent className="p-3 flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1.5">
@@ -161,15 +178,113 @@ export function AccountStatementPanel({ clientId, enforceFinanceGate = true, hou
           </div>
         </CardContent>
       </Card>
+      )}
 
       {/* Estado de cuenta = salida informativa en vivo. Las autorizaciones
           (aprobaciones) se gestionan aguas arriba, a nivel de solicitud/cotización. */}
-      <p className="text-[10px] text-muted-foreground px-1 -mt-1">
-        Estado de cuenta informativo, actualizado en vivo. Las autorizaciones se gestionan a nivel de solicitud/cotización.
-      </p>
+      {(!hoursOnly || abierto) && (
+        <p className="text-[10px] text-muted-foreground px-1 -mt-1">
+          Estado de cuenta informativo, actualizado en vivo. Las autorizaciones se gestionan a nivel de solicitud/cotización.
+        </p>
+      )}
 
-      {/* Bolsa de horas: saldo disponible por póliza activa (de un vistazo) */}
-      {stmt && !isLoading && (
+      {/* ── Portada del portal ──────────────────────────────────────────────
+          Reemplaza al documento desplegado. Responde de un vistazo lo que el
+          cliente viene a mirar —cuántas horas le quedan y hasta cuándo— y deja
+          el documento detrás de un clic. */}
+      {hoursOnly && !abierto && stmt && !isLoading && (
+        <Card className="overflow-hidden">
+          <CardContent className="p-0">
+            <div className="p-4 space-y-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-[0.08em] font-semibold text-muted-foreground">
+                    Bolsa de horas
+                  </p>
+                  <p className="text-3xl font-bold tabular-nums leading-none mt-1">
+                    {n2(saldoTotal)}
+                    <span className="text-sm font-medium text-muted-foreground ml-1.5">h disponibles</span>
+                  </p>
+                </div>
+                <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <Wallet className="h-5 w-5 text-primary" />
+                </div>
+              </div>
+
+              {stmt.consumption.included_hours > 0 && (
+                <div className="space-y-1.5">
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      /* Nada de bg-primary acá: --primary es el rojo de marca y
+                         un consumo sano del 78% se leía como alarma. El color
+                         sólo debe cambiar cuando hay algo que mirar. */
+                      className={`h-full rounded-full transition-all ${
+                        overage ? "bg-destructive"
+                        : (utilization ?? 0) > 85 ? "bg-warning"
+                        : "bg-success"
+                      }`}
+                      style={{ width: `${Math.min(100, Math.max(0, utilization ?? 0))}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground tabular-nums">
+                    <span>
+                      {n2(stmt.consumption.total_hours)} h consumidas
+                      {" de "}{n2(stmt.consumption.included_hours)} h
+                    </span>
+                    <span className={overage ? "text-destructive font-semibold" : ""}>
+                      {overage
+                        ? `+${n2(stmt.consumption.overage_hours)} h sobre lo contratado`
+                        : `${utilization ?? 0}%`}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-lg border border-border p-2.5">
+                  <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+                    <CalendarRange className="h-3 w-3" />
+                    <span className="text-[9px] uppercase tracking-wide font-semibold">Período</span>
+                  </div>
+                  <p className="text-[11px] font-medium tabular-nums">
+                    {fmtDate(dates.from)} — {fmtDate(dates.to)}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border p-2.5">
+                  <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+                    <Package className="h-3 w-3" />
+                    <span className="text-[9px] uppercase tracking-wide font-semibold">
+                      {bolsasActivas.length === 1 ? "Póliza vigente" : "Pólizas vigentes"}
+                    </span>
+                  </div>
+                  <p className="text-[11px] font-medium tabular-nums">
+                    {bolsasActivas.length === 0
+                      ? "Sin póliza activa"
+                      : bolsasActivas.length === 1
+                        ? (bolsasActivas[0].policy_number ?? bolsasActivas[0].package_number ?? "—")
+                        : `${bolsasActivas.length} activas`}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setAbierto(true)}
+              className="w-full flex items-center justify-center gap-2 h-11 border-t border-border
+                         text-xs font-semibold text-primary
+                         hover:bg-primary/5 active:bg-primary/10 transition-colors"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              Ver estado de cuenta
+              <ChevronDown className="h-3.5 w-3.5" />
+            </button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Bolsa de horas: saldo disponible por póliza activa (de un vistazo).
+          Con el panel cerrado su dato ya vive en la portada, sin repetirlo. */}
+      {stmt && !isLoading && abierto && (
         <HoursBalanceStrip
           pockets={pkgRows
             .filter(p => p.estado === "Activo")
@@ -205,11 +320,24 @@ export function AccountStatementPanel({ clientId, enforceFinanceGate = true, hou
           en pantalla y otra en el archivo. En modo oscuro quedaba como una losa
           blanca sin explicación; con el marco gris y la sombra se lee como lo
           que es: una hoja. */}
-      {stmt && !isLoading && view === "documento" && (
-        <div className="rounded-lg border border-border overflow-hidden dark:bg-neutral-800 dark:p-3">
-          <div className="overflow-hidden dark:rounded-md dark:shadow-lg">
-            <AccountStatementDocument stmt={stmt} clientId={clientId} />
+      {stmt && !isLoading && abierto && view === "documento" && (
+        <div className="space-y-2">
+          <div className="rounded-lg border border-border overflow-hidden dark:bg-neutral-800 dark:p-3">
+            <div className="overflow-hidden dark:rounded-md dark:shadow-lg">
+              <AccountStatementDocument stmt={stmt} clientId={clientId} />
+            </div>
           </div>
+          {hoursOnly && (
+            <button
+              onClick={() => setAbierto(false)}
+              className="w-full flex items-center justify-center gap-2 h-10 rounded-lg border border-border
+                         text-xs font-semibold text-muted-foreground
+                         hover:bg-muted/60 active:bg-muted transition-colors"
+            >
+              <ChevronUp className="h-3.5 w-3.5" />
+              Ocultar estado de cuenta
+            </button>
+          )}
         </div>
       )}
 

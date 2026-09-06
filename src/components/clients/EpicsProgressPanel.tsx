@@ -5,7 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import {
   Settings2, Server, SlidersHorizontal, GraduationCap, Code2,
-  Receipt, Loader2, Layers, ChevronRight,
+  Receipt, Loader2, Layers, ChevronRight, ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -30,6 +30,10 @@ const TONE_CLASS: Record<string, string> = {
   primary: "bg-primary/15 text-primary border-primary/30",
 };
 
+/** Cuántos disparadores se ven antes de pedir "ver todas". Cuatro entran sin
+ *  empujar el resto de la columna fuera de la primera pantalla. */
+const VISIBLES = 4;
+
 const BILLING_KEYS: BillingStatus[] = [
   "en_asignacion", "en_desarrollo", "lista_para_facturar", "facturada", "sin_estado",
 ];
@@ -42,6 +46,12 @@ export function EpicsProgressPanel({ clientId }: Props) {
   const { data, isLoading } = useEpics(clientId);
   const updateBilling = useUpdateHuBilling(clientId);
   const [detail, setDetail] = useState<EpicSummary | null>(null);
+  // La lista de disparadores vivía en una caja de 280 px con scroll propio,
+  // dentro del scroll de la página: la rueda del mouse hacía una cosa u otra
+  // según dónde estuviera el puntero, y las tarjetas de arriba y de abajo
+  // quedaban cortadas a la mitad, que es lo que hace que se lea como un error.
+  // Ahora se muestran las primeras y el resto se despliega hacia abajo.
+  const [verTodos, setVerTodos] = useState(false);
 
   const changeBilling = (id: string, billing_status: BillingStatus) => {
     updateBilling.mutate(
@@ -122,8 +132,8 @@ export function EpicsProgressPanel({ clientId }: Props) {
               Sin HU en asignación ni listas para facturar.
             </p>
           ) : (
-            <div className="space-y-1.5 max-h-[280px] overflow-y-auto">
-              {data.billingTriggers.map((h) => {
+            <div className="space-y-1.5">
+              {(verTodos ? data.billingTriggers : data.billingTriggers.slice(0, VISIBLES)).map((h) => {
                 const meta = BILLING_STATUS[h.billing_status];
                 return (
                   <div
@@ -154,6 +164,20 @@ export function EpicsProgressPanel({ clientId }: Props) {
                   </div>
                 );
               })}
+
+              {data.billingTriggers.length > VISIBLES && (
+                <button
+                  onClick={() => setVerTodos(v => !v)}
+                  className="w-full flex items-center justify-center gap-1.5 h-9 rounded-lg border border-dashed
+                             border-border text-[11px] font-semibold text-muted-foreground
+                             hover:bg-muted/60 hover:text-foreground transition-colors"
+                >
+                  <ChevronDown className={`h-3.5 w-3.5 transition-transform ${verTodos ? "rotate-180" : ""}`} />
+                  {verTodos
+                    ? "Ver menos"
+                    : `Ver las ${data.billingTriggers.length} HU`}
+                </button>
+              )}
             </div>
           )}
         </CardContent>

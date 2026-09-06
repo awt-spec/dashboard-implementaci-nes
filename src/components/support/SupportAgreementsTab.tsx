@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckSquare, ArrowRight, Calendar, FileText, Loader2 } from "lucide-react";
+import { CheckSquare, ArrowRight, Calendar, FileText, Loader2, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Minuta {
@@ -26,7 +26,14 @@ interface Props {
   clientId: string;
 }
 
+/** Cuántos registros se ven antes de pedir el resto. */
+const VISIBLES = 8;
+
 export function SupportAgreementsTab({ clientId }: Props) {
+  // Sin scroll interno: la caja de 500 px dentro del scroll de la página hacía
+  // que la rueda del mouse hiciera una cosa u otra según dónde estuviera el
+  // puntero, y cortaba filas por la mitad arriba y abajo.
+  const [verTodos, setVerTodos] = useState(false);
   const [minutas, setMinutas] = useState<Minuta[]>([]);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -107,8 +114,8 @@ export function SupportAgreementsTab({ clientId }: Props) {
             <p className="text-xs text-muted-foreground">No hay acuerdos ni acciones registrados.</p>
           </div>
         ) : (
-          <div className="space-y-1.5 max-h-[500px] overflow-y-auto">
-            {filtered.map((row, i) => (
+          <div className="space-y-1.5">
+            {(verTodos ? filtered : filtered.slice(0, VISIBLES)).map((row, i) => (
               <div key={`${row.minutaId}-${row.type}-${i}`} className="flex items-start gap-3 p-2.5 rounded-lg border border-border/50 hover:bg-muted/20 transition-colors">
                 <div className={`mt-0.5 shrink-0 ${row.type === "acuerdo" ? "text-emerald-400" : "text-blue-400"}`}>
                   {row.type === "acuerdo" ? <CheckSquare className="h-3.5 w-3.5" /> : <ArrowRight className="h-3.5 w-3.5" />}
@@ -125,6 +132,18 @@ export function SupportAgreementsTab({ clientId }: Props) {
                 </div>
               </div>
             ))}
+
+            {filtered.length > VISIBLES && (
+              <button
+                onClick={() => setVerTodos(v => !v)}
+                className="w-full flex items-center justify-center gap-1.5 h-9 rounded-lg border border-dashed
+                           border-border text-[11px] font-semibold text-muted-foreground
+                           hover:bg-muted/60 hover:text-foreground transition-colors"
+              >
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${verTodos ? "rotate-180" : ""}`} />
+                {verTodos ? "Ver menos" : `Ver los ${filtered.length} registros`}
+              </button>
+            )}
           </div>
         )}
       </CardContent>

@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { CalendarIcon, Package, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
+import { CalendarIcon, Package, Clock, CheckCircle2, AlertTriangle, ChevronDown } from "lucide-react";
 import { type Client } from "@/data/projectData";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -46,8 +46,14 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   pendiente: { label: "Pendiente", className: "bg-muted text-muted-foreground" },
 };
 
+/** Cuántos elementos se ven por grupo antes de pedir el resto. */
+const VISIBLES = 5;
+
 export function UpcomingDeliverables({ clients, client }: UpcomingDeliverablesProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  // Sin caja de 300 px con scroll propio dentro del scroll de la página: se
+  // muestran los primeros de cada grupo y el resto se despliega.
+  const [verTodos, setVerTodos] = useState(false);
 
   const items = useMemo(() => {
     const targetClients = client ? [client] : clients;
@@ -154,11 +160,11 @@ export function UpcomingDeliverables({ clients, client }: UpcomingDeliverablesPr
             </p>
           </div>
         ) : (
-          <div className="space-y-2 max-h-[300px] overflow-y-auto">
+          <div className="space-y-2">
             {items.deliverables.length > 0 && (
               <>
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Entregables ({items.deliverables.length})</p>
-                {items.deliverables.map(d => {
+                {(verTodos ? items.deliverables : items.deliverables.slice(0, VISIBLES)).map(d => {
                   const config = statusConfig[d.status] || statusConfig.pendiente;
                   const isOverdue = d.parsedDate && d.parsedDate < new Date() && d.status !== "aprobado" && d.status !== "entregado";
                   return (
@@ -182,7 +188,7 @@ export function UpcomingDeliverables({ clients, client }: UpcomingDeliverablesPr
             {items.tasks.length > 0 && (
               <>
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mt-3">Tareas ({items.tasks.length})</p>
-                {items.tasks.map(t => {
+                {(verTodos ? items.tasks : items.tasks.slice(0, VISIBLES)).map(t => {
                   const isOverdue = t.parsedDate && t.parsedDate < new Date() && !isTaskClosed(t.status);
                   return (
                     <div key={t.id} className={`flex items-center justify-between p-2.5 rounded-lg border ${isOverdue ? "border-destructive/30 bg-destructive/5" : "border-border"}`}>
@@ -202,6 +208,20 @@ export function UpcomingDeliverables({ clients, client }: UpcomingDeliverablesPr
                   );
                 })}
               </>
+            )}
+
+            {(items.deliverables.length > VISIBLES || items.tasks.length > VISIBLES) && (
+              <button
+                onClick={() => setVerTodos(v => !v)}
+                className="w-full flex items-center justify-center gap-1.5 h-9 rounded-lg border border-dashed
+                           border-border text-[11px] font-semibold text-muted-foreground
+                           hover:bg-muted/60 hover:text-foreground transition-colors"
+              >
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${verTodos ? "rotate-180" : ""}`} />
+                {verTodos
+                  ? "Ver menos"
+                  : `Ver todo (${items.deliverables.length + items.tasks.length})`}
+              </button>
             )}
           </div>
         )}
