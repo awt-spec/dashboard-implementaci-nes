@@ -27,7 +27,18 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+      // La pestaña activa era una pastilla `bg-background` —blanca— sobre un
+      // TabsList `bg-muted`, que es casi blanco: la selección se distinguía
+      // sólo por una sombra de 1 px. Ahora se tiñe con el color de marca.
+      // Tinte y no relleno sólido a propósito: el botón de acción principal
+      // de estas pantallas ya es un bloque sólido del mismo color, y dos
+      // bloques sólidos compitiendo confunden cuál es la acción.
+      "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all",
+      "data-[state=active]:bg-primary/10 data-[state=active]:text-primary",
+      "data-[state=active]:ring-1 data-[state=active]:ring-inset data-[state=active]:ring-primary/25",
+      "data-[state=active]:font-semibold data-[state=active]:shadow-sm",
+      "hover:text-foreground/80 data-[state=active]:hover:text-primary",
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
       className,
     )}
     {...props}

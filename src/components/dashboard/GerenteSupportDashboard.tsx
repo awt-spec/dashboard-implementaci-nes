@@ -333,10 +333,14 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
               <TabsTrigger value="resumen" aria-label="Resumen" className="text-xs gap-1 sm:gap-1.5">
                 <Activity className="h-3.5 w-3.5" /> <span className="text-[10px] sm:text-xs">Resumen</span>
               </TabsTrigger>
-              <TabsTrigger value="abiertos" aria-label="Abiertos" className="text-xs gap-1 sm:gap-1.5 relative">
+              {/* El contador iba `absolute` en la esquina de la pestaña, y como
+                  la pestaña ocupa un tercio de la barra quedaba flotando a
+                  varios centímetros de la palabra que cuenta. Va al lado de la
+                  etiqueta, que es lo que numera. */}
+              <TabsTrigger value="abiertos" aria-label="Abiertos" className="text-xs gap-1 sm:gap-1.5">
                 <Ticket className="h-3.5 w-3.5" /> <span className="text-[10px] sm:text-xs">Abiertos</span>
                 {openTickets.length > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 h-3.5 min-w-3.5 px-1 rounded-full bg-primary text-primary-foreground text-[8px] font-bold flex items-center justify-center">
+                  <span className="h-4 min-w-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center tabular-nums">
                     {openTickets.length}
                   </span>
                 )}
