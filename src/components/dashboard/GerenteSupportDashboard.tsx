@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Headset, AlertTriangle, Clock, CheckCircle2, Activity, Send,
   TrendingUp, Flame, Loader2, Search, ChevronRight,
-  FileText, Ticket, Sparkles, Pencil, Check, X, AlertCircle, Wallet,
+  FileText, Ticket, Sparkles, Pencil, Check, X, AlertCircle, Wallet, Plus,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { type Client } from "@/data/projectData";
@@ -37,6 +37,15 @@ interface Props {
 // ENTREGADA queda clasificado como "abierto pero esperando validación del cliente"
 // — requiere que el cliente confirme la recepción para que pase a CERRADA.
 const DELIVERED_STATE = "ENTREGADA";
+
+/** Punto de color por estado, para la tabla del portal en escritorio. */
+const ESTADO_PUNTO: Record<string, string> = {
+  "EN ATENCIÓN": "bg-info",
+  "PENDIENTE": "bg-warning",
+  "ENTREGADA": "bg-success",
+  "CERRADA": "bg-muted-foreground",
+  "ANULADA": "bg-muted-foreground",
+};
 
 const PRIORITY_STYLES: Record<string, string> = {
   "Critica, Impacto Negocio": "bg-destructive/15 text-destructive border-destructive/30",
@@ -74,14 +83,24 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
   // el teléfono, restaurar la ventana— no queda ni pestaña marcada ni panel
   // que mostrar: la columna principal se vacía. Nada la devolvía a un valor
   // válido, así que se hace acá.
+  const [esEscritorio, setEsEscritorio] = useState(
+    () => typeof window !== "undefined" && !!window.matchMedia?.("(min-width: 1024px)").matches,
+  );
   useEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia) return;
     const lg = window.matchMedia("(min-width: 1024px)");
-    const alCruzar = () => { if (lg.matches) setTab(t => (t === "cuenta" ? "resumen" : t)); };
+    const alCruzar = () => {
+      setEsEscritorio(lg.matches);
+      if (lg.matches) setTab(t => (t === "cuenta" ? "resumen" : t));
+    };
     alCruzar();
     lg.addEventListener("change", alCruzar);
     return () => lg.removeEventListener("change", alCruzar);
   }, []);
+
+  // Filtro de la tabla del portal en escritorio. En teléfono no se usa: ahí
+  // manda la maqueta de pestañas, que entra en una columna.
+  const [filtroEstado, setFiltroEstado] = useState<"todos" | "atencion" | "pendientes" | "entregados">("todos");
   const [search, setSearch] = useState("");
   const [filterPriority, setFilterPriority] = useState<string>("all");
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
@@ -166,6 +185,37 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
       .sort((a, b) => (b.dias_antiguedad ?? 0) - (a.dias_antiguedad ?? 0));
   }, [openTickets, search, filterPriority]);
 
+  // Filas de la tabla del portal: TODOS los casos, no sólo los abiertos —en
+  // escritorio la tabla reemplaza a las tres pestañas, así que el historial
+  // tiene que estar alcanzable desde el mismo sitio.
+  const casosDeLaTabla = useMemo(() => {
+    const porEstado = (t: SupportTicket) =>
+      filtroEstado === "todos" ? true
+      : filtroEstado === "entregados" ? t.estado === DELIVERED_STATE
+      : filtroEstado === "pendientes" ? t.estado === "PENDIENTE"
+      : !isTicketClosed(t.estado) && t.estado !== DELIVERED_STATE && t.estado !== "PENDIENTE";
+    const q = search.trim().toLowerCase();
+    return tickets
+      .filter(porEstado)
+      .filter(t => !q
+        || t.asunto?.toLowerCase().includes(q)
+        || t.ticket_id?.toLowerCase().includes(q)
+        || t.producto?.toLowerCase().includes(q))
+      .sort((a, b) => (b.dias_antiguedad ?? 0) - (a.dias_antiguedad ?? 0));
+  }, [tickets, filtroEstado, search]);
+
+  const conteos = useMemo(() => ({
+    todos: tickets.length,
+    atencion: openTickets.filter(t => t.estado !== DELIVERED_STATE && t.estado !== "PENDIENTE").length,
+    pendientes: tickets.filter(t => t.estado === "PENDIENTE").length,
+    entregados: deliveredTickets.length,
+  }), [tickets, openTickets, deliveredTickets]);
+
+  // El portal en escritorio tenía la maqueta del teléfono estirada: una columna
+  // de 380 px y el resto detrás de tres pestañas. En 1440 px caben a la vez lo
+  // que el portal PIDE (validar una entrega), los casos y la cuenta.
+  const portalEscritorio = !isStaff && esEscritorio;
+
   const health = getHealth(openTickets.length, criticalTickets.length);
 
   // ── Acciones del cliente sobre tickets ENTREGADA ──
@@ -241,6 +291,202 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
 
   return (
     <div className="max-w-2xl lg:max-w-7xl mx-auto pb-24 md:pb-6 animate-fadein">
+      {portalEscritorio ? (
+        <div className="flex flex-col gap-4">
+
+          {/* Encabezado de página y la acción principal, siempre a la vista */}
+          <div className="flex items-end gap-4">
+            <div className="min-w-0">
+              <h2 className="text-xl font-bold tracking-tight">Tus casos de soporte</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {openTickets.length} {openTickets.length === 1 ? "abierto" : "abiertos"}
+                {" · "}{inProgressTickets.length} en atención
+                {deliveredTickets.length > 0 && (
+                  <> · <span className="text-warning font-semibold">
+                    {deliveredTickets.length === 1
+                      ? "1 esperando tu validación"
+                      : `${deliveredTickets.length} esperando tu validación`}
+                  </span></>
+                )}
+              </p>
+            </div>
+            <div className="flex-1" />
+            {canCreateTickets && (
+              <Button onClick={() => setRequestOpen(true)} className="h-9 gap-2">
+                <Plus className="h-4 w-4" /> Nueva solicitud
+              </Button>
+            )}
+          </div>
+
+          {/* Lo único que el portal le PIDE al cliente. Antes vivía dentro de la
+              pestaña "Abiertos"; acá encabeza la pantalla. */}
+          {deliveredTickets.map(t => (
+            <div
+              key={t.id}
+              className="flex items-center gap-3.5 rounded-xl border border-warning/35 bg-warning/[0.06] p-3.5"
+            >
+              <div className="h-9 w-9 rounded-lg bg-warning/15 flex items-center justify-center shrink-0">
+                <PackageCheck className="h-[18px] w-[18px] text-warning" />
+              </div>
+              <button
+                onClick={() => setSelectedTicketId(t.id)}
+                className="min-w-0 flex-1 text-left"
+              >
+                <p className="text-[13px] font-semibold truncate">
+                  {t.ticket_id} · Entregado, esperando tu validación
+                </p>
+                <p className="text-[11px] text-muted-foreground truncate">
+                  {t.asunto}{t.responsable ? ` · ${t.responsable}` : ""}
+                </p>
+              </button>
+              {canCreateTickets ? (
+                <div className="flex gap-2 shrink-0">
+                  <Button
+                    size="sm" variant="outline" onClick={() => handleReopen(t)}
+                    disabled={cambiandoEstado} className="h-8 gap-1.5 text-xs"
+                    title="El caso no está resuelto — reabrir y notificar al SVA"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" /> Reabrir
+                  </Button>
+                  <Button
+                    size="sm" onClick={() => handleValidate(t)}
+                    disabled={cambiandoEstado} className="h-8 gap-1.5 text-xs bg-success hover:bg-success/90"
+                    title="Confirmar que la solución es correcta y cerrar el caso"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Validar y cerrar
+                  </Button>
+                </div>
+              ) : (
+                <span className="text-[10px] text-muted-foreground italic px-1 shrink-0">Solo lectura</span>
+              )}
+            </div>
+          ))}
+
+          <div className="grid grid-cols-[1fr_336px] gap-5 items-start">
+
+            {/* ─── Tabla: en escritorio no hay razón para esconder los casos ─── */}
+            <Card className="overflow-hidden">
+              <div className="flex items-center gap-2 px-3.5 h-[52px] border-b border-border">
+                {([
+                  ["todos", "Todos"], ["atencion", "En atención"],
+                  ["pendientes", "Pendientes"], ["entregados", "Entregados"],
+                ] as const).map(([clave, rotulo]) => (
+                  <button
+                    key={clave}
+                    onClick={() => setFiltroEstado(clave)}
+                    className={cn(
+                      "h-7 px-2.5 rounded-lg text-xs transition-colors border",
+                      filtroEstado === clave
+                        ? "border-primary/25 bg-primary/10 text-primary font-semibold"
+                        : "border-border bg-card text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {rotulo} · {conteos[clave]}
+                  </button>
+                ))}
+                <div className="flex-1" />
+                <div className="relative w-[232px]">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder="Buscar por asunto o número…"
+                    className="h-[30px] pl-8 text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-[96px_1fr_148px_104px_132px_76px] gap-3 px-4 py-2.5
+                              border-b border-border bg-muted/40">
+                {["Caso", "Asunto", "Producto", "Prioridad", "Estado", "Días"].map((h, i) => (
+                  <div
+                    key={h}
+                    className={cn(
+                      "text-[10px] font-semibold uppercase tracking-[0.05em] text-muted-foreground",
+                      i === 5 && "text-right",
+                    )}
+                  >
+                    {h}
+                  </div>
+                ))}
+              </div>
+
+              {casosDeLaTabla.length === 0 ? (
+                <EmptyState message={
+                  search.trim()
+                    ? "Ningún caso coincide con la búsqueda."
+                    : "No hay casos en este filtro."
+                } />
+              ) : (
+                <div className="max-h-none">
+                  {casosDeLaTabla.map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => setSelectedTicketId(t.id)}
+                      className="w-full grid grid-cols-[96px_1fr_148px_104px_132px_76px] gap-3 px-4 py-2.5
+                                 border-b border-border/60 items-center text-left hover:bg-muted/40 transition-colors"
+                    >
+                      <span className="text-xs font-semibold text-primary tabular-nums">{t.ticket_id}</span>
+                      <span className="text-[13px] truncate">{t.asunto}</span>
+                      <span className="text-xs text-muted-foreground truncate">{t.producto || "—"}</span>
+                      <span>
+                        <Badge className={cn("text-[10px] px-2 py-0", PRIORITY_STYLES[t.prioridad] || "")}>
+                          {t.prioridad === "Critica, Impacto Negocio" ? "Crítica" : t.prioridad}
+                        </Badge>
+                      </span>
+                      <span className="flex items-center gap-1.5 min-w-0">
+                        <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", ESTADO_PUNTO[t.estado] ?? "bg-muted-foreground")} />
+                        <span className="text-xs truncate">{t.estado}</span>
+                      </span>
+                      <span className={cn(
+                        "text-xs text-right tabular-nums",
+                        (t.dias_antiguedad ?? 0) > 30 ? "text-destructive font-semibold" : "text-muted-foreground",
+                      )}>
+                        {t.dias_antiguedad ?? 0}d
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </Card>
+
+            {/* ─── Riel: la cuenta acompaña, no ocupa el mejor lugar ─── */}
+            <div className="flex flex-col gap-4 sticky top-4">
+              {sidebarExtras}
+              <Card>
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Activity className="h-[15px] w-[15px] text-muted-foreground" />
+                    <span className="text-[13px] font-semibold">Actividad reciente</span>
+                  </div>
+                  {recentTickets.length === 0 ? (
+                    <p className="text-xs text-muted-foreground italic">Todavía no hay movimientos.</p>
+                  ) : (
+                    <div className="flex flex-col gap-2.5">
+                      {recentTickets.map(t => (
+                        <button
+                          key={t.id}
+                          onClick={() => setSelectedTicketId(t.id)}
+                          className="flex gap-2.5 items-start text-left w-full"
+                        >
+                          <span className={cn(
+                            "h-[7px] w-[7px] rounded-full mt-[5px] shrink-0",
+                            ESTADO_PUNTO[t.estado] ?? "bg-muted-foreground",
+                          )} />
+                          <span className="min-w-0">
+                            <span className="block text-xs leading-snug truncate">{t.ticket_id} · {t.asunto}</span>
+                            <span className="block text-[10px] text-muted-foreground">{t.estado}</span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      ) : (
       <div className="flex flex-col lg:grid lg:grid-cols-[380px_1fr] lg:gap-6 lg:items-start">
 
         {/* ─── LEFT / TOP COLUMN ─── (en móvil va ARRIBA)
@@ -627,6 +873,7 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
           </Tabs>
         </div>
       </div>
+      )}
 
       {/* ─── Ticket detail sheet ─── */}
       <Sheet open={!!selectedTicket} onOpenChange={o => !o && setSelectedTicketId(null)}>
