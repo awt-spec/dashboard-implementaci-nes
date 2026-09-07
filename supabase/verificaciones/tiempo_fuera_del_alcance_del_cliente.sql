@@ -211,11 +211,24 @@ begin
     'no', case when hay_columnas then 'sí — falta correr la fase 2' else 'no' end);
 end $$;
 
-select n, prueba, esperado, obtenido,
-       case
-         when esperado = '> 0' then case when obtenido ~ '^[1-9][0-9]*$' then 'OK' else 'REVISAR' end
-         when obtenido = esperado then 'OK'
-         when obtenido like 'denegado%' and esperado = '0' then 'OK'
-         else 'REVISAR'
-       end as veredicto
-  from _v order by n;
+-- El resultado sale en UNA sola celda de texto, ya como tabla markdown: en el
+-- editor SQL de Supabase se copia con un clic y se pega tal cual. La grilla de
+-- 17 filas se ve bien en pantalla pero no se puede copiar de forma útil.
+with r as (
+  select n, prueba, esperado, obtenido,
+         case
+           when esperado = '> 0' then case when obtenido ~ '^[1-9][0-9]*$' then 'OK' else 'REVISAR' end
+           when obtenido = esperado then 'OK'
+           when obtenido like 'denegado%' and esperado = '0' then 'OK'
+           else 'REVISAR'
+         end as veredicto
+    from _v
+)
+select E'| # | prueba | esperado | obtenido | veredicto |\n|---|---|---|---|---|\n'
+       || string_agg(
+            '| '||n||' | '||prueba||' | '||esperado||' | '||obtenido||' | '||veredicto||' |',
+            E'\n' order by n)
+       || E'\n\nREVISAR: ' || (select count(*) from r where veredicto = 'REVISAR')::text
+       || ' de ' || (select count(*) from r)::text
+       as pegar_esto_en_el_chat
+  from r;
