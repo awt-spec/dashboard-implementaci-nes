@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Activity, X, Flame, Clock, Shield, Zap, TrendingUp, AlertTriangle, Bot, StickyNote } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { SupportTicket } from "@/hooks/useSupportTickets";
+import { compararCasosPorUrgencia } from "@/lib/ticketStatus";
 
 const prioridadOrder = ["Critica, Impacto Negocio", "Alta", "Media", "Baja"];
 const estadoOrder = ["EN ATENCIÓN", "PENDIENTE", "ENTREGADA", "POR CERRAR", "COTIZADA", "APROBADA", "VALORACIÓN", "ON HOLD"];
@@ -79,7 +80,7 @@ export function SupportClientHeatmap({ tickets, clientName }: Props) {
 
   const activeTickets = useMemo(() =>
     tickets.filter(t => !["CERRADA", "ANULADA"].includes(t.estado))
-      .sort((a, b) => b.dias_antiguedad - a.dias_antiguedad),
+      .sort(compararCasosPorUrgencia),
     [tickets]
   );
 

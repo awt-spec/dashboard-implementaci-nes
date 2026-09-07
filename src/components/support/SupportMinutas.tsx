@@ -17,6 +17,7 @@ import { ShareSupportPresentationDialog } from "./ShareSupportPresentationDialog
 import { MinuteFeedbackList } from "./MinuteFeedbackList";
 import { toast } from "sonner";
 import type { SupportTicket } from "@/hooks/useSupportTickets";
+import { compararCasosPorUrgencia } from "@/lib/ticketStatus";
 
 interface Props {
   tickets: SupportTicket[];
@@ -100,7 +101,7 @@ export function SupportMinutas({ tickets, clientName, clientId, teamMembers = []
 
   const criticalTickets = useMemo(() =>
     activeTickets.filter(t => t.prioridad === "Critica, Impacto Negocio" || t.prioridad === "Alta")
-      .sort((a, b) => b.dias_antiguedad - a.dias_antiguedad), [activeTickets]);
+      .sort(compararCasosPorUrgencia), [activeTickets]);
 
   const handleGenerateMinuta = async () => {
     if (generationMode === "transcript" && !transcript.trim()) {

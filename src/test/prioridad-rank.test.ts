@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { prioridadRank, compararCasosPorUrgencia } from "@/lib/ticketStatus";
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 
 // Los dos formularios guardan formas distintas del mismo valor: el del cliente
 // escribe "Critica, Impacto Negocio" y el interno "critica". Si el orden se
@@ -75,5 +77,61 @@ describe("orden de la tabla del portal", () => {
       .map(c => c.ticket_id);
     expect(soloAntiguedad[0]).toBe("VIEJO-BAJA");
     expect(soloAntiguedad[soloAntiguedad.length - 1]).toBe("NUEVO-CRIT");
+  });
+});
+
+// Las cuatro listas de casos ordenaban cada una por su cuenta, solo por
+// antigüedad. Al unificarlas quedó un único comparador; esta prueba impide que
+// vuelva a aparecer una copia suelta, que es como se desincronizaron los
+// matchers de SLA.
+describe("ninguna lista ordena por su cuenta", () => {
+  const RAIZ = join(__dirname, "..");
+  const ORDEN_SUELTO = /\.sort\(\s*\((\w+),\s*(\w+)\)\s*=>[^)]*dias_antiguedad/;
+
+  function archivos(dir: string): string[] {
+    return readdirSync(dir, { withFileTypes: true }).flatMap(d => {
+      const ruta = join(dir, d.name);
+      if (d.isDirectory()) return d.name === "test" ? [] : archivos(ruta);
+      return /\.tsx?$/.test(d.name) && !/\.test\.tsx?$/.test(d.name) ? [ruta] : [];
+    });
+  }
+
+  const fuentes = archivos(RAIZ).map(f => ({ f, texto: readFileSync(f, "utf8") }));
+
+  it("encuentra los archivos, no una lista vacía", () => {
+    expect(fuentes.length).toBeGreaterThan(50);
+  });
+
+  it("nadie ordena por dias_antiguedad fuera de ticketStatus", () => {
+    const culpables = fuentes
+      .filter(({ f }) => !f.endsWith("ticketStatus.ts"))
+      .filter(({ texto }) => ORDEN_SUELTO.test(texto))
+      .map(({ f }) => f.replace(RAIZ, "src"));
+    expect(culpables).toEqual([]);
+  });
+
+  it("las cuatro listas usan el comparador compartido", () => {
+    const esperadas = [
+      "components/dashboard/GerenteSupportDashboard.tsx",
+      "components/support/SupportClientHeatmap.tsx",
+      "components/support/SupportMinutas.tsx",
+      "components/support/SupportMinutaPresentation.tsx",
+    ];
+    for (const rel of esperadas) {
+      const texto = readFileSync(join(RAIZ, rel), "utf8");
+      expect(texto, rel).toContain(".sort(compararCasosPorUrgencia)");
+    }
+  });
+
+  // Control: el detector tiene que reconocer el patrón viejo. Si no lo
+  // reconociera, la prueba anterior pasaría siempre y no probaría nada.
+  it("el detector reconoce el patrón que se eliminó", () => {
+    expect(ORDEN_SUELTO.test(
+      ".sort((a, b) => b.dias_antiguedad - a.dias_antiguedad)",
+    )).toBe(true);
+    expect(ORDEN_SUELTO.test(
+      ".sort((a, b) => (b.dias_antiguedad ?? 0) - (a.dias_antiguedad ?? 0))",
+    )).toBe(true);
+    expect(ORDEN_SUELTO.test(".sort(compararCasosPorUrgencia)")).toBe(false);
   });
 });

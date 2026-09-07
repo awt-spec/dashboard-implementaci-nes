@@ -182,7 +182,7 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
     return openTickets
       .filter(t => filterPriority === "all" || t.prioridad === filterPriority)
       .filter(t => !q || t.asunto?.toLowerCase().includes(q) || t.ticket_id?.toLowerCase().includes(q) || t.producto?.toLowerCase().includes(q))
-      .sort((a, b) => (b.dias_antiguedad ?? 0) - (a.dias_antiguedad ?? 0));
+      .sort(compararCasosPorUrgencia);
   }, [openTickets, search, filterPriority]);
 
   // Filas de la tabla del portal: TODOS los casos, no sólo los abiertos —en

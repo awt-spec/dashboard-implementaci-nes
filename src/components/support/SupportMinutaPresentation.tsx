@@ -17,6 +17,7 @@ import {
 import type { SupportTicket } from "@/hooks/useSupportTickets";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { compararCasosPorUrgencia } from "@/lib/ticketStatus";
 
 interface Minuta {
   id: string;
@@ -77,7 +78,7 @@ export function SupportMinutaPresentation({ minuta, tickets, clientName, open, o
   );
   const effectiveCases = refCases.length > 0 ? refCases : tickets.filter(t => !["CERRADA", "ANULADA"].includes(t.estado));
   const criticalCases = effectiveCases.filter(t => t.prioridad.includes("Critica") || t.prioridad === "Alta")
-    .sort((a, b) => b.dias_antiguedad - a.dias_antiguedad);
+    .sort(compararCasosPorUrgencia);
 
   const totalCases = effectiveCases.length;
   const openCases = effectiveCases.filter(t => !["CERRADA", "ANULADA"].includes(t.estado)).length;
