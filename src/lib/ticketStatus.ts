@@ -81,3 +81,34 @@ export function normalizePrioridad(p: string | null | undefined): string {
   if (n.startsWith("critica")) return "critica";
   return n;
 }
+
+/**
+ * Orden de prioridad para listar casos: crítica primero, sin clasificar al
+ * final. Los valores llegan de dos fuentes con formas distintas —el formulario
+ * del cliente guarda "Critica, Impacto Negocio" y el interno guarda "critica"—,
+ * así que se ordena sobre normalizePrioridad, no sobre el texto crudo.
+ * Una prioridad vacía cuenta como "media", igual que en el resto del sistema.
+ */
+const RANGO_PRIORIDAD: Record<string, number> = {
+  critica: 0,
+  alta: 1,
+  media: 2,
+  baja: 3,
+};
+
+export function prioridadRank(p: string | null | undefined): number {
+  return RANGO_PRIORIDAD[normalizePrioridad(p)] ?? 4;
+}
+
+/**
+ * Orden de la lista de casos: prioridad primero y, dentro de una misma
+ * prioridad, lo más viejo arriba. Vive aquí y no en la pantalla para que la
+ * prueba compare el mismo comparador que se ejecuta en producción.
+ */
+export function compararCasosPorUrgencia(
+  a: { prioridad?: string | null; dias_antiguedad?: number | null },
+  b: { prioridad?: string | null; dias_antiguedad?: number | null },
+): number {
+  return prioridadRank(a.prioridad) - prioridadRank(b.prioridad)
+    || (b.dias_antiguedad ?? 0) - (a.dias_antiguedad ?? 0);
+}

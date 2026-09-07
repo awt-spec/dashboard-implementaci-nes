@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import { SharedMinutasPanel } from "./SharedMinutasPanel";
 import { NewTicketForm } from "@/components/support/NewTicketForm";
 import { SlaBreachAlert } from "@/components/support/SlaBreachAlert";
-import { isTicketClosed } from "@/lib/ticketStatus";
+import { isTicketClosed, compararCasosPorUrgencia } from "@/lib/ticketStatus";
 import { toast } from "sonner";
 import { PackageCheck, RotateCcw } from "lucide-react";
 import { KpiTile, SectionLabel } from "@/components/common/StatCard";
@@ -201,7 +201,9 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
         || t.asunto?.toLowerCase().includes(q)
         || t.ticket_id?.toLowerCase().includes(q)
         || t.producto?.toLowerCase().includes(q))
-      .sort((a, b) => (b.dias_antiguedad ?? 0) - (a.dias_antiguedad ?? 0));
+      // Prioridad primero y antigüedad después: un crítico recién abierto tiene
+      // que salir arriba, no hundirse detrás de consultas viejas.
+      .sort(compararCasosPorUrgencia);
   }, [tickets, filtroEstado, search]);
 
   const conteos = useMemo(() => ({
