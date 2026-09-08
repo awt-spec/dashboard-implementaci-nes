@@ -38,6 +38,9 @@ interface Props {
 // — requiere que el cliente confirme la recepción para que pase a CERRADA.
 const DELIVERED_STATE = "ENTREGADA";
 
+/** Cuántos entregados encabezan el portal antes de plegarse. */
+const TOPE_ENTREGADOS = 4;
+
 /** Punto de color por estado, para la tabla del portal en escritorio. */
 const ESTADO_PUNTO: Record<string, string> = {
   "EN ATENCIÓN": "bg-info",
@@ -101,6 +104,7 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
   // Filtro de la tabla del portal en escritorio. En teléfono no se usa: ahí
   // manda la maqueta de pestañas, que entra en una columna.
   const [filtroEstado, setFiltroEstado] = useState<"todos" | "atencion" | "pendientes" | "entregados">("todos");
+  const [verTodosEntregados, setVerTodosEntregados] = useState(false);
   const [search, setSearch] = useState("");
   const [filterPriority, setFilterPriority] = useState<string>("all");
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
@@ -205,6 +209,17 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
       // que salir arriba, no hundirse detrás de consultas viejas.
       .sort(compararCasosPorUrgencia);
   }, [tickets, filtroEstado, search]);
+
+  // La banda de entregados se ordena por urgencia igual que la tabla, para que
+  // el tope deje arriba lo que más importa y no los primeros que devolvió la
+  // consulta.
+  const deliveredOrdenados = useMemo(
+    () => [...deliveredTickets].sort(compararCasosPorUrgencia),
+    [deliveredTickets],
+  );
+  const deliveredVisibles = verTodosEntregados
+    ? deliveredOrdenados
+    : deliveredOrdenados.slice(0, TOPE_ENTREGADOS);
 
   const conteos = useMemo(() => ({
     todos: tickets.length,
@@ -321,8 +336,12 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
           </div>
 
           {/* Lo único que el portal le PIDE al cliente. Antes vivía dentro de la
-              pestaña "Abiertos"; acá encabeza la pantalla. */}
-          {deliveredTickets.map(t => (
+              pestaña "Abiertos"; acá encabeza la pantalla.
+
+              Con tope: cada entregado ocupa ~76 px y un cliente con 15 de ellos
+              empujaba la tabla 1384 px hacia abajo, fuera de la primera
+              pantalla. Se muestran los más urgentes y el resto se despliega. */}
+          {deliveredVisibles.map(t => (
             <div
               key={t.id}
               className="flex items-center gap-3.5 rounded-xl border border-warning/35 bg-warning/[0.06] p-3.5"
@@ -363,6 +382,17 @@ export function GerenteSupportDashboard({ client, canCreateTickets = true, sideb
               )}
             </div>
           ))}
+
+          {deliveredTickets.length > TOPE_ENTREGADOS && (
+            <button
+              onClick={() => setVerTodosEntregados(v => !v)}
+              className="self-start text-xs font-medium text-primary hover:underline px-1"
+            >
+              {verTodosEntregados
+                ? "Ver menos"
+                : `Ver los otros ${deliveredTickets.length - TOPE_ENTREGADOS} casos entregados`}
+            </button>
+          )}
 
           <div className="grid grid-cols-[1fr_336px] gap-5 items-start">
 

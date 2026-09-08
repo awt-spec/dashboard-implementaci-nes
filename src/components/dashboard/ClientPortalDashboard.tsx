@@ -138,7 +138,13 @@ export function ClientPortalDashboard() {
         </div>
       </header>
 
-      <main className="flex-1 overflow-auto p-4 md:p-6">
+      {/* Sin `overflow-auto`. Lo tenía, pero <main> nunca llegaba a scrollear
+          —es `flex-1` dentro de un `min-h-screen`, así que crece con el
+          contenido— y quien scrollea es el documento. El `overflow` sólo creaba
+          un scrollport fantasma: `position: sticky` se ancla al scrollport más
+          cercano, y al no moverse ese nunca, el riel del portal se iba con la
+          página en vez de quedarse fijo. */}
+      <main className="flex-1 p-4 md:p-6">
         <GerenteSupportDashboard
           client={client}
           canCreateTickets={canCreateTickets}
