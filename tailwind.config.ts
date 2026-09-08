@@ -13,6 +13,35 @@ export default {
       },
     },
     extend: {
+      // Las utilidades text-* de los tokens semánticos apuntan a una variante
+      // más oscura (o más clara en modo oscuro) que sí cumple el mínimo AA a
+      // 10-12 px. Se extiende textColor y no colors para que bg-*, border-* y
+      // fill-* sigan usando el token original: los rellenos no cambian.
+      // Se repiten las claves `foreground` porque extender textColor reemplaza
+      // el color completo para texto, y sin ellas text-warning-foreground —el
+      // blanco sobre un relleno de color— dejaría de existir.
+      textColor: {
+        primary: {
+          DEFAULT: "hsl(var(--primary-text))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive-text))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+        success: {
+          DEFAULT: "hsl(var(--success-text))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning-text))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
+        info: {
+          DEFAULT: "hsl(var(--info-text))",
+          foreground: "hsl(var(--info-foreground))",
+        },
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

@@ -20,7 +20,10 @@
     --secondary-foreground: 220 25% 10%;
 
     --muted: 220 14% 94%;
-    --muted-foreground: 220 10% 46%;
+    /* 46 % daba 4.24:1 sobre los tintes de las tarjetas: el texto secundario
+       de 10-12 px quedaba justo por debajo del mínimo AA. 43 % lo pasa con
+       margen sin cambiar el tono. */
+    --muted-foreground: 220 10% 43%;
 
     --accent: 220 14% 94%;
     --accent-foreground: 220 25% 10%;
@@ -36,6 +39,20 @@
 
     --info: 217 91% 60%;
     --info-foreground: 0 0% 100%;
+
+    /* Variantes de TEXTO de los tokens semánticos.
+       Los valores de arriba están afinados para rellenos y bordes; como texto
+       de 10-12 px no llegan al mínimo AA de 4.5:1. El peor era text-warning:
+       1.91:1 sobre la tarjeta. Estas variantes conservan tono y saturación y
+       sólo bajan (o suben, en oscuro) la luminosidad hasta cumplir contra la
+       tarjeta, el fondo de página y los tintes al 6 % y 15 % que usan los
+       badges. Sólo las consumen las utilidades text-*; bg-*, border-* y fill-*
+       siguen usando los tokens originales, así que los rellenos no cambian. */
+    --primary-text: 0 72% 45%;
+    --destructive-text: 0 84% 44%;
+    --success-text: 142 71% 28%;
+    --warning-text: 38 92% 31%;
+    --info-text: 217 91% 48%;
 
     /* Acento de funciones de IA (asistente, análisis, base de conocimiento). */
     --ai: 258 90% 66%;
@@ -90,6 +107,14 @@
 
     --info: 217 91% 50%;
     --info-foreground: 0 0% 100%;
+
+    /* Mismo criterio que en claro, pero subiendo la luminosidad: sobre la
+       tarjeta oscura el peor era text-destructive con 1.61:1. */
+    --primary-text: 0 72% 65%;
+    --destructive-text: 0 62% 62%;
+    --success-text: 142 71% 39%;
+    --warning-text: 38 92% 42%;
+    --info-text: 217 91% 63%;
 
     --ai: 258 90% 74%;
     --ai-foreground: 0 0% 100%;
