@@ -24,3 +24,7 @@ dist-ssr
 *.sw?
 supabase/.temp/
 .vercel
+
+# Entregables con secretos: nunca se versionan.
+credenciales.json
+credenciales-sysde-*.pdf
